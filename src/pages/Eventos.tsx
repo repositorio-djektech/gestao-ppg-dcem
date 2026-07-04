@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import useDataStore, { Evento } from '@/stores/useDataStore'
-import useAuthStore from '@/stores/useAuthStore'
+import { useCrudData } from '@/hooks/use-crud-data'
+import { useAuth } from '@/hooks/use-auth'
+import { eventosService } from '@/services/eventos'
+import type { Evento } from '@/types/database'
 import {
   Table,
   TableBody,
@@ -20,11 +22,12 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Search, Plus, Edit, Trash2 } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 
 export default function Eventos() {
-  const { eventos, addEvento, updateEvento, deleteEvento } = useDataStore()
-  const { user } = useAuthStore()
+  const { data: eventos, loading, create, update, remove } = useCrudData<Evento>(eventosService)
+  const { role } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -32,11 +35,11 @@ export default function Eventos() {
   const [formData, setFormData] = useState<Omit<Evento, 'id'>>({
     docente: '',
     evento: '',
-    localData: '',
+    local_data: '',
     papel: '',
   })
 
-  const canEdit = user?.role === 'admin' || user?.role === 'editor'
+  const canEdit = role === 'admin' || role === 'editor'
 
   const filtered = eventos.filter(
     (e) =>
@@ -50,21 +53,34 @@ export default function Eventos() {
       setFormData(ev)
     } else {
       setEditingId(null)
-      setFormData({ docente: '', evento: '', localData: '', papel: '' })
+      setFormData({ docente: '', evento: '', local_data: '', papel: '' })
     }
     setIsDialogOpen(true)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (editingId) {
-      updateEvento(editingId, formData)
-      toast.success('Evento atualizado')
-    } else {
-      addEvento(formData)
-      toast.success('Evento registrado')
+    try {
+      if (editingId) {
+        await update(editingId, formData)
+        toast.success('Evento atualizado')
+      } else {
+        await create(formData)
+        toast.success('Evento registrado')
+      }
+      setIsDialogOpen(false)
+    } catch {
+      toast.error('Erro ao salvar evento')
     }
-    setIsDialogOpen(false)
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      await remove(id)
+      toast.success('Evento removido')
+    } catch {
+      toast.error('Erro ao remover evento')
+    }
   }
 
   return (
@@ -121,8 +137,8 @@ export default function Eventos() {
                     <Label>Local e Data</Label>
                     <Input
                       placeholder="Ex: Rio de Janeiro - Nov/2025"
-                      value={formData.localData}
-                      onChange={(e) => setFormData({ ...formData, localData: e.target.value })}
+                      value={formData.local_data}
+                      onChange={(e) => setFormData({ ...formData, local_data: e.target.value })}
                       required
                     />
                   </div>
@@ -162,12 +178,20 @@ export default function Eventos() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length > 0 ? (
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell colSpan={canEdit ? 5 : 4}>
+                    <Skeleton className="h-8 w-full" />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : filtered.length > 0 ? (
               filtered.map((e) => (
                 <TableRow key={e.id} className="hover:bg-slate-50/50">
                   <TableCell className="font-medium text-slate-900">{e.docente}</TableCell>
                   <TableCell className="text-slate-700">{e.evento}</TableCell>
-                  <TableCell className="text-slate-600">{e.localData}</TableCell>
+                  <TableCell className="text-slate-600">{e.local_data}</TableCell>
                   <TableCell className="text-slate-600 font-medium">{e.papel}</TableCell>
                   {canEdit && (
                     <TableCell className="text-right">
@@ -184,7 +208,7 @@ export default function Eventos() {
                         size="icon"
                         className="h-8 w-8"
                         onClick={() => {
-                          if (confirm('Remover?')) deleteEvento(e.id)
+                          if (confirm('Remover?')) handleDelete(e.id)
                         }}
                       >
                         <Trash2 className="h-4 w-4 text-slate-400" />

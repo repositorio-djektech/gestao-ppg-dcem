@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import useDataStore, { Patente } from '@/stores/useDataStore'
-import useAuthStore from '@/stores/useAuthStore'
+import { useCrudData } from '@/hooks/use-crud-data'
+import { useAuth } from '@/hooks/use-auth'
+import { patentesService } from '@/services/patentes'
+import type { Patente } from '@/types/database'
 import {
   Table,
   TableBody,
@@ -28,11 +30,12 @@ import {
 import { Label } from '@/components/ui/label'
 import { Search, Plus, Edit, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 
 export default function Patentes() {
-  const { patentes, addPatente, updatePatente, deletePatente } = useDataStore()
-  const { user } = useAuthStore()
+  const { data: patentes, loading, create, update, remove } = useCrudData<Patente>(patentesService)
+  const { role } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -44,7 +47,7 @@ export default function Patentes() {
     inpi: '',
   })
 
-  const canEdit = user?.role === 'admin' || user?.role === 'editor'
+  const canEdit = role === 'admin' || role === 'editor'
 
   const filtered = patentes.filter((p) => p.titulo.toLowerCase().includes(searchTerm.toLowerCase()))
 
@@ -59,16 +62,29 @@ export default function Patentes() {
     setIsDialogOpen(true)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (editingId) {
-      updatePatente(editingId, formData)
-      toast.success('Registro atualizado')
-    } else {
-      addPatente(formData)
-      toast.success('Registro adicionado')
+    try {
+      if (editingId) {
+        await update(editingId, formData)
+        toast.success('Registro atualizado')
+      } else {
+        await create(formData)
+        toast.success('Registro adicionado')
+      }
+      setIsDialogOpen(false)
+    } catch {
+      toast.error('Erro ao salvar registro')
     }
-    setIsDialogOpen(false)
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      await remove(id)
+      toast.success('Registro removido')
+    } catch {
+      toast.error('Erro ao remover registro')
+    }
   }
 
   const getStatusBadge = (status: string) => {
@@ -192,7 +208,15 @@ export default function Patentes() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length > 0 ? (
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell colSpan={canEdit ? 5 : 4}>
+                    <Skeleton className="h-8 w-full" />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : filtered.length > 0 ? (
               filtered.map((p) => (
                 <TableRow key={p.id} className="hover:bg-slate-50/50">
                   <TableCell className="font-medium text-slate-900">{p.titulo}</TableCell>
@@ -214,7 +238,7 @@ export default function Patentes() {
                         size="icon"
                         className="h-8 w-8"
                         onClick={() => {
-                          if (confirm('Remover?')) deletePatente(p.id)
+                          if (confirm('Remover?')) handleDelete(p.id)
                         }}
                       >
                         <Trash2 className="h-4 w-4 text-slate-400" />

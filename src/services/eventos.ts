@@ -1,4 +1,4 @@
-import { createCrudService } from './crud'
+import { createCrudService } from '@/services/crud'
 import type { Evento } from '@/types/database'
 
-export const eventosService = createCrudService<Evento>('eventos', 'evento')
+export const eventosService = createCrudService<Evento>('eventos', 'created_at')
