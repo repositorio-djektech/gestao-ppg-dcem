@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import useDataStore, { Publicacao } from '@/stores/useDataStore'
-import useAuthStore from '@/stores/useAuthStore'
+import { useCrudData } from '@/hooks/use-crud-data'
+import { publicacoesService } from '@/services/publicacoes'
+import type { Publicacao } from '@/types/database'
+import { useAuth } from '@/hooks/use-auth'
 import {
   Table,
   TableBody,
@@ -27,6 +29,7 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Search, Plus, Edit, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -37,59 +40,72 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination'
 
+const emptyForm: Omit<Publicacao, 'id'> = {
+  titulo: '',
+  autores: '',
+  periodico: '',
+  ano: 2025,
+  doi: '',
+  justificativa: '',
+}
+
 export default function Publicacoes() {
-  const { publicacoes, addPublicacao, updatePublicacao, deletePublicacao } = useDataStore()
-  const { user } = useAuthStore()
+  const { profile } = useAuth()
+  const { data: publicacoes, loading, create, update, remove } = useCrudData(publicacoesService)
   const [searchTerm, setSearchTerm] = useState('')
   const [yearFilter, setYearFilter] = useState('all')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
-  const ITEMS_PER_PAGE = 8
+  const [submitting, setSubmitting] = useState(false)
+  const [formData, setFormData] = useState<Omit<Publicacao, 'id'>>(emptyForm)
 
-  const [formData, setFormData] = useState<Omit<Publicacao, 'id'>>({
-    titulo: '',
-    autores: '',
-    periodico: '',
-    ano: 2025,
-    doi: '',
-    justificativa: '',
-  })
-
-  const canEdit = user?.role === 'admin' || user?.role === 'editor'
+  const canEdit = profile?.role === 'admin' || profile?.role === 'editor'
+  const canDelete = profile?.role === 'admin'
+  const PER_PAGE = 8
 
   const filtered = publicacoes.filter((p) => {
-    const matchesSearch =
+    const s =
       p.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.autores.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesYear = yearFilter === 'all' || p.ano.toString() === yearFilter
-    return matchesSearch && matchesYear
+    return s && (yearFilter === 'all' || p.ano.toString() === yearFilter)
   })
+  const totalPages = Math.ceil(filtered.length / PER_PAGE)
+  const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
-  const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
-
-  const handleOpenDialog = (pub?: Publicacao) => {
-    if (pub) {
-      setEditingId(pub.id)
-      setFormData(pub)
-    } else {
-      setEditingId(null)
-      setFormData({ titulo: '', autores: '', periodico: '', ano: 2025, doi: '', justificativa: '' })
-    }
+  const handleOpen = (pub?: Publicacao) => {
+    setEditingId(pub?.id ?? null)
+    setFormData(pub ?? emptyForm)
     setIsDialogOpen(true)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (editingId) {
-      updatePublicacao(editingId, formData)
-      toast.success('Publicação atualizada')
-    } else {
-      addPublicacao(formData)
-      toast.success('Publicação registrada')
+    setSubmitting(true)
+    try {
+      if (editingId) {
+        await update(editingId, formData)
+        toast.success('Publicação atualizada')
+      } else {
+        await create(formData)
+        toast.success('Publicação registrada')
+      }
+      setIsDialogOpen(false)
+    } catch {
+      toast.error('Erro ao salvar')
+    } finally {
+      setSubmitting(false)
     }
-    setIsDialogOpen(false)
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Remover?')) return
+    try {
+      await remove(id)
+      toast.success('Removido')
+    } catch {
+      toast.error('Erro ao remover')
+    }
   }
 
   return (
@@ -97,11 +113,8 @@ export default function Publicacoes() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Publicações</h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Gerencie artigos e publicações do quadriênio.
-          </p>
+          <p className="text-slate-500 text-sm mt-1">Gerencie artigos do quadriênio.</p>
         </div>
-
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <Select
             value={yearFilter}
@@ -121,11 +134,10 @@ export default function Publicacoes() {
               <SelectItem value="2028">2028</SelectItem>
             </SelectContent>
           </Select>
-
           <div className="relative flex-1 sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Buscar título/autor..."
+              placeholder="Buscar..."
               className="pl-9 bg-white"
               value={searchTerm}
               onChange={(e) => {
@@ -134,12 +146,11 @@ export default function Publicacoes() {
               }}
             />
           </div>
-
           {canEdit && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={() => handleOpenDialog()} className="gap-2">
-                  <Plus className="h-4 w-4" />{' '}
+                <Button onClick={() => handleOpen()} className="gap-2">
+                  <Plus className="h-4 w-4" />
                   <span className="hidden sm:inline">Nova Publicação</span>
                 </Button>
               </DialogTrigger>
@@ -204,7 +215,9 @@ export default function Publicacoes() {
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Cancelar
                     </Button>
-                    <Button type="submit">Salvar</Button>
+                    <Button type="submit" disabled={submitting}>
+                      Salvar
+                    </Button>
                   </div>
                 </form>
               </DialogContent>
@@ -231,7 +244,17 @@ export default function Publicacoes() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginated.length > 0 ? (
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    {Array.from({ length: canEdit ? 6 : 5 }).map((_, j) => (
+                      <TableCell key={j}>
+                        <Skeleton className="h-6 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : paginated.length > 0 ? (
                 paginated.map((p) => (
                   <TableRow key={p.id} className="hover:bg-slate-50/50">
                     <TableCell>
@@ -251,21 +274,21 @@ export default function Publicacoes() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleOpenDialog(p)}
+                          onClick={() => handleOpen(p)}
                           className="h-8 w-8"
                         >
                           <Edit className="h-4 w-4 text-slate-400" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => {
-                            if (confirm('Remover?')) deletePublicacao(p.id)
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 text-slate-400" />
-                        </Button>
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleDelete(p.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-slate-400" />
+                          </Button>
+                        )}
                       </TableCell>
                     )}
                   </TableRow>
@@ -280,7 +303,6 @@ export default function Publicacoes() {
             </TableBody>
           </Table>
         </div>
-
         {totalPages > 1 && (
           <div className="border-t p-3 bg-slate-50/50">
             <Pagination>

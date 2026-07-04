@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import useDataStore, { Docente } from '@/stores/useDataStore'
-import useAuthStore from '@/stores/useAuthStore'
+import { useCrudData } from '@/hooks/use-crud-data'
+import { docentesService } from '@/services/docentes'
+import type { Docente } from '@/types/database'
+import { useAuth } from '@/hooks/use-auth'
 import {
   Table,
   TableBody,
@@ -19,6 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Search, Plus, Edit, Trash2 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -31,51 +34,66 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination'
 
+const emptyForm: Omit<Docente, 'id'> = {
+  nome: '',
+  scopus_id: '',
+  indice_h: 0,
+  bolsa_cnpq: '',
+  jdp: false,
+  licenca: '',
+}
+
 export default function Docentes() {
-  const { docentes, addDocente, updateDocente, deleteDocente } = useDataStore()
-  const { user } = useAuthStore()
+  const { profile } = useAuth()
+  const { data: docentes, loading, create, update, remove } = useCrudData(docentesService)
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
-  const ITEMS_PER_PAGE = 10
+  const [submitting, setSubmitting] = useState(false)
+  const [formData, setFormData] = useState<Omit<Docente, 'id'>>(emptyForm)
 
-  const [formData, setFormData] = useState<Omit<Docente, 'id'>>({
-    nome: '',
-    scopusId: '',
-    indiceH: 0,
-    bolsaCnpq: '',
-    jdp: false,
-    licenca: '',
-  })
-
-  const canEdit = user?.role === 'admin' || user?.role === 'editor'
+  const canEdit = profile?.role === 'admin' || profile?.role === 'editor'
+  const canDelete = profile?.role === 'admin'
+  const PER_PAGE = 10
 
   const filtered = docentes.filter((d) => d.nome.toLowerCase().includes(searchTerm.toLowerCase()))
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
-  const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+  const totalPages = Math.ceil(filtered.length / PER_PAGE)
+  const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
-  const handleOpenDialog = (docente?: Docente) => {
-    if (docente) {
-      setEditingId(docente.id)
-      setFormData(docente)
-    } else {
-      setEditingId(null)
-      setFormData({ nome: '', scopusId: '', indiceH: 0, bolsaCnpq: '', jdp: false, licenca: '' })
-    }
+  const handleOpen = (docente?: Docente) => {
+    setEditingId(docente?.id ?? null)
+    setFormData(docente ?? emptyForm)
     setIsDialogOpen(true)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (editingId) {
-      updateDocente(editingId, formData)
-      toast.success('Docente atualizado com sucesso')
-    } else {
-      addDocente(formData)
-      toast.success('Docente adicionado com sucesso')
+    setSubmitting(true)
+    try {
+      if (editingId) {
+        await update(editingId, formData)
+        toast.success('Docente atualizado')
+      } else {
+        await create(formData)
+        toast.success('Docente adicionado')
+      }
+      setIsDialogOpen(false)
+    } catch {
+      toast.error('Erro ao salvar')
+    } finally {
+      setSubmitting(false)
     }
-    setIsDialogOpen(false)
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Remover este docente?')) return
+    try {
+      await remove(id)
+      toast.success('Docente removido')
+    } catch {
+      toast.error('Erro ao remover')
+    }
   }
 
   return (
@@ -85,7 +103,6 @@ export default function Docentes() {
           <h1 className="text-2xl font-bold text-slate-900">Docentes</h1>
           <p className="text-slate-500 text-sm mt-1">Gerencie o corpo docente permanente.</p>
         </div>
-
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -102,8 +119,8 @@ export default function Docentes() {
           {canEdit && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={() => handleOpenDialog()} className="gap-2 shrink-0">
-                  <Plus className="h-4 w-4" />{' '}
+                <Button onClick={() => handleOpen()} className="gap-2 shrink-0">
+                  <Plus className="h-4 w-4" />
                   <span className="hidden sm:inline">Novo Docente</span>
                 </Button>
               </DialogTrigger>
@@ -126,8 +143,8 @@ export default function Docentes() {
                       <Label htmlFor="scopusId">Scopus ID</Label>
                       <Input
                         id="scopusId"
-                        value={formData.scopusId}
-                        onChange={(e) => setFormData({ ...formData, scopusId: e.target.value })}
+                        value={formData.scopus_id}
+                        onChange={(e) => setFormData({ ...formData, scopus_id: e.target.value })}
                       />
                     </div>
                     <div className="space-y-2">
@@ -136,9 +153,9 @@ export default function Docentes() {
                         id="indiceH"
                         type="number"
                         min="0"
-                        value={formData.indiceH}
+                        value={formData.indice_h}
                         onChange={(e) =>
-                          setFormData({ ...formData, indiceH: Number(e.target.value) })
+                          setFormData({ ...formData, indice_h: Number(e.target.value) })
                         }
                       />
                     </div>
@@ -148,8 +165,8 @@ export default function Docentes() {
                     <Input
                       id="bolsaCnpq"
                       placeholder="Ex: PQ 1A, DT 2..."
-                      value={formData.bolsaCnpq}
-                      onChange={(e) => setFormData({ ...formData, bolsaCnpq: e.target.value })}
+                      value={formData.bolsa_cnpq}
+                      onChange={(e) => setFormData({ ...formData, bolsa_cnpq: e.target.value })}
                     />
                   </div>
                   <div className="flex items-center justify-between border border-slate-200 rounded-lg p-3 bg-slate-50/50">
@@ -175,7 +192,9 @@ export default function Docentes() {
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Cancelar
                     </Button>
-                    <Button type="submit">Salvar Docente</Button>
+                    <Button type="submit" disabled={submitting}>
+                      Salvar Docente
+                    </Button>
                   </div>
                 </form>
               </DialogContent>
@@ -187,7 +206,7 @@ export default function Docentes() {
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto">
           <Table>
-            <TableHeader className="bg-slate-50/80 sticky top-0 z-10 backdrop-blur-sm">
+            <TableHeader className="bg-slate-50/80 sticky top-0 z-10">
               <TableRow>
                 <TableHead className="font-semibold text-slate-700">Nome do Docente</TableHead>
                 <TableHead className="font-semibold text-slate-700">Scopus ID</TableHead>
@@ -201,23 +220,33 @@ export default function Docentes() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginated.length > 0 ? (
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    {Array.from({ length: canEdit ? 7 : 6 }).map((_, j) => (
+                      <TableCell key={j}>
+                        <Skeleton className="h-6 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : paginated.length > 0 ? (
                 paginated.map((d) => (
                   <TableRow key={d.id} className="hover:bg-slate-50/50">
                     <TableCell className="font-medium text-slate-900">{d.nome}</TableCell>
                     <TableCell className="text-slate-500 font-mono text-sm">
-                      {d.scopusId || '-'}
+                      {d.scopus_id || '-'}
                     </TableCell>
                     <TableCell className="text-center font-medium text-slate-700">
-                      {d.indiceH}
+                      {d.indice_h}
                     </TableCell>
                     <TableCell>
-                      {d.bolsaCnpq ? (
+                      {d.bolsa_cnpq ? (
                         <Badge
                           variant="secondary"
                           className="bg-blue-50 text-blue-700 hover:bg-blue-100"
                         >
-                          {d.bolsaCnpq}
+                          {d.bolsa_cnpq}
                         </Badge>
                       ) : (
                         <span className="text-slate-400">-</span>
@@ -244,24 +273,21 @@ export default function Docentes() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleOpenDialog(d)}
+                          onClick={() => handleOpen(d)}
                           className="h-8 w-8"
                         >
                           <Edit className="h-4 w-4 text-slate-400 hover:text-primary" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => {
-                            if (confirm('Remover este docente?')) {
-                              deleteDocente(d.id)
-                              toast.success('Docente removido')
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 text-slate-400 hover:text-destructive" />
-                        </Button>
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleDelete(d.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-slate-400 hover:text-destructive" />
+                          </Button>
+                        )}
                       </TableCell>
                     )}
                   </TableRow>
@@ -269,14 +295,13 @@ export default function Docentes() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={canEdit ? 7 : 6} className="h-32 text-center text-slate-500">
-                    Nenhum docente encontrado para os filtros atuais.
+                    Nenhum docente encontrado.
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
         </div>
-
         {totalPages > 1 && (
           <div className="border-t p-3 bg-slate-50/50">
             <Pagination>

@@ -1,4 +1,4 @@
-import useAuthStore from '@/stores/useAuthStore'
+import { useAuth } from '@/hooks/use-auth'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import {
@@ -10,12 +10,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Search } from 'lucide-react'
+import { Search, LogOut } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 
 export function AppHeader() {
-  const { user, logout } = useAuthStore()
+  const { profile, signOut } = useAuth()
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b bg-white px-4 shadow-sm md:px-6">
@@ -36,7 +36,7 @@ export function AppHeader() {
             <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-slate-100">
               <Avatar className="h-9 w-9 border border-slate-200">
                 <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
-                  {user?.name.charAt(0)}
+                  {profile?.name?.charAt(0) ?? 'U'}
                 </AvatarFallback>
               </Avatar>
             </Button>
@@ -44,23 +44,26 @@ export function AppHeader() {
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-2">
-                <p className="text-sm font-medium leading-none text-slate-900">{user?.name}</p>
-                <p className="text-xs leading-none text-slate-500">{user?.email}</p>
+                <p className="text-sm font-medium leading-none text-slate-900">
+                  {profile?.name ?? 'Usuário'}
+                </p>
+                <p className="text-xs leading-none text-slate-500">{profile?.email ?? ''}</p>
                 <div>
                   <Badge
                     variant="secondary"
                     className="capitalize bg-slate-100 text-slate-700 font-medium"
                   >
-                    {user?.role}
+                    {profile?.role ?? 'viewer'}
                   </Badge>
                 </div>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={logout}
+              onClick={() => signOut()}
               className="text-destructive focus:text-destructive cursor-pointer font-medium"
             >
+              <LogOut className="h-4 w-4 mr-2" />
               Sair da conta
             </DropdownMenuItem>
           </DropdownMenuContent>

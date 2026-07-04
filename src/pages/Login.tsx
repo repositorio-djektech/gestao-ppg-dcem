@@ -1,20 +1,32 @@
 import { useState } from 'react'
-import useAuthStore from '@/stores/useAuthStore'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { BookOpen, Info } from 'lucide-react'
+import { BookOpen, Info, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function Login() {
-  const { login } = useAuthStore()
+  const { signIn } = useAuth()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (email) login(email)
+    setError('')
+    setLoading(true)
+    const { error } = await signIn(email, password)
+    if (error) {
+      setError(error.message || 'Credenciais inválidas')
+      setLoading(false)
+    } else {
+      navigate('/')
+    }
   }
 
   return (
@@ -28,7 +40,7 @@ export default function Login() {
           <p className="text-slate-500 mt-2">Sistema de avaliação para Engenharias 2</p>
         </div>
 
-        <Card className="border-0 shadow-elevation">
+        <Card className="border-0 shadow-md">
           <CardHeader>
             <CardTitle className="text-xl">Acesso ao Sistema</CardTitle>
             <CardDescription>Insira suas credenciais para continuar.</CardDescription>
@@ -58,8 +70,17 @@ export default function Login() {
                   required
                 />
               </div>
-              <Button type="submit" className="w-full h-11 text-base font-medium">
-                Entrar no sistema
+              {error && (
+                <Alert className="bg-red-50 border-red-200">
+                  <AlertDescription className="text-sm text-red-600">{error}</AlertDescription>
+                </Alert>
+              )}
+              <Button
+                type="submit"
+                className="w-full h-11 text-base font-medium"
+                disabled={loading}
+              >
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Entrar no sistema'}
               </Button>
             </form>
 
@@ -67,11 +88,13 @@ export default function Login() {
               <Info className="h-4 w-4 text-slate-500" />
               <AlertDescription className="text-sm text-slate-600 mt-0.5 font-mono">
                 <strong className="font-sans block mb-1">Credenciais de Teste:</strong>
-                admin@ppg.edu
+                ppgdcem@djektech.com.br — Admin
                 <br />
-                editor@ppg.edu
+                editor@ppg.edu.br — Editor
                 <br />
-                viewer@ppg.edu
+                viewer@ppg.edu.br — Viewer
+                <br />
+                <span className="font-sans">Senha: ppg@dcem</span>
               </AlertDescription>
             </Alert>
           </CardContent>
