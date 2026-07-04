@@ -1,28 +1,42 @@
-/* Main App Component - Handles routing (using react-router-dom), query client and other providers - use this file to add all routes */
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import Index from './pages/Index'
-import NotFound from './pages/NotFound'
-import Layout from './components/Layout'
+import { AuthProvider } from '@/stores/useAuthStore'
+import { DataProvider } from '@/stores/useDataStore'
 
-// ONLY IMPORT AND RENDER WORKING PAGES, NEVER ADD PLACEHOLDER COMPONENTS OR PAGES IN THIS FILE
-// AVOID REMOVING ANY CONTEXT PROVIDERS FROM THIS FILE (e.g. TooltipProvider, Toaster, Sonner)
+import Layout from './components/Layout'
+import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
+import Docentes from './pages/Docentes'
+import Publicacoes from './pages/Publicacoes'
+import Mobilidade from './pages/Mobilidade'
+import Eventos from './pages/Eventos'
+import Patentes from './pages/Patentes'
+import NotFound from './pages/NotFound'
 
 const App = () => (
   <BrowserRouter>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES MUST BE ADDED HERE */}
-        </Route>
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </TooltipProvider>
+    <AuthProvider>
+      <DataProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner position="top-right" />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route element={<Layout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/docentes" element={<Docentes />} />
+              <Route path="/publicacoes" element={<Publicacoes />} />
+              <Route path="/mobilidade" element={<Mobilidade />} />
+              <Route path="/eventos" element={<Eventos />} />
+              <Route path="/patentes" element={<Patentes />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </TooltipProvider>
+      </DataProvider>
+    </AuthProvider>
   </BrowserRouter>
 )
 
