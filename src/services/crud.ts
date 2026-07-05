@@ -7,30 +7,47 @@ export type CrudConfig = {
   ascending?: boolean
 }
 
-export function createCrudService<T extends { id: string }>(config: CrudConfig) {
+export interface CrudService<T> {
+  list: () => Promise<T[]>
+  getById: (id: string) => Promise<T | null>
+  create: (item: Partial<T>) => Promise<T>
+  update: (id: string, item: Partial<T>) => Promise<T>
+  remove: (id: string) => Promise<void>
+}
+
+export function createCrudService<T extends { id: string }>(config: CrudConfig): CrudService<T> {
   const { table, select = '*', orderBy = 'created_at', ascending = false } = config
 
-  async function getAll(): Promise<{ data: T[] | null; error: any }> {
+  async function list(): Promise<T[]> {
     const query = supabase.from(table).select(select)
     if (orderBy) query.order(orderBy, { ascending })
-    return await query
+    const { data, error } = await query
+    if (error) throw error
+    return (data ?? []) as T[]
   }
 
-  async function getById(id: string): Promise<{ data: T | null; error: any }> {
-    return await supabase.from(table).select(select).eq('id', id).single()
+  async function getById(id: string): Promise<T | null> {
+    const { data, error } = await supabase.from(table).select(select).eq('id', id).single()
+    if (error) throw error
+    return data as T
   }
 
-  async function create(item: Partial<T>): Promise<{ data: T | null; error: any }> {
-    return await supabase.from(table).insert(item).select().single()
+  async function create(item: Partial<T>): Promise<T> {
+    const { data, error } = await supabase.from(table).insert(item).select().single()
+    if (error) throw error
+    return data as T
   }
 
-  async function update(id: string, item: Partial<T>): Promise<{ data: T | null; error: any }> {
-    return await supabase.from(table).update(item).eq('id', id).select().single()
+  async function update(id: string, item: Partial<T>): Promise<T> {
+    const { data, error } = await supabase.from(table).update(item).eq('id', id).select().single()
+    if (error) throw error
+    return data as T
   }
 
-  async function remove(id: string): Promise<{ error: any }> {
-    return await supabase.from(table).delete().eq('id', id)
+  async function remove(id: string): Promise<void> {
+    const { error } = await supabase.from(table).delete().eq('id', id)
+    if (error) throw error
   }
 
-  return { getAll, getById, create, update, remove }
+  return { list, getById, create, update, remove }
 }

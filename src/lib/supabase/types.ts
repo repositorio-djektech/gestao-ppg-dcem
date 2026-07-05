@@ -9,6 +9,119 @@ export type Database = {
   }
   public: {
     Tables: {
+      bancas: {
+        Row: {
+          created_at: string
+          data: string
+          discente_id: string | null
+          id: string
+          link_comprovacao: string
+          membros: string
+          observacoes: string
+          tipo: string
+          titulo_trabalho: string
+        }
+        Insert: {
+          created_at?: string
+          data?: string
+          discente_id?: string | null
+          id?: string
+          link_comprovacao?: string
+          membros?: string
+          observacoes?: string
+          tipo?: string
+          titulo_trabalho: string
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          discente_id?: string | null
+          id?: string
+          link_comprovacao?: string
+          membros?: string
+          observacoes?: string
+          tipo?: string
+          titulo_trabalho?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'bancas_discente_id_fkey'
+            columns: ['discente_id']
+            isOneToOne: false
+            referencedRelation: 'discentes'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      discentes: {
+        Row: {
+          cpf: string
+          created_at: string
+          data_ingresso: string
+          id: string
+          link_comprovacao: string
+          link_lattes: string
+          nome: string
+          observacoes: string
+          status: string
+        }
+        Insert: {
+          cpf?: string
+          created_at?: string
+          data_ingresso?: string
+          id?: string
+          link_comprovacao?: string
+          link_lattes?: string
+          nome: string
+          observacoes?: string
+          status?: string
+        }
+        Update: {
+          cpf?: string
+          created_at?: string
+          data_ingresso?: string
+          id?: string
+          link_comprovacao?: string
+          link_lattes?: string
+          nome?: string
+          observacoes?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      disciplinas: {
+        Row: {
+          ano_semestre: string
+          codigo: string
+          created_at: string
+          creditos: number
+          id: string
+          link_comprovacao: string
+          nome: string
+          observacoes: string
+        }
+        Insert: {
+          ano_semestre?: string
+          codigo?: string
+          created_at?: string
+          creditos?: number
+          id?: string
+          link_comprovacao?: string
+          nome: string
+          observacoes?: string
+        }
+        Update: {
+          ano_semestre?: string
+          codigo?: string
+          created_at?: string
+          creditos?: number
+          id?: string
+          link_comprovacao?: string
+          nome?: string
+          observacoes?: string
+        }
+        Relationships: []
+      }
       docentes: {
         Row: {
           bolsa_cnpq: string
@@ -42,13 +155,48 @@ export type Database = {
         }
         Relationships: []
       }
+      egressos: {
+        Row: {
+          ano_titulacao: number | null
+          atuacao_profissional: string
+          created_at: string
+          id: string
+          link_comprovacao: string
+          link_lattes: string
+          nome: string
+          observacoes: string
+        }
+        Insert: {
+          ano_titulacao?: number | null
+          atuacao_profissional?: string
+          created_at?: string
+          id?: string
+          link_comprovacao?: string
+          link_lattes?: string
+          nome: string
+          observacoes?: string
+        }
+        Update: {
+          ano_titulacao?: number | null
+          atuacao_profissional?: string
+          created_at?: string
+          id?: string
+          link_comprovacao?: string
+          link_lattes?: string
+          nome?: string
+          observacoes?: string
+        }
+        Relationships: []
+      }
       eventos: {
         Row: {
           created_at: string
           docente: string
           evento: string
           id: string
+          link_comprovacao: string
           local_data: string
+          observacoes: string
           papel: string
         }
         Insert: {
@@ -56,7 +204,9 @@ export type Database = {
           docente: string
           evento: string
           id?: string
+          link_comprovacao?: string
           local_data: string
+          observacoes?: string
           papel: string
         }
         Update: {
@@ -64,8 +214,40 @@ export type Database = {
           docente?: string
           evento?: string
           id?: string
+          link_comprovacao?: string
           local_data?: string
+          observacoes?: string
           papel?: string
+        }
+        Relationships: []
+      }
+      impacto_social: {
+        Row: {
+          ano: number | null
+          created_at: string
+          descricao: string
+          id: string
+          link_comprovacao: string
+          observacoes: string
+          titulo: string
+        }
+        Insert: {
+          ano?: number | null
+          created_at?: string
+          descricao?: string
+          id?: string
+          link_comprovacao?: string
+          observacoes?: string
+          titulo: string
+        }
+        Update: {
+          ano?: number | null
+          created_at?: string
+          descricao?: string
+          id?: string
+          link_comprovacao?: string
+          observacoes?: string
+          titulo?: string
         }
         Relationships: []
       }
@@ -75,8 +257,10 @@ export type Database = {
           id: string
           instituicao: string
           link: string
+          link_comprovacao: string
           modalidade: string
           nome: string
+          observacoes: string
           periodo: string
           tipo: string
         }
@@ -85,8 +269,10 @@ export type Database = {
           id?: string
           instituicao: string
           link?: string
+          link_comprovacao?: string
           modalidade?: string
           nome: string
+          observacoes?: string
           periodo: string
           tipo?: string
         }
@@ -95,12 +281,68 @@ export type Database = {
           id?: string
           instituicao?: string
           link?: string
+          link_comprovacao?: string
           modalidade?: string
           nome?: string
+          observacoes?: string
           periodo?: string
           tipo?: string
         }
         Relationships: []
+      }
+      orientacoes: {
+        Row: {
+          created_at: string
+          discente_id: string | null
+          docente_id: string | null
+          fim: string
+          id: string
+          inicio: string
+          link_comprovacao: string
+          observacoes: string
+          status: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          discente_id?: string | null
+          docente_id?: string | null
+          fim?: string
+          id?: string
+          inicio?: string
+          link_comprovacao?: string
+          observacoes?: string
+          status?: string
+          tipo?: string
+        }
+        Update: {
+          created_at?: string
+          discente_id?: string | null
+          docente_id?: string | null
+          fim?: string
+          id?: string
+          inicio?: string
+          link_comprovacao?: string
+          observacoes?: string
+          status?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'orientacoes_discente_id_fkey'
+            columns: ['discente_id']
+            isOneToOne: false
+            referencedRelation: 'discentes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'orientacoes_docente_id_fkey'
+            columns: ['docente_id']
+            isOneToOne: false
+            referencedRelation: 'docentes'
+            referencedColumns: ['id']
+          },
+        ]
       }
       patentes: {
         Row: {
@@ -108,6 +350,8 @@ export type Database = {
           created_at: string
           id: string
           inpi: string
+          link_comprovacao: string
+          observacoes: string
           status: string
           titulo: string
         }
@@ -116,6 +360,8 @@ export type Database = {
           created_at?: string
           id?: string
           inpi: string
+          link_comprovacao?: string
+          observacoes?: string
           status?: string
           titulo: string
         }
@@ -124,6 +370,8 @@ export type Database = {
           created_at?: string
           id?: string
           inpi?: string
+          link_comprovacao?: string
+          observacoes?: string
           status?: string
           titulo?: string
         }
@@ -156,6 +404,72 @@ export type Database = {
         }
         Relationships: []
       }
+      premiacoes: {
+        Row: {
+          ano: number | null
+          created_at: string
+          id: string
+          instituicao: string
+          link_comprovacao: string
+          nome_premiado: string
+          observacoes: string
+          titulo: string
+        }
+        Insert: {
+          ano?: number | null
+          created_at?: string
+          id?: string
+          instituicao?: string
+          link_comprovacao?: string
+          nome_premiado?: string
+          observacoes?: string
+          titulo: string
+        }
+        Update: {
+          ano?: number | null
+          created_at?: string
+          id?: string
+          instituicao?: string
+          link_comprovacao?: string
+          nome_premiado?: string
+          observacoes?: string
+          titulo?: string
+        }
+        Relationships: []
+      }
+      producao_tecnica: {
+        Row: {
+          ano: number | null
+          autores: string
+          created_at: string
+          id: string
+          link_comprovacao: string
+          observacoes: string
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          ano?: number | null
+          autores?: string
+          created_at?: string
+          id?: string
+          link_comprovacao?: string
+          observacoes?: string
+          tipo?: string
+          titulo: string
+        }
+        Update: {
+          ano?: number | null
+          autores?: string
+          created_at?: string
+          id?: string
+          link_comprovacao?: string
+          observacoes?: string
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -180,6 +494,56 @@ export type Database = {
         }
         Relationships: []
       }
+      projetos_pesquisa: {
+        Row: {
+          coordenador_id: string | null
+          created_at: string
+          descricao: string
+          fim: string
+          financiamento: boolean
+          id: string
+          inicio: string
+          link_comprovacao: string
+          observacoes: string
+          orgao_fomento: string
+          titulo: string
+        }
+        Insert: {
+          coordenador_id?: string | null
+          created_at?: string
+          descricao?: string
+          fim?: string
+          financiamento?: boolean
+          id?: string
+          inicio?: string
+          link_comprovacao?: string
+          observacoes?: string
+          orgao_fomento?: string
+          titulo: string
+        }
+        Update: {
+          coordenador_id?: string | null
+          created_at?: string
+          descricao?: string
+          fim?: string
+          financiamento?: boolean
+          id?: string
+          inicio?: string
+          link_comprovacao?: string
+          observacoes?: string
+          orgao_fomento?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'projetos_pesquisa_coordenador_id_fkey'
+            columns: ['coordenador_id']
+            isOneToOne: false
+            referencedRelation: 'docentes'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       publicacoes: {
         Row: {
           ano: number
@@ -188,6 +552,8 @@ export type Database = {
           doi: string
           id: string
           justificativa: string
+          link_comprovacao: string
+          observacoes: string
           periodico: string
           titulo: string
         }
@@ -198,6 +564,8 @@ export type Database = {
           doi?: string
           id?: string
           justificativa?: string
+          link_comprovacao?: string
+          observacoes?: string
           periodico: string
           titulo: string
         }
@@ -208,6 +576,8 @@ export type Database = {
           doi?: string
           id?: string
           justificativa?: string
+          link_comprovacao?: string
+          observacoes?: string
           periodico?: string
           titulo?: string
         }
