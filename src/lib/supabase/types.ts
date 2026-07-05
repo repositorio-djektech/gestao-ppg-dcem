@@ -9,13 +9,216 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      docentes: {
+        Row: {
+          bolsa_cnpq: string
+          created_at: string
+          id: string
+          indice_h: number
+          jdp: boolean
+          licenca: string
+          nome: string
+          scopus_id: string
+        }
+        Insert: {
+          bolsa_cnpq?: string
+          created_at?: string
+          id?: string
+          indice_h?: number
+          jdp?: boolean
+          licenca?: string
+          nome: string
+          scopus_id?: string
+        }
+        Update: {
+          bolsa_cnpq?: string
+          created_at?: string
+          id?: string
+          indice_h?: number
+          jdp?: boolean
+          licenca?: string
+          nome?: string
+          scopus_id?: string
+        }
+        Relationships: []
+      }
+      eventos: {
+        Row: {
+          created_at: string
+          docente: string
+          evento: string
+          id: string
+          local_data: string
+          papel: string
+        }
+        Insert: {
+          created_at?: string
+          docente: string
+          evento: string
+          id?: string
+          local_data: string
+          papel: string
+        }
+        Update: {
+          created_at?: string
+          docente?: string
+          evento?: string
+          id?: string
+          local_data?: string
+          papel?: string
+        }
+        Relationships: []
+      }
+      mobilidade_docente: {
+        Row: {
+          created_at: string
+          id: string
+          instituicao: string
+          link: string
+          modalidade: string
+          nome: string
+          periodo: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instituicao: string
+          link?: string
+          modalidade?: string
+          nome: string
+          periodo: string
+          tipo?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instituicao?: string
+          link?: string
+          modalidade?: string
+          nome?: string
+          periodo?: string
+          tipo?: string
+        }
+        Relationships: []
+      }
+      patentes: {
+        Row: {
+          autores: string
+          created_at: string
+          id: string
+          inpi: string
+          status: string
+          titulo: string
+        }
+        Insert: {
+          autores: string
+          created_at?: string
+          id?: string
+          inpi: string
+          status?: string
+          titulo: string
+        }
+        Update: {
+          autores?: string
+          created_at?: string
+          id?: string
+          inpi?: string
+          status?: string
+          titulo?: string
+        }
+        Relationships: []
+      }
+      ppg: {
+        Row: {
+          created_at: string
+          id: string
+          modalidade: string
+          nivel: string
+          nome: string
+          uf: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          modalidade?: string
+          nivel?: string
+          nome: string
+          uf?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          modalidade?: string
+          nivel?: string
+          nome?: string
+          uf?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          name?: string
+          role?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          role?: string
+        }
+        Relationships: []
+      }
+      publicacoes: {
+        Row: {
+          ano: number
+          autores: string
+          created_at: string
+          doi: string
+          id: string
+          justificativa: string
+          periodico: string
+          titulo: string
+        }
+        Insert: {
+          ano: number
+          autores: string
+          created_at?: string
+          doi?: string
+          id?: string
+          justificativa?: string
+          periodico: string
+          titulo: string
+        }
+        Update: {
+          ano?: number
+          autores?: string
+          created_at?: string
+          doi?: string
+          id?: string
+          justificativa?: string
+          periodico?: string
+          titulo?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never
