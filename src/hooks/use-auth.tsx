@@ -9,6 +9,7 @@ interface AuthContextType {
   profile: Profile | null
   role: Role | null
   signIn: (email: string, password: string) => Promise<{ error: any }>
+  signUp: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<{ error: any }>
   loading: boolean
 }
@@ -48,7 +49,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .single()
         .then(({ data }) => {
           if (data) setProfile(data as Profile)
@@ -63,6 +64,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error }
   }
 
+  const signUp = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: `${window.location.origin}/` },
+    })
+    return { error }
+  }
+
   const signOut = async () => {
     setProfile(null)
     const { error } = await supabase.auth.signOut()
@@ -71,7 +81,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, session, profile, role: profile?.role ?? null, signIn, signOut, loading }}
+      value={{
+        user,
+        session,
+        profile,
+        role: profile?.role ?? null,
+        signIn,
+        signUp,
+        signOut,
+        loading,
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -1,14 +1,15 @@
 export type Role = 'admin' | 'editor' | 'viewer'
 
 export type Profile = {
-  id: string
+  id: number
+  user_id: string
   email: string
   name: string
   role: Role
 }
 
 export type Docente = {
-  id: string
+  id: number
   nome: string
   scopus_id: string
   indice_h: number
@@ -18,7 +19,7 @@ export type Docente = {
 }
 
 export type Publicacao = {
-  id: string
+  id: number
   titulo: string
   autores: string
   periodico: string
@@ -30,7 +31,7 @@ export type Publicacao = {
 }
 
 export type Mobilidade = {
-  id: string
+  id: number
   tipo: 'docente' | 'discente' | 'visitante'
   nome: string
   instituicao: string
@@ -42,7 +43,7 @@ export type Mobilidade = {
 }
 
 export type Evento = {
-  id: string
+  id: number
   docente: string
   evento: string
   local_data: string
@@ -52,7 +53,7 @@ export type Evento = {
 }
 
 export type Patente = {
-  id: string
+  id: number
   titulo: string
   status: 'Concessão' | 'Licenciamento' | 'Pendente'
   autores: string
@@ -62,7 +63,7 @@ export type Patente = {
 }
 
 export type Discente = {
-  id: string
+  id: number
   nome: string
   cpf: string
   data_ingresso: string
@@ -73,7 +74,7 @@ export type Discente = {
 }
 
 export type Egresso = {
-  id: string
+  id: number
   nome: string
   ano_titulacao: number | null
   atuacao_profissional: string
@@ -83,10 +84,10 @@ export type Egresso = {
 }
 
 export type Banca = {
-  id: string
+  id: number
   titulo_trabalho: string
   data: string
-  discente_id: string | null
+  discente_id: number | null
   membros: string
   tipo: 'Mestrado' | 'Doutorado' | 'Qualificação'
   link_comprovacao: string
@@ -94,9 +95,9 @@ export type Banca = {
 }
 
 export type Orientacao = {
-  id: string
-  docente_id: string | null
-  discente_id: string | null
+  id: number
+  docente_id: number | null
+  discente_id: number | null
   tipo: string
   inicio: string
   fim: string
@@ -106,12 +107,12 @@ export type Orientacao = {
 }
 
 export type ProjetoPesquisa = {
-  id: string
+  id: number
   titulo: string
   descricao: string
   inicio: string
   fim: string
-  coordenador_id: string | null
+  coordenador_id: number | null
   financiamento: boolean
   orgao_fomento: string
   link_comprovacao: string
@@ -119,7 +120,7 @@ export type ProjetoPesquisa = {
 }
 
 export type Disciplina = {
-  id: string
+  id: number
   nome: string
   codigo: string
   creditos: number
@@ -129,7 +130,7 @@ export type Disciplina = {
 }
 
 export type ProducaoTecnica = {
-  id: string
+  id: number
   titulo: string
   ano: number | null
   autores: string
@@ -139,7 +140,7 @@ export type ProducaoTecnica = {
 }
 
 export type ImpactoSocial = {
-  id: string
+  id: number
   titulo: string
   descricao: string
   ano: number | null
@@ -148,7 +149,7 @@ export type ImpactoSocial = {
 }
 
 export type Premissao = {
-  id: string
+  id: number
   titulo: string
   ano: number | null
   nome_premiado: string
@@ -158,7 +159,7 @@ export type Premissao = {
 }
 
 export type Premicao = {
-  id: string
+  id: number
   titulo: string
   ano: number | null
   nome_premiado: string

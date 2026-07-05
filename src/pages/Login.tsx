@@ -1,49 +1,104 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
+import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { BookOpen, Info, Loader2 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Eye, EyeOff, Loader2, Info } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function Login() {
-  const { signIn } = useAuth()
+  const { signIn, signUp } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [resetOpen, setResetOpen] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const { error } = await signIn(email, password)
-    if (error) {
-      setError(error.message || 'Credenciais inválidas')
-      setLoading(false)
+    if (mode === 'login') {
+      const { error } = await signIn(email, password)
+      if (error) {
+        setError(error.message || 'Credenciais inválidas')
+        setLoading(false)
+      } else {
+        navigate('/')
+      }
     } else {
-      navigate('/')
+      const { error } = await signUp(email, password)
+      if (error) {
+        setError(error.message || 'Erro ao cadastrar')
+        setLoading(false)
+      } else {
+        toast.success('Cadastro realizado! Verifique seu email.')
+        setMode('login')
+        setLoading(false)
+      }
+    }
+  }
+
+  const handleReset = async () => {
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: `${window.location.origin}/`,
+    })
+    if (error) {
+      toast.error('Erro ao enviar email de recuperação')
+    } else {
+      toast.success('Email de recuperação enviado!')
+      setResetOpen(false)
+      setResetEmail('')
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-md animate-fade-in-up">
-        <div className="mb-8 flex flex-col items-center justify-center text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground mb-4 shadow-lg">
-            <BookOpen className="h-6 w-6" />
+    <div className="relative flex min-h-screen items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{
+          backgroundImage: `url(https://img.usecurling.com/p/1920/1080?q=university%20research%20laboratory)`,
+        }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900/85 via-slate-900/75 to-primary/60" />
+
+      <div className="relative z-10 w-full max-w-md animate-fade-in-up">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/95 shadow-2xl backdrop-blur-sm">
+            <span className="text-lg font-extrabold tracking-tight text-primary">DCEM</span>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Gestão PPG Web</h1>
-          <p className="text-slate-500 mt-2">Sistema de avaliação para Engenharias 2</p>
+          <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-lg">
+            Gestão PPG Web
+          </h1>
+          <p className="mt-2 text-slate-200">Sistema de avaliação para Engenharias 2</p>
         </div>
 
-        <Card className="border-0 shadow-md">
+        <Card className="border-0 shadow-2xl backdrop-blur-md bg-white/95">
           <CardHeader>
-            <CardTitle className="text-xl">Acesso ao Sistema</CardTitle>
-            <CardDescription>Insira suas credenciais para continuar.</CardDescription>
+            <CardTitle className="text-xl">
+              {mode === 'login' ? 'Entrar no Sistema' : 'Criar Conta'}
+            </CardTitle>
+            <CardDescription>
+              {mode === 'login'
+                ? 'Insira suas credenciais para continuar.'
+                : 'Preencha os dados para se cadastrar.'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -61,45 +116,116 @@ export default function Login() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Senha</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="bg-slate-50"
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="bg-slate-50 pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 transition-colors hover:text-slate-700"
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               {error && (
-                <Alert className="bg-red-50 border-red-200">
+                <Alert className="border-red-200 bg-red-50">
                   <AlertDescription className="text-sm text-red-600">{error}</AlertDescription>
                 </Alert>
               )}
               <Button
                 type="submit"
-                className="w-full h-11 text-base font-medium"
+                className="h-11 w-full text-base font-medium"
                 disabled={loading}
               >
-                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Entrar no sistema'}
+                {loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : mode === 'login' ? (
+                  'Entrar no sistema'
+                ) : (
+                  'Cadastrar'
+                )}
               </Button>
             </form>
 
-            <Alert className="mt-6 bg-slate-50 border-slate-200">
+            {mode === 'login' && (
+              <div className="mt-4 flex flex-col gap-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setResetOpen(true)}
+                  className="text-sm text-primary transition-colors hover:underline"
+                >
+                  Esqueceu a senha?
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('register')}
+                  className="text-sm text-slate-600 transition-colors hover:text-primary"
+                >
+                  Não tem conta? Cadastre-se
+                </button>
+              </div>
+            )}
+            {mode === 'register' && (
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={() => setMode('login')}
+                  className="text-sm text-slate-600 transition-colors hover:text-primary"
+                >
+                  Já tem conta? Entrar
+                </button>
+              </div>
+            )}
+
+            <Alert className="mt-6 border-slate-200 bg-slate-50">
               <Info className="h-4 w-4 text-slate-500" />
-              <AlertDescription className="text-sm text-slate-600 mt-0.5 font-mono">
-                <strong className="font-sans block mb-1">Credenciais de Teste:</strong>
-                ppgdcem@djektech.com.br — Admin
-                <br />
-                editor@ppg.edu.br — Editor
-                <br />
-                viewer@ppg.edu.br — Viewer
-                <br />
+              <AlertDescription className="mt-0.5 text-sm text-slate-600">
+                <strong className="mb-1 block">Credenciais de Teste:</strong>
+                <span className="font-mono">
+                  ppgdcem@djektech.com.br — Admin
+                  <br />
+                  editor@ppg.edu.br — Editor
+                  <br />
+                  viewer@ppg.edu.br — Viewer
+                  <br />
+                </span>
                 <span className="font-sans">Senha: ppg@dcem</span>
               </AlertDescription>
             </Alert>
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Recuperar Senha</DialogTitle>
+            <DialogDescription>
+              Informe seu email para receber as instruções de recuperação.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            type="email"
+            placeholder="seu@email.com"
+            value={resetEmail}
+            onChange={(e) => setResetEmail(e.target.value)}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleReset}>Enviar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
