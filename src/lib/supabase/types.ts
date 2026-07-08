@@ -13,8 +13,8 @@ export type Database = {
         Row: {
           created_at: string
           data: string
-          discente_id: string | null
-          id: string
+          discente_id: number | null
+          id: number
           link_comprovacao: string
           membros: string
           observacoes: string
@@ -24,8 +24,8 @@ export type Database = {
         Insert: {
           created_at?: string
           data?: string
-          discente_id?: string | null
-          id?: string
+          discente_id?: number | null
+          id?: number
           link_comprovacao?: string
           membros?: string
           observacoes?: string
@@ -35,8 +35,8 @@ export type Database = {
         Update: {
           created_at?: string
           data?: string
-          discente_id?: string | null
-          id?: string
+          discente_id?: number | null
+          id?: number
           link_comprovacao?: string
           membros?: string
           observacoes?: string
@@ -58,7 +58,7 @@ export type Database = {
           cpf: string
           created_at: string
           data_ingresso: string
-          id: string
+          id: number
           link_comprovacao: string
           link_lattes: string
           nome: string
@@ -69,7 +69,7 @@ export type Database = {
           cpf?: string
           created_at?: string
           data_ingresso?: string
-          id?: string
+          id?: number
           link_comprovacao?: string
           link_lattes?: string
           nome: string
@@ -80,7 +80,7 @@ export type Database = {
           cpf?: string
           created_at?: string
           data_ingresso?: string
-          id?: string
+          id?: number
           link_comprovacao?: string
           link_lattes?: string
           nome?: string
@@ -95,7 +95,7 @@ export type Database = {
           codigo: string
           created_at: string
           creditos: number
-          id: string
+          id: number
           link_comprovacao: string
           nome: string
           observacoes: string
@@ -105,7 +105,7 @@ export type Database = {
           codigo?: string
           created_at?: string
           creditos?: number
-          id?: string
+          id?: number
           link_comprovacao?: string
           nome: string
           observacoes?: string
@@ -115,7 +115,7 @@ export type Database = {
           codigo?: string
           created_at?: string
           creditos?: number
-          id?: string
+          id?: number
           link_comprovacao?: string
           nome?: string
           observacoes?: string
@@ -126,7 +126,7 @@ export type Database = {
         Row: {
           bolsa_cnpq: string
           created_at: string
-          id: string
+          id: number
           indice_h: number
           jdp: boolean
           licenca: string
@@ -136,7 +136,7 @@ export type Database = {
         Insert: {
           bolsa_cnpq?: string
           created_at?: string
-          id?: string
+          id?: number
           indice_h?: number
           jdp?: boolean
           licenca?: string
@@ -146,7 +146,7 @@ export type Database = {
         Update: {
           bolsa_cnpq?: string
           created_at?: string
-          id?: string
+          id?: number
           indice_h?: number
           jdp?: boolean
           licenca?: string
@@ -160,7 +160,7 @@ export type Database = {
           ano_titulacao: number | null
           atuacao_profissional: string
           created_at: string
-          id: string
+          id: number
           link_comprovacao: string
           link_lattes: string
           nome: string
@@ -170,7 +170,7 @@ export type Database = {
           ano_titulacao?: number | null
           atuacao_profissional?: string
           created_at?: string
-          id?: string
+          id?: number
           link_comprovacao?: string
           link_lattes?: string
           nome: string
@@ -180,7 +180,7 @@ export type Database = {
           ano_titulacao?: number | null
           atuacao_profissional?: string
           created_at?: string
-          id?: string
+          id?: number
           link_comprovacao?: string
           link_lattes?: string
           nome?: string
@@ -193,7 +193,7 @@ export type Database = {
           created_at: string
           docente: string
           evento: string
-          id: string
+          id: number
           link_comprovacao: string
           local_data: string
           observacoes: string
@@ -203,7 +203,7 @@ export type Database = {
           created_at?: string
           docente: string
           evento: string
-          id?: string
+          id?: number
           link_comprovacao?: string
           local_data: string
           observacoes?: string
@@ -213,7 +213,7 @@ export type Database = {
           created_at?: string
           docente?: string
           evento?: string
-          id?: string
+          id?: number
           link_comprovacao?: string
           local_data?: string
           observacoes?: string
@@ -226,7 +226,7 @@ export type Database = {
           ano: number | null
           created_at: string
           descricao: string
-          id: string
+          id: number
           link_comprovacao: string
           observacoes: string
           titulo: string
@@ -235,7 +235,7 @@ export type Database = {
           ano?: number | null
           created_at?: string
           descricao?: string
-          id?: string
+          id?: number
           link_comprovacao?: string
           observacoes?: string
           titulo: string
@@ -244,7 +244,7 @@ export type Database = {
           ano?: number | null
           created_at?: string
           descricao?: string
-          id?: string
+          id?: number
           link_comprovacao?: string
           observacoes?: string
           titulo?: string
@@ -254,7 +254,7 @@ export type Database = {
       mobilidade_docente: {
         Row: {
           created_at: string
-          id: string
+          id: number
           instituicao: string
           link: string
           link_comprovacao: string
@@ -266,7 +266,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          id?: string
+          id?: number
           instituicao: string
           link?: string
           link_comprovacao?: string
@@ -278,7 +278,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          id?: string
+          id?: number
           instituicao?: string
           link?: string
           link_comprovacao?: string
@@ -293,10 +293,10 @@ export type Database = {
       orientacoes: {
         Row: {
           created_at: string
-          discente_id: string | null
-          docente_id: string | null
+          discente_id: number | null
+          docente_id: number | null
           fim: string
-          id: string
+          id: number
           inicio: string
           link_comprovacao: string
           observacoes: string
@@ -305,10 +305,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          discente_id?: string | null
-          docente_id?: string | null
+          discente_id?: number | null
+          docente_id?: number | null
           fim?: string
-          id?: string
+          id?: number
           inicio?: string
           link_comprovacao?: string
           observacoes?: string
@@ -317,10 +317,10 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          discente_id?: string | null
-          docente_id?: string | null
+          discente_id?: number | null
+          docente_id?: number | null
           fim?: string
-          id?: string
+          id?: number
           inicio?: string
           link_comprovacao?: string
           observacoes?: string
@@ -348,7 +348,7 @@ export type Database = {
         Row: {
           autores: string
           created_at: string
-          id: string
+          id: number
           inpi: string
           link_comprovacao: string
           observacoes: string
@@ -358,7 +358,7 @@ export type Database = {
         Insert: {
           autores: string
           created_at?: string
-          id?: string
+          id?: number
           inpi: string
           link_comprovacao?: string
           observacoes?: string
@@ -368,7 +368,7 @@ export type Database = {
         Update: {
           autores?: string
           created_at?: string
-          id?: string
+          id?: number
           inpi?: string
           link_comprovacao?: string
           observacoes?: string
@@ -380,7 +380,7 @@ export type Database = {
       ppg: {
         Row: {
           created_at: string
-          id: string
+          id: number
           modalidade: string
           nivel: string
           nome: string
@@ -388,7 +388,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          id?: string
+          id?: number
           modalidade?: string
           nivel?: string
           nome: string
@@ -396,7 +396,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          id?: string
+          id?: number
           modalidade?: string
           nivel?: string
           nome?: string
@@ -408,7 +408,7 @@ export type Database = {
         Row: {
           ano: number | null
           created_at: string
-          id: string
+          id: number
           instituicao: string
           link_comprovacao: string
           nome_premiado: string
@@ -418,7 +418,7 @@ export type Database = {
         Insert: {
           ano?: number | null
           created_at?: string
-          id?: string
+          id?: number
           instituicao?: string
           link_comprovacao?: string
           nome_premiado?: string
@@ -428,7 +428,7 @@ export type Database = {
         Update: {
           ano?: number | null
           created_at?: string
-          id?: string
+          id?: number
           instituicao?: string
           link_comprovacao?: string
           nome_premiado?: string
@@ -442,7 +442,7 @@ export type Database = {
           ano: number | null
           autores: string
           created_at: string
-          id: string
+          id: number
           link_comprovacao: string
           observacoes: string
           tipo: string
@@ -452,7 +452,7 @@ export type Database = {
           ano?: number | null
           autores?: string
           created_at?: string
-          id?: string
+          id?: number
           link_comprovacao?: string
           observacoes?: string
           tipo?: string
@@ -462,7 +462,7 @@ export type Database = {
           ano?: number | null
           autores?: string
           created_at?: string
-          id?: string
+          id?: number
           link_comprovacao?: string
           observacoes?: string
           tipo?: string
@@ -474,34 +474,37 @@ export type Database = {
         Row: {
           created_at: string
           email: string
-          id: string
+          id: number
           name: string
           role: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           email: string
-          id: string
+          id?: number
           name?: string
           role?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           email?: string
-          id?: string
+          id?: number
           name?: string
           role?: string
+          user_id?: string | null
         }
         Relationships: []
       }
       projetos_pesquisa: {
         Row: {
-          coordenador_id: string | null
+          coordenador_id: number | null
           created_at: string
           descricao: string
           fim: string
           financiamento: boolean
-          id: string
+          id: number
           inicio: string
           link_comprovacao: string
           observacoes: string
@@ -509,12 +512,12 @@ export type Database = {
           titulo: string
         }
         Insert: {
-          coordenador_id?: string | null
+          coordenador_id?: number | null
           created_at?: string
           descricao?: string
           fim?: string
           financiamento?: boolean
-          id?: string
+          id?: number
           inicio?: string
           link_comprovacao?: string
           observacoes?: string
@@ -522,12 +525,12 @@ export type Database = {
           titulo: string
         }
         Update: {
-          coordenador_id?: string | null
+          coordenador_id?: number | null
           created_at?: string
           descricao?: string
           fim?: string
           financiamento?: boolean
-          id?: string
+          id?: number
           inicio?: string
           link_comprovacao?: string
           observacoes?: string
@@ -550,7 +553,7 @@ export type Database = {
           autores: string
           created_at: string
           doi: string
-          id: string
+          id: number
           justificativa: string
           link_comprovacao: string
           observacoes: string
@@ -562,7 +565,7 @@ export type Database = {
           autores: string
           created_at?: string
           doi?: string
-          id?: string
+          id?: number
           justificativa?: string
           link_comprovacao?: string
           observacoes?: string
@@ -574,7 +577,7 @@ export type Database = {
           autores?: string
           created_at?: string
           doi?: string
-          id?: string
+          id?: number
           justificativa?: string
           link_comprovacao?: string
           observacoes?: string

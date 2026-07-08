@@ -4,6 +4,22 @@ import { discentesService } from '@/services/discentes'
 import { Badge } from '@/components/ui/badge'
 import type { Discente } from '@/types/database'
 
+const emptyForm = {
+  nome: '',
+  cpf: '',
+  data_ingresso: '',
+  status: 'ativo',
+  link_lattes: '',
+  link_comprovacao: '',
+  observacoes: '',
+}
+
+const statusColors: Record<string, string> = {
+  ativo: 'bg-emerald-50 text-emerald-700',
+  titulado: 'bg-blue-50 text-blue-700',
+  desligado: 'bg-red-50 text-red-700',
+}
+
 const columns: ColumnDef<Discente>[] = [
   { key: 'nome', label: 'Nome', className: 'font-medium text-slate-900' },
   { key: 'cpf', label: 'CPF' },
@@ -12,13 +28,7 @@ const columns: ColumnDef<Discente>[] = [
     key: 'status',
     label: 'Status',
     render: (d) => (
-      <Badge
-        className={
-          d.status === 'ativo'
-            ? 'bg-emerald-50 text-emerald-700 border-0'
-            : 'bg-slate-100 text-slate-600 border-0'
-        }
-      >
+      <Badge variant="secondary" className={`border-0 capitalize ${statusColors[d.status] ?? ''}`}>
         {d.status}
       </Badge>
     ),
@@ -26,21 +36,9 @@ const columns: ColumnDef<Discente>[] = [
 ]
 
 const fields: FieldDef[] = [
-  {
-    key: 'nome',
-    label: 'Nome Completo',
-    type: 'text',
-    required: true,
-    helperText: 'Nome conforme currículo Lattes',
-  },
+  { key: 'nome', label: 'Nome Completo', type: 'text', required: true },
   { key: 'cpf', label: 'CPF', type: 'text', placeholder: '000.000.000-00' },
-  {
-    key: 'data_ingresso',
-    label: 'Data de Ingresso',
-    type: 'text',
-    placeholder: 'MM/AAAA',
-    helperText: 'Mês e ano de ingresso no programa',
-  },
+  { key: 'data_ingresso', label: 'Data de Ingresso', type: 'text', placeholder: 'MM/AAAA' },
   {
     key: 'status',
     label: 'Status',
@@ -51,12 +49,7 @@ const fields: FieldDef[] = [
       { value: 'desligado', label: 'Desligado' },
     ],
   },
-  {
-    key: 'link_lattes',
-    label: 'Link Lattes',
-    type: 'text',
-    placeholder: 'http://lattes.cnpq.br/...',
-  },
+  { key: 'link_lattes', label: 'Link Lattes', type: 'text', placeholder: 'https://...' },
   {
     key: 'link_comprovacao',
     label: 'Link de Comprovação',
@@ -65,16 +58,6 @@ const fields: FieldDef[] = [
   },
   { key: 'observacoes', label: 'Observações', type: 'textarea' },
 ]
-
-const emptyForm = {
-  nome: '',
-  cpf: '',
-  data_ingresso: '',
-  status: 'ativo',
-  link_lattes: '',
-  link_comprovacao: '',
-  observacoes: '',
-}
 
 export default function Discentes() {
   return (

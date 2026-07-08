@@ -8,9 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import type { Orientacao } from '@/types/database'
 
 const emptyForm = {
+  tipo: '',
   docente_id: '',
   discente_id: '',
-  tipo: '',
   inicio: '',
   fim: '',
   status: 'ativo',
@@ -18,19 +18,25 @@ const emptyForm = {
   observacoes: '',
 }
 
+const statusColors: Record<string, string> = {
+  ativo: 'bg-emerald-50 text-emerald-700',
+  concluido: 'bg-blue-50 text-blue-700',
+  cancelado: 'bg-red-50 text-red-700',
+}
+
 export default function Orientacoes() {
   const [docenteMap, setDocenteMap] = useState<Record<string, string>>({})
   const [discenteMap, setDiscenteMap] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    docentesService.list().then((items) => {
+    docentesService.list().then((items: any[]) => {
       const m: Record<string, string> = {}
       items.forEach((d) => {
         m[d.id] = d.nome
       })
       setDocenteMap(m)
     })
-    discentesService.list().then((items) => {
+    discentesService.list().then((items: any[]) => {
       const m: Record<string, string> = {}
       items.forEach((d) => {
         m[d.id] = d.nome
@@ -41,37 +47,34 @@ export default function Orientacoes() {
 
   const docenteOptionsLoader = async () => {
     const items = await docentesService.list()
-    return items.map((d) => ({ value: d.id, label: d.nome }))
+    return items.map((d: any) => ({ value: String(d.id), label: d.nome }))
   }
+
   const discenteOptionsLoader = async () => {
     const items = await discentesService.list()
-    return items.map((d) => ({ value: d.id, label: d.nome }))
+    return items.map((d: any) => ({ value: String(d.id), label: d.nome }))
   }
 
   const columns: ColumnDef<Orientacao>[] = [
+    { key: 'tipo', label: 'Tipo', className: 'font-medium text-slate-900' },
     {
       key: 'docente_id',
       label: 'Docente',
-      render: (o) => docenteMap[o.docente_id ?? ''] ?? '-',
-      className: 'font-medium text-slate-900',
+      render: (o) => docenteMap[String(o.docente_id ?? '')] ?? '-',
     },
     {
       key: 'discente_id',
       label: 'Discente',
-      render: (o) => discenteMap[o.discente_id ?? ''] ?? '-',
+      render: (o) => discenteMap[String(o.discente_id ?? '')] ?? '-',
     },
-    { key: 'tipo', label: 'Tipo' },
     { key: 'inicio', label: 'Início' },
     {
       key: 'status',
       label: 'Status',
       render: (o) => (
         <Badge
-          className={
-            o.status === 'ativo'
-              ? 'bg-emerald-50 text-emerald-700 border-0'
-              : 'bg-slate-100 text-slate-600 border-0'
-          }
+          variant="secondary"
+          className={`border-0 capitalize ${statusColors[o.status] ?? ''}`}
         >
           {o.status}
         </Badge>
@@ -81,6 +84,13 @@ export default function Orientacoes() {
 
   const fields: FieldDef[] = [
     {
+      key: 'tipo',
+      label: 'Tipo de Orientação',
+      type: 'text',
+      required: true,
+      placeholder: 'Ex: Mestrado, Doutorado, Iniciação Científica',
+    },
+    {
       key: 'docente_id',
       label: 'Docente Orientador',
       type: 'select',
@@ -89,21 +99,10 @@ export default function Orientacoes() {
     },
     {
       key: 'discente_id',
-      label: 'Discente Orientado',
+      label: 'Discente Orientando',
       type: 'select',
       optionsLoader: discenteOptionsLoader,
-      helperText: 'Selecione o discente orientado',
-    },
-    {
-      key: 'tipo',
-      label: 'Tipo de Orientação',
-      type: 'select',
-      options: [
-        { value: 'Mestrado', label: 'Mestrado' },
-        { value: 'Doutorado', label: 'Doutorado' },
-        { value: 'Iniciação Científica', label: 'Iniciação Científica' },
-        { value: 'Pós-Doutorado', label: 'Pós-Doutorado' },
-      ],
+      helperText: 'Selecione o discente orientando',
     },
     { key: 'inicio', label: 'Data de Início', type: 'text', placeholder: 'MM/AAAA' },
     { key: 'fim', label: 'Data de Fim', type: 'text', placeholder: 'MM/AAAA' },
@@ -129,7 +128,7 @@ export default function Orientacoes() {
   return (
     <CrudPage
       title="Orientações"
-      description="Gerencie as orientações de docentes a discentes."
+      description="Gerencie as orientações de discentes pelos docentes."
       service={orientacoesService}
       columns={columns}
       fields={fields}

@@ -8,10 +8,19 @@ import { Layout } from '@/components/Layout'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Docentes from '@/pages/Docentes'
+import Discentes from '@/pages/Discentes'
+import Egressos from '@/pages/Egressos'
+import Bancas from '@/pages/Bancas'
+import Orientacoes from '@/pages/Orientacoes'
+import Disciplinas from '@/pages/Disciplinas'
+import ProjetosPesquisa from '@/pages/ProjetosPesquisa'
 import Publicacoes from '@/pages/Publicacoes'
-import Mobilidade from '@/pages/Mobilidade'
-import Eventos from '@/pages/Eventos'
+import ProducaoTecnica from '@/pages/ProducaoTecnica'
 import Patentes from '@/pages/Patentes'
+import Eventos from '@/pages/Eventos'
+import Mobilidade from '@/pages/Mobilidade'
+import ImpactoSocial from '@/pages/ImpactoSocial'
+import Premiacoes from '@/pages/Premiacoes'
 import NotFound from '@/pages/NotFound'
 
 const App = () => (
@@ -25,10 +34,19 @@ const App = () => (
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/docentes" element={<Docentes />} />
+            <Route path="/discentes" element={<Discentes />} />
+            <Route path="/egressos" element={<Egressos />} />
+            <Route path="/bancas" element={<Bancas />} />
+            <Route path="/orientacoes" element={<Orientacoes />} />
+            <Route path="/disciplinas" element={<Disciplinas />} />
+            <Route path="/projetos-pesquisa" element={<ProjetosPesquisa />} />
             <Route path="/publicacoes" element={<Publicacoes />} />
-            <Route path="/mobilidade" element={<Mobilidade />} />
-            <Route path="/eventos" element={<Eventos />} />
+            <Route path="/producao-tecnica" element={<ProducaoTecnica />} />
             <Route path="/patentes" element={<Patentes />} />
+            <Route path="/eventos" element={<Eventos />} />
+            <Route path="/mobilidade" element={<Mobilidade />} />
+            <Route path="/impacto-social" element={<ImpactoSocial />} />
+            <Route path="/premiacoes" element={<Premiacoes />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

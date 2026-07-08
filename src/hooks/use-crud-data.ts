@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { CrudService } from '@/services/crud'
 
-export function useCrudData<T extends { id: string }>(service: CrudService<T>) {
+export function useCrudData<T extends { id: number | string }>(service: CrudService<T>) {
   const [data, setData] = useState<T[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -33,7 +33,7 @@ export function useCrudData<T extends { id: string }>(service: CrudService<T>) {
   )
 
   const update = useCallback(
-    async (id: string, item: Omit<T, 'id'>) => {
+    async (id: number | string, item: Omit<T, 'id'>) => {
       await service.update(id, item)
       setData(await service.list())
     },
@@ -41,7 +41,7 @@ export function useCrudData<T extends { id: string }>(service: CrudService<T>) {
   )
 
   const remove = useCallback(
-    async (id: string) => {
+    async (id: number | string) => {
       await service.remove(id)
       setData(await service.list())
     },

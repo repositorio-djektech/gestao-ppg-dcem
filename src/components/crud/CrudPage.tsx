@@ -25,7 +25,7 @@ import {
 import { CrudFormDialog } from './CrudFormDialog'
 import type { ColumnDef, FieldDef } from './types'
 
-interface CrudPageProps<T extends { id: string }> {
+interface CrudPageProps<T extends { id: number | string }> {
   title: string
   description: string
   service: CrudService<T>
@@ -50,7 +50,7 @@ export function CrudPage<T extends { id: string }>({
   const { data, loading, create, update, remove } = useCrudData(service)
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<number | string | null>(null)
   const [page, setPage] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState<Record<string, any>>(emptyForm)
@@ -117,7 +117,7 @@ export function CrudPage<T extends { id: string }>({
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number | string) => {
     if (!confirm('Remover este registro?')) return
     try {
       await remove(id)

@@ -4,28 +4,53 @@ import { producaoTecnicaService } from '@/services/producao-tecnica'
 import { Badge } from '@/components/ui/badge'
 import type { ProducaoTecnica } from '@/types/database'
 
+const emptyForm = {
+  titulo: '',
+  ano: null,
+  autores: '',
+  tipo: 'Software',
+  link_comprovacao: '',
+  observacoes: '',
+}
+
+const tipoColors: Record<string, string> = {
+  Software: 'bg-violet-50 text-violet-700',
+  Patente: 'bg-amber-50 text-amber-700',
+  Relatório: 'bg-cyan-50 text-cyan-700',
+}
+
 const columns: ColumnDef<ProducaoTecnica>[] = [
   { key: 'titulo', label: 'Título', className: 'font-medium text-slate-900' },
   {
     key: 'tipo',
     label: 'Tipo',
     render: (p) => (
-      <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-0">
+      <Badge variant="secondary" className={`border-0 ${tipoColors[p.tipo] ?? ''}`}>
         {p.tipo}
       </Badge>
     ),
   },
   { key: 'ano', label: 'Ano' },
-  { key: 'autores', label: 'Autores' },
+  {
+    key: 'autores',
+    label: 'Autores',
+    render: (p) => <span className="text-sm text-slate-600 line-clamp-1">{p.autores || '-'}</span>,
+  },
 ]
 
 const fields: FieldDef[] = [
+  { key: 'titulo', label: 'Título', type: 'text', required: true },
   {
-    key: 'titulo',
-    label: 'Título',
+    key: 'ano',
+    label: 'Ano',
+    type: 'number',
+    placeholder: 'Ex: 2025',
+  },
+  {
+    key: 'autores',
+    label: 'Autores',
     type: 'text',
-    required: true,
-    helperText: 'Título da produção técnica',
+    placeholder: 'Ex: Silva, J.; Mendes, A.',
   },
   {
     key: 'tipo',
@@ -34,21 +59,8 @@ const fields: FieldDef[] = [
     options: [
       { value: 'Software', label: 'Software' },
       { value: 'Patente', label: 'Patente' },
-      { value: 'Relatório', label: 'Relatório Técnico' },
+      { value: 'Relatório', label: 'Relatório' },
     ],
-  },
-  {
-    key: 'ano',
-    label: 'Ano',
-    type: 'number',
-    placeholder: 'AAAA',
-    helperText: 'Ano de publicação ou desenvolvimento',
-  },
-  {
-    key: 'autores',
-    label: 'Autores',
-    type: 'textarea',
-    helperText: 'Lista de autores da produção',
   },
   {
     key: 'link_comprovacao',
@@ -58,15 +70,6 @@ const fields: FieldDef[] = [
   },
   { key: 'observacoes', label: 'Observações', type: 'textarea' },
 ]
-
-const emptyForm = {
-  titulo: '',
-  ano: null,
-  autores: '',
-  tipo: 'Software',
-  link_comprovacao: '',
-  observacoes: '',
-}
 
 export default function ProducaoTecnica() {
   return (
