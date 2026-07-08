@@ -76,7 +76,7 @@ export function AppSidebar() {
       <SidebarHeader className="h-16 flex items-center justify-center border-b px-6 bg-slate-50">
         <h2 className="text-lg font-bold text-primary flex items-center gap-2">
           <FlaskConical className="h-6 w-6" />
-          <span>Gestão PPG Web</span>
+          <span>Gestão PPG DCEM</span>
         </h2>
       </SidebarHeader>
       <SidebarContent className="bg-white">
