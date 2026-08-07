@@ -3,6 +3,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/hooks/use-auth'
+import { KeepAlive } from '@/components/KeepAlive'
 
 import { Layout } from '@/components/Layout'
 import Login from '@/pages/Login'
@@ -27,6 +28,7 @@ const App = () => (
   <BrowserRouter>
     <AuthProvider>
       <TooltipProvider>
+        <KeepAlive />
         <Toaster />
         <Sonner position="top-right" />
         <Routes>
