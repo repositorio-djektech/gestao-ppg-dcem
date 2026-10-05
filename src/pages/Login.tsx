@@ -18,6 +18,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
+// Tela de Login e Cadastro do PPG DCEM
 export default function Login() {
   const { signIn, signUp } = useAuth()
   const navigate = useNavigate()
