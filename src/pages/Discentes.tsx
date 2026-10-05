@@ -36,27 +36,52 @@ const columns: ColumnDef<Discente>[] = [
 ]
 
 const fields: FieldDef[] = [
-  { key: 'nome', label: 'Nome Completo', type: 'text', required: true },
-  { key: 'cpf', label: 'CPF', type: 'text', placeholder: '000.000.000-00' },
-  { key: 'data_ingresso', label: 'Data de Ingresso', type: 'text', placeholder: 'MM/AAAA' },
+  {
+    key: 'nome',
+    label: 'Nome Completo',
+    type: 'text',
+    required: true,
+    placeholder: 'Nome completo do aluno',
+  },
+  {
+    key: 'cpf',
+    label: 'CPF',
+    type: 'text',
+    placeholder: '000.000.000-00',
+    helperText: 'Apenas números ou formatado',
+  },
+  {
+    key: 'data_ingresso',
+    label: 'Data de Ingresso',
+    type: 'date',
+    required: true,
+    helperText: 'Data de matrícula inicial no programa',
+  },
   {
     key: 'status',
     label: 'Status',
     type: 'select',
+    required: true,
     options: [
       { value: 'ativo', label: 'Ativo' },
       { value: 'titulado', label: 'Titulado' },
       { value: 'desligado', label: 'Desligado' },
     ],
   },
-  { key: 'link_lattes', label: 'Link Lattes', type: 'text', placeholder: 'https://...' },
+  {
+    key: 'link_lattes',
+    label: 'Currículo Lattes',
+    type: 'url',
+    placeholder: 'http://lattes.cnpq.br/...',
+  },
   {
     key: 'link_comprovacao',
     label: 'Link de Comprovação',
-    type: 'text',
+    type: 'url',
     placeholder: 'https://...',
+    helperText: 'Ficha de matrícula ou documento comprobatório',
   },
-  { key: 'observacoes', label: 'Observações', type: 'textarea' },
+  { key: 'observacoes', label: 'Observações', type: 'textarea', rows: 2 },
 ]
 
 export default function Discentes() {
@@ -70,6 +95,7 @@ export default function Discentes() {
       emptyForm={emptyForm}
       searchKey="nome"
       entityName="Discente"
+      printModule="discentes"
     />
   )
 }

@@ -33,27 +33,45 @@ const columns: ColumnDef<Disciplina>[] = [
 ]
 
 const fields: FieldDef[] = [
-  { key: 'nome', label: 'Nome da Disciplina', type: 'text', required: true },
-  { key: 'codigo', label: 'Código', type: 'text', placeholder: 'Ex: PCM001' },
+  {
+    key: 'nome',
+    label: 'Nome da Disciplina',
+    type: 'text',
+    required: true,
+    placeholder: 'Ex: Ciência dos Materiais Avançada',
+  },
+  {
+    key: 'codigo',
+    label: 'Código da Disciplina',
+    type: 'text',
+    required: true,
+    placeholder: 'Ex: PCM001',
+  },
   {
     key: 'creditos',
     label: 'Créditos',
     type: 'number',
+    required: true,
+    min: 1,
     placeholder: 'Ex: 4',
+    helperText: 'Número de créditos da disciplina',
   },
   {
     key: 'ano_semestre',
-    label: 'Ano/Semestre',
+    label: 'Ano/Semestre de Oferta',
     type: 'text',
+    required: true,
     placeholder: 'Ex: 2025/1',
+    helperText: 'Formato AAAA/S (ex: 2025/1)',
   },
   {
     key: 'link_comprovacao',
-    label: 'Link de Comprovação',
-    type: 'text',
+    label: 'Link da Ementa / Plano de Ensino',
+    type: 'url',
     placeholder: 'https://...',
+    helperText: 'URL com a ementa ou plano de ensino aprovado',
   },
-  { key: 'observacoes', label: 'Observações', type: 'textarea' },
+  { key: 'observacoes', label: 'Observações', type: 'textarea', rows: 2 },
 ]
 
 export default function Disciplinas() {
@@ -67,6 +85,7 @@ export default function Disciplinas() {
       emptyForm={emptyForm}
       searchKey="nome"
       entityName="Disciplina"
+      printModule="disciplinas"
     />
   )
 }

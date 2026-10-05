@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useCrudData } from '@/hooks/use-crud-data'
 import { useAuth } from '@/hooks/use-auth'
 import type { CrudService } from '@/services/crud'
@@ -13,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Search, Plus, Edit, Trash2 } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Printer } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Pagination,
@@ -34,6 +35,7 @@ interface CrudPageProps<T extends { id: number | string }> {
   emptyForm: Record<string, any>
   searchKey: keyof T
   entityName: string
+  printModule?: string
 }
 
 export function CrudPage<T extends { id: number | string }>({
@@ -45,7 +47,9 @@ export function CrudPage<T extends { id: number | string }>({
   emptyForm,
   searchKey,
   entityName,
+  printModule,
 }: CrudPageProps<T>) {
+  const navigate = useNavigate()
   const { profile } = useAuth()
   const { data, loading, create, update, remove } = useCrudData(service)
   const [searchTerm, setSearchTerm] = useState('')
@@ -147,6 +151,17 @@ export function CrudPage<T extends { id: number | string }>({
               }}
             />
           </div>
+          {printModule && (
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/imprimir/${printModule}`)}
+              className="gap-2 shrink-0 bg-white"
+              title="Versão para Impressão / Exportar PDF"
+            >
+              <Printer className="h-4 w-4 text-slate-600" />
+              <span className="hidden sm:inline">Imprimir / PDF</span>
+            </Button>
+          )}
           {canEdit && (
             <Button onClick={() => handleOpen()} className="gap-2 shrink-0">
               <Plus className="h-4 w-4" />

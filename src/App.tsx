@@ -22,6 +22,7 @@ import Eventos from '@/pages/Eventos'
 import Mobilidade from '@/pages/Mobilidade'
 import ImpactoSocial from '@/pages/ImpactoSocial'
 import Premiacoes from '@/pages/Premiacoes'
+import PrintView from '@/pages/PrintView'
 import NotFound from '@/pages/NotFound'
 
 const App = () => (
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="/mobilidade" element={<Mobilidade />} />
             <Route path="/impacto-social" element={<ImpactoSocial />} />
             <Route path="/premiacoes" element={<Premiacoes />} />
+            <Route path="/imprimir/:modulo" element={<PrintView />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

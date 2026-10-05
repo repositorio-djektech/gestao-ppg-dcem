@@ -59,12 +59,14 @@ export default function Bancas() {
       label: 'Título do Trabalho',
       type: 'text',
       required: true,
+      placeholder: 'Ex: Estudo da síntese e caracterização de compósitos...',
       helperText: 'Título do trabalho de qualificação ou defesa',
     },
     {
       key: 'tipo',
-      label: 'Tipo',
+      label: 'Tipo de Banca',
       type: 'select',
+      required: true,
       options: [
         { value: 'Mestrado', label: 'Mestrado' },
         { value: 'Doutorado', label: 'Doutorado' },
@@ -73,10 +75,10 @@ export default function Bancas() {
     },
     {
       key: 'data',
-      label: 'Data',
-      type: 'text',
-      placeholder: 'DD/MM/AAAA',
-      helperText: 'Data da banca',
+      label: 'Data da Banca',
+      type: 'date',
+      required: true,
+      helperText: 'Data em que a banca foi ou será realizada',
     },
     {
       key: 'discente_id',
@@ -89,15 +91,18 @@ export default function Bancas() {
       key: 'membros',
       label: 'Membros da Banca',
       type: 'textarea',
+      rows: 3,
+      placeholder: 'Ex: Prof. Dr. Silva (Presidente), Profa. Dra. Santos (Externa/USP)...',
       helperText: 'Lista de membros externos e internos',
     },
     {
       key: 'link_comprovacao',
       label: 'Link de Comprovação',
-      type: 'text',
+      type: 'url',
       placeholder: 'https://...',
+      helperText: 'URL com ata ou portaria de designação da banca',
     },
-    { key: 'observacoes', label: 'Observações', type: 'textarea' },
+    { key: 'observacoes', label: 'Observações', type: 'textarea', rows: 2 },
   ]
 
   return (
@@ -110,6 +115,7 @@ export default function Bancas() {
       emptyForm={emptyForm}
       searchKey="titulo_trabalho"
       entityName="Banca"
+      printModule="bancas"
     />
   )
 }

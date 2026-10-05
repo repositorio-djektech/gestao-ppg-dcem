@@ -31,33 +31,47 @@ const columns: ColumnDef<Evento>[] = [
 const fields: FieldDef[] = [
   {
     key: 'docente',
-    label: 'Docente',
+    label: 'Docente Participante',
     type: 'text',
     required: true,
     placeholder: 'Nome do docente participante',
   },
-  { key: 'evento', label: 'Evento', type: 'text', required: true, placeholder: 'Nome do evento' },
+  {
+    key: 'evento',
+    label: 'Nome do Evento',
+    type: 'text',
+    required: true,
+    placeholder: 'Ex: Congresso Brasileiro de Engenharia e Ciência dos Materiais (CBECiMat)',
+  },
   {
     key: 'local_data',
     label: 'Local e Data',
     type: 'text',
     required: true,
-    placeholder: 'Ex: São Paulo, SP — 10/05/2025',
+    placeholder: 'Ex: São Paulo, SP — 10 a 14/11/2025',
+    helperText: 'Cidade, Estado/País e período de realização',
   },
   {
     key: 'papel',
-    label: 'Papel',
-    type: 'text',
+    label: 'Papel no Evento',
+    type: 'select',
     required: true,
-    placeholder: 'Ex: Palestrante, Organizador, Participante',
+    options: [
+      { value: 'Palestrante Convidado', label: 'Palestrante Convidado' },
+      { value: 'Organizador / Comitê', label: 'Organizador / Comitê' },
+      { value: 'Apresentador de Trabalho', label: 'Apresentador de Trabalho' },
+      { value: 'Avaliador / Revisor', label: 'Avaliador / Revisor' },
+      { value: 'Participante', label: 'Participante' },
+    ],
   },
   {
     key: 'link_comprovacao',
     label: 'Link de Comprovação',
-    type: 'text',
+    type: 'url',
     placeholder: 'https://...',
+    helperText: 'Certificado de participação ou link dos anais',
   },
-  { key: 'observacoes', label: 'Observações', type: 'textarea' },
+  { key: 'observacoes', label: 'Observações', type: 'textarea', rows: 2 },
 ]
 
 export default function Eventos() {
@@ -71,6 +85,7 @@ export default function Eventos() {
       emptyForm={emptyForm}
       searchKey="evento"
       entityName="Evento"
+      printModule="eventos"
     />
   )
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useCrudData } from '@/hooks/use-crud-data'
 import { publicacoesService } from '@/services/publicacoes'
 import type { Publicacao } from '@/types/database'
@@ -30,7 +31,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Search, Plus, Edit, Trash2 } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Printer } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Pagination,
@@ -52,6 +53,7 @@ const emptyForm: Omit<Publicacao, 'id'> = {
 }
 
 export default function Publicacoes() {
+  const navigate = useNavigate()
   const { profile } = useAuth()
   const { data: publicacoes, loading, create, update, remove } = useCrudData(publicacoesService)
   const [searchTerm, setSearchTerm] = useState('')
@@ -84,6 +86,15 @@ export default function Publicacoes() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
+    if (formData.link_comprovacao) {
+      try {
+        new URL(formData.link_comprovacao)
+      } catch {
+        toast.error('Link de comprovação inválido. Use uma URL válida (ex: https://...).')
+        setSubmitting(false)
+        return
+      }
+    }
     try {
       if (editingId) {
         await update(editingId, formData)
@@ -139,7 +150,7 @@ export default function Publicacoes() {
           <div className="relative flex-1 sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Buscar..."
+              placeholder="Buscar por título ou autores..."
               className="pl-9 bg-white"
               value={searchTerm}
               onChange={(e) => {
@@ -148,6 +159,15 @@ export default function Publicacoes() {
               }}
             />
           </div>
+          <Button
+            variant="outline"
+            onClick={() => navigate('/imprimir/publicacoes')}
+            className="gap-2 shrink-0 bg-white"
+            title="Versão para Impressão / Exportar PDF"
+          >
+            <Printer className="h-4 w-4 text-slate-600" />
+            <span className="hidden sm:inline">Imprimir / PDF</span>
+          </Button>
           {canEdit && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
@@ -156,42 +176,60 @@ export default function Publicacoes() {
                   <span className="hidden sm:inline">Nova Publicação</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
+              <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingId ? 'Editar' : 'Registrar'} Publicação</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4 mt-2">
                   <div className="space-y-2">
-                    <Label>Título</Label>
+                    <Label htmlFor="pub-titulo">
+                      Título do Artigo <span className="text-destructive">*</span>
+                    </Label>
                     <Input
+                      id="pub-titulo"
+                      placeholder="Título completo do artigo científico..."
                       value={formData.titulo}
                       onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Autores</Label>
+                    <Label htmlFor="pub-autores">
+                      Autores <span className="text-destructive">*</span>
+                    </Label>
                     <Input
-                      placeholder="Ex: Silva, J.; Mendes, A."
+                      id="pub-autores"
+                      placeholder="Ex: Silva, J. A.; Mendes, R. C.; Santos, L. M."
                       value={formData.autores}
                       onChange={(e) => setFormData({ ...formData, autores: e.target.value })}
                       required
                     />
+                    <p className="text-xs text-slate-500">
+                      Identifique claramente os docentes e discentes do programa
+                    </p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Periódico</Label>
+                      <Label htmlFor="pub-periodico">
+                        Periódico / Revista <span className="text-destructive">*</span>
+                      </Label>
                       <Input
+                        id="pub-periodico"
+                        placeholder="Ex: Journal of Materials Chemistry A"
                         value={formData.periodico}
                         onChange={(e) => setFormData({ ...formData, periodico: e.target.value })}
                         required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Ano</Label>
+                      <Label htmlFor="pub-ano">
+                        Ano de Publicação <span className="text-destructive">*</span>
+                      </Label>
                       <Input
+                        id="pub-ano"
                         type="number"
-                        min="2020"
+                        min="2015"
+                        max="2035"
                         value={formData.ano}
                         onChange={(e) => setFormData({ ...formData, ano: Number(e.target.value) })}
                         required
@@ -199,18 +237,44 @@ export default function Publicacoes() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>DOI</Label>
+                    <Label htmlFor="pub-doi">DOI</Label>
                     <Input
+                      id="pub-doi"
+                      placeholder="10.1016/j.jmatchem.2025.01.001"
                       value={formData.doi}
                       onChange={(e) => setFormData({ ...formData, doi: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Justificativa de Impacto</Label>
+                    <Label htmlFor="pub-justificativa">Justificativa de Impacto e Relevância</Label>
                     <Textarea
+                      id="pub-justificativa"
                       rows={3}
+                      placeholder="Contribuição para o quadriênio CAPES, aderência às linhas de pesquisa, colaboração internacional..."
                       value={formData.justificativa}
                       onChange={(e) => setFormData({ ...formData, justificativa: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pub-link">Link de Comprovação / Acesso Aberto</Label>
+                    <Input
+                      id="pub-link"
+                      type="url"
+                      placeholder="https://doi.org/... ou https://sciencedirect.com/..."
+                      value={formData.link_comprovacao}
+                      onChange={(e) =>
+                        setFormData({ ...formData, link_comprovacao: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pub-obs">Observações</Label>
+                    <Textarea
+                      id="pub-obs"
+                      rows={2}
+                      placeholder="Quartis Qualis, número de citações, projetos associados..."
+                      value={formData.observacoes}
+                      onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
                     />
                   </div>
                   <div className="flex justify-end gap-3 pt-4">
@@ -218,7 +282,7 @@ export default function Publicacoes() {
                       Cancelar
                     </Button>
                     <Button type="submit" disabled={submitting}>
-                      Salvar
+                      Salvar Publicação
                     </Button>
                   </div>
                 </form>

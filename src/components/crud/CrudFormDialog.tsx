@@ -58,20 +58,28 @@ export function CrudFormDialog({
               {field.type === 'textarea' ? (
                 <Textarea
                   id={field.key}
+                  rows={field.rows ?? 3}
                   value={formData[field.key] ?? ''}
                   placeholder={field.placeholder}
+                  required={field.required}
                   onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
                 />
               ) : field.type === 'select' ? (
                 <Select
-                  value={formData[field.key] ?? ''}
-                  onValueChange={(v) => setFormData({ ...formData, [field.key]: v })}
+                  value={
+                    formData[field.key] !== null && formData[field.key] !== undefined
+                      ? String(formData[field.key])
+                      : ''
+                  }
+                  onValueChange={(v) =>
+                    setFormData({ ...formData, [field.key]: v === '__none__' ? '' : v })
+                  }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id={field.key}>
                     <SelectValue placeholder={field.placeholder ?? 'Selecione...'} />
                   </SelectTrigger>
                   <SelectContent>
-                    {!field.required && <SelectItem value="">—</SelectItem>}
+                    {!field.required && <SelectItem value="__none__">— Nenhum —</SelectItem>}
                     {(field.options ?? fieldOptions[field.key] ?? []).map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
                         {opt.label}
@@ -82,12 +90,15 @@ export function CrudFormDialog({
               ) : field.type === 'switch' ? (
                 <div className="flex items-center justify-between border border-slate-200 rounded-lg p-3 bg-slate-50/50">
                   <div>
-                    <Label>{field.label}</Label>
+                    <Label htmlFor={field.key} className="cursor-pointer">
+                      {field.label}
+                    </Label>
                     {field.placeholder && (
                       <p className="text-xs text-slate-500">{field.placeholder}</p>
                     )}
                   </div>
                   <Switch
+                    id={field.key}
                     checked={!!formData[field.key]}
                     onCheckedChange={(c) => setFormData({ ...formData, [field.key]: c })}
                   />
@@ -95,10 +106,22 @@ export function CrudFormDialog({
               ) : (
                 <Input
                   id={field.key}
-                  type={field.type === 'number' ? 'number' : 'text'}
+                  type={
+                    field.type === 'number'
+                      ? 'number'
+                      : field.type === 'date'
+                        ? 'date'
+                        : field.type === 'url'
+                          ? 'url'
+                          : field.type === 'email'
+                            ? 'email'
+                            : 'text'
+                  }
                   value={formData[field.key] ?? ''}
                   placeholder={field.placeholder}
                   required={field.required}
+                  min={field.min}
+                  max={field.max}
                   onChange={(e) =>
                     setFormData({
                       ...formData,

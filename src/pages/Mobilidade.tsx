@@ -49,46 +49,57 @@ const columns: ColumnDef<Mobilidade>[] = [
 const fields: FieldDef[] = [
   {
     key: 'tipo',
-    label: 'Tipo',
+    label: 'Tipo de Participante',
     type: 'select',
+    required: true,
     options: [
       { value: 'docente', label: 'Docente' },
       { value: 'discente', label: 'Discente' },
-      { value: 'visitante', label: 'Visitante' },
+      { value: 'visitante', label: 'Visitante / Professor Convidado' },
     ],
   },
-  { key: 'nome', label: 'Nome', type: 'text', required: true },
   {
-    key: 'instituicao',
-    label: 'Instituição',
+    key: 'nome',
+    label: 'Nome Completo',
     type: 'text',
     required: true,
-    placeholder: 'Instituição de destino/origem',
+    placeholder: 'Nome da pessoa em mobilidade',
   },
   {
-    key: 'periodo',
-    label: 'Período',
+    key: 'instituicao',
+    label: 'Instituição de Destino / Origem',
     type: 'text',
     required: true,
-    placeholder: 'Ex: 01/2025 a 06/2025',
+    placeholder: 'Ex: Universidade do Porto, UFMG, MIT...',
+    helperText: 'Nome da universidade ou centro de pesquisa parceiro',
   },
   {
     key: 'modalidade',
     label: 'Modalidade',
     type: 'select',
+    required: true,
     options: [
       { value: 'nacional', label: 'Nacional' },
       { value: 'internacional', label: 'Internacional' },
     ],
   },
-  { key: 'link', label: 'Link', type: 'text', placeholder: 'https://...' },
+  {
+    key: 'periodo',
+    label: 'Período de Realização',
+    type: 'text',
+    required: true,
+    placeholder: 'Ex: Março/2025 a Agosto/2025',
+    helperText: 'Duração da missão ou período de intercâmbio',
+  },
+  { key: 'link', label: 'Link do Projeto / Parceria', type: 'url', placeholder: 'https://...' },
   {
     key: 'link_comprovacao',
     label: 'Link de Comprovação',
-    type: 'text',
+    type: 'url',
     placeholder: 'https://...',
+    helperText: 'Carta convite, bilhete aéreo ou certificado de estágio',
   },
-  { key: 'observacoes', label: 'Observações', type: 'textarea' },
+  { key: 'observacoes', label: 'Observações', type: 'textarea', rows: 2 },
 ]
 
 export default function Mobilidade() {
@@ -102,6 +113,7 @@ export default function Mobilidade() {
       emptyForm={emptyForm}
       searchKey="nome"
       entityName="Mobilidade"
+      printModule="mobilidade"
     />
   )
 }

@@ -85,15 +85,22 @@ export default function Orientacoes() {
   const fields: FieldDef[] = [
     {
       key: 'tipo',
-      label: 'Tipo de Orientação',
-      type: 'text',
+      label: 'Tipo de Orientação / Nível',
+      type: 'select',
       required: true,
-      placeholder: 'Ex: Mestrado, Doutorado, Iniciação Científica',
+      options: [
+        { value: 'Mestrado', label: 'Mestrado' },
+        { value: 'Doutorado', label: 'Doutorado' },
+        { value: 'Pós-Doutorado', label: 'Pós-Doutorado' },
+        { value: 'Iniciação Científica', label: 'Iniciação Científica' },
+        { value: 'TCC / Graduação', label: 'TCC / Graduação' },
+      ],
     },
     {
       key: 'docente_id',
       label: 'Docente Orientador',
       type: 'select',
+      required: true,
       optionsLoader: docenteOptionsLoader,
       helperText: 'Selecione o docente orientador',
     },
@@ -101,15 +108,28 @@ export default function Orientacoes() {
       key: 'discente_id',
       label: 'Discente Orientando',
       type: 'select',
+      required: true,
       optionsLoader: discenteOptionsLoader,
       helperText: 'Selecione o discente orientando',
     },
-    { key: 'inicio', label: 'Data de Início', type: 'text', placeholder: 'MM/AAAA' },
-    { key: 'fim', label: 'Data de Fim', type: 'text', placeholder: 'MM/AAAA' },
+    {
+      key: 'inicio',
+      label: 'Data de Início',
+      type: 'date',
+      required: true,
+      helperText: 'Início do período de orientação',
+    },
+    {
+      key: 'fim',
+      label: 'Data de Término Prevista / Efetiva',
+      type: 'date',
+      helperText: 'Deixe em branco se em andamento',
+    },
     {
       key: 'status',
-      label: 'Status',
+      label: 'Status da Orientação',
       type: 'select',
+      required: true,
       options: [
         { value: 'ativo', label: 'Ativo' },
         { value: 'concluido', label: 'Concluído' },
@@ -119,10 +139,11 @@ export default function Orientacoes() {
     {
       key: 'link_comprovacao',
       label: 'Link de Comprovação',
-      type: 'text',
+      type: 'url',
       placeholder: 'https://...',
+      helperText: 'Termo de compromisso ou portaria de orientação',
     },
-    { key: 'observacoes', label: 'Observações', type: 'textarea' },
+    { key: 'observacoes', label: 'Observações', type: 'textarea', rows: 2 },
   ]
 
   return (
@@ -135,6 +156,7 @@ export default function Orientacoes() {
       emptyForm={emptyForm}
       searchKey="tipo"
       entityName="Orientação"
+      printModule="orientacoes"
     />
   )
 }

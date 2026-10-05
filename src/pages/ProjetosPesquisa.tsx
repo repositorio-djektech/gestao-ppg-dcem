@@ -59,46 +59,62 @@ export default function ProjetosPesquisa() {
   const fields: FieldDef[] = [
     {
       key: 'titulo',
-      label: 'Título do Projeto',
+      label: 'Título do Projeto de Pesquisa',
       type: 'text',
       required: true,
-      helperText: 'Título do projeto de pesquisa',
-    },
-    {
-      key: 'descricao',
-      label: 'Descrição',
-      type: 'textarea',
-      helperText: 'Breve descrição dos objetivos e metodologia',
+      placeholder: 'Ex: Desenvolvimento de novos biomateriais poliméricos...',
+      helperText: 'Título aprovado ou submetido',
     },
     {
       key: 'coordenador_id',
-      label: 'Coordenador',
+      label: 'Docente Coordenador',
       type: 'select',
+      required: true,
       optionsLoader: docenteOptionsLoader,
-      helperText: 'Docente coordenador do projeto',
+      helperText: 'Docente permanente responsável pela coordenação',
     },
-    { key: 'inicio', label: 'Data de Início', type: 'text', placeholder: 'MM/AAAA' },
-    { key: 'fim', label: 'Data de Fim', type: 'text', placeholder: 'MM/AAAA' },
+    {
+      key: 'descricao',
+      label: 'Descrição do Projeto',
+      type: 'textarea',
+      rows: 3,
+      placeholder: 'Objetivos gerais, metodologia e impactos esperados...',
+      helperText: 'Breve descrição dos objetivos e metodologia',
+    },
+    {
+      key: 'inicio',
+      label: 'Data de Início',
+      type: 'date',
+      required: true,
+      helperText: 'Início da vigência do projeto',
+    },
+    {
+      key: 'fim',
+      label: 'Data de Término',
+      type: 'date',
+      helperText: 'Término previsto ou efetivo da vigência',
+    },
     {
       key: 'financiamento',
-      label: 'Possui Financiamento?',
+      label: 'Possui Financiamento Externo?',
       type: 'switch',
-      placeholder: 'Indique se o projeto possui financiamento',
+      placeholder: 'Marque se o projeto recebe recursos de agência ou empresa',
     },
     {
       key: 'orgao_fomento',
-      label: 'Órgão de Fomento',
+      label: 'Órgão de Fomento / Financiador',
       type: 'text',
-      placeholder: 'Ex: CAPES, CNPq, FAPESP...',
-      helperText: 'Agência de fomento financiadora',
+      placeholder: 'Ex: FAPESP, CNPq, CAPES, FINEP, Petrobras...',
+      helperText: 'Agência de fomento ou empresa parceira financiadora',
     },
     {
       key: 'link_comprovacao',
       label: 'Link de Comprovação',
-      type: 'text',
+      type: 'url',
       placeholder: 'https://...',
+      helperText: 'Termo de outorga, aprovação no comitê ou portaria',
     },
-    { key: 'observacoes', label: 'Observações', type: 'textarea' },
+    { key: 'observacoes', label: 'Observações', type: 'textarea', rows: 2 },
   ]
 
   return (
@@ -111,6 +127,7 @@ export default function ProjetosPesquisa() {
       emptyForm={emptyForm}
       searchKey="titulo"
       entityName="Projeto"
+      printModule="projetos-pesquisa"
     />
   )
 }

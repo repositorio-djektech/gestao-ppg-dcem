@@ -70,9 +70,10 @@ const fields: FieldDef[] = [
   },
   {
     key: 'link_comprovacao',
-    label: 'Link de Comprovação',
-    type: 'text',
+    label: 'Link de Comprovação (INPI / Carta Patente)',
+    type: 'url',
     placeholder: 'https://...',
+    helperText: 'Link para consulta da patente ou certificado',
   },
   { key: 'observacoes', label: 'Observações', type: 'textarea' },
 ]
@@ -88,6 +89,7 @@ export default function Patentes() {
       emptyForm={emptyForm}
       searchKey="titulo"
       entityName="Patente"
+      printModule="patentes"
     />
   )
 }

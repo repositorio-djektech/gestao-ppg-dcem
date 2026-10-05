@@ -25,27 +25,45 @@ const columns: ColumnDef<Egresso>[] = [
 ]
 
 const fields: FieldDef[] = [
-  { key: 'nome', label: 'Nome Completo', type: 'text', required: true },
+  {
+    key: 'nome',
+    label: 'Nome Completo',
+    type: 'text',
+    required: true,
+    placeholder: 'Nome do egresso',
+  },
   {
     key: 'ano_titulacao',
     label: 'Ano de Titulação',
     type: 'number',
+    required: true,
+    min: 1990,
+    max: 2035,
     placeholder: 'Ex: 2024',
+    helperText: 'Ano em que concluiu o mestrado ou doutorado',
   },
   {
     key: 'atuacao_profissional',
-    label: 'Atuação Profissional',
+    label: 'Atuação Profissional Atual',
     type: 'textarea',
-    helperText: 'Descrição da atuação profissional atual',
+    rows: 3,
+    placeholder: 'Ex: Pesquisador na EMBRAPA, Professor na UFSCar, Engenheiro na Embraer...',
+    helperText: 'Cargo, empresa ou instituição atual de atuação',
   },
-  { key: 'link_lattes', label: 'Link Lattes', type: 'text', placeholder: 'https://...' },
+  {
+    key: 'link_lattes',
+    label: 'Currículo Lattes / LinkedIn',
+    type: 'url',
+    placeholder: 'http://lattes.cnpq.br/...',
+  },
   {
     key: 'link_comprovacao',
     label: 'Link de Comprovação',
-    type: 'text',
+    type: 'url',
     placeholder: 'https://...',
+    helperText: 'Ata de defesa, diploma ou comprovante',
   },
-  { key: 'observacoes', label: 'Observações', type: 'textarea' },
+  { key: 'observacoes', label: 'Observações', type: 'textarea', rows: 2 },
 ]
 
 export default function Egressos() {
@@ -59,6 +77,7 @@ export default function Egressos() {
       emptyForm={emptyForm}
       searchKey="nome"
       entityName="Egresso"
+      printModule="egressos"
     />
   )
 }

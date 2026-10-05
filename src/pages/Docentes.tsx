@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useCrudData } from '@/hooks/use-crud-data'
 import { docentesService } from '@/services/docentes'
 import type { Docente } from '@/types/database'
@@ -21,8 +22,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Search, Plus, Edit, Trash2 } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Printer } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
@@ -44,6 +52,7 @@ const emptyForm: Omit<Docente, 'id'> = {
 }
 
 export default function Docentes() {
+  const navigate = useNavigate()
   const { profile } = useAuth()
   const { data: docentes, loading, create, update, remove } = useCrudData(docentesService)
   const [searchTerm, setSearchTerm] = useState('')
@@ -116,6 +125,15 @@ export default function Docentes() {
               }}
             />
           </div>
+          <Button
+            variant="outline"
+            onClick={() => navigate('/imprimir/docentes')}
+            className="gap-2 shrink-0 bg-white"
+            title="Versão para Impressão / Exportar PDF"
+          >
+            <Printer className="h-4 w-4 text-slate-600" />
+            <span className="hidden sm:inline">Imprimir / PDF</span>
+          </Button>
           {canEdit && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
@@ -124,15 +142,18 @@ export default function Docentes() {
                   <span className="hidden sm:inline">Novo Docente</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
+              <DialogContent className="sm:max-w-[480px]">
                 <DialogHeader>
                   <DialogTitle>{editingId ? 'Editar Docente' : 'Adicionar Docente'}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4 mt-2">
                   <div className="space-y-2">
-                    <Label htmlFor="nome">Nome Completo</Label>
+                    <Label htmlFor="nome">
+                      Nome Completo <span className="text-destructive">*</span>
+                    </Label>
                     <Input
                       id="nome"
+                      placeholder="Ex: Prof. Dr. Carlos Alberto..."
                       value={formData.nome}
                       onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                       required
@@ -140,9 +161,10 @@ export default function Docentes() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="scopusId">Scopus ID</Label>
+                      <Label htmlFor="scopusId">Scopus Author ID</Label>
                       <Input
                         id="scopusId"
+                        placeholder="Ex: 57201234567"
                         value={formData.scopus_id}
                         onChange={(e) => setFormData({ ...formData, scopus_id: e.target.value })}
                       />
@@ -153,6 +175,7 @@ export default function Docentes() {
                         id="indiceH"
                         type="number"
                         min="0"
+                        placeholder="0"
                         value={formData.indice_h}
                         onChange={(e) =>
                           setFormData({ ...formData, indice_h: Number(e.target.value) })
@@ -161,32 +184,55 @@ export default function Docentes() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="bolsaCnpq">Bolsa CNPq</Label>
-                    <Input
-                      id="bolsaCnpq"
-                      placeholder="Ex: PQ 1A, DT 2..."
-                      value={formData.bolsa_cnpq}
-                      onChange={(e) => setFormData({ ...formData, bolsa_cnpq: e.target.value })}
-                    />
+                    <Label htmlFor="bolsaCnpq">Bolsa de Produtividade CNPq</Label>
+                    <Select
+                      value={formData.bolsa_cnpq || '__none__'}
+                      onValueChange={(v) =>
+                        setFormData({ ...formData, bolsa_cnpq: v === '__none__' ? '' : v })
+                      }
+                    >
+                      <SelectTrigger id="bolsaCnpq">
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— Nenhuma Bolsa —</SelectItem>
+                        <SelectItem value="PQ-1A">PQ 1A</SelectItem>
+                        <SelectItem value="PQ-1B">PQ 1B</SelectItem>
+                        <SelectItem value="PQ-1C">PQ 1C</SelectItem>
+                        <SelectItem value="PQ-1D">PQ 1D</SelectItem>
+                        <SelectItem value="PQ-2">PQ 2</SelectItem>
+                        <SelectItem value="DT-1A">DT 1A</SelectItem>
+                        <SelectItem value="DT-1B">DT 1B</SelectItem>
+                        <SelectItem value="DT-2">DT 2</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex items-center justify-between border border-slate-200 rounded-lg p-3 bg-slate-50/50">
                     <div className="space-y-0.5">
-                      <Label>Indicado como JDP?</Label>
-                      <p className="text-xs text-slate-500">Jovem Doutor Pesquisador</p>
+                      <Label htmlFor="jdp" className="cursor-pointer">
+                        Indicado como JDP?
+                      </Label>
+                      <p className="text-xs text-slate-500">
+                        Jovem Doutor Pesquisador (até 5 anos pós-doc)
+                      </p>
                     </div>
                     <Switch
+                      id="jdp"
                       checked={formData.jdp}
                       onCheckedChange={(c) => setFormData({ ...formData, jdp: c })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="licenca">Licença Saúde/Parental</Label>
+                    <Label htmlFor="licenca">Licença Saúde / Parental</Label>
                     <Input
                       id="licenca"
-                      placeholder="Ex: Parental (6 meses)"
+                      placeholder="Ex: Licença Maternidade (6 meses em 2024)"
                       value={formData.licenca}
                       onChange={(e) => setFormData({ ...formData, licenca: e.target.value })}
                     />
+                    <p className="text-xs text-slate-500">
+                      Impacta na flexibilização dos critérios de produtividade CAPES
+                    </p>
                   </div>
                   <div className="flex justify-end gap-3 pt-4">
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>

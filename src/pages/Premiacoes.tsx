@@ -29,32 +29,44 @@ const columns: ColumnDef<Premicao>[] = [
 ]
 
 const fields: FieldDef[] = [
-  { key: 'titulo', label: 'Título do Prêmio', type: 'text', required: true },
   {
-    key: 'ano',
-    label: 'Ano',
-    type: 'number',
-    placeholder: 'Ex: 2025',
+    key: 'titulo',
+    label: 'Título do Prêmio / Distinção',
+    type: 'text',
+    required: true,
+    placeholder: 'Ex: Prêmio CAPES de Tese, Melhor Artigo CBECiMat',
   },
   {
     key: 'nome_premiado',
-    label: 'Nome do Premiado',
+    label: 'Nome do Premiado (Docente / Discente)',
     type: 'text',
-    placeholder: 'Nome da pessoa ou grupo premiado',
+    required: true,
+    placeholder: 'Nome da pessoa ou equipe premiada',
   },
   {
     key: 'instituicao',
-    label: 'Instituição',
+    label: 'Instituição Concedente',
     type: 'text',
-    placeholder: 'Instituição concedente',
+    required: true,
+    placeholder: 'Ex: CAPES, CNPq, ABM, FAPESP...',
+  },
+  {
+    key: 'ano',
+    label: 'Ano da Premiação',
+    type: 'number',
+    required: true,
+    min: 2000,
+    max: 2035,
+    placeholder: 'Ex: 2025',
   },
   {
     key: 'link_comprovacao',
     label: 'Link de Comprovação',
-    type: 'text',
+    type: 'url',
     placeholder: 'https://...',
+    helperText: 'Diploma de premiação ou notícia oficial',
   },
-  { key: 'observacoes', label: 'Observações', type: 'textarea' },
+  { key: 'observacoes', label: 'Observações', type: 'textarea', rows: 2 },
 ]
 
 export default function Premiacoes() {
@@ -68,6 +80,7 @@ export default function Premiacoes() {
       emptyForm={emptyForm}
       searchKey="titulo"
       entityName="Premiação"
+      printModule="premiacoes"
     />
   )
 }

@@ -77,3 +77,76 @@
     animation: fade-in-up 0.6s ease-out;
   }
 }
+
+/* Regras de impressão para exportação PDF pelo navegador */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm 15mm 10mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 10pt;
+    line-height: 1.35;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ocultar elementos desnecessários na impressão */
+  .no-print,
+  nav,
+  aside,
+  header,
+  [data-sidebar='sidebar'],
+  button {
+    display: none !important;
+  }
+
+  /* Layout sem restrições de scroll */
+  main,
+  .print-container {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Tabelas limpas para impressão */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  th,
+  td {
+    border: 1px solid #d1d5db !important;
+    padding: 6px 8px !important;
+    text-align: left;
+    font-size: 9pt;
+  }
+
+  th {
+    background-color: #f3f4f6 !important;
+    color: #111827 !important;
+    font-weight: 700;
+  }
+
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+}

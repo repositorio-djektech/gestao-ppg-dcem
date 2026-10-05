@@ -39,36 +39,50 @@ const columns: ColumnDef<ProducaoTecnica>[] = [
 ]
 
 const fields: FieldDef[] = [
-  { key: 'titulo', label: 'Título', type: 'text', required: true },
   {
-    key: 'ano',
-    label: 'Ano',
-    type: 'number',
-    placeholder: 'Ex: 2025',
-  },
-  {
-    key: 'autores',
-    label: 'Autores',
+    key: 'titulo',
+    label: 'Título do Produto / Produção Técnica',
     type: 'text',
-    placeholder: 'Ex: Silva, J.; Mendes, A.',
+    required: true,
+    placeholder: 'Ex: Sistema de monitoramento térmico...',
   },
   {
     key: 'tipo',
-    label: 'Tipo',
+    label: 'Tipo de Produção',
     type: 'select',
+    required: true,
     options: [
       { value: 'Software', label: 'Software' },
-      { value: 'Patente', label: 'Patente' },
-      { value: 'Relatório', label: 'Relatório' },
+      { value: 'Patente', label: 'Patente / Propriedade Intelectual' },
+      { value: 'Relatório', label: 'Relatório Técnico Conclusivo' },
+      { value: 'Manual/Protocolo', label: 'Manual ou Protocolo Tecnológico' },
+      { value: 'Curso/Treinamento', label: 'Curso ou Treinamento Técnico' },
     ],
   },
   {
-    key: 'link_comprovacao',
-    label: 'Link de Comprovação',
+    key: 'autores',
+    label: 'Autores / Desenvolvedores',
     type: 'text',
-    placeholder: 'https://...',
+    required: true,
+    placeholder: 'Ex: Silva, J.; Mendes, A.',
   },
-  { key: 'observacoes', label: 'Observações', type: 'textarea' },
+  {
+    key: 'ano',
+    label: 'Ano de Conclusão / Registro',
+    type: 'number',
+    required: true,
+    min: 2000,
+    max: 2035,
+    placeholder: 'Ex: 2025',
+  },
+  {
+    key: 'link_comprovacao',
+    label: 'Link de Comprovação (Repositório / Documento)',
+    type: 'url',
+    placeholder: 'https://...',
+    helperText: 'Link para repositório público, registro ou comprovante',
+  },
+  { key: 'observacoes', label: 'Observações', type: 'textarea', rows: 2 },
 ]
 
 export default function ProducaoTecnica() {
@@ -82,6 +96,7 @@ export default function ProducaoTecnica() {
       emptyForm={emptyForm}
       searchKey="titulo"
       entityName="Produção Técnica"
+      printModule="producao-tecnica"
     />
   )
 }
