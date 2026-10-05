@@ -134,7 +134,9 @@ export default function Dashboard() {
   const fetchCounts = useCallback(async () => {
     setLoading(true)
     const results = await Promise.all(
-      allModules.map((m) => supabase.from(m.table).select('*', { count: 'exact', head: true })),
+      allModules.map((m) =>
+        (supabase.from as any)(m.table).select('*', { count: 'exact', head: true }),
+      ),
     )
     const map: CountMap = {}
     results.forEach((res, i) => {

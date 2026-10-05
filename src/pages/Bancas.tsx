@@ -31,7 +31,7 @@ export default function Bancas() {
 
   const discenteOptionsLoader = async () => {
     const items = await discentesService.list()
-    return items.map((d) => ({ value: d.id, label: d.nome }))
+    return items.map((d) => ({ value: String(d.id), label: d.nome }))
   }
 
   const columns: ColumnDef<Banca>[] = [

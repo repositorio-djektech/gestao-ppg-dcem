@@ -48,7 +48,7 @@ export default function Docentes() {
   const { data: docentes, loading, create, update, remove } = useCrudData(docentesService)
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<number | string | null>(null)
   const [page, setPage] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState<Omit<Docente, 'id'>>(emptyForm)
@@ -86,7 +86,7 @@ export default function Docentes() {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number | string) => {
     if (!confirm('Remover este docente?')) return
     try {
       await remove(id)

@@ -36,7 +36,7 @@ interface CrudPageProps<T extends { id: number | string }> {
   entityName: string
 }
 
-export function CrudPage<T extends { id: string }>({
+export function CrudPage<T extends { id: number | string }>({
   title,
   description,
   service,
@@ -258,7 +258,7 @@ export function CrudPage<T extends { id: string }>({
         <CrudFormDialog
           open={isDialogOpen}
           onOpenChange={setIsDialogOpen}
-          editingId={editingId}
+          editingId={editingId !== null ? String(editingId) : null}
           fields={fields}
           formData={formData}
           setFormData={setFormData}

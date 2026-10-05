@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq('user_id', user.id)
         .single()
         .then(({ data }) => {
-          if (data) setProfile(data as Profile)
+          if (data) setProfile(data as unknown as Profile)
         })
     } else {
       setProfile(null)

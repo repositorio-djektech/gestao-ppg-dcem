@@ -15,7 +15,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Eye, EyeOff, Loader2, Info } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function Login() {
@@ -184,22 +184,6 @@ export default function Login() {
                 </button>
               </div>
             )}
-
-            <Alert className="mt-6 border-slate-200 bg-slate-50">
-              <Info className="h-4 w-4 text-slate-500" />
-              <AlertDescription className="mt-0.5 text-sm text-slate-600">
-                <strong className="mb-1 block">Credenciais de Teste:</strong>
-                <span className="font-mono">
-                  ppgdcem@djektech.com.br — Admin
-                  <br />
-                  editor@ppg.edu.br — Editor
-                  <br />
-                  viewer@ppg.edu.br — Viewer
-                  <br />
-                </span>
-                <span className="font-sans">Senha: ppg@dcem</span>
-              </AlertDescription>
-            </Alert>
           </CardContent>
         </Card>
       </div>

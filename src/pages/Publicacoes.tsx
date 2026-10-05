@@ -47,6 +47,8 @@ const emptyForm: Omit<Publicacao, 'id'> = {
   ano: 2025,
   doi: '',
   justificativa: '',
+  link_comprovacao: '',
+  observacoes: '',
 }
 
 export default function Publicacoes() {
@@ -55,7 +57,7 @@ export default function Publicacoes() {
   const [searchTerm, setSearchTerm] = useState('')
   const [yearFilter, setYearFilter] = useState('all')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<number | string | null>(null)
   const [page, setPage] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState<Omit<Publicacao, 'id'>>(emptyForm)
@@ -98,7 +100,7 @@ export default function Publicacoes() {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number | string) => {
     if (!confirm('Remover?')) return
     try {
       await remove(id)

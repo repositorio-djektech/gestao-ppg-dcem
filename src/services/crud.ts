@@ -21,33 +21,37 @@ export function createCrudService<T extends { id: number | string }>(
   const { table, select = '*', orderBy = 'created_at', ascending = false } = config
 
   async function list(): Promise<T[]> {
-    const query = supabase.from(table).select(select)
+    const query = (supabase.from as any)(table).select(select)
     if (orderBy) query.order(orderBy, { ascending })
     const { data, error } = await query
     if (error) throw error
-    return (data ?? []) as T[]
+    return (data ?? []) as unknown as T[]
   }
 
   async function getById(id: number | string): Promise<T | null> {
-    const { data, error } = await supabase.from(table).select(select).eq('id', id).single()
+    const { data, error } = await (supabase.from as any)(table).select(select).eq('id', id).single()
     if (error) throw error
-    return data as T
+    return data as unknown as T
   }
 
   async function create(item: Partial<T>): Promise<T> {
-    const { data, error } = await supabase.from(table).insert(item).select().single()
+    const { data, error } = await (supabase.from as any)(table).insert(item).select().single()
     if (error) throw error
-    return data as T
+    return data as unknown as T
   }
 
   async function update(id: number | string, item: Partial<T>): Promise<T> {
-    const { data, error } = await supabase.from(table).update(item).eq('id', id).select().single()
+    const { data, error } = await (supabase.from as any)(table)
+      .update(item)
+      .eq('id', id)
+      .select()
+      .single()
     if (error) throw error
-    return data as T
+    return data as unknown as T
   }
 
   async function remove(id: number | string): Promise<void> {
-    const { error } = await supabase.from(table).delete().eq('id', id)
+    const { error } = await (supabase.from as any)(table).delete().eq('id', id)
     if (error) throw error
   }
 
