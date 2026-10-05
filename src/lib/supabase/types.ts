@@ -1,588 +1,266 @@
 // AVOID UPDATING THIS FILE DIRECTLY. It is automatically generated.
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.5'
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
-      bancas: {
+      algorithm_parameters: {
         Row: {
+          category: string
           created_at: string
-          data: string
-          discente_id: number | null
+          criteria_label: string
+          display_order: number
           id: number
-          link_comprovacao: string
-          membros: string
-          observacoes: string
-          tipo: string
-          titulo_trabalho: string
+          input_type: string
+          is_active: boolean
+          justification: string
+          max_val: number | null
+          min_val: number | null
+          name: string
+          normal_range_label: string
+          param_key: string
+          points: number
+          step_val: number | null
+          unit: string | null
+          updated_at: string
         }
         Insert: {
+          category: string
           created_at?: string
-          data?: string
-          discente_id?: number | null
+          criteria_label: string
+          display_order?: number
           id?: number
-          link_comprovacao?: string
-          membros?: string
-          observacoes?: string
-          tipo?: string
-          titulo_trabalho: string
+          input_type: string
+          is_active?: boolean
+          justification: string
+          max_val?: number | null
+          min_val?: number | null
+          name: string
+          normal_range_label: string
+          param_key: string
+          points?: number
+          step_val?: number | null
+          unit?: string | null
+          updated_at?: string
         }
         Update: {
+          category?: string
           created_at?: string
-          data?: string
-          discente_id?: number | null
+          criteria_label?: string
+          display_order?: number
           id?: number
-          link_comprovacao?: string
-          membros?: string
-          observacoes?: string
-          tipo?: string
-          titulo_trabalho?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'bancas_discente_id_fkey'
-            columns: ['discente_id']
-            isOneToOne: false
-            referencedRelation: 'discentes'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      discentes: {
-        Row: {
-          cpf: string
-          created_at: string
-          data_ingresso: string
-          id: number
-          link_comprovacao: string
-          link_lattes: string
-          nome: string
-          observacoes: string
-          status: string
-        }
-        Insert: {
-          cpf?: string
-          created_at?: string
-          data_ingresso?: string
-          id?: number
-          link_comprovacao?: string
-          link_lattes?: string
-          nome: string
-          observacoes?: string
-          status?: string
-        }
-        Update: {
-          cpf?: string
-          created_at?: string
-          data_ingresso?: string
-          id?: number
-          link_comprovacao?: string
-          link_lattes?: string
-          nome?: string
-          observacoes?: string
-          status?: string
+          input_type?: string
+          is_active?: boolean
+          justification?: string
+          max_val?: number | null
+          min_val?: number | null
+          name?: string
+          normal_range_label?: string
+          param_key?: string
+          points?: number
+          step_val?: number | null
+          unit?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
-      disciplinas: {
+      assessments: {
         Row: {
-          ano_semestre: string
-          codigo: string
+          altered_appearance_behavior: boolean | null
+          blood_glucose: number | null
+          blood_pressure: number | null
+          code: string
+          cold_extremities: boolean | null
+          cold_sweat_pallor: boolean | null
+          cold_sweating: boolean | null
+          confusion_agitation: boolean | null
           created_at: string
-          creditos: number
-          id: number
-          link_comprovacao: string
-          nome: string
-          observacoes: string
+          creatinine: number | null
+          crp: number | null
+          cyanosis_mucosal_discoloration: boolean | null
+          diastolic_bp: number | null
+          filled_count: number
+          heart_rate: number | null
+          hemoglobin: number | null
+          id: string
+          identified_factors: Json
+          impaired_consciousness: boolean | null
+          increased_work_of_breathing: boolean | null
+          is_data_sparse: boolean
+          lactate: number | null
+          leukocytes: number | null
+          new_weakness_immobility: boolean | null
+          nurse_notes: string | null
+          pallor: boolean | null
+          patient_data: Json
+          patient_status: string
+          platelets: number | null
+          potassium: number | null
+          prostration_general_deterioration: boolean | null
+          reduced_diuresis_oliguria: boolean | null
+          respiratory_rate: number | null
+          risk_description: string | null
+          risk_guidance: string
+          risk_level: string
+          risk_title: string
+          score: number
+          sodium: number | null
+          spo2: number | null
+          suggested_actions: Json
+          systolic_bp: number | null
+          temperature: number | null
+          total_parameters: number
+          unit_sector: string | null
+          updated_at: string
+          urea: number | null
+          user_id: string | null
         }
         Insert: {
-          ano_semestre?: string
-          codigo?: string
+          altered_appearance_behavior?: boolean | null
+          blood_glucose?: number | null
+          blood_pressure?: number | null
+          code: string
+          cold_extremities?: boolean | null
+          cold_sweat_pallor?: boolean | null
+          cold_sweating?: boolean | null
+          confusion_agitation?: boolean | null
           created_at?: string
-          creditos?: number
-          id?: number
-          link_comprovacao?: string
-          nome: string
-          observacoes?: string
+          creatinine?: number | null
+          crp?: number | null
+          cyanosis_mucosal_discoloration?: boolean | null
+          diastolic_bp?: number | null
+          filled_count?: number
+          heart_rate?: number | null
+          hemoglobin?: number | null
+          id?: string
+          identified_factors?: Json
+          impaired_consciousness?: boolean | null
+          increased_work_of_breathing?: boolean | null
+          is_data_sparse?: boolean
+          lactate?: number | null
+          leukocytes?: number | null
+          new_weakness_immobility?: boolean | null
+          nurse_notes?: string | null
+          pallor?: boolean | null
+          patient_data?: Json
+          patient_status?: string
+          platelets?: number | null
+          potassium?: number | null
+          prostration_general_deterioration?: boolean | null
+          reduced_diuresis_oliguria?: boolean | null
+          respiratory_rate?: number | null
+          risk_description?: string | null
+          risk_guidance?: string
+          risk_level: string
+          risk_title?: string
+          score?: number
+          sodium?: number | null
+          spo2?: number | null
+          suggested_actions?: Json
+          systolic_bp?: number | null
+          temperature?: number | null
+          total_parameters?: number
+          unit_sector?: string | null
+          updated_at?: string
+          urea?: number | null
+          user_id?: string | null
         }
         Update: {
-          ano_semestre?: string
-          codigo?: string
+          altered_appearance_behavior?: boolean | null
+          blood_glucose?: number | null
+          blood_pressure?: number | null
+          code?: string
+          cold_extremities?: boolean | null
+          cold_sweat_pallor?: boolean | null
+          cold_sweating?: boolean | null
+          confusion_agitation?: boolean | null
           created_at?: string
-          creditos?: number
-          id?: number
-          link_comprovacao?: string
-          nome?: string
-          observacoes?: string
-        }
-        Relationships: []
-      }
-      docentes: {
-        Row: {
-          bolsa_cnpq: string
-          created_at: string
-          id: number
-          indice_h: number
-          jdp: boolean
-          licenca: string
-          nome: string
-          scopus_id: string
-        }
-        Insert: {
-          bolsa_cnpq?: string
-          created_at?: string
-          id?: number
-          indice_h?: number
-          jdp?: boolean
-          licenca?: string
-          nome: string
-          scopus_id?: string
-        }
-        Update: {
-          bolsa_cnpq?: string
-          created_at?: string
-          id?: number
-          indice_h?: number
-          jdp?: boolean
-          licenca?: string
-          nome?: string
-          scopus_id?: string
-        }
-        Relationships: []
-      }
-      egressos: {
-        Row: {
-          ano_titulacao: number | null
-          atuacao_profissional: string
-          created_at: string
-          id: number
-          link_comprovacao: string
-          link_lattes: string
-          nome: string
-          observacoes: string
-        }
-        Insert: {
-          ano_titulacao?: number | null
-          atuacao_profissional?: string
-          created_at?: string
-          id?: number
-          link_comprovacao?: string
-          link_lattes?: string
-          nome: string
-          observacoes?: string
-        }
-        Update: {
-          ano_titulacao?: number | null
-          atuacao_profissional?: string
-          created_at?: string
-          id?: number
-          link_comprovacao?: string
-          link_lattes?: string
-          nome?: string
-          observacoes?: string
-        }
-        Relationships: []
-      }
-      eventos: {
-        Row: {
-          created_at: string
-          docente: string
-          evento: string
-          id: number
-          link_comprovacao: string
-          local_data: string
-          observacoes: string
-          papel: string
-        }
-        Insert: {
-          created_at?: string
-          docente: string
-          evento: string
-          id?: number
-          link_comprovacao?: string
-          local_data: string
-          observacoes?: string
-          papel: string
-        }
-        Update: {
-          created_at?: string
-          docente?: string
-          evento?: string
-          id?: number
-          link_comprovacao?: string
-          local_data?: string
-          observacoes?: string
-          papel?: string
-        }
-        Relationships: []
-      }
-      impacto_social: {
-        Row: {
-          ano: number | null
-          created_at: string
-          descricao: string
-          id: number
-          link_comprovacao: string
-          observacoes: string
-          titulo: string
-        }
-        Insert: {
-          ano?: number | null
-          created_at?: string
-          descricao?: string
-          id?: number
-          link_comprovacao?: string
-          observacoes?: string
-          titulo: string
-        }
-        Update: {
-          ano?: number | null
-          created_at?: string
-          descricao?: string
-          id?: number
-          link_comprovacao?: string
-          observacoes?: string
-          titulo?: string
-        }
-        Relationships: []
-      }
-      mobilidade_docente: {
-        Row: {
-          created_at: string
-          id: number
-          instituicao: string
-          link: string
-          link_comprovacao: string
-          modalidade: string
-          nome: string
-          observacoes: string
-          periodo: string
-          tipo: string
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          instituicao: string
-          link?: string
-          link_comprovacao?: string
-          modalidade?: string
-          nome: string
-          observacoes?: string
-          periodo: string
-          tipo?: string
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          instituicao?: string
-          link?: string
-          link_comprovacao?: string
-          modalidade?: string
-          nome?: string
-          observacoes?: string
-          periodo?: string
-          tipo?: string
-        }
-        Relationships: []
-      }
-      orientacoes: {
-        Row: {
-          created_at: string
-          discente_id: number | null
-          docente_id: number | null
-          fim: string
-          id: number
-          inicio: string
-          link_comprovacao: string
-          observacoes: string
-          status: string
-          tipo: string
-        }
-        Insert: {
-          created_at?: string
-          discente_id?: number | null
-          docente_id?: number | null
-          fim?: string
-          id?: number
-          inicio?: string
-          link_comprovacao?: string
-          observacoes?: string
-          status?: string
-          tipo?: string
-        }
-        Update: {
-          created_at?: string
-          discente_id?: number | null
-          docente_id?: number | null
-          fim?: string
-          id?: number
-          inicio?: string
-          link_comprovacao?: string
-          observacoes?: string
-          status?: string
-          tipo?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'orientacoes_discente_id_fkey'
-            columns: ['discente_id']
-            isOneToOne: false
-            referencedRelation: 'discentes'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'orientacoes_docente_id_fkey'
-            columns: ['docente_id']
-            isOneToOne: false
-            referencedRelation: 'docentes'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      patentes: {
-        Row: {
-          autores: string
-          created_at: string
-          id: number
-          inpi: string
-          link_comprovacao: string
-          observacoes: string
-          status: string
-          titulo: string
-        }
-        Insert: {
-          autores: string
-          created_at?: string
-          id?: number
-          inpi: string
-          link_comprovacao?: string
-          observacoes?: string
-          status?: string
-          titulo: string
-        }
-        Update: {
-          autores?: string
-          created_at?: string
-          id?: number
-          inpi?: string
-          link_comprovacao?: string
-          observacoes?: string
-          status?: string
-          titulo?: string
-        }
-        Relationships: []
-      }
-      ppg: {
-        Row: {
-          created_at: string
-          id: number
-          modalidade: string
-          nivel: string
-          nome: string
-          uf: string
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          modalidade?: string
-          nivel?: string
-          nome: string
-          uf?: string
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          modalidade?: string
-          nivel?: string
-          nome?: string
-          uf?: string
-        }
-        Relationships: []
-      }
-      premiacoes: {
-        Row: {
-          ano: number | null
-          created_at: string
-          id: number
-          instituicao: string
-          link_comprovacao: string
-          nome_premiado: string
-          observacoes: string
-          titulo: string
-        }
-        Insert: {
-          ano?: number | null
-          created_at?: string
-          id?: number
-          instituicao?: string
-          link_comprovacao?: string
-          nome_premiado?: string
-          observacoes?: string
-          titulo: string
-        }
-        Update: {
-          ano?: number | null
-          created_at?: string
-          id?: number
-          instituicao?: string
-          link_comprovacao?: string
-          nome_premiado?: string
-          observacoes?: string
-          titulo?: string
-        }
-        Relationships: []
-      }
-      producao_tecnica: {
-        Row: {
-          ano: number | null
-          autores: string
-          created_at: string
-          id: number
-          link_comprovacao: string
-          observacoes: string
-          tipo: string
-          titulo: string
-        }
-        Insert: {
-          ano?: number | null
-          autores?: string
-          created_at?: string
-          id?: number
-          link_comprovacao?: string
-          observacoes?: string
-          tipo?: string
-          titulo: string
-        }
-        Update: {
-          ano?: number | null
-          autores?: string
-          created_at?: string
-          id?: number
-          link_comprovacao?: string
-          observacoes?: string
-          tipo?: string
-          titulo?: string
+          creatinine?: number | null
+          crp?: number | null
+          cyanosis_mucosal_discoloration?: boolean | null
+          diastolic_bp?: number | null
+          filled_count?: number
+          heart_rate?: number | null
+          hemoglobin?: number | null
+          id?: string
+          identified_factors?: Json
+          impaired_consciousness?: boolean | null
+          increased_work_of_breathing?: boolean | null
+          is_data_sparse?: boolean
+          lactate?: number | null
+          leukocytes?: number | null
+          new_weakness_immobility?: boolean | null
+          nurse_notes?: string | null
+          pallor?: boolean | null
+          patient_data?: Json
+          patient_status?: string
+          platelets?: number | null
+          potassium?: number | null
+          prostration_general_deterioration?: boolean | null
+          reduced_diuresis_oliguria?: boolean | null
+          respiratory_rate?: number | null
+          risk_description?: string | null
+          risk_guidance?: string
+          risk_level?: string
+          risk_title?: string
+          score?: number
+          sodium?: number | null
+          spo2?: number | null
+          suggested_actions?: Json
+          systolic_bp?: number | null
+          temperature?: number | null
+          total_parameters?: number
+          unit_sector?: string | null
+          updated_at?: string
+          urea?: number | null
+          user_id?: string | null
         }
         Relationships: []
       }
       profiles: {
         Row: {
+          coren: string
           created_at: string
           email: string
-          id: number
+          estado: string
+          id: string
           name: string
           role: string
+          updated_at: string
           user_id: string | null
         }
         Insert: {
-          created_at?: string
-          email: string
-          id?: number
-          name?: string
-          role?: string
-          user_id?: string | null
-        }
-        Update: {
+          coren?: string
           created_at?: string
           email?: string
-          id?: number
+          estado?: string
+          id: string
           name?: string
           role?: string
+          updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
-      }
-      projetos_pesquisa: {
-        Row: {
-          coordenador_id: number | null
-          created_at: string
-          descricao: string
-          fim: string
-          financiamento: boolean
-          id: number
-          inicio: string
-          link_comprovacao: string
-          observacoes: string
-          orgao_fomento: string
-          titulo: string
-        }
-        Insert: {
-          coordenador_id?: number | null
-          created_at?: string
-          descricao?: string
-          fim?: string
-          financiamento?: boolean
-          id?: number
-          inicio?: string
-          link_comprovacao?: string
-          observacoes?: string
-          orgao_fomento?: string
-          titulo: string
-        }
         Update: {
-          coordenador_id?: number | null
+          coren?: string
           created_at?: string
-          descricao?: string
-          fim?: string
-          financiamento?: boolean
-          id?: number
-          inicio?: string
-          link_comprovacao?: string
-          observacoes?: string
-          orgao_fomento?: string
-          titulo?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'projetos_pesquisa_coordenador_id_fkey'
-            columns: ['coordenador_id']
-            isOneToOne: false
-            referencedRelation: 'docentes'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      publicacoes: {
-        Row: {
-          ano: number
-          autores: string
-          created_at: string
-          doi: string
-          id: number
-          justificativa: string
-          link_comprovacao: string
-          observacoes: string
-          periodico: string
-          titulo: string
-        }
-        Insert: {
-          ano: number
-          autores: string
-          created_at?: string
-          doi?: string
-          id?: number
-          justificativa?: string
-          link_comprovacao?: string
-          observacoes?: string
-          periodico: string
-          titulo: string
-        }
-        Update: {
-          ano?: number
-          autores?: string
-          created_at?: string
-          doi?: string
-          id?: number
-          justificativa?: string
-          link_comprovacao?: string
-          observacoes?: string
-          periodico?: string
-          titulo?: string
+          email?: string
+          estado?: string
+          id?: string
+          name?: string
+          role?: string
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -591,7 +269,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_user_role: { Args: never; Returns: string }
+      is_admin: { Args: { check_user_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
@@ -602,31 +280,33 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
-    : never = never,
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -635,23 +315,23 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-    : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -660,23 +340,23 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-    : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -685,36 +365,36 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema['Enums']
+    | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
-    : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
+    | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
-    : never = never,
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
@@ -722,3 +402,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
