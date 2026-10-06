@@ -78,45 +78,71 @@
   }
 }
 
-/* Regras de impressão para exportação PDF pelo navegador */
+/* Regras de impressão para exportação PDF pelo navegador — Conformidade ABNT NBR 14724 */
 @media print {
   @page {
     size: A4 portrait;
-    margin: 12mm 10mm 15mm 10mm;
+    /* Margens ABNT NBR 14724: Superior: 3cm, Esquerda: 3cm, Direita: 2cm, Inferior: 2cm */
+    margin-top: 30mm;
+    margin-left: 30mm;
+    margin-right: 20mm;
+    margin-bottom: 20mm;
   }
 
+  html,
   body {
     background: #ffffff !important;
     color: #000000 !important;
     font-size: 10pt;
     line-height: 1.35;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Ocultar elementos desnecessários na impressão */
+  /* Ocultar elementos de navegação e controles interativos na impressão */
   .no-print,
   nav,
   aside,
-  header,
   [data-sidebar='sidebar'],
+  header.shrink-0,
   button {
     display: none !important;
   }
 
-  /* Layout sem restrições de scroll */
+  /* Layout sem restrições de scroll ou padding residual do layout */
   main,
+  [data-sidebar='inset'],
   .print-container {
     overflow: visible !important;
     height: auto !important;
     max-height: none !important;
     padding: 0 !important;
     margin: 0 !important;
+    border: none !important;
     width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    background: transparent !important;
   }
 
-  /* Tabelas limpas para impressão */
-  table {
+  /* Bloco do documento para impressão */
+  .print-document {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print-header {
+    page-break-inside: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Tabelas limpas para impressão com bordas nítidas */
+  table,
+  .print-table {
     width: 100% !important;
     border-collapse: collapse !important;
     page-break-inside: auto;
@@ -133,16 +159,20 @@
 
   th,
   td {
-    border: 1px solid #d1d5db !important;
+    border: 1px solid #94a3b8 !important; /* Slate-400 para traço visível e nítido no PDF */
     padding: 6px 8px !important;
     text-align: left;
     font-size: 9pt;
   }
 
   th {
-    background-color: #f3f4f6 !important;
-    color: #111827 !important;
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
     font-weight: 700;
+  }
+
+  .print-footer {
+    page-break-inside: avoid;
   }
 
   a {

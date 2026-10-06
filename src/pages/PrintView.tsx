@@ -104,7 +104,7 @@ export default function PrintView() {
         {
           key: 'discente_id',
           label: 'Discente',
-          render: (b) => discentesMap[b.discente_id] || '—',
+          render: (b) => (b.discente && b.discente.nome) || discentesMap[b.discente_id] || '—',
         },
         { key: 'data', label: 'Data', render: (b) => b.data || '—' },
         { key: 'membros', label: 'Membros da Banca', render: (b) => b.membros || '—' },
@@ -119,12 +119,12 @@ export default function PrintView() {
         {
           key: 'docente_id',
           label: 'Docente Orientador',
-          render: (o) => docentesMap[o.docente_id] || '—',
+          render: (o) => (o.docente && o.docente.nome) || docentesMap[o.docente_id] || '—',
         },
         {
           key: 'discente_id',
           label: 'Discente Orientando',
-          render: (o) => discentesMap[o.discente_id] || '—',
+          render: (o) => (o.discente && o.discente.nome) || discentesMap[o.discente_id] || '—',
         },
         { key: 'inicio', label: 'Início', render: (o) => o.inicio || '—' },
         { key: 'fim', label: 'Término', render: (o) => o.fim || '—' },
@@ -151,7 +151,8 @@ export default function PrintView() {
         {
           key: 'coordenador_id',
           label: 'Coordenador',
-          render: (p) => docentesMap[p.coordenador_id] || '—',
+          render: (p) =>
+            (p.coordenador && p.coordenador.nome) || docentesMap[p.coordenador_id] || '—',
         },
         { key: 'inicio', label: 'Início', render: (p) => p.inicio || '—' },
         { key: 'fim', label: 'Término', render: (p) => p.fim || '—' },
@@ -295,7 +296,7 @@ export default function PrintView() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 p-6 md:p-10 print-container">
+    <div className="min-h-screen bg-white text-slate-900 p-6 md:p-10 print-container print:p-0 print:m-0">
       {/* Barra de Ações (visível apenas na tela, escondida na impressão) */}
       <div className="no-print mb-8 p-4 bg-slate-50 border border-slate-200 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-3">
@@ -310,7 +311,8 @@ export default function PrintView() {
           <div>
             <h2 className="font-semibold text-slate-900 text-sm">Versão para Impressão / PDF</h2>
             <p className="text-xs text-slate-500">
-              Otimizada para papel A4 e exportação via navegador (Ctrl+P / Imprimir)
+              Otimizada para papel A4 e exportação via navegador com margens ABNT NBR 14724 (Ctrl+P
+              / Imprimir)
             </p>
           </div>
         </div>
@@ -325,79 +327,88 @@ export default function PrintView() {
         </div>
       </div>
 
-      {/* Cabeçalho do Documento para Impressão */}
-      <header className="border-b-2 border-slate-900 pb-4 mb-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-xs uppercase tracking-widest font-bold text-slate-600">
-              Programa de Pós-Graduação em Ciência e Engenharia de Materiais — PPG DCEM
-            </p>
-            <h1 className="text-2xl font-bold text-slate-900 mt-1">{currentModule.title}</h1>
-            <p className="text-sm text-slate-600 mt-0.5">{currentModule.subtitle}</p>
+      {/* Relatório formatado */}
+      <div className="print-document">
+        {/* Cabeçalho do Documento para Impressão */}
+        <header className="print-header border-b-2 border-slate-900 pb-3 mb-5">
+          <div className="flex justify-between items-start gap-4">
+            <div className="flex-1">
+              <p className="text-xs uppercase tracking-wider font-bold text-slate-700">
+                Programa de Pós-Graduação em Ciência e Engenharia de Materiais — PPG DCEM
+              </p>
+              <h1 className="text-xl font-bold text-slate-900 mt-1">{currentModule.title}</h1>
+              <p className="text-xs text-slate-600 mt-0.5">{currentModule.subtitle}</p>
+            </div>
+            <div className="text-right text-xs text-slate-500 shrink-0">
+              <p className="font-medium text-slate-700">Data de emissão:</p>
+              <p>{currentDateFormatted}</p>
+              <p className="mt-1 font-mono font-medium text-slate-800">
+                Total: {data.length} registro(s)
+              </p>
+            </div>
           </div>
-          <div className="text-right text-xs text-slate-500 shrink-0">
-            <p className="font-medium text-slate-700">Data de emissão:</p>
-            <p>{currentDateFormatted}</p>
-            <p className="mt-1 font-mono">Total: {data.length} registro(s)</p>
-          </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Conteúdo da Tabela de Impressão */}
-      {loading ? (
-        <div className="py-16 text-center text-slate-500 space-y-3">
-          <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary" />
-          <p className="text-sm">Carregando dados para impressão...</p>
-        </div>
-      ) : error ? (
-        <div className="py-12 text-center text-destructive space-y-2">
-          <p className="font-medium">{error}</p>
-          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-            Tentar novamente
-          </Button>
-        </div>
-      ) : data.length === 0 ? (
-        <div className="py-12 text-center border border-dashed border-slate-300 rounded-lg text-slate-500">
-          Nenhum registro encontrado neste módulo para exibição.
-        </div>
-      ) : (
-        <div>
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-100 border-b-2 border-slate-300 text-xs text-slate-800 uppercase tracking-wider">
-                <th className="py-2.5 px-3 w-12 text-center font-bold">#</th>
-                {currentModule.columns.map((col) => (
-                  <th key={col.key} className="py-2.5 px-3 font-bold">
-                    {col.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 text-xs">
-              {data.map((item, index) => (
-                <tr key={item.id ?? index} className="hover:bg-slate-50/50">
-                  <td className="py-2 px-3 text-center text-slate-500 font-mono">{index + 1}</td>
+        {/* Conteúdo da Tabela de Impressão */}
+        {loading ? (
+          <div className="py-16 text-center text-slate-500 space-y-3">
+            <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary" />
+            <p className="text-sm">Carregando dados para impressão...</p>
+          </div>
+        ) : error ? (
+          <div className="py-12 text-center text-destructive space-y-2">
+            <p className="font-medium">{error}</p>
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+              Tentar novamente
+            </Button>
+          </div>
+        ) : data.length === 0 ? (
+          <div className="py-12 text-center border border-dashed border-slate-300 rounded-lg text-slate-500">
+            Nenhum registro encontrado neste módulo para exibição.
+          </div>
+        ) : (
+          <div className="print-table-wrapper">
+            <table className="w-full text-left border-collapse print-table">
+              <thead>
+                <tr className="bg-slate-100 border-b-2 border-slate-300 text-xs text-slate-900 uppercase tracking-wider">
+                  <th className="py-2 px-2.5 w-10 text-center font-bold">#</th>
                   {currentModule.columns.map((col) => (
-                    <td key={col.key} className="py-2 px-3 text-slate-800 align-top">
-                      {col.render ? col.render(item) : String(item[col.key] ?? '—')}
-                    </td>
+                    <th key={col.key} className="py-2 px-2.5 font-bold">
+                      {col.label}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-200 text-xs">
+                {data.map((item, index) => (
+                  <tr key={item.id ?? index} className="hover:bg-slate-50/50">
+                    <td className="py-1.5 px-2.5 text-center text-slate-600 font-mono">
+                      {index + 1}
+                    </td>
+                    {currentModule.columns.map((col) => (
+                      <td key={col.key} className="py-1.5 px-2.5 text-slate-800 align-top">
+                        {col.render ? col.render(item) : String(item[col.key] ?? '—')}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-          {/* Rodapé institucional para impressão */}
-          <footer className="mt-8 pt-4 border-t border-slate-200 flex justify-between items-center text-[11px] text-slate-500">
-            <div>
-              <span>Sistema de Gestão PPG DCEM — Relatório Oficial para Avaliação e Sucupira</span>
-            </div>
-            <div>
-              <span>Documento gerado em {currentDateFormatted}</span>
-            </div>
-          </footer>
-        </div>
-      )}
+            {/* Rodapé institucional para impressão */}
+            <footer className="print-footer mt-6 pt-3 border-t border-slate-300 flex justify-between items-center text-[10px] text-slate-500">
+              <div>
+                <span>
+                  Sistema de Gestão PPG DCEM — Relatório Oficial para Avaliação e Sucupira
+                </span>
+              </div>
+              <div>
+                <span>Documento gerado em {currentDateFormatted}</span>
+              </div>
+            </footer>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
