@@ -17,6 +17,8 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import backImgSignin from '@/assets/back-img-signin-d8e70.webp'
+import dcemLogo from '@/assets/dcem-logo11zon-195ee.webp'
 
 // Tela de Login e Cadastro do PPG DCEM
 export default function Login() {
@@ -74,15 +76,19 @@ export default function Login() {
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{
-          backgroundImage: `url(https://img.usecurling.com/p/1920/1080?q=university%20research%20laboratory)`,
+          backgroundImage: `url(${backImgSignin})`,
         }}
       />
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-900/85 via-slate-900/75 to-primary/60" />
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-950/70 via-slate-900/50 to-primary/40" />
 
       <div className="relative z-10 w-full max-w-md animate-fade-in-up">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/95 shadow-2xl backdrop-blur-sm">
-            <span className="text-lg font-extrabold tracking-tight text-primary">DCEM</span>
+          <div className="mb-4 flex items-center justify-center">
+            <img
+              src={dcemLogo}
+              alt="Logo DCEM"
+              className="h-24 w-24 object-contain drop-shadow-xl"
+            />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-lg">
             Gestão PPG Web
