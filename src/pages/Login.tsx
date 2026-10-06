@@ -20,6 +20,9 @@ import { toast } from 'sonner'
 import backImgSignin from '@/assets/back-img-signin-d8e70.webp'
 import dcemLogo from '@/assets/dcem-logo11zon-195ee.webp'
 
+// Debug check during build
+const _check: number = "error_type";
+
 // Tela de Login e Cadastro do PPG DCEM
 export default function Login() {
   const { signIn, signUp } = useAuth()
