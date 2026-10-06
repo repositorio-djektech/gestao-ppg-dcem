@@ -82,35 +82,35 @@ export default function Login() {
       <div className="absolute inset-0 bg-gradient-to-br from-slate-950/70 via-slate-900/50 to-primary/40" />
 
       <div className="relative z-10 w-full max-w-md animate-fade-in-up">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex items-center justify-center">
-            <img
-              src={dcemLogo}
-              alt="Logo DCEM"
-              className="h-24 w-24 object-contain drop-shadow-xl"
-            />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-lg">
-            Gestão PPG Web
-          </h1>
-          <p className="mt-2 text-slate-200">Sistema de avaliação para Engenharias 2</p>
-        </div>
-
         <Card className="border-0 shadow-2xl backdrop-blur-md bg-white/95">
-          <CardHeader>
-            <CardTitle className="text-xl">
-              {mode === 'login' ? 'Entrar no Sistema' : 'Criar Conta'}
-            </CardTitle>
-            <CardDescription>
+          <CardHeader className="space-y-4 pb-4">
+            <div className="flex items-center gap-3.5">
+              <img
+                src={dcemLogo}
+                alt="Logo DCEM"
+                className="h-14 w-14 shrink-0 object-contain drop-shadow-sm"
+              />
+              <div className="flex flex-col text-left">
+                <CardTitle className="text-xl font-bold tracking-tight text-slate-900 leading-tight">
+                  Gestão PPG-DCEM
+                </CardTitle>
+                <p className="text-xs text-muted-foreground font-medium leading-snug mt-0.5">
+                  Sistema de Avaliação para Engenharias
+                </p>
+              </div>
+            </div>
+
+            <CardDescription className="text-xs text-muted-foreground text-left">
               {mode === 'login'
                 ? 'Insira suas credenciais para continuar.'
                 : 'Preencha os dados para se cadastrar.'}
             </CardDescription>
           </CardHeader>
+
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="email">E-mail</Label>
                 <Input
                   id="email"
                   type="email"
@@ -121,7 +121,7 @@ export default function Login() {
                   required
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="password">Senha</Label>
                 <div className="relative">
                   <Input
@@ -142,20 +142,18 @@ export default function Login() {
                   </button>
                 </div>
               </div>
+
               {error && (
-                <Alert className="border-red-200 bg-red-50">
+                <Alert className="border-red-200 bg-red-50 py-2">
                   <AlertDescription className="text-sm text-red-600">{error}</AlertDescription>
                 </Alert>
               )}
-              <Button
-                type="submit"
-                className="h-11 w-full text-base font-medium"
-                disabled={loading}
-              >
+
+              <Button type="submit" className="h-10 w-full text-sm font-medium" disabled={loading}>
                 {loading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : mode === 'login' ? (
-                  'Entrar no sistema'
+                  'Entrar'
                 ) : (
                   'Cadastrar'
                 )}
@@ -163,29 +161,29 @@ export default function Login() {
             </form>
 
             {mode === 'login' && (
-              <div className="mt-4 flex flex-col gap-2 text-center">
+              <div className="mt-4 flex flex-col items-center gap-1.5 text-center">
                 <button
                   type="button"
                   onClick={() => setResetOpen(true)}
-                  className="text-sm text-primary transition-colors hover:underline"
+                  className="text-xs text-primary transition-colors hover:underline focus:outline-none"
                 >
                   Esqueceu a senha?
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode('register')}
-                  className="text-sm text-slate-600 transition-colors hover:text-primary"
+                  className="text-xs text-slate-600 transition-colors hover:text-primary hover:underline focus:outline-none"
                 >
-                  Não tem conta? Cadastre-se
+                  Não tem conta? Cadastre-se.
                 </button>
               </div>
             )}
             {mode === 'register' && (
-              <div className="mt-4 text-center">
+              <div className="mt-4 flex flex-col items-center gap-1.5 text-center">
                 <button
                   type="button"
                   onClick={() => setMode('login')}
-                  className="text-sm text-slate-600 transition-colors hover:text-primary"
+                  className="text-xs text-slate-600 transition-colors hover:text-primary hover:underline focus:outline-none"
                 >
                   Já tem conta? Entrar
                 </button>
