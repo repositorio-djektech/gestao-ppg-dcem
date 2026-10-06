@@ -126,14 +126,14 @@ export default function Login() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {mode === 'register' && (
                 <div className="space-y-1.5">
-                  <Label htmlFor="name">Nome completo</Label>
+                  <Label htmlFor="name">Nome</Label>
                   <Input
                     id="name"
                     type="text"
-                    placeholder="Seu nome completo"
+                    placeholder="Digite seu nome completo..."
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="bg-white/95 border-slate-300/80 shadow-xs focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all"
+                    className="bg-white/95 border-slate-300/80 shadow-xs placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all"
                     required
                   />
                 </div>
@@ -143,10 +143,14 @@ export default function Login() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="nome@ppg.edu"
+                  placeholder={
+                    mode === 'login'
+                      ? 'Digite seu e-mail acadêmico...'
+                      : 'Digite seu email acadêmico...'
+                  }
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="bg-white/95 border-slate-300/80 shadow-xs focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all"
+                  className="bg-white/95 border-slate-300/80 shadow-xs placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all"
                   required
                 />
               </div>
@@ -156,9 +160,10 @@ export default function Login() {
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
+                    placeholder={mode === 'login' ? 'Digite sua senha...' : '••••••••'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="bg-white/95 border-slate-300/80 shadow-xs focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all pr-10"
+                    className="bg-white/95 border-slate-300/80 shadow-xs placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all pr-10"
                     required
                   />
                   <button
@@ -178,9 +183,10 @@ export default function Login() {
                     <Input
                       id="confirmPassword"
                       type={showConfirmPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="bg-white/95 border-slate-300/80 shadow-xs focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all pr-10"
+                      className="bg-white/95 border-slate-300/80 shadow-xs placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all pr-10"
                       required
                     />
                     <button
@@ -272,7 +278,7 @@ export default function Login() {
             placeholder="seu@email.com"
             value={resetEmail}
             onChange={(e) => setResetEmail(e.target.value)}
-            className="border-slate-300/80 shadow-xs focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all"
+            className="border-slate-300/80 shadow-xs placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all"
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setResetOpen(false)}>
