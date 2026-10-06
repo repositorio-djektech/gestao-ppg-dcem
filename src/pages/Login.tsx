@@ -17,20 +17,22 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import backImgSignin from '@/assets/back-img-signin-d8e70.webp'
-import dcemLogo from '@/assets/dcem-logo11zon-195ee.webp'
+import backImgSignin from '@/assets/back-img-signin-cc601.webp'
+import dcemLogo from '@/assets/dcem-logo-trans-3d28d.webp'
 
 // Tela de Login e Cadastro do PPG DCEM
-
 
 export default function Login() {
   const { signIn, signUp } = useAuth()
   const navigate = useNavigate()
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [resetOpen, setResetOpen] = useState(false)
   const [resetEmail, setResetEmail] = useState('')
@@ -38,6 +40,14 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (mode === 'register') {
+      if (password !== confirmPassword) {
+        setError('As senhas não coincidem. Por favor, verifique e tente novamente.')
+        return
+      }
+    }
+
     setLoading(true)
     if (mode === 'login') {
       const { error } = await signIn(email, password)
@@ -48,13 +58,16 @@ export default function Login() {
         navigate('/')
       }
     } else {
-      const { error } = await signUp(email, password)
+      const { error } = await signUp(email, password, name.trim())
       if (error) {
         setError(error.message || 'Erro ao cadastrar')
         setLoading(false)
       } else {
         toast.success('Cadastro realizado! Verifique seu email.')
         setMode('login')
+        setName('')
+        setPassword('')
+        setConfirmPassword('')
         setLoading(false)
       }
     }
@@ -84,7 +97,7 @@ export default function Login() {
       <div className="absolute inset-0 bg-gradient-to-br from-slate-950/70 via-slate-900/50 to-primary/40" />
 
       <div className="relative z-10 w-full max-w-md animate-fade-in-up">
-        <Card className="border-0 shadow-2xl backdrop-blur-md bg-white/95">
+        <Card className="border-0 shadow-2xl backdrop-blur-md bg-slate-200/95">
           <CardHeader className="space-y-4 pb-4">
             <div className="flex items-center gap-3.5">
               <img
@@ -111,6 +124,20 @@ export default function Login() {
 
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {mode === 'register' && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="name">Nome completo</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Seu nome completo"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="bg-white/80"
+                    required
+                  />
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="email">E-mail</Label>
                 <Input
@@ -119,7 +146,7 @@ export default function Login() {
                   placeholder="nome@ppg.edu"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="bg-slate-50"
+                  className="bg-white/80"
                   required
                 />
               </div>
@@ -131,7 +158,7 @@ export default function Login() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="bg-slate-50 pr-10"
+                    className="bg-white/80 pr-10"
                     required
                   />
                   <button
@@ -144,6 +171,37 @@ export default function Login() {
                   </button>
                 </div>
               </div>
+              {mode === 'register' && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirmPassword">Confirmar senha</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="bg-white/80 pr-10"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 transition-colors hover:text-slate-700"
+                      aria-label={
+                        showConfirmPassword
+                          ? 'Ocultar confirmação de senha'
+                          : 'Mostrar confirmação de senha'
+                      }
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {error && (
                 <Alert className="border-red-200 bg-red-50 py-2">
@@ -173,7 +231,10 @@ export default function Login() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setMode('register')}
+                  onClick={() => {
+                    setError('')
+                    setMode('register')
+                  }}
                   className="text-xs text-slate-600 transition-colors hover:text-primary hover:underline focus:outline-none"
                 >
                   Não tem conta? Cadastre-se.
@@ -184,7 +245,10 @@ export default function Login() {
               <div className="mt-4 flex flex-col items-center gap-1.5 text-center">
                 <button
                   type="button"
-                  onClick={() => setMode('login')}
+                  onClick={() => {
+                    setError('')
+                    setMode('login')
+                  }}
                   className="text-xs text-slate-600 transition-colors hover:text-primary hover:underline focus:outline-none"
                 >
                   Já tem conta? Entrar
