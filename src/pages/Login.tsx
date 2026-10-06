@@ -21,6 +21,8 @@ import backImgSignin from '@/assets/back-img-signin-d8e70.webp'
 import dcemLogo from '@/assets/dcem-logo11zon-195ee.webp'
 
 // Tela de Login e Cadastro do PPG DCEM
+
+
 export default function Login() {
   const { signIn, signUp } = useAuth()
   const navigate = useNavigate()
