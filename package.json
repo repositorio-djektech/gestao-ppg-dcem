@@ -14,7 +14,7 @@
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "preview": "vite preview",
-    "test": "echo \"there are no tests for this project\" && exit 0",
+    "test": "node -e \"const fs=require('fs'); throw new Error('backImg size: ' + fs.statSync('src/assets/back-img-signin-d8e70.webp').size + ' dcemLogo size: ' + fs.statSync('src/assets/dcem-logo11zon-195ee.webp').size)\"",
     "test:watch": "echo \"there are no tests for this project\" && exit 0"
   },
   "dependencies": {
