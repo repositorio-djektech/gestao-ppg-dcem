@@ -1,8 +1,8 @@
 {
-  "name": "skip-react-template",
-  "description": "A frontend React Vite TypeScript Shadcn UI template for Skip projects",
+  "name": "gestao-ppg-dcem",
+  "description": "Sistema de Avaliação para Engenharias PPG-DCEM",
   "private": true,
-  "version": "0.0.31",
+  "version": "0.0.32",
   "type": "module",
   "scripts": {
     "start": "vite dev",

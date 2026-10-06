@@ -275,7 +275,7 @@ export default function Login() {
           </DialogHeader>
           <Input
             type="email"
-            placeholder="seu@email.com"
+            placeholder="Digite o e-mail cadastrado no sistema..."
             value={resetEmail}
             onChange={(e) => setResetEmail(e.target.value)}
             className="border-slate-300/80 shadow-xs placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all"
