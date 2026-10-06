@@ -133,7 +133,7 @@ export default function Login() {
                     placeholder="Seu nome completo"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="bg-white/80"
+                    className="bg-white/95 border-slate-300/80 shadow-xs focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all"
                     required
                   />
                 </div>
@@ -146,7 +146,7 @@ export default function Login() {
                   placeholder="nome@ppg.edu"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="bg-white/80"
+                  className="bg-white/95 border-slate-300/80 shadow-xs focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all"
                   required
                 />
               </div>
@@ -158,7 +158,7 @@ export default function Login() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="bg-white/80 pr-10"
+                    className="bg-white/95 border-slate-300/80 shadow-xs focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all pr-10"
                     required
                   />
                   <button
@@ -180,7 +180,7 @@ export default function Login() {
                       type={showConfirmPassword ? 'text' : 'password'}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="bg-white/80 pr-10"
+                      className="bg-white/95 border-slate-300/80 shadow-xs focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all pr-10"
                       required
                     />
                     <button
@@ -272,6 +272,7 @@ export default function Login() {
             placeholder="seu@email.com"
             value={resetEmail}
             onChange={(e) => setResetEmail(e.target.value)}
+            className="border-slate-300/80 shadow-xs focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all"
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setResetOpen(false)}>
