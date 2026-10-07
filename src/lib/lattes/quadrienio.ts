@@ -1,8 +1,8 @@
 /**
  * Recorte temporal de itens Lattes para o quadriênio CAPES mais recente.
  */
-export const ANO_INICIO = 2022
-export const ANO_FIM = 2025
+export const ANO_INICIO = 2025
+export const ANO_FIM = 2028
 
 export interface ItemComAno {
   ano?: number | string | null
@@ -51,8 +51,8 @@ export function estaNoQuadrienio(
  *
  * @param itens Lista de itens a filtrar
  * @param getAno Função opcional para obter o ano do item (padrão lê `item.ano`)
- * @param inicio Ano inicial do quadriênio (padrão ANO_INICIO=2022)
- * @param fim Ano final do quadriênio (padrão ANO_FIM=2025)
+ * @param inicio Ano inicial do quadriênio (padrão ANO_INICIO=2025)
+ * @param fim Ano final do quadriênio (padrão ANO_FIM=2028)
  */
 export function filtrarPorQuadrienio<T>(
   itens: T[],

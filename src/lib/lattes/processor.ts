@@ -4,6 +4,8 @@ import { ANO_INICIO, ANO_FIM, filtrarPorQuadrienio } from './quadrienio'
 import { deduplicarItens } from './dedupe'
 import type { LattesArquivoResultado } from './types'
 
+export { ANO_INICIO, ANO_FIM }
+
 export interface ItemErroImportacao {
   arquivo: string
   origem: 'xml' | 'zip'
@@ -35,7 +37,7 @@ export interface ResultadoProcessamentoLattes {
  * Executa o fluxo de importação completo da Subetapa 1B:
  * 1. readLattesFiles: lê arquivos .xml e .zip descompactando e decodificando ISO-8859-1
  * 2. parseLattesXml: analisa o XML gerando itens brutos e metadados
- * 3. filtrarPorQuadrienio: reforça o recorte temporal (2022–2025)
+ * 3. filtrarPorQuadrienio: reforça o recorte temporal (2025–2028)
  * 4. deduplicarItens: remove duplicatas por chave normalizada (título + ano)
  * 5. Agrega estatísticas e resumo para revisão posterior (subetapa 1C), sem persistência no banco.
  */

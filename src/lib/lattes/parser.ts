@@ -10,6 +10,7 @@ import type {
   LattesEvento,
   LattesArquivoResultado,
 } from './types'
+import { ANO_INICIO, ANO_FIM } from './quadrienio'
 
 /**
  * Normaliza valores de atributos de XML do Lattes:
@@ -42,16 +43,16 @@ export function normalizarChave(str: string): string {
 }
 
 /**
- * Calcula os anos do quadriênio corrente [ano - 4, ano - 1].
- * Exemplo em 2026: 2022 a 2025.
+ * Calcula os anos do quadriênio corrente configurado no sistema.
+ * Retorna as constantes centralizadas de ANO_INICIO (2025) e ANO_FIM (2028).
  */
-export function obterAnosQuadrienio(anoReferencia: number = new Date().getFullYear()): {
+export function obterAnosQuadrienio(_anoReferencia?: number): {
   anoInicio: number
   anoFim: number
 } {
   return {
-    anoInicio: anoReferencia - 4,
-    anoFim: anoReferencia - 1,
+    anoInicio: ANO_INICIO,
+    anoFim: ANO_FIM,
   }
 }
 

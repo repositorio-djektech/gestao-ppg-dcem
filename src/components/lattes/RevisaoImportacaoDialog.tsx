@@ -57,6 +57,7 @@ import {
   type ItemAmostraPatente,
   type ItemAmostraEvento,
 } from '@/lib/lattes/revisao'
+import { ANO_INICIO, ANO_FIM } from '@/lib/lattes/quadrienio'
 
 import {
   gravarDadosLattes,
@@ -413,7 +414,7 @@ export function RevisaoImportacaoDialog({
               <Badge
                 variant="outline"
                 className="bg-emerald-50 text-emerald-800 border-emerald-200 text-xs px-2.5 py-1"
-                title="Itens únicos no quadriênio (2022-2025) mapeados para inclusão"
+                title={`Itens únicos no quadriênio (${ANO_INICIO}-${ANO_FIM}) mapeados para inclusão`}
               >
                 <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-600" />
                 <strong>{totaisGlobais.inseridos}</strong> novos a inserir
@@ -573,8 +574,8 @@ export function RevisaoImportacaoDialog({
                           Nenhum registro encontrado nesta seção.
                         </p>
                         <p className="text-xs text-slate-400 mt-1 max-w-sm">
-                          Não foram detectados itens para esta categoria no recorte do quadriênio
-                          (2022–2025) nos currículos processados.
+                          Não foram detectados itens para esta categoria no recorte do quadriênio (
+                          {ANO_INICIO}–{ANO_FIM}) nos currículos processados.
                         </p>
                       </div>
                     ) : (

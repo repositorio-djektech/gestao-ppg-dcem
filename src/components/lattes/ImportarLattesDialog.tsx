@@ -21,7 +21,12 @@ import {
   Info,
   TableProperties,
 } from 'lucide-react'
-import { processarArquivosLattes, type ResultadoProcessamentoLattes } from '@/lib/lattes/processor'
+import {
+  processarArquivosLattes,
+  ANO_INICIO,
+  ANO_FIM,
+  type ResultadoProcessamentoLattes,
+} from '@/lib/lattes/processor'
 import { RevisaoImportacaoDialog } from './RevisaoImportacaoDialog'
 
 import type { RelatorioGravacaoLattes } from '@/lib/lattes/gravar'
@@ -146,8 +151,8 @@ export function ImportarLattesDialog({
           </DialogTitle>
           <DialogDescription className="text-slate-600">
             Selecione arquivos XML ou ZIP exportados da Plataforma Lattes (CNPq). O sistema extrairá
-            as produções, orientações e bancas referentes ao recorte do quadriênio CAPES
-            (2022–2025).
+            as produções, orientações e bancas referentes ao recorte do quadriênio CAPES (
+            {ANO_INICIO}–{ANO_FIM}).
           </DialogDescription>
         </DialogHeader>
 
@@ -312,10 +317,10 @@ export function ImportarLattesDialog({
                 </div>
               )}
 
-              {/* Grade de Itens Válidos por Seção (Quadriênio 2022-2025) */}
+              {/* Grade de Itens Válidos por Seção (Quadriênio 2025-2028) */}
               <div className="space-y-1.5">
                 <div className="text-xs font-semibold text-slate-700">
-                  Itens únicos no quadriênio (2022–2025) pós-deduplicação:
+                  Itens únicos no quadriênio ({ANO_INICIO}–{ANO_FIM}) pós-deduplicação:
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                   {Object.values(resultado.resumoGeral.secoes).map((sec) => (

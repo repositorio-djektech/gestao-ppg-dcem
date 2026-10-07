@@ -28,16 +28,6 @@ describe('Subetapa 1B - processarArquivosLattes', () => {
     expect(resultado.resumoGeral.secoes.orientacoes.totalValidos).toBeGreaterThan(0)
   })
 
-  it('debug env', async () => {
-    const { execSync } = await import('node:child_process')
-    try {
-      const out = execSync('node scripts/gravar-real.mjs', { encoding: 'utf8' })
-      fs.writeFileSync('output-exec1.txt', out, 'utf8')
-    } catch (e: any) {
-      fs.writeFileSync('output-exec1.txt', 'ERROR: ' + (e.stdout || e.stderr || e.message), 'utf8')
-    }
-  })
-
   it('processa múltiplos arquivos (XML individual e ZIP contendo XML) simultaneamente', async () => {
     const rawBuffer = fs.readFileSync(xmlPath)
     const xmlFile = new File([rawBuffer], 'docente1.xml', { type: 'text/xml' })
@@ -53,10 +43,6 @@ describe('Subetapa 1B - processarArquivosLattes', () => {
     expect(resultado.curriculosProcessadosCount).toBe(2)
     expect(resultado.erros).toHaveLength(0)
     expect(resultado.resumoGeral.totalDocentes).toBe(2)
-  })
-
-  it('debug should fail', () => {
-    expect(1).toBe(2)
   })
 
   it('trata arquivos inválidos ou com erro sem quebrar o processamento dos demais', async () => {
