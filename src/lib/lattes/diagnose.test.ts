@@ -22,8 +22,5 @@ describe('Diagnóstico XML Euler', () => {
     // Apenas verifica se as contagens são válidas
     expect(keysCount.docentes).toBeGreaterThan(0)
     expect(revisao.projetos_pesquisa.itens.length).toBeGreaterThan(0)
-    // Força erro de tipo / síntese
-    const item: number = revisao.projetos_pesquisa.itens[0] as any
-    expect(item).toBe('FORCA_ERRO')
   })
 })

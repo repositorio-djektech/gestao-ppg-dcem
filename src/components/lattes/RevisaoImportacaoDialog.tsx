@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import React, { Component, useState, useMemo } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -100,6 +100,81 @@ const TABELAS_ORDEM: Array<{
 ]
 
 const ITENS_POR_PAGINA = 10
+
+interface RevisaoErrorBoundaryProps {
+  children: React.ReactNode
+  onVoltar?: () => void
+}
+
+interface RevisaoErrorBoundaryState {
+  hasError: boolean
+  error?: Error
+}
+
+export class RevisaoErrorBoundary extends Component<
+  RevisaoErrorBoundaryProps,
+  RevisaoErrorBoundaryState
+> {
+  constructor(props: RevisaoErrorBoundaryProps) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError(error: Error): RevisaoErrorBoundaryState {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Erro capturado pelo RevisaoErrorBoundary:', error, errorInfo)
+  }
+
+  handleReset = () => {
+    this.setState({ hasError: false, error: undefined })
+    if (this.props.onVoltar) {
+      this.props.onVoltar()
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50 min-h-[400px]">
+          <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 mb-4">
+            <AlertTriangle className="h-6 w-6" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-900 mb-1">
+            Não foi possível exibir esta visualização dos dados
+          </h3>
+          <p className="text-sm text-slate-600 max-w-md mb-6">
+            Ocorreu uma inconsistência temporária na formatação de um dos registros extraídos do
+            currículo.
+          </p>
+          <div className="flex items-center gap-3">
+            {this.props.onVoltar && (
+              <Button
+                type="button"
+                variant="default"
+                onClick={this.handleReset}
+                className="gap-2"
+              >
+                Voltar
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => this.setState({ hasError: false, error: undefined })}
+            >
+              Tentar novamente
+            </Button>
+          </div>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
 
 export function RevisaoImportacaoDialog({
   open,
@@ -218,9 +293,11 @@ export function RevisaoImportacaoDialog({
       }
     }
 
+    const resList = Array.isArray(resultado.resultados) ? resultado.resultados : []
+
     // 1. Docentes se marcados
     const listaDocentes = tabelasSelecionadas.docentes
-      ? resultado.resultados
+      ? resList
           .map((r) => r.docente)
           .filter((d): d is NonNullable<typeof d> => Boolean(d))
           .map(converterLattesDocente)
@@ -228,13 +305,15 @@ export function RevisaoImportacaoDialog({
 
     // 2. Publicações se marcadas
     const listaPublicacoes = tabelasSelecionadas.publicacoes
-      ? resultado.resultados.flatMap((r) => r.publicacoes).map(converterLattesPublicacao)
+      ? resList
+          .flatMap((r) => (Array.isArray(r.publicacoes) ? r.publicacoes : []))
+          .map(converterLattesPublicacao)
       : []
 
     // 3. Orientações se marcadas
     const listaOrientacoes = tabelasSelecionadas.orientacoes
-      ? resultado.resultados.flatMap((r) =>
-          r.orientacoes.map((ori) =>
+      ? resList.flatMap((r) =>
+          (Array.isArray(r.orientacoes) ? r.orientacoes : []).map((ori) =>
             converterLattesOrientacao(ori, {
               id_lattes: r.id_lattes,
               nome: r.nome_docente,
@@ -245,13 +324,15 @@ export function RevisaoImportacaoDialog({
 
     // 4. Bancas se marcadas
     const listaBancas = tabelasSelecionadas.bancas
-      ? resultado.resultados.flatMap((r) => r.bancas).map(converterLattesBanca)
+      ? resList
+          .flatMap((r) => (Array.isArray(r.bancas) ? r.bancas : []))
+          .map(converterLattesBanca)
       : []
 
     // 5. Projetos de pesquisa se marcados
     const listaProjetos = tabelasSelecionadas.projetos_pesquisa
-      ? resultado.resultados.flatMap((r) =>
-          r.projetos.map((proj) =>
+      ? resList.flatMap((r) =>
+          (Array.isArray(r.projetos) ? r.projetos : []).map((proj) =>
             converterLattesProjeto(proj, {
               id_lattes: r.id_lattes,
               nome: r.nome_docente,
@@ -262,8 +343,8 @@ export function RevisaoImportacaoDialog({
 
     // 6. Premiações se marcadas
     const listaPremiacoes = tabelasSelecionadas.premiacoes
-      ? resultado.resultados.flatMap((r) =>
-          r.premiacoes.map((prem) =>
+      ? resList.flatMap((r) =>
+          (Array.isArray(r.premiacoes) ? r.premiacoes : []).map((prem) =>
             converterLattesPremiacao(prem, {
               nome: r.nome_docente,
             }),
@@ -273,20 +354,22 @@ export function RevisaoImportacaoDialog({
 
     // 7. Produção técnica se marcada
     const listaProducoesTecnicas = tabelasSelecionadas.producao_tecnica
-      ? resultado.resultados
-          .flatMap((r) => r.producoes_tecnicas)
+      ? resList
+          .flatMap((r) => (Array.isArray(r.producoes_tecnicas) ? r.producoes_tecnicas : []))
           .map(converterLattesProducaoTecnica)
       : []
 
     // 8. Patentes se marcadas
     const listaPatentes = tabelasSelecionadas.patentes
-      ? resultado.resultados.flatMap((r) => r.patentes).map(converterLattesPatente)
+      ? resList
+          .flatMap((r) => (Array.isArray(r.patentes) ? r.patentes : []))
+          .map(converterLattesPatente)
       : []
 
     // 9. Eventos se marcados
     const listaEventos = tabelasSelecionadas.eventos
-      ? resultado.resultados.flatMap((r) =>
-          r.eventos.map((eve) =>
+      ? resList.flatMap((r) =>
+          (Array.isArray(r.eventos) ? r.eventos : []).map((eve) =>
             converterLattesEvento(eve, {
               nome: r.nome_docente,
             }),
@@ -395,6 +478,7 @@ export function RevisaoImportacaoDialog({
           }
         }}
       >
+        <RevisaoErrorBoundary onVoltar={onVoltarParaUpload || (() => onOpenChange(false))}>
         {/* Cabeçalho */}
         <DialogHeader className="p-5 pb-3 border-b bg-slate-50/70 shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-6">
@@ -525,8 +609,19 @@ export function RevisaoImportacaoDialog({
 
             {/* Painéis de Conteúdo por Tabela */}
             {TABELAS_ORDEM.map(({ id }) => {
-              const dados = dadosPorTabela[id]
-              const marcada = tabelasSelecionadas[id]
+              const dados = dadosPorTabela[id] || {
+                titulo: id,
+                descricao: '',
+                inseridos: 0,
+                atualizados: 0,
+                ignorados: 0,
+                itens: [],
+              }
+              const marcada = Boolean(tabelasSelecionadas[id])
+              const itensSecao = Array.isArray(dados.itens) ? dados.itens : []
+              const limiteSecao = limitesPaginacao[id] || ITENS_POR_PAGINA
+              const itensVisiveisSecao = itensSecao.slice(0, limiteSecao)
+              const temMaisItensSecao = itensSecao.length > limiteSecao
 
               return (
                 <TabsContent
@@ -554,20 +649,20 @@ export function RevisaoImportacaoDialog({
                     {/* Contadores da seção */}
                     <div className="flex items-center gap-2 text-xs">
                       <span className="text-slate-600 bg-slate-100 px-2 py-1 rounded">
-                        Total encontrados: <strong>{dados.inseridos + dados.ignorados}</strong>
+                        Total encontrados: <strong>{(dados.inseridos || 0) + (dados.ignorados || 0)}</strong>
                       </span>
                       <span className="text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
-                        A inserir: <strong>{dados.inseridos}</strong>
+                        A inserir: <strong>{dados.inseridos || 0}</strong>
                       </span>
                       <span className="text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200">
-                        Ignorados: <strong>{dados.ignorados}</strong>
+                        Ignorados: <strong>{dados.ignorados || 0}</strong>
                       </span>
                     </div>
                   </div>
 
                   {/* Tabela de Amostra Paginada */}
                   <div className="flex-1 overflow-auto border rounded-md bg-white">
-                    {dados.itens.length === 0 ? (
+                    {itensSecao.length === 0 ? (
                       <div className="h-full flex flex-col items-center justify-center p-8 text-center text-slate-500">
                         <Filter className="h-8 w-8 text-slate-300 mb-2" />
                         <p className="text-sm font-medium">
@@ -583,19 +678,19 @@ export function RevisaoImportacaoDialog({
                         <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                           {renderCabecalhoTabela(id)}
                         </TableHeader>
-                        <TableBody>{renderLinhasTabela(id, itensVisiveis)}</TableBody>
+                        <TableBody>{renderLinhasTabela(id, itensVisiveisSecao)}</TableBody>
                       </Table>
                     )}
                   </div>
 
                   {/* Rodapé da tabela com paginação "Carregar mais" */}
-                  {dados.itens.length > 0 && (
+                  {itensSecao.length > 0 && (
                     <div className="pt-3 flex items-center justify-between text-xs text-slate-500 shrink-0">
                       <span>
-                        Exibindo {Math.min(limiteAtual, dados.itens.length)} de {dados.itens.length}{' '}
+                        Exibindo {Math.min(limiteSecao, itensSecao.length)} de {itensSecao.length}{' '}
                         registros
                       </span>
-                      {temMaisItens && (
+                      {temMaisItensSecao && (
                         <Button
                           type="button"
                           variant="outline"
@@ -782,6 +877,7 @@ export function RevisaoImportacaoDialog({
             )}
           </div>
         </DialogFooter>
+        </RevisaoErrorBoundary>
       </DialogContent>
     </Dialog>
   )
@@ -881,170 +977,233 @@ function renderCabecalhoTabela(tabelaId: TabelaAlvoId) {
   }
 }
 
+/** Renderiza texto de forma segura ou travessão '—' se nulo/vazio */
+function textoSeguro(val: unknown): string {
+  if (val === null || val === undefined) return '—'
+  if (Array.isArray(val)) {
+    const limpo = val.filter((x) => x !== null && x !== undefined && String(x).trim() !== '')
+    return limpo.length > 0 ? limpo.join(', ') : '—'
+  }
+  const str = String(val).trim()
+  return str.length > 0 ? str : '—'
+}
+
 /** Renderiza as linhas dos registros correspondentes */
 function renderLinhasTabela(tabelaId: TabelaAlvoId, itens: any[]) {
+  if (!Array.isArray(itens)) return null
+
   switch (tabelaId) {
     case 'docentes':
-      return itens.map((d: ItemAmostraDocente) => (
-        <TableRow key={d.id}>
-          <TableCell className="font-medium text-slate-900">{d.nome}</TableCell>
-          <TableCell className="font-mono text-xs text-slate-600">{d.id_lattes}</TableCell>
-          <TableCell className="font-mono text-xs text-slate-600">{d.orcid}</TableCell>
-          <TableCell className="text-slate-600">{d.instituicao}</TableCell>
-          <TableCell className="text-slate-600 text-xs">{d.email}</TableCell>
-        </TableRow>
-      ))
+      return itens.map((d: ItemAmostraDocente, idx: number) => {
+        const item = d ?? ({} as Partial<ItemAmostraDocente>)
+        const key = item.id ?? `docente-${idx}`
+        return (
+          <TableRow key={key}>
+            <TableCell className="font-medium text-slate-900">{textoSeguro(item.nome)}</TableCell>
+            <TableCell className="font-mono text-xs text-slate-600">{textoSeguro(item.id_lattes)}</TableCell>
+            <TableCell className="font-mono text-xs text-slate-600">{textoSeguro(item.orcid)}</TableCell>
+            <TableCell className="text-slate-600">{textoSeguro(item.instituicao)}</TableCell>
+            <TableCell className="text-slate-600 text-xs">{textoSeguro(item.email)}</TableCell>
+          </TableRow>
+        )
+      })
 
     case 'publicacoes':
-      return itens.map((p: ItemAmostraPublicacao) => (
-        <TableRow key={p.id}>
-          <TableCell>
-            <Badge
-              variant="outline"
-              className={`text-[10px] uppercase font-semibold ${
-                p.tipo === 'ARTIGO'
-                  ? 'bg-sky-50 text-sky-800 border-sky-200'
-                  : p.tipo === 'LIVRO'
-                    ? 'bg-purple-50 text-purple-800 border-purple-200'
-                    : 'bg-indigo-50 text-indigo-800 border-indigo-200'
-              }`}
-            >
-              {p.tipo}
-            </Badge>
-          </TableCell>
-          <TableCell className="font-medium text-slate-900">
-            {p.titulo}
-            {p.doi && p.doi !== '-' && (
-              <span className="block text-[11px] font-mono text-slate-400 mt-0.5">
-                DOI: {p.doi}
-              </span>
-            )}
-          </TableCell>
-          <TableCell className="text-slate-600 font-mono text-xs">{p.ano}</TableCell>
-          <TableCell className="text-slate-600 text-xs">{p.veiculo}</TableCell>
-          <TableCell className="text-slate-500 text-xs truncate max-w-xs" title={p.autores}>
-            {p.autores}
-          </TableCell>
-        </TableRow>
-      ))
+      return itens.map((p: ItemAmostraPublicacao, idx: number) => {
+        const item = p ?? ({} as Partial<ItemAmostraPublicacao>)
+        const key = item.id ?? `pub-${idx}`
+        const tipoStr = String(item.tipo ?? '').toUpperCase()
+        const doiStr = item.doi ? String(item.doi).trim() : ''
+        const autoresStr = textoSeguro(item.autores)
+        return (
+          <TableRow key={key}>
+            <TableCell>
+              <Badge
+                variant="outline"
+                className={`text-[10px] uppercase font-semibold ${
+                  tipoStr === 'ARTIGO'
+                    ? 'bg-sky-50 text-sky-800 border-sky-200'
+                    : tipoStr === 'LIVRO'
+                      ? 'bg-purple-50 text-purple-800 border-purple-200'
+                      : 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                }`}
+              >
+                {textoSeguro(item.tipo)}
+              </Badge>
+            </TableCell>
+            <TableCell className="font-medium text-slate-900">
+              {textoSeguro(item.titulo)}
+              {doiStr && doiStr !== '-' && doiStr !== '—' && (
+                <span className="block text-[11px] font-mono text-slate-400 mt-0.5">
+                  DOI: {doiStr}
+                </span>
+              )}
+            </TableCell>
+            <TableCell className="text-slate-600 font-mono text-xs">{textoSeguro(item.ano)}</TableCell>
+            <TableCell className="text-slate-600 text-xs">{textoSeguro(item.veiculo)}</TableCell>
+            <TableCell className="text-slate-500 text-xs truncate max-w-xs" title={autoresStr}>
+              {autoresStr}
+            </TableCell>
+          </TableRow>
+        )
+      })
 
     case 'orientacoes':
-      return itens.map((o: ItemAmostraOrientacao) => (
-        <TableRow key={o.id}>
-          <TableCell>
-            <Badge variant="outline" className="text-[10px] bg-slate-50 border-slate-200">
-              {o.tipo}
-            </Badge>
-            <span className="block text-[10px] text-slate-400 mt-0.5">{o.tipo_orientacao}</span>
-          </TableCell>
-          <TableCell className="font-medium text-slate-900">{o.titulo}</TableCell>
-          <TableCell className="text-slate-700 font-medium text-xs">{o.orientando}</TableCell>
-          <TableCell className="text-slate-600 text-xs">{o.instituicao}</TableCell>
-          <TableCell className="text-slate-600 font-mono text-xs">{o.ano}</TableCell>
-          <TableCell>
-            <Badge
-              variant="outline"
-              className={`text-[10px] ${
-                o.status === 'Concluída'
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                  : 'bg-amber-50 text-amber-800 border-amber-200'
-              }`}
-            >
-              {o.status}
-            </Badge>
-          </TableCell>
-        </TableRow>
-      ))
+      return itens.map((o: ItemAmostraOrientacao, idx: number) => {
+        const item = o ?? ({} as Partial<ItemAmostraOrientacao>)
+        const key = item.id ?? `ori-${idx}`
+        const statusStr = String(item.status ?? '').trim()
+        const tipoOri = item.tipo_orientacao ? String(item.tipo_orientacao).trim() : ''
+        return (
+          <TableRow key={key}>
+            <TableCell>
+              <Badge variant="outline" className="text-[10px] bg-slate-50 border-slate-200">
+                {textoSeguro(item.tipo)}
+              </Badge>
+              {tipoOri && tipoOri !== '—' && (
+                <span className="block text-[10px] text-slate-400 mt-0.5">{tipoOri}</span>
+              )}
+            </TableCell>
+            <TableCell className="font-medium text-slate-900">{textoSeguro(item.titulo)}</TableCell>
+            <TableCell className="text-slate-700 font-medium text-xs">{textoSeguro(item.orientando)}</TableCell>
+            <TableCell className="text-slate-600 text-xs">{textoSeguro(item.instituicao)}</TableCell>
+            <TableCell className="text-slate-600 font-mono text-xs">{textoSeguro(item.ano)}</TableCell>
+            <TableCell>
+              <Badge
+                variant="outline"
+                className={`text-[10px] ${
+                  (statusStr ?? '').toLowerCase().includes('conclu')
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    : 'bg-amber-50 text-amber-800 border-amber-200'
+                }`}
+              >
+                {textoSeguro(item.status)}
+              </Badge>
+            </TableCell>
+          </TableRow>
+        )
+      })
 
     case 'bancas':
-      return itens.map((b: ItemAmostraBanca) => (
-        <TableRow key={b.id}>
-          <TableCell>
-            <Badge variant="outline" className="text-[10px] bg-slate-50 border-slate-200">
-              {b.nivel}
-            </Badge>
-          </TableCell>
-          <TableCell className="font-medium text-slate-900">{b.titulo}</TableCell>
-          <TableCell className="text-slate-700 text-xs">{b.candidato}</TableCell>
-          <TableCell className="text-slate-600 text-xs">{b.instituicao}</TableCell>
-          <TableCell className="text-slate-600 font-mono text-xs">{b.ano}</TableCell>
-        </TableRow>
-      ))
+      return itens.map((b: ItemAmostraBanca, idx: number) => {
+        const item = b ?? ({} as Partial<ItemAmostraBanca>)
+        const key = item.id ?? `banca-${idx}`
+        return (
+          <TableRow key={key}>
+            <TableCell>
+              <Badge variant="outline" className="text-[10px] bg-slate-50 border-slate-200">
+                {textoSeguro(item.nivel)}
+              </Badge>
+            </TableCell>
+            <TableCell className="font-medium text-slate-900">{textoSeguro(item.titulo)}</TableCell>
+            <TableCell className="text-slate-700 text-xs">{textoSeguro(item.candidato)}</TableCell>
+            <TableCell className="text-slate-600 text-xs">{textoSeguro(item.instituicao)}</TableCell>
+            <TableCell className="text-slate-600 font-mono text-xs">{textoSeguro(item.ano)}</TableCell>
+          </TableRow>
+        )
+      })
 
     case 'projetos_pesquisa':
-      return itens.map((proj: ItemAmostraProjeto) => (
-        <TableRow key={proj.id}>
-          <TableCell className="font-medium text-slate-900">{proj.nome}</TableCell>
-          <TableCell className="font-mono text-xs text-slate-600">
-            {proj.ano_inicio} - {proj.ano_fim}
-          </TableCell>
-          <TableCell className="text-xs text-slate-600">{proj.situacao}</TableCell>
-          <TableCell className="text-xs text-slate-600">{proj.responsavel}</TableCell>
-          <TableCell
-            className="text-xs text-slate-500 truncate max-w-xs"
-            title={proj.financiadores}
-          >
-            {proj.financiadores}
-          </TableCell>
-        </TableRow>
-      ))
+      return itens.map((proj: ItemAmostraProjeto, idx: number) => {
+        const item = proj ?? ({} as Partial<ItemAmostraProjeto>)
+        const key = item.id ?? `proj-${idx}`
+        const financStr = textoSeguro(item.financiadores)
+        const anoIni = item.ano_inicio ? String(item.ano_inicio).trim() : ''
+        const anoFim = item.ano_fim ? String(item.ano_fim).trim() : ''
+        const periodoStr = anoIni || anoFim ? `${anoIni || '—'} - ${anoFim || 'atual'}` : '—'
+        return (
+          <TableRow key={key}>
+            <TableCell className="font-medium text-slate-900">{textoSeguro(item.nome)}</TableCell>
+            <TableCell className="font-mono text-xs text-slate-600">
+              {periodoStr}
+            </TableCell>
+            <TableCell className="text-xs text-slate-600">{textoSeguro(item.situacao)}</TableCell>
+            <TableCell className="text-xs text-slate-600">{textoSeguro(item.responsavel)}</TableCell>
+            <TableCell
+              className="text-xs text-slate-500 truncate max-w-xs"
+              title={financStr}
+            >
+              {financStr}
+            </TableCell>
+          </TableRow>
+        )
+      })
 
     case 'premiacoes':
-      return itens.map((pr: ItemAmostraPremiacao) => (
-        <TableRow key={pr.id}>
-          <TableCell className="font-medium text-slate-900">{pr.nome}</TableCell>
-          <TableCell className="font-mono text-xs text-slate-600">{pr.ano}</TableCell>
-          <TableCell className="text-slate-600 text-xs">{pr.entidade}</TableCell>
-        </TableRow>
-      ))
+      return itens.map((pr: ItemAmostraPremiacao, idx: number) => {
+        const item = pr ?? ({} as Partial<ItemAmostraPremiacao>)
+        const key = item.id ?? `prem-${idx}`
+        return (
+          <TableRow key={key}>
+            <TableCell className="font-medium text-slate-900">{textoSeguro(item.nome)}</TableCell>
+            <TableCell className="font-mono text-xs text-slate-600">{textoSeguro(item.ano)}</TableCell>
+            <TableCell className="text-slate-600 text-xs">{textoSeguro(item.entidade)}</TableCell>
+          </TableRow>
+        )
+      })
 
     case 'producao_tecnica':
-      return itens.map((pt: ItemAmostraProducaoTecnica) => (
-        <TableRow key={pt.id}>
-          <TableCell>
-            <Badge variant="outline" className="text-[10px] bg-slate-50 border-slate-200">
-              {pt.tipo}
-            </Badge>
-          </TableCell>
-          <TableCell className="font-medium text-slate-900">{pt.titulo}</TableCell>
-          <TableCell className="font-mono text-xs text-slate-600">{pt.ano}</TableCell>
-          <TableCell className="text-slate-500 text-xs truncate max-w-xs" title={pt.finalidade}>
-            {pt.finalidade}
-          </TableCell>
-        </TableRow>
-      ))
+      return itens.map((pt: ItemAmostraProducaoTecnica, idx: number) => {
+        const item = pt ?? ({} as Partial<ItemAmostraProducaoTecnica>)
+        const key = item.id ?? `pt-${idx}`
+        const finStr = textoSeguro(item.finalidade)
+        return (
+          <TableRow key={key}>
+            <TableCell>
+              <Badge variant="outline" className="text-[10px] bg-slate-50 border-slate-200">
+                {textoSeguro(item.tipo)}
+              </Badge>
+            </TableCell>
+            <TableCell className="font-medium text-slate-900">{textoSeguro(item.titulo)}</TableCell>
+            <TableCell className="font-mono text-xs text-slate-600">{textoSeguro(item.ano)}</TableCell>
+            <TableCell className="text-slate-500 text-xs truncate max-w-xs" title={finStr}>
+              {finStr}
+            </TableCell>
+          </TableRow>
+        )
+      })
 
     case 'patentes':
-      return itens.map((pat: ItemAmostraPatente) => (
-        <TableRow key={pat.id}>
-          <TableCell className="font-medium text-slate-900">{pat.titulo}</TableCell>
-          <TableCell className="font-mono text-xs text-slate-600">{pat.numero_registro}</TableCell>
-          <TableCell className="font-mono text-xs text-slate-600">{pat.ano}</TableCell>
-          <TableCell className="text-xs text-slate-600">{pat.categoria}</TableCell>
-          <TableCell className="text-xs text-slate-600">{pat.instituicao_deposito}</TableCell>
-        </TableRow>
-      ))
+      return itens.map((pat: ItemAmostraPatente, idx: number) => {
+        const item = pat ?? ({} as Partial<ItemAmostraPatente>)
+        const key = item.id ?? `pat-${idx}`
+        return (
+          <TableRow key={key}>
+            <TableCell className="font-medium text-slate-900">{textoSeguro(item.titulo)}</TableCell>
+            <TableCell className="font-mono text-xs text-slate-600">{textoSeguro(item.numero_registro)}</TableCell>
+            <TableCell className="font-mono text-xs text-slate-600">{textoSeguro(item.ano)}</TableCell>
+            <TableCell className="text-xs text-slate-600">{textoSeguro(item.categoria)}</TableCell>
+            <TableCell className="text-xs text-slate-600">{textoSeguro(item.instituicao_deposito)}</TableCell>
+          </TableRow>
+        )
+      })
 
     case 'eventos':
-      return itens.map((e: ItemAmostraEvento) => (
-        <TableRow key={e.id}>
-          <TableCell>
-            <Badge
-              variant="outline"
-              className={`text-[10px] ${
-                e.tipo.includes('Trabalho')
-                  ? 'bg-sky-50 text-sky-800 border-sky-200'
-                  : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-              }`}
-            >
-              {e.tipo}
-            </Badge>
-          </TableCell>
-          <TableCell className="font-medium text-slate-900">{e.nome_evento}</TableCell>
-          <TableCell className="text-slate-600 text-xs">{e.titulo_trabalho}</TableCell>
-          <TableCell className="font-mono text-xs text-slate-600">{e.ano}</TableCell>
-          <TableCell className="text-slate-500 text-xs">{e.cidade}</TableCell>
-        </TableRow>
-      ))
+      return itens.map((e: ItemAmostraEvento, idx: number) => {
+        const item = e ?? ({} as Partial<ItemAmostraEvento>)
+        const key = item.id ?? `evento-${idx}`
+        const tipoStr = String(item.tipo ?? '')
+        const isTrabalho = (tipoStr ?? '').toLowerCase().includes('trabalho')
+        return (
+          <TableRow key={key}>
+            <TableCell>
+              <Badge
+                variant="outline"
+                className={`text-[10px] ${
+                  isTrabalho
+                    ? 'bg-sky-50 text-sky-800 border-sky-200'
+                    : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                }`}
+              >
+                {textoSeguro(item.tipo)}
+              </Badge>
+            </TableCell>
+            <TableCell className="font-medium text-slate-900">{textoSeguro(item.nome_evento)}</TableCell>
+            <TableCell className="text-slate-600 text-xs">{textoSeguro(item.titulo_trabalho)}</TableCell>
+            <TableCell className="font-mono text-xs text-slate-600">{textoSeguro(item.ano)}</TableCell>
+            <TableCell className="text-slate-500 text-xs">{textoSeguro(item.cidade)}</TableCell>
+          </TableRow>
+        )
+      })
   }
 }
