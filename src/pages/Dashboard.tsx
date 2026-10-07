@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import { ImportarLattesDialog } from '@/components/lattes/ImportarLattesDialog'
 import type { ResultadoProcessamentoLattes } from '@/lib/lattes/processor'
@@ -132,10 +133,11 @@ const allModules = categories.flatMap((c) => c.modules)
 type CountMap = Record<string, number>
 
 export default function Dashboard() {
+  const { toast } = useToast()
   const [counts, setCounts] = useState<CountMap>({})
   const [loading, setLoading] = useState(true)
   const [lattesDialogOpen, setLattesDialogOpen] = useState(false)
-  const [dadosLattesProcessados, setDadosLattesProcessados] =
+  const [_dadosLattesProcessados, setDadosLattesProcessados] =
     useState<ResultadoProcessamentoLattes | null>(null)
 
   const fetchCounts = useCallback(async () => {
@@ -205,6 +207,18 @@ export default function Dashboard() {
         onOpenChange={setLattesDialogOpen}
         onProcessado={(res) => {
           setDadosLattesProcessados(res)
+        }}
+        onGravacaoSucesso={(relatorio) => {
+          // Atualiza os contadores do Dashboard refletindo os novos dados gravados
+          fetchCounts()
+          const totalInseridos = relatorio.docentes.inseridos + relatorio.publicacoes.inseridos
+          const totalAtualizados =
+            relatorio.docentes.atualizados + relatorio.publicacoes.atualizados
+
+          toast({
+            title: 'Gravação concluída com sucesso!',
+            description: `Docentes: ${relatorio.docentes.inseridos} inseridos, ${relatorio.docentes.atualizados} atualizados. Publicações: ${relatorio.publicacoes.inseridos} inseridas, ${relatorio.publicacoes.atualizados} atualizadas. (Total: ${totalInseridos + totalAtualizados} registros afetados)`,
+          })
         }}
       />
 

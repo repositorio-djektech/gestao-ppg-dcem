@@ -24,11 +24,14 @@ import {
 import { processarArquivosLattes, type ResultadoProcessamentoLattes } from '@/lib/lattes/processor'
 import { RevisaoImportacaoDialog } from './RevisaoImportacaoDialog'
 
+import type { RelatorioGravacaoLattes } from '@/lib/lattes/gravar'
+
 interface ImportarLattesDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onProcessado?: (resultado: ResultadoProcessamentoLattes) => void
   onAbrirRevisao?: (resultado: ResultadoProcessamentoLattes) => void
+  onGravacaoSucesso?: (relatorio: RelatorioGravacaoLattes) => void
 }
 
 function formatarBytes(bytes: number, decimais: number = 1): string {
@@ -43,6 +46,7 @@ export function ImportarLattesDialog({
   open,
   onOpenChange,
   onProcessado,
+  onGravacaoSucesso,
 }: ImportarLattesDialogProps) {
   const [arquivos, setArquivos] = useState<File[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -404,12 +408,17 @@ export function ImportarLattesDialog({
         </DialogFooter>
       </DialogContent>
 
-      {/* Diálogo de Revisão por Tabela (Subetapa 1C) */}
+      {/* Diálogo de Revisão por Tabela (Subetapa 1C + 2B) */}
       <RevisaoImportacaoDialog
         open={revisaoOpen}
         onOpenChange={setRevisaoOpen}
         resultado={resultado}
         onVoltarParaUpload={() => setRevisaoOpen(false)}
+        onGravacaoSucesso={(relatorio) => {
+          if (onGravacaoSucesso) {
+            onGravacaoSucesso(relatorio)
+          }
+        }}
       />
     </Dialog>
   )

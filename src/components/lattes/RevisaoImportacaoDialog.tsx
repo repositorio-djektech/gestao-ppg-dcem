@@ -38,6 +38,9 @@ import {
   CheckCircle2,
   AlertTriangle,
   Info,
+  Loader2,
+  Check,
+  AlertOctagon,
 } from 'lucide-react'
 import type { ResultadoProcessamentoLattes } from '@/lib/lattes/processor'
 import type { TabelaAlvoId } from '@/lib/lattes/types'
@@ -55,11 +58,21 @@ import {
   type ItemAmostraEvento,
 } from '@/lib/lattes/revisao'
 
+import {
+  gravarDadosLattes,
+  converterLattesDocente,
+  converterLattesPublicacao,
+  type RelatorioGravacaoLattes,
+  type SupabaseClientLike,
+} from '@/lib/lattes/gravar'
+
 export interface RevisaoImportacaoDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   resultado: ResultadoProcessamentoLattes | null
   onVoltarParaUpload?: () => void
+  onGravacaoSucesso?: (relatorio: RelatorioGravacaoLattes) => void
+  supabaseClient?: SupabaseClientLike
 }
 
 const TABELAS_ORDEM: Array<{
@@ -85,6 +98,8 @@ export function RevisaoImportacaoDialog({
   onOpenChange,
   resultado,
   onVoltarParaUpload,
+  onGravacaoSucesso,
+  supabaseClient,
 }: RevisaoImportacaoDialogProps) {
   // Estado de tabelas selecionadas (todos marcados por padrão)
   const [tabelasSelecionadas, setTabelasSelecionadas] = useState<Record<TabelaAlvoId, boolean>>({
@@ -98,6 +113,11 @@ export function RevisaoImportacaoDialog({
     patentes: true,
     eventos: true,
   })
+
+  // Estados de gravação
+  const [gravando, setGravando] = useState(false)
+  const [relatorioGravacao, setRelatorioGravacao] = useState<RelatorioGravacaoLattes | null>(null)
+  const [erroFatalGravacao, setErroFatalGravacao] = useState<string | null>(null)
 
   // Aba ativa
   const [abaAtiva, setAbaAtiva] = useState<TabelaAlvoId>('publicacoes')
@@ -145,6 +165,7 @@ export function RevisaoImportacaoDialog({
   }, [dadosPorTabela, tabelasSelecionadas])
 
   const toggleTabela = (id: TabelaAlvoId) => {
+    if (gravando) return
     setTabelasSelecionadas((prev) => ({
       ...prev,
       [id]: !prev[id],
@@ -152,6 +173,7 @@ export function RevisaoImportacaoDialog({
   }
 
   const alternarTodasTabelas = (marcarTodas: boolean) => {
+    if (gravando) return
     setTabelasSelecionadas({
       docentes: marcarTodas,
       publicacoes: marcarTodas,
@@ -172,6 +194,73 @@ export function RevisaoImportacaoDialog({
     }))
   }
 
+  // Prepara dados para gravação respeitando APENAS tabelas marcadas (Docentes e Publicações)
+  const itensParaGravar = useMemo(() => {
+    if (!resultado) {
+      return { docentes: [], publicacoes: [] }
+    }
+
+    // 1. Docentes se marcados
+    const listaDocentes = tabelasSelecionadas.docentes
+      ? resultado.resultados
+          .map((r) => r.docente)
+          .filter((d): d is NonNullable<typeof d> => Boolean(d))
+          .map(converterLattesDocente)
+      : []
+
+    // 2. Publicações se marcadas (todas as publicações únicas pós-deduplicação no resultado)
+    const listaPublicacoes = tabelasSelecionadas.publicacoes
+      ? resultado.resultados.flatMap((r) => r.publicacoes).map(converterLattesPublicacao)
+      : []
+
+    return {
+      docentes: listaDocentes,
+      publicacoes: listaPublicacoes,
+    }
+  }, [resultado, tabelasSelecionadas])
+
+  // Contagem de registros a serem processados pelo gravarDadosLattes
+  const totalRegistrosAptosGravacao =
+    itensParaGravar.docentes.length + itensParaGravar.publicacoes.length
+
+  const handleConfirmarEGravar = async () => {
+    if (gravando || totaisGlobais.tabelasMarcadas === 0) return
+
+    setGravando(true)
+    setErroFatalGravacao(null)
+    setRelatorioGravacao(null)
+
+    try {
+      const relatorio = await gravarDadosLattes(
+        {
+          docentes: itensParaGravar.docentes,
+          publicacoes: itensParaGravar.publicacoes,
+        },
+        supabaseClient,
+      )
+
+      setRelatorioGravacao(relatorio)
+
+      // Notifica o componente pai se ao menos uma tabela gravou com sucesso (inseridos ou atualizados > 0)
+      const gravouAlgo =
+        relatorio.docentes.inseridos > 0 ||
+        relatorio.docentes.atualizados > 0 ||
+        relatorio.publicacoes.inseridos > 0 ||
+        relatorio.publicacoes.atualizados > 0
+
+      if (gravouAlgo && onGravacaoSucesso) {
+        onGravacaoSucesso(relatorio)
+      }
+    } catch (err) {
+      console.error('Erro ao executar gravação dos dados Lattes:', err)
+      setErroFatalGravacao(
+        err instanceof Error ? err.message : 'Erro inesperado durante a gravação dos dados.',
+      )
+    } finally {
+      setGravando(false)
+    }
+  }
+
   if (!resultado || !dadosPorTabela) {
     return null
   }
@@ -181,9 +270,27 @@ export function RevisaoImportacaoDialog({
   const itensVisiveis = tabelaAtual.itens.slice(0, limiteAtual)
   const temMaisItens = tabelaAtual.itens.length > limiteAtual
 
+  const handleDialogChange = (novoOpen: boolean) => {
+    // Bloqueia fechar durante a gravação
+    if (gravando) return
+    onOpenChange(novoOpen)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[95vw] h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
+    <Dialog open={open} onOpenChange={handleDialogChange}>
+      <DialogContent
+        className="max-w-5xl w-[95vw] h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden"
+        onEscapeKeyDown={(e) => {
+          if (gravando) {
+            e.preventDefault()
+          }
+        }}
+        onPointerDownOutside={(e) => {
+          if (gravando) {
+            e.preventDefault()
+          }
+        }}
+      >
         {/* Cabeçalho */}
         <DialogHeader className="p-5 pb-3 border-b bg-slate-50/70 shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-6">
@@ -193,8 +300,8 @@ export function RevisaoImportacaoDialog({
                 Revisão de Importação Lattes
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-600 mt-1">
-                Revise os dados extraídos dos currículos em memória antes de gravar. Filtre quais
-                tabelas deseja incluir.
+                Revise os dados extraídos dos currículos e selecione as tabelas para confirmação e
+                gravação no banco Supabase.
               </DialogDescription>
             </div>
 
@@ -227,21 +334,22 @@ export function RevisaoImportacaoDialog({
             </div>
           </div>
 
-          {/* Banner explicativo de modo de simulação / Etapa 1C */}
+          {/* Banner explicativo de escopo de gravação e ações de marcação */}
           <div className="mt-3 flex items-center justify-between bg-blue-50/80 border border-blue-200/80 rounded-md px-3 py-2 text-xs text-blue-900">
             <div className="flex items-center gap-2">
               <Info className="h-4 w-4 text-blue-600 shrink-0" />
               <span>
-                <strong>Modo em memória (Subetapa 1C):</strong>{' '}
-                {resultado.curriculosProcessadosCount} currículo(s) analisado(s). Nenhuma gravação
-                no banco de dados ocorre nesta etapa.
+                <strong>Subetapa 2B — Gravação no Banco:</strong> Disponível para{' '}
+                <strong>Docentes</strong> e <strong>Publicações</strong>.{' '}
+                {resultado.curriculosProcessadosCount} currículo(s) pronto(s) para sincronização.
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => alternarTodasTabelas(true)}
-                className="text-primary hover:underline text-[11px] font-medium"
+                disabled={gravando}
+                className="text-primary hover:underline text-[11px] font-medium disabled:opacity-50"
               >
                 Marcar todas
               </button>
@@ -249,7 +357,8 @@ export function RevisaoImportacaoDialog({
               <button
                 type="button"
                 onClick={() => alternarTodasTabelas(false)}
-                className="text-slate-500 hover:text-slate-700 text-[11px]"
+                disabled={gravando}
+                className="text-slate-500 hover:text-slate-700 text-[11px] disabled:opacity-50"
               >
                 Desmarcar todas
               </button>
@@ -282,6 +391,7 @@ export function RevisaoImportacaoDialog({
                         id={`chk-${id}`}
                         checked={marcada}
                         onCheckedChange={() => toggleTabela(id)}
+                        disabled={gravando}
                         className="data-[state=checked]:bg-primary h-3.5 w-3.5"
                         title="Incluir/excluir tabela da gravação"
                       />
@@ -331,6 +441,14 @@ export function RevisaoImportacaoDialog({
                             className="text-slate-400 border-slate-300 text-[10px]"
                           >
                             Excluída da gravação
+                          </Badge>
+                        )}
+                        {id !== 'docentes' && id !== 'publicacoes' && (
+                          <Badge
+                            variant="outline"
+                            className="text-slate-500 bg-slate-100 border-slate-200 text-[10px]"
+                          >
+                            Gravação futura (ignorado nesta subetapa)
                           </Badge>
                         )}
                       </div>
@@ -399,58 +517,203 @@ export function RevisaoImportacaoDialog({
               )
             })}
           </Tabs>
+
+          {/* Painel de Resultado pós-gravação ou Erro */}
+          {relatorioGravacao && (
+            <div className="mt-3 p-3.5 rounded-md border bg-slate-50 text-xs space-y-2 shrink-0 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-semibold text-slate-900">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <span>Resultado da gravação:</span>
+                </div>
+                {relatorioGravacao.erros.length > 0 && (
+                  <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-300">
+                    {relatorioGravacao.erros.length} aviso(s)/erro(s) isolado(s)
+                  </Badge>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* Resultado Docentes */}
+                <div className="bg-white p-2.5 rounded border border-slate-200">
+                  <div className="flex items-center justify-between font-medium text-slate-800 mb-1">
+                    <span className="flex items-center gap-1.5">
+                      <Users className="h-3.5 w-3.5 text-primary" />
+                      Docentes
+                    </span>
+                    {!tabelasSelecionadas.docentes && (
+                      <span className="text-[10px] text-slate-400 font-normal">
+                        Não selecionada
+                      </span>
+                    )}
+                  </div>
+                  {tabelasSelecionadas.docentes ? (
+                    <div className="text-slate-600 text-[11px] space-y-0.5">
+                      <p>
+                        Docentes:{' '}
+                        <strong className="text-emerald-700 font-semibold">
+                          {relatorioGravacao.docentes.inseridos} inseridos
+                        </strong>
+                        ,{' '}
+                        <strong className="text-sky-700 font-semibold">
+                          {relatorioGravacao.docentes.atualizados} atualizados
+                        </strong>
+                        {relatorioGravacao.docentes.ignorados > 0 && (
+                          <span className="text-slate-400">
+                            {' '}
+                            ({relatorioGravacao.docentes.ignorados} ignorados)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-slate-400 text-[11px]">Tabela excluída pelo usuário.</p>
+                  )}
+                </div>
+
+                {/* Resultado Publicações */}
+                <div className="bg-white p-2.5 rounded border border-slate-200">
+                  <div className="flex items-center justify-between font-medium text-slate-800 mb-1">
+                    <span className="flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5 text-primary" />
+                      Publicações
+                    </span>
+                    {!tabelasSelecionadas.publicacoes && (
+                      <span className="text-[10px] text-slate-400 font-normal">
+                        Não selecionada
+                      </span>
+                    )}
+                  </div>
+                  {tabelasSelecionadas.publicacoes ? (
+                    <div className="text-slate-600 text-[11px] space-y-0.5">
+                      <p>
+                        Publicações:{' '}
+                        <strong className="text-emerald-700 font-semibold">
+                          {relatorioGravacao.publicacoes.inseridos} inseridas
+                        </strong>
+                        ,{' '}
+                        <strong className="text-sky-700 font-semibold">
+                          {relatorioGravacao.publicacoes.atualizados} atualizadas
+                        </strong>
+                        {relatorioGravacao.publicacoes.ignorados > 0 && (
+                          <span className="text-slate-400">
+                            {' '}
+                            ({relatorioGravacao.publicacoes.ignorados} ignoradas)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-slate-400 text-[11px]">Tabela excluída pelo usuário.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Erros detalhados se houver */}
+              {relatorioGravacao.erros.length > 0 && (
+                <div className="bg-amber-50/70 border border-amber-200 rounded p-2 text-[11px] text-amber-900 max-h-24 overflow-y-auto">
+                  <p className="font-semibold mb-1">Ocorrências durante a gravação:</p>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {relatorioGravacao.erros.map((e, idx) => (
+                      <li key={idx}>
+                        <span className="capitalize font-medium">[{e.tabela}]</span> {e.item}:{' '}
+                        {e.mensagem}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {erroFatalGravacao && (
+            <div className="mt-3 p-3 rounded-md bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2 shrink-0">
+              <AlertOctagon className="h-4 w-4 text-rose-600 shrink-0" />
+              <span>Falha na gravação: {erroFatalGravacao}</span>
+            </div>
+          )}
         </div>
 
         {/* Rodapé da Janela Modal */}
         <DialogFooter className="p-4 border-t bg-slate-50/80 shrink-0 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs text-slate-500">
-            {onVoltarParaUpload && (
+            {onVoltarParaUpload && !gravando && (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={onVoltarParaUpload}
+                disabled={gravando}
                 className="text-xs"
               >
                 Voltar ao upload
               </Button>
             )}
             <span className="hidden sm:inline">
-              {totaisGlobais.tabelasMarcadas} de {TABELAS_ORDEM.length} tabelas selecionadas para
-              gravação
+              {totaisGlobais.tabelasMarcadas} de {TABELAS_ORDEM.length} tabelas selecionadas
+              {totalRegistrosAptosGravacao > 0 && (
+                <> ({totalRegistrosAptosGravacao} registros aptos para gravação)</>
+              )}
             </span>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-              Fechar revisão
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={gravando}
+              onClick={() => onOpenChange(false)}
+            >
+              {relatorioGravacao ? 'Concluir e fechar' : 'Fechar revisão'}
             </Button>
 
-            {/* Botão de gravação: visível porém desabilitado com Tooltip na Etapa 1C */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled
-                      className="gap-2 cursor-not-allowed bg-slate-400 text-white"
-                    >
-                      <Lock className="h-3.5 w-3.5" />
-                      Confirmar e gravar ({totaisGlobais.inseridos} registros)
-                    </Button>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs text-center bg-slate-900 text-white">
-                  <p className="text-xs font-medium">A gravação no banco está desabilitada.</p>
-                  <p className="text-[11px] text-slate-300 mt-0.5">
-                    A persistência real será habilitada na <strong>Etapa 2</strong> após a reconexão
-                    da infraestrutura do Supabase PPG-DCEM.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {/* Botão de gravação: habilitado quando há tabelas marcadas */}
+            {totaisGlobais.tabelasMarcadas === 0 ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled
+                        className="gap-2 cursor-not-allowed bg-slate-300 text-slate-600 hover:bg-slate-300"
+                      >
+                        <Lock className="h-3.5 w-3.5" />
+                        Confirmar e gravar
+                      </Button>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    className="max-w-xs text-center bg-slate-900 text-white"
+                  >
+                    <p className="text-xs font-medium">Selecione ao menos uma tabela</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleConfirmarEGravar}
+                disabled={gravando}
+                className="gap-2 bg-primary hover:bg-primary/90 text-white min-w-[170px]"
+              >
+                {gravando ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Gravando...
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-3.5 w-3.5" />
+                    Confirmar e gravar ({totalRegistrosAptosGravacao} registros)
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </DialogFooter>
       </DialogContent>
