@@ -47,3 +47,54 @@ const tags = [
 for (const t of tags) {
   console.log(`${t}: ${countTags(t)}`)
 }
+
+console.log('--- RESUMO ---')
+console.log('Artigos:', countTags('ARTIGO-PUBLICADO'))
+console.log('Livros:', countTags('LIVRO-PUBLICADO-OU-ORGANIZADO'))
+console.log('Capitulos:', countTags('CAPITULO-DE-LIVRO-PUBLICADO'))
+const concluidasMestrado = countTags('ORIENTACOES-CONCLUIDAS-PARA-MESTRADO')
+const concluidasDoutorado = countTags('ORIENTACOES-CONCLUIDAS-PARA-DOUTORADO')
+const concluidasOutras = countTags('OUTRAS-ORIENTACOES-CONCLUIDAS')
+const concluidasPosDoc = countTags('ORIENTACOES-CONCLUIDAS-PARA-POS-DOUTORADO')
+console.log(
+  'Orientacoes concluidas total:',
+  concluidasMestrado + concluidasDoutorado + concluidasOutras + concluidasPosDoc,
+  `(${concluidasMestrado}/${concluidasDoutorado}/${concluidasOutras})`,
+)
+
+const andMestrado = countTags('ORIENTACAO-EM-ANDAMENTO-DE-MESTRADO')
+const andDoutorado = countTags('ORIENTACAO-EM-ANDAMENTO-DE-DOUTORADO')
+const andPosDoc = countTags('ORIENTACAO-EM-ANDAMENTO-DE-POS-DOUTORADO')
+const andIC = countTags('ORIENTACAO-EM-ANDAMENTO-DE-INICIACAO-CIENTIFICA')
+const andOutras = countTags('OUTRAS-ORIENTACOES-EM-ANDAMENTO')
+console.log(
+  'Orientacoes em andamento total:',
+  andMestrado + andDoutorado + andPosDoc + andIC + andOutras,
+)
+
+const bMestrado = countTags('PARTICIPACAO-EM-BANCA-DE-MESTRADO')
+const bDoutorado = countTags('PARTICIPACAO-EM-BANCA-DE-DOUTORADO')
+const bQualif = countTags('PARTICIPACAO-EM-BANCA-DE-EXAME-QUALIFICACAO')
+const bGrad = countTags('PARTICIPACAO-EM-BANCA-DE-GRADUACAO')
+const bAperf = countTags('PARTICIPACAO-EM-BANCA-DE-APERFEICOAMENTO-ESPECIALIZACAO')
+const bOutras = countTags('OUTRAS-PARTICIPACOES-EM-BANCA-JULGADORA')
+console.log(
+  'Bancas total:',
+  bMestrado + bDoutorado + bQualif + bGrad + bAperf + bOutras,
+  `(${bMestrado}/${bDoutorado}/${bGrad}/${bQualif}) aperf=${bAperf} outras=${bOutras}`,
+)
+
+console.log('Premios:', countTags('PREMIO-TITULO'))
+
+const tTecnico = countTags('TRABALHO-TECNICO')
+const tSoftware = countTags('SOFTWARE')
+const tPatente = countTags('PATENTE')
+const tProduto = countTags('PRODUTO-TECNOLOGICO')
+const tProcesso = countTags('PROCESSOS-OU-TECNICAS')
+const tDemais = countTags('DEMAIS-TIPOS-DE-PRODUCAO-TECNICA')
+console.log(
+  'Producoes tecnicas (sem patente):',
+  tTecnico + tSoftware + tProduto + tProcesso + tDemais,
+)
+console.log('Trabalhos em eventos:', countTags('TRABALHO-EM-EVENTOS'))
+console.log('Participacoes em eventos:', countTags('PARTICIPACAO-EM-EVENTO-CONGRESSO'))
