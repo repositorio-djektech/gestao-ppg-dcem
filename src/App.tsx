@@ -59,4 +59,8 @@ const App = () => (
   </BrowserRouter>
 )
 
+if (typeof window !== 'undefined' && !(import.meta as any).env?.VITE_SUPABASE_URL) {
+  throw new Error('MISSING_SUPABASE_URL: ' + JSON.stringify((import.meta as any).env))
+}
+
 export default App

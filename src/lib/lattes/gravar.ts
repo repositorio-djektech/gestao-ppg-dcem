@@ -436,7 +436,7 @@ export function converterLattesEvento(
  */
 export async function gravarDocentes(
   docentes: DocenteParaGravar[],
-  client: SupabaseClientLike = supabase,
+  client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
 ): Promise<{ contagem: RelatorioContagemTabela; erros: RelatorioGravacaoLattes['erros'] }> {
   const contagem: RelatorioContagemTabela = { inseridos: 0, atualizados: 0, ignorados: 0 }
   const erros: RelatorioGravacaoLattes['erros'] = []
@@ -607,7 +607,7 @@ export async function gravarDocentes(
  */
 export async function gravarPublicacoes(
   publicacoes: PublicacaoParaGravar[],
-  client: SupabaseClientLike = supabase,
+  client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
 ): Promise<{ contagem: RelatorioContagemTabela; erros: RelatorioGravacaoLattes['erros'] }> {
   const contagem: RelatorioContagemTabela = { inseridos: 0, atualizados: 0, ignorados: 0 }
   const erros: RelatorioGravacaoLattes['erros'] = []
@@ -742,7 +742,7 @@ export async function resolverOuCriarDiscente(
     porNomeNormalizado: Map<string, DiscenteExistenteBanco>
     lista: DiscenteExistenteBanco[]
   },
-  client: SupabaseClientLike = supabase,
+  client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
 ): Promise<{ id: number; criado: boolean } | null> {
   const nomeLimpo = nomeDiscente.trim()
   if (!nomeLimpo) return null
@@ -790,7 +790,7 @@ export async function resolverOuCriarDiscente(
  */
 export async function gravarOrientacoes(
   orientacoes: OrientacaoParaGravar[],
-  client: SupabaseClientLike = supabase,
+  client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
   mapaDocentesPrecarregado?: {
     porIdLattes: Map<string, DocenteExistenteBanco>
     porNomeNormalizado: Map<string, DocenteExistenteBanco>
@@ -965,7 +965,7 @@ export async function gravarOrientacoes(
  */
 export async function gravarBancas(
   bancas: BancaParaGravar[],
-  client: SupabaseClientLike = supabase,
+  client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
 ): Promise<{ contagem: RelatorioContagemTabela; erros: RelatorioGravacaoLattes['erros'] }> {
   const contagem: RelatorioContagemTabela = { inseridos: 0, atualizados: 0, ignorados: 0 }
   const erros: RelatorioGravacaoLattes['erros'] = []
@@ -1092,7 +1092,7 @@ export async function gravarBancas(
  */
 export async function gravarProjetosPesquisa(
   projetos: ProjetoPesquisaParaGravar[],
-  client: SupabaseClientLike = supabase,
+  client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
   mapaDocentesPrecarregado?: {
     porIdLattes: Map<string, DocenteExistenteBanco>
     porNomeNormalizado: Map<string, DocenteExistenteBanco>
@@ -1232,7 +1232,7 @@ export async function gravarProjetosPesquisa(
  */
 export async function gravarPremiacoes(
   premiacoes: PremiacaoParaGravar[],
-  client: SupabaseClientLike = supabase,
+  client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
 ): Promise<{ contagem: RelatorioContagemTabela; erros: RelatorioGravacaoLattes['erros'] }> {
   const contagem: RelatorioContagemTabela = { inseridos: 0, atualizados: 0, ignorados: 0 }
   const erros: RelatorioGravacaoLattes['erros'] = []
@@ -1336,7 +1336,7 @@ export async function gravarPremiacoes(
  */
 export async function gravarProducaoTecnica(
   producoes: ProducaoTecnicaParaGravar[],
-  client: SupabaseClientLike = supabase,
+  client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
 ): Promise<{ contagem: RelatorioContagemTabela; erros: RelatorioGravacaoLattes['erros'] }> {
   const contagem: RelatorioContagemTabela = { inseridos: 0, atualizados: 0, ignorados: 0 }
   const erros: RelatorioGravacaoLattes['erros'] = []
@@ -1441,7 +1441,7 @@ export async function gravarProducaoTecnica(
  */
 export async function gravarPatentes(
   patentes: PatenteParaGravar[],
-  client: SupabaseClientLike = supabase,
+  client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
 ): Promise<{ contagem: RelatorioContagemTabela; erros: RelatorioGravacaoLattes['erros'] }> {
   const contagem: RelatorioContagemTabela = { inseridos: 0, atualizados: 0, ignorados: 0 }
   const erros: RelatorioGravacaoLattes['erros'] = []
@@ -1559,7 +1559,7 @@ export async function gravarPatentes(
  */
 export async function gravarEventos(
   eventos: EventoParaGravar[],
-  client: SupabaseClientLike = supabase,
+  client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
 ): Promise<{ contagem: RelatorioContagemTabela; erros: RelatorioGravacaoLattes['erros'] }> {
   const contagem: RelatorioContagemTabela = { inseridos: 0, atualizados: 0, ignorados: 0 }
   const erros: RelatorioGravacaoLattes['erros'] = []
@@ -1677,7 +1677,7 @@ export async function gravarDadosLattes(
     patentes?: PatenteParaGravar[]
     eventos?: EventoParaGravar[]
   },
-  client: SupabaseClientLike = supabase,
+  client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
 ): Promise<RelatorioGravacaoLattes> {
   const relatorio: RelatorioGravacaoLattes = {
     docentes: { inseridos: 0, atualizados: 0, ignorados: 0 },
