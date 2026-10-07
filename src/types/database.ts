@@ -16,6 +16,7 @@ export type Docente = {
   bolsa_cnpq: string
   jdp: boolean
   licenca: string
+  id_lattes?: string | null
 }
 
 export type Publicacao = {
