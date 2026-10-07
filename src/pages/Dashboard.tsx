@@ -4,7 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase/client'
+import { ImportarLattesDialog } from '@/components/lattes/ImportarLattesDialog'
+import type { ResultadoProcessamentoLattes } from '@/lib/lattes/processor'
 import {
   Users,
   GraduationCap,
@@ -22,6 +25,7 @@ import {
   Award,
   Database,
   TrendingUp,
+  FileUp,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -130,6 +134,9 @@ type CountMap = Record<string, number>
 export default function Dashboard() {
   const [counts, setCounts] = useState<CountMap>({})
   const [loading, setLoading] = useState(true)
+  const [lattesDialogOpen, setLattesDialogOpen] = useState(false)
+  const [dadosLattesProcessados, setDadosLattesProcessados] =
+    useState<ResultadoProcessamentoLattes | null>(null)
 
   const fetchCounts = useCallback(async () => {
     setLoading(true)
@@ -175,14 +182,31 @@ export default function Dashboard() {
             Visão geral do preenchimento dos módulos CAPES (Quadriênio 2025-2028).
           </p>
         </div>
-        <button
-          onClick={fetchCounts}
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
-          <TrendingUp className="h-4 w-4" />
-          Atualizar
-        </button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setLattesDialogOpen(true)}
+            className="inline-flex items-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800"
+          >
+            <FileUp className="h-4 w-4 text-primary" />
+            Importar Lattes
+          </Button>
+
+          <Button type="button" onClick={fetchCounts} className="inline-flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Atualizar
+          </Button>
+        </div>
       </div>
+
+      <ImportarLattesDialog
+        open={lattesDialogOpen}
+        onOpenChange={setLattesDialogOpen}
+        onProcessado={(res) => {
+          setDadosLattesProcessados(res)
+        }}
+      />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card className="border-0 shadow-sm bg-primary text-primary-foreground lg:col-span-1">
