@@ -97,8 +97,12 @@ function extrairAutores(el: Element): string | null {
 export function parseLattesXml(
   xmlContent: string,
   nomeArquivo: string = 'curriculo.xml',
+  anoInicioFiltro?: number,
+  anoFimFiltro?: number,
 ): LattesArquivoResultado {
-  const { anoInicio, anoFim } = obterAnosQuadrienio()
+  const padraoQuadrienio = obterAnosQuadrienio()
+  const anoInicio = anoInicioFiltro ?? padraoQuadrienio.anoInicio
+  const anoFim = anoFimFiltro ?? padraoQuadrienio.anoFim
 
   const parser = new DOMParser()
   const doc = parser.parseFromString(xmlContent, 'text/xml')

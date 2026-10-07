@@ -5,6 +5,8 @@ import { parseLattesXml } from './parser'
 import { readLattesFiles, decodificarIso88591 } from './readFiles'
 import { ANO_INICIO, ANO_FIM, filtrarPorQuadrienio, estaNoQuadrienio } from './quadrienio'
 import { deduplicarItens, normalizarTitulo, gerarChaveDedupe } from './dedupe'
+import { processarArquivosLattes } from './processor'
+import { mapearDadosParaRevisao } from './revisao'
 
 describe('Pipeline Lattes - subetapa 1A', () => {
   const xmlPath = 'docs/3104369029830651.xml'
@@ -155,5 +157,79 @@ describe('Pipeline Lattes - subetapa 1A', () => {
     expect(resultado.docente).not.toBeNull()
     expect(resultado.docente?.nome_completo).toBe('Ledjane Silva Barreto')
     expect(pubsDedupe.unicos.length).toBeGreaterThan(0)
+  })
+
+  it('audita contagens brutas do XML real, acentuação, quadriênio e deduplicação na revisão', async () => {
+    const rawBuffer = fs.readFileSync(xmlPath)
+    const xml = decodificarIso88591(rawBuffer)
+
+    // Parser direto com e sem filtro de quadriênio
+    const parsed = parseLattesXml(xml, '3104369029830651.xml')
+    const parsedSemFiltro = parseLattesXml(xml, '3104369029830651.xml', 1900, 2100)
+
+    // Contagens totais sem filtro esperadas da auditoria do XML real
+    expect(parsedSemFiltro.publicacoes.filter((p) => p.tipo === 'ARTIGO').length).toBe(68)
+    expect(parsedSemFiltro.publicacoes.filter((p) => p.tipo === 'LIVRO').length).toBe(1)
+    expect(parsedSemFiltro.publicacoes.filter((p) => p.tipo === 'CAPITULO').length).toBe(8)
+    expect(parsedSemFiltro.eventos.filter((e) => e.tipo === 'TRABALHO').length).toBe(32)
+    expect(parsedSemFiltro.projetos.length).toBe(25)
+
+    // Identificação do docente e acentuação no resumo
+    expect(parsed.nome_docente).toBe('Ledjane Silva Barreto')
+    expect(parsed.id_lattes).toBe('3104369029830651')
+    expect(parsed.docente?.nome_completo).toBe('Ledjane Silva Barreto')
+    expect(parsed.docente?.resumo_cv).toContain('Graduação em Química Industrial')
+    expect(parsed.docente?.resumo_cv).not.toContain('')
+
+    // Processamento via processor
+    const file1 = new File([rawBuffer], '3104369029830651.xml', { type: 'text/xml' })
+    const processado = await processarArquivosLattes([file1])
+    const tabelas = mapearDadosParaRevisao(processado)
+
+    // (a) Asserção de quadriênio: totalForaQuadrienio > 0 para publicações (recorte 2022-2025 descartando antigas)
+    expect(processado.resumoGeral.secoes.publicacoes.totalValidos).toBeGreaterThan(0)
+    expect(processado.resumoGeral.secoes.publicacoes.totalForaQuadrienio).toBeGreaterThan(0)
+
+    // (b) Asserção de dedupe: processar o mesmo XML duas vezes não dobra contagens na revisão (mesmo número de itens)
+    const fileDup1 = new File([rawBuffer], 'curriculo_instancia_1.xml', { type: 'text/xml' })
+    const fileDup2 = new File([rawBuffer], 'curriculo_instancia_2.xml', { type: 'text/xml' })
+    const processadoDuplicado = await processarArquivosLattes([fileDup1, fileDup2])
+    const tabelasDuplicadas = mapearDadosParaRevisao(processadoDuplicado)
+
+    // Docente: 1 único docente deduplicado (mesmo id_lattes)
+    expect(processadoDuplicado.curriculosProcessadosCount).toBe(2)
+    expect(tabelasDuplicadas.docentes.itens.length).toBe(tabelas.docentes.itens.length)
+    expect(tabelasDuplicadas.docentes.inseridos).toBe(tabelas.docentes.inseridos)
+
+    // Publicações: deduplicadas por chave normalizada (título + ano)
+    expect(tabelasDuplicadas.publicacoes.itens.length).toBe(tabelas.publicacoes.itens.length)
+    expect(tabelasDuplicadas.publicacoes.inseridos).toBe(tabelas.publicacoes.inseridos)
+
+    // Bancas: deduplicadas por chave normalizada
+    expect(tabelasDuplicadas.bancas.itens.length).toBe(tabelas.bancas.itens.length)
+    expect(tabelasDuplicadas.bancas.inseridos).toBe(tabelas.bancas.inseridos)
+
+    // Orientações: deduplicadas
+    expect(tabelasDuplicadas.orientacoes.itens.length).toBe(tabelas.orientacoes.itens.length)
+    expect(tabelasDuplicadas.orientacoes.inseridos).toBe(tabelas.orientacoes.inseridos)
+
+    // Conferência do mapeamento geral das tabelas de revisão
+    expect(tabelas.docentes.inseridos).toBe(1)
+    expect(tabelas.publicacoes.inseridos).toBe(
+      processado.resumoGeral.secoes.publicacoes.totalValidos,
+    )
+    expect(tabelas.orientacoes.inseridos).toBe(
+      processado.resumoGeral.secoes.orientacoes.totalValidos,
+    )
+    expect(tabelas.bancas.inseridos).toBe(processado.resumoGeral.secoes.bancas.totalValidos)
+    expect(tabelas.projetos_pesquisa.inseridos).toBe(
+      processado.resumoGeral.secoes.projetos.totalValidos,
+    )
+    expect(tabelas.premiacoes.inseridos).toBe(processado.resumoGeral.secoes.premiacoes.totalValidos)
+    expect(tabelas.producao_tecnica.inseridos).toBe(
+      processado.resumoGeral.secoes.producoes_tecnicas.totalValidos,
+    )
+    expect(tabelas.patentes.inseridos).toBe(processado.resumoGeral.secoes.patentes.totalValidos)
+    expect(tabelas.eventos.inseridos).toBe(processado.resumoGeral.secoes.eventos.totalValidos)
   })
 })
