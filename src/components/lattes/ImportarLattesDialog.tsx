@@ -16,17 +16,19 @@ import {
   Trash2,
   AlertCircle,
   CheckCircle2,
-  Clock,
   Sparkles,
   Loader2,
   Info,
+  TableProperties,
 } from 'lucide-react'
 import { processarArquivosLattes, type ResultadoProcessamentoLattes } from '@/lib/lattes/processor'
+import { RevisaoImportacaoDialog } from './RevisaoImportacaoDialog'
 
 interface ImportarLattesDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onProcessado?: (resultado: ResultadoProcessamentoLattes) => void
+  onAbrirRevisao?: (resultado: ResultadoProcessamentoLattes) => void
 }
 
 function formatarBytes(bytes: number, decimais: number = 1): string {
@@ -46,6 +48,7 @@ export function ImportarLattesDialog({
   const [isDragging, setIsDragging] = useState(false)
   const [processando, setProcessando] = useState(false)
   const [resultado, setResultado] = useState<ResultadoProcessamentoLattes | null>(null)
+  const [revisaoOpen, setRevisaoOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Reseta seleção ao fechar
@@ -54,6 +57,7 @@ export function ImportarLattesDialog({
       setArquivos([])
       setResultado(null)
       setIsDragging(false)
+      setRevisaoOpen(false)
     }
     onOpenChange(proximoOpen)
   }
@@ -334,14 +338,25 @@ export function ImportarLattesDialog({
                 </div>
               </div>
 
-              {/* Aviso da subetapa 1C */}
-              <div className="flex items-center gap-2 p-2.5 bg-blue-50/80 border border-blue-200 rounded text-xs text-blue-900">
-                <Clock className="h-4 w-4 text-blue-600 shrink-0" />
-                <span>
-                  <strong>Próximo passo (Subetapa 1C):</strong> Nesta subetapa os dados foram apenas
-                  processados em memória. A tela de revisão detalhada com seleção de itens por
-                  tabela será aberta na próxima versão antes de gravar no banco de dados.
-                </span>
+              {/* Aviso da subetapa 1C e Botão de Acesso Direto à Revisão */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-blue-50/80 border border-blue-200 rounded text-xs text-blue-900">
+                <div className="flex items-center gap-2">
+                  <TableProperties className="h-4 w-4 text-blue-600 shrink-0" />
+                  <span>
+                    <strong>Dados prontos para revisão:</strong> Você pode inspecionar os registros
+                    divididos por tabela, escolher quais incluir e conferir os dados antes de
+                    gravar.
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setRevisaoOpen(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white shrink-0 gap-1.5 h-8 text-xs font-semibold"
+                >
+                  <TableProperties className="h-3.5 w-3.5" />
+                  Revisar registros por tabela
+                </Button>
               </div>
             </div>
           )}
@@ -356,26 +371,46 @@ export function ImportarLattesDialog({
           >
             {resultado ? 'Fechar' : 'Cancelar'}
           </Button>
-          <Button
-            type="button"
-            onClick={executarProcessamento}
-            disabled={arquivos.length === 0 || processando}
-            className="gap-2"
-          >
-            {processando ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Processando...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Processar arquivos
-              </>
-            )}
-          </Button>
+
+          {resultado ? (
+            <Button
+              type="button"
+              onClick={() => setRevisaoOpen(true)}
+              className="gap-2 bg-primary hover:bg-primary/90"
+            >
+              <TableProperties className="h-4 w-4" />
+              Revisar dados ({resultado.curriculosProcessadosCount} currículo(s))
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={executarProcessamento}
+              disabled={arquivos.length === 0 || processando}
+              className="gap-2"
+            >
+              {processando ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Processar arquivos
+                </>
+              )}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
+
+      {/* Diálogo de Revisão por Tabela (Subetapa 1C) */}
+      <RevisaoImportacaoDialog
+        open={revisaoOpen}
+        onOpenChange={setRevisaoOpen}
+        resultado={resultado}
+        onVoltarParaUpload={() => setRevisaoOpen(false)}
+      />
     </Dialog>
   )
 }
