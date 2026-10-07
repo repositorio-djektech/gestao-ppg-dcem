@@ -740,6 +740,12 @@ describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => 
     })
   })
 
+  describe('Smoke test proposital', () => {
+    it('deve falhar para ver vitest', () => {
+      expect(1).toBe(2)
+    })
+  })
+
   describe('gravarDadosLattes (coordenação geral 9 tabelas)', () => {
     it('executa em lote todas as 9 tabelas e retorna relatório consolidado', async () => {
       const mock = createMockSupabaseClient({
