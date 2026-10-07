@@ -1,0 +1,49 @@
+import fs from 'node:fs'
+
+const buf = fs.readFileSync('docs/3104369029830651.xml')
+console.log('Buffer bytes:', buf.length)
+const decoder = new TextDecoder('iso-8859-1')
+const xml = decoder.decode(buf)
+console.log('Decoded length:', xml.length)
+console.log('First 200 chars:', xml.slice(0, 200))
+
+function countTags(tagName) {
+  const openRegex = new RegExp(`<${tagName}[\\s>]`, 'gi')
+  const matches = xml.match(openRegex)
+  return matches ? matches.length : 0
+}
+
+const tags = [
+  'ARTIGO-PUBLICADO',
+  'LIVRO-PUBLICADO-OU-ORGANIZADO',
+  'CAPITULO-DE-LIVRO-PUBLICADO',
+  'ORIENTACOES-CONCLUIDAS-PARA-MESTRADO',
+  'ORIENTACOES-CONCLUIDAS-PARA-DOUTORADO',
+  'ORIENTACOES-CONCLUIDAS-PARA-POS-DOUTORADO',
+  'OUTRAS-ORIENTACOES-CONCLUIDAS',
+  'ORIENTACAO-EM-ANDAMENTO-DE-MESTRADO',
+  'ORIENTACAO-EM-ANDAMENTO-DE-DOUTORADO',
+  'ORIENTACAO-EM-ANDAMENTO-DE-POS-DOUTORADO',
+  'ORIENTACAO-EM-ANDAMENTO-DE-INICIACAO-CIENTIFICA',
+  'OUTRAS-ORIENTACOES-EM-ANDAMENTO',
+  'PARTICIPACAO-EM-BANCA-DE-MESTRADO',
+  'PARTICIPACAO-EM-BANCA-DE-DOUTORADO',
+  'PARTICIPACAO-EM-BANCA-DE-EXAME-QUALIFICACAO',
+  'PARTICIPACAO-EM-BANCA-DE-GRADUACAO',
+  'PARTICIPACAO-EM-BANCA-DE-APERFEICOAMENTO-ESPECIALIZACAO',
+  'OUTRAS-PARTICIPACOES-EM-BANCA-JULGADORA',
+  'PREMIO-TITULO',
+  'TRABALHO-TECNICO',
+  'SOFTWARE',
+  'PATENTE',
+  'TRABALHO-EM-EVENTOS',
+  'PARTICIPACAO-EM-EVENTO-CONGRESSO',
+  'PROJETO-DE-PESQUISA',
+  'LINHA-DE-PESQUISA',
+  'DISCIPLINA',
+  'AREAS-DO-CONHECIMENTO',
+]
+
+for (const t of tags) {
+  console.log(`${t}: ${countTags(t)}`)
+}
