@@ -1,4 +1,4 @@
-import { describe, it } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import { parseLattesXml } from './parser'
 import { decodificarIso88591 } from './readFiles'
@@ -14,6 +14,19 @@ describe('Investigação do XML real de homologação', () => {
 
     // Parser direto
     const parsed = parseLattesXml(xml, '3104369029830651.xml')
+
+    // Parse sem filtro de quadriênio para auditar contagens totais extraídas por seção
+    const parsedSemFiltro = parseLattesXml(xml, '3104369029830651.xml', 1900, 2100)
+    console.log('AUDITORIA_TOTAL_SEM_FILTRO:', {
+      artigos: parsedSemFiltro.publicacoes.filter(p => p.tipo === 'ARTIGO').length,
+      livros: parsedSemFiltro.publicacoes.filter(p => p.tipo === 'LIVRO').length,
+      capitulos: parsedSemFiltro.publicacoes.filter(p => p.tipo === 'CAPITULO').length,
+      eventosTrabalhos: parsedSemFiltro.eventos.filter(e => e.tipo === 'TRABALHO').length,
+      eventosTotal: parsedSemFiltro.eventos.length,
+      projetos: parsedSemFiltro.projetos.length,
+      bancas: parsedSemFiltro.bancas.length,
+      orientacoes: parsedSemFiltro.orientacoes.length,
+    })
 
     // Contagem regex direta no XML decodificado para conferência
     const countTag = (tag: string) => {
@@ -60,7 +73,19 @@ describe('Investigação do XML real de homologação', () => {
       ),
     }
 
+    // Diagnóstico acentuação em DADOS-GERAIS e amostras
+    expect(parsed.docente?.nome_completo).toBe('Ledjane Silva Barreto')
+    expect(parsed.docente?.resumo_cv).toContain('Graduação em Química Industrial')
+    expect(parsed.docente?.resumo_cv).not.toContain('')
+
     // Asserções para validar as contagens do XML real
+    // 0. Contagens totais sem filtro de quadriênio esperadas pela auditoria
+    expect(parsedSemFiltro.publicacoes.filter(p => p.tipo === 'ARTIGO').length).toBe(68)
+    expect(parsedSemFiltro.publicacoes.filter(p => p.tipo === 'LIVRO').length).toBe(1)
+    expect(parsedSemFiltro.publicacoes.filter(p => p.tipo === 'CAPITULO').length).toBe(8)
+    expect(parsedSemFiltro.eventos.filter(e => e.tipo === 'TRABALHO').length).toBe(32)
+    expect(parsedSemFiltro.projetos.length).toBe(25)
+
     // 1. Docente
     expect(parsed.nome_docente).toBe('Ledjane Silva Barreto')
     expect(parsed.id_lattes).toBe('3104369029830651')
@@ -72,12 +97,20 @@ describe('Investigação do XML real de homologação', () => {
 
     // 3. Revisão agrupada
     expect(tabelas.docentes.inseridos).toBe(1)
-    expect(tabelas.publicacoes.inseridos).toBe(processado.resumoGeral.secoes.publicacoes.totalValidos)
-    expect(tabelas.orientacoes.inseridos).toBe(processado.resumoGeral.secoes.orientacoes.totalValidos)
+    expect(tabelas.publicacoes.inseridos).toBe(
+      processado.resumoGeral.secoes.publicacoes.totalValidos,
+    )
+    expect(tabelas.orientacoes.inseridos).toBe(
+      processado.resumoGeral.secoes.orientacoes.totalValidos,
+    )
     expect(tabelas.bancas.inseridos).toBe(processado.resumoGeral.secoes.bancas.totalValidos)
-    expect(tabelas.projetos_pesquisa.inseridos).toBe(processado.resumoGeral.secoes.projetos.totalValidos)
+    expect(tabelas.projetos_pesquisa.inseridos).toBe(
+      processado.resumoGeral.secoes.projetos.totalValidos,
+    )
     expect(tabelas.premiacoes.inseridos).toBe(processado.resumoGeral.secoes.premiacoes.totalValidos)
-    expect(tabelas.producao_tecnica.inseridos).toBe(processado.resumoGeral.secoes.producoes_tecnicas.totalValidos)
+    expect(tabelas.producao_tecnica.inseridos).toBe(
+      processado.resumoGeral.secoes.producoes_tecnicas.totalValidos,
+    )
     expect(tabelas.patentes.inseridos).toBe(processado.resumoGeral.secoes.patentes.totalValidos)
     expect(tabelas.eventos.inseridos).toBe(processado.resumoGeral.secoes.eventos.totalValidos)
   })
