@@ -199,14 +199,15 @@ A estabilidade da Etapa 1 é garantida por testes de unidade e integração no V
 - [x] Seleção/deseleção granular de tabelas para inclusão;
 - [x] Resguardo total: botão de gravação bloqueado com aviso contextual.
 
-### O que será implementado na Etapa 2 (Pendente):
+### Status da Etapa 2 (Subetapas 2A, 2B e 2C concluídas — v0.0.47):
 
-- **Reconexão da Infraestrutura Supabase:** O banco de dados oficial do PPG-DCEM precisa ser restabelecido antes de qualquer operação de gravação.
-- **Serviço de Persistência Transacional:**
-  - Inserção/atualização de docentes (`upsert` com base em `id_lattes`);
-  - Vinculação de chaves estrangeiras (`docente_id`) nos registros de produções, bancas e orientações;
-  - Resolução de duplicatas com registros pré-existentes na base remota;
-  - Habilitação do botão "Confirmar e gravar" com barra de progresso de salvamento e feedback de sucesso via toast.
+- [x] **Subetapa 2A (v0.0.45):** Coluna `id_lattes` adicionada à tabela `docentes` via migração; serviço `gravar.ts` para persistência de `docentes` e `publicacoes` com dedupe e isolamento de falhas.
+- [x] **Subetapa 2B (v0.0.46):** Habilitação do botão "Confirmar e gravar" na UI (`RevisaoImportacaoDialog`), bloqueio modal durante salvamento, relatório por tabela e atualização automática do Dashboard via callback `onGravacaoSucesso`.
+- [x] **Subetapa 2C (v0.0.47):** Gravação completa das outras 7 tabelas além de docentes e publicações:
+  - `orientacoes`: vinculação por `docente_id` e resolução/criação automática de `discentes`;
+  - `bancas`: dedução de tipo estrito (`Mestrado`, `Doutorado`, `Qualificação`) e dedupe título+ano;
+  - `projetos_pesquisa`: resolução de coordenador (`NRO-ID-CNPQ` / nome) e mapeamento de financiadores para `orgao_fomento`;
+  - `premiacoes`, `producao_tecnica`, `patentes`, `eventos`: dedupe e conformidade rigorosa com constraints de banco.
 
 ---
 

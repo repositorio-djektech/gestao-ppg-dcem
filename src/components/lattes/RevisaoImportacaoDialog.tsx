@@ -62,6 +62,13 @@ import {
   gravarDadosLattes,
   converterLattesDocente,
   converterLattesPublicacao,
+  converterLattesOrientacao,
+  converterLattesBanca,
+  converterLattesProjeto,
+  converterLattesPremiacao,
+  converterLattesProducaoTecnica,
+  converterLattesPatente,
+  converterLattesEvento,
   type RelatorioGravacaoLattes,
   type SupabaseClientLike,
 } from '@/lib/lattes/gravar'
@@ -194,10 +201,20 @@ export function RevisaoImportacaoDialog({
     }))
   }
 
-  // Prepara dados para gravação respeitando APENAS tabelas marcadas (Docentes e Publicações)
+  // Prepara dados para gravação respeitando TODAS as tabelas marcadas
   const itensParaGravar = useMemo(() => {
     if (!resultado) {
-      return { docentes: [], publicacoes: [] }
+      return {
+        docentes: [],
+        publicacoes: [],
+        orientacoes: [],
+        bancas: [],
+        projetos_pesquisa: [],
+        premiacoes: [],
+        producao_tecnica: [],
+        patentes: [],
+        eventos: [],
+      }
     }
 
     // 1. Docentes se marcados
@@ -208,20 +225,98 @@ export function RevisaoImportacaoDialog({
           .map(converterLattesDocente)
       : []
 
-    // 2. Publicações se marcadas (todas as publicações únicas pós-deduplicação no resultado)
+    // 2. Publicações se marcadas
     const listaPublicacoes = tabelasSelecionadas.publicacoes
       ? resultado.resultados.flatMap((r) => r.publicacoes).map(converterLattesPublicacao)
+      : []
+
+    // 3. Orientações se marcadas
+    const listaOrientacoes = tabelasSelecionadas.orientacoes
+      ? resultado.resultados.flatMap((r) =>
+          r.orientacoes.map((ori) =>
+            converterLattesOrientacao(ori, {
+              id_lattes: r.id_lattes,
+              nome: r.nome_docente,
+            }),
+          ),
+        )
+      : []
+
+    // 4. Bancas se marcadas
+    const listaBancas = tabelasSelecionadas.bancas
+      ? resultado.resultados.flatMap((r) => r.bancas).map(converterLattesBanca)
+      : []
+
+    // 5. Projetos de pesquisa se marcados
+    const listaProjetos = tabelasSelecionadas.projetos_pesquisa
+      ? resultado.resultados.flatMap((r) =>
+          r.projetos.map((proj) =>
+            converterLattesProjeto(proj, {
+              id_lattes: r.id_lattes,
+              nome: r.nome_docente,
+            }),
+          ),
+        )
+      : []
+
+    // 6. Premiações se marcadas
+    const listaPremiacoes = tabelasSelecionadas.premiacoes
+      ? resultado.resultados.flatMap((r) =>
+          r.premiacoes.map((prem) =>
+            converterLattesPremiacao(prem, {
+              nome: r.nome_docente,
+            }),
+          ),
+        )
+      : []
+
+    // 7. Produção técnica se marcada
+    const listaProducoesTecnicas = tabelasSelecionadas.producao_tecnica
+      ? resultado.resultados
+          .flatMap((r) => r.producoes_tecnicas)
+          .map(converterLattesProducaoTecnica)
+      : []
+
+    // 8. Patentes se marcadas
+    const listaPatentes = tabelasSelecionadas.patentes
+      ? resultado.resultados.flatMap((r) => r.patentes).map(converterLattesPatente)
+      : []
+
+    // 9. Eventos se marcados
+    const listaEventos = tabelasSelecionadas.eventos
+      ? resultado.resultados.flatMap((r) =>
+          r.eventos.map((eve) =>
+            converterLattesEvento(eve, {
+              nome: r.nome_docente,
+            }),
+          ),
+        )
       : []
 
     return {
       docentes: listaDocentes,
       publicacoes: listaPublicacoes,
+      orientacoes: listaOrientacoes,
+      bancas: listaBancas,
+      projetos_pesquisa: listaProjetos,
+      premiacoes: listaPremiacoes,
+      producao_tecnica: listaProducoesTecnicas,
+      patentes: listaPatentes,
+      eventos: listaEventos,
     }
   }, [resultado, tabelasSelecionadas])
 
   // Contagem de registros a serem processados pelo gravarDadosLattes
   const totalRegistrosAptosGravacao =
-    itensParaGravar.docentes.length + itensParaGravar.publicacoes.length
+    itensParaGravar.docentes.length +
+    itensParaGravar.publicacoes.length +
+    itensParaGravar.orientacoes.length +
+    itensParaGravar.bancas.length +
+    itensParaGravar.projetos_pesquisa.length +
+    itensParaGravar.premiacoes.length +
+    itensParaGravar.producao_tecnica.length +
+    itensParaGravar.patentes.length +
+    itensParaGravar.eventos.length
 
   const handleConfirmarEGravar = async () => {
     if (gravando || totaisGlobais.tabelasMarcadas === 0) return
@@ -231,13 +326,7 @@ export function RevisaoImportacaoDialog({
     setRelatorioGravacao(null)
 
     try {
-      const relatorio = await gravarDadosLattes(
-        {
-          docentes: itensParaGravar.docentes,
-          publicacoes: itensParaGravar.publicacoes,
-        },
-        supabaseClient,
-      )
+      const relatorio = await gravarDadosLattes(itensParaGravar, supabaseClient)
 
       setRelatorioGravacao(relatorio)
 
@@ -246,7 +335,21 @@ export function RevisaoImportacaoDialog({
         relatorio.docentes.inseridos > 0 ||
         relatorio.docentes.atualizados > 0 ||
         relatorio.publicacoes.inseridos > 0 ||
-        relatorio.publicacoes.atualizados > 0
+        relatorio.publicacoes.atualizados > 0 ||
+        relatorio.orientacoes.inseridos > 0 ||
+        relatorio.orientacoes.atualizados > 0 ||
+        relatorio.bancas.inseridos > 0 ||
+        relatorio.bancas.atualizados > 0 ||
+        relatorio.projetos_pesquisa.inseridos > 0 ||
+        relatorio.projetos_pesquisa.atualizados > 0 ||
+        relatorio.premiacoes.inseridos > 0 ||
+        relatorio.premiacoes.atualizados > 0 ||
+        relatorio.producao_tecnica.inseridos > 0 ||
+        relatorio.producao_tecnica.atualizados > 0 ||
+        relatorio.patentes.inseridos > 0 ||
+        relatorio.patentes.atualizados > 0 ||
+        relatorio.eventos.inseridos > 0 ||
+        relatorio.eventos.atualizados > 0
 
       if (gravouAlgo && onGravacaoSucesso) {
         onGravacaoSucesso(relatorio)
@@ -339,9 +442,9 @@ export function RevisaoImportacaoDialog({
             <div className="flex items-center gap-2">
               <Info className="h-4 w-4 text-blue-600 shrink-0" />
               <span>
-                <strong>Subetapa 2B — Gravação no Banco:</strong> Disponível para{' '}
-                <strong>Docentes</strong> e <strong>Publicações</strong>.{' '}
-                {resultado.curriculosProcessadosCount} currículo(s) pronto(s) para sincronização.
+                <strong>Subetapa 2C — Gravação Completa no Banco:</strong> Disponível para todas as{' '}
+                <strong>9 tabelas</strong> do sistema. {resultado.curriculosProcessadosCount}{' '}
+                currículo(s) pronto(s) para sincronização.
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -443,14 +546,6 @@ export function RevisaoImportacaoDialog({
                             Excluída da gravação
                           </Badge>
                         )}
-                        {id !== 'docentes' && id !== 'publicacoes' && (
-                          <Badge
-                            variant="outline"
-                            className="text-slate-500 bg-slate-100 border-slate-200 text-[10px]"
-                          >
-                            Gravação futura (ignorado nesta subetapa)
-                          </Badge>
-                        )}
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5">{dados.descricao}</p>
                     </div>
@@ -533,80 +628,50 @@ export function RevisaoImportacaoDialog({
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {/* Resultado Docentes */}
-                <div className="bg-white p-2.5 rounded border border-slate-200">
-                  <div className="flex items-center justify-between font-medium text-slate-800 mb-1">
-                    <span className="flex items-center gap-1.5">
-                      <Users className="h-3.5 w-3.5 text-primary" />
-                      Docentes
-                    </span>
-                    {!tabelasSelecionadas.docentes && (
-                      <span className="text-[10px] text-slate-400 font-normal">
-                        Não selecionada
-                      </span>
-                    )}
-                  </div>
-                  {tabelasSelecionadas.docentes ? (
-                    <div className="text-slate-600 text-[11px] space-y-0.5">
-                      <p>
-                        Docentes:{' '}
-                        <strong className="text-emerald-700 font-semibold">
-                          {relatorioGravacao.docentes.inseridos} inseridos
-                        </strong>
-                        ,{' '}
-                        <strong className="text-sky-700 font-semibold">
-                          {relatorioGravacao.docentes.atualizados} atualizados
-                        </strong>
-                        {relatorioGravacao.docentes.ignorados > 0 && (
-                          <span className="text-slate-400">
-                            {' '}
-                            ({relatorioGravacao.docentes.ignorados} ignorados)
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-slate-400 text-[11px]">Tabela excluída pelo usuário.</p>
-                  )}
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                {TABELAS_ORDEM.map(({ id, rotulo, icone: Icone }) => {
+                  const cont = (relatorioGravacao as any)[id] as
+                    | { inseridos: number; atualizados: number; ignorados: number }
+                    | undefined
+                  const marcada = tabelasSelecionadas[id]
 
-                {/* Resultado Publicações */}
-                <div className="bg-white p-2.5 rounded border border-slate-200">
-                  <div className="flex items-center justify-between font-medium text-slate-800 mb-1">
-                    <span className="flex items-center gap-1.5">
-                      <FileText className="h-3.5 w-3.5 text-primary" />
-                      Publicações
-                    </span>
-                    {!tabelasSelecionadas.publicacoes && (
-                      <span className="text-[10px] text-slate-400 font-normal">
-                        Não selecionada
-                      </span>
-                    )}
-                  </div>
-                  {tabelasSelecionadas.publicacoes ? (
-                    <div className="text-slate-600 text-[11px] space-y-0.5">
-                      <p>
-                        Publicações:{' '}
-                        <strong className="text-emerald-700 font-semibold">
-                          {relatorioGravacao.publicacoes.inseridos} inseridas
-                        </strong>
-                        ,{' '}
-                        <strong className="text-sky-700 font-semibold">
-                          {relatorioGravacao.publicacoes.atualizados} atualizadas
-                        </strong>
-                        {relatorioGravacao.publicacoes.ignorados > 0 && (
-                          <span className="text-slate-400">
-                            {' '}
-                            ({relatorioGravacao.publicacoes.ignorados} ignoradas)
+                  return (
+                    <div key={id} className="bg-white p-2.5 rounded border border-slate-200">
+                      <div className="flex items-center justify-between font-medium text-slate-800 mb-1">
+                        <span className="flex items-center gap-1.5">
+                          <Icone className="h-3.5 w-3.5 text-primary" />
+                          {rotulo}
+                        </span>
+                        {!marcada && (
+                          <span className="text-[10px] text-slate-400 font-normal">
+                            Não selecionada
                           </span>
                         )}
-                      </p>
+                      </div>
+                      {marcada && cont ? (
+                        <div className="text-slate-600 text-[11px] space-y-0.5">
+                          <p>
+                            <strong className="text-emerald-700 font-semibold">
+                              {cont.inseridos} inserido(s)
+                            </strong>
+                            ,{' '}
+                            <strong className="text-sky-700 font-semibold">
+                              {cont.atualizados} atualizado(s)
+                            </strong>
+                            {cont.ignorados > 0 && (
+                              <span className="text-slate-400">
+                                {' '}
+                                ({cont.ignorados} ignorado(s))
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-slate-400 text-[11px]">Tabela excluída pelo usuário.</p>
+                      )}
                     </div>
-                  ) : (
-                    <p className="text-slate-400 text-[11px]">Tabela excluída pelo usuário.</p>
-                  )}
-                </div>
+                  )
+                })}
               </div>
 
               {/* Erros detalhados se houver */}

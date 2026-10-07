@@ -190,4 +190,122 @@ describe('Subetapa 2B - Integração UI de Gravação (Lógica Offline)', () => 
 
     expect(gravouAlgo).toBe(true)
   })
+
+  it('4. Subetapa 2C: grava todas as 9 tabelas selecionadas quando fornecidas', async () => {
+    const tabelasMockData: Record<string, any[]> = {
+      docentes: [],
+      publicacoes: [],
+      orientacoes: [],
+      bancas: [],
+      projetos_pesquisa: [],
+      premiacoes: [],
+      producao_tecnica: [],
+      patentes: [],
+      eventos: [],
+      discentes: [{ id: 99, nome: 'Aluno A' }],
+    }
+
+    const mockClient = {
+      from: vi.fn((table: string) => {
+        const store = tabelasMockData[table] || []
+        return {
+          select: vi.fn().mockResolvedValue({ data: [...store], error: null }),
+          insert: vi.fn((rows: any[]) => {
+            const created = rows.map((r, i) => ({ id: store.length + i + 1, ...r }))
+            store.push(...created)
+            return {
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({
+                  data: created[0],
+                  error: null,
+                }),
+              }),
+            }
+          }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        }
+      }),
+    }
+
+    const relatorio = await gravarDadosLattes(
+      {
+        docentes: [{ id_lattes: '3104369029830651', nome: 'Ledjane Silva Barreto' }],
+        publicacoes: [
+          { titulo: 'Artigo 1', ano: 2023, autores: 'Barreto, L.', periodico: 'Revista' },
+        ],
+        orientacoes: [
+          {
+            discente_nome: 'Aluno A',
+            tipo: 'Mestrado',
+            inicio: '2023',
+            status: 'concluido',
+            docente_identificador: '3104369029830651',
+          },
+        ],
+        bancas: [
+          {
+            titulo_trabalho: 'Banca Dissertação',
+            data: '2023',
+            tipo: 'Mestrado',
+            membros: 'Prof 1',
+          },
+        ],
+        projetos_pesquisa: [
+          {
+            titulo: 'Projeto Nanocompósitos',
+            inicio: '2022',
+            fim: '2025',
+            financiamento: true,
+            orgao_fomento: 'CNPq',
+          },
+        ],
+        premiacoes: [
+          {
+            titulo: 'Prêmio Destaque',
+            ano: 2024,
+            nome_premiado: 'Ledjane Silva Barreto',
+            instituicao: 'CAPES',
+          },
+        ],
+        producao_tecnica: [
+          {
+            titulo: 'Software de Cálculo',
+            ano: 2023,
+            tipo: 'Software',
+            autores: 'Barreto, L.',
+          },
+        ],
+        patentes: [
+          {
+            titulo: 'Processo de síntese de nanopartículas',
+            status: 'Pendente',
+            autores: 'Barreto, L.',
+            inpi: 'BR 10 2023 0001',
+          },
+        ],
+        eventos: [
+          {
+            docente: 'Ledjane Silva Barreto',
+            evento: 'CBECiMat 2024',
+            local_data: 'São Paulo - 2024',
+            papel: 'Apresentador de Trabalho',
+          },
+        ],
+      },
+      mockClient as any,
+    )
+
+    expect(relatorio.docentes.inseridos).toBe(1)
+    expect(relatorio.publicacoes.inseridos).toBe(1)
+    expect(relatorio.orientacoes.inseridos).toBe(1)
+    expect(relatorio.bancas.inseridos).toBe(1)
+    expect(relatorio.projetos_pesquisa.inseridos).toBe(1)
+    expect(relatorio.premiacoes.inseridos).toBe(1)
+    expect(relatorio.producao_tecnica.inseridos).toBe(1)
+    expect(relatorio.patentes.inseridos).toBe(1)
+    expect(relatorio.eventos.inseridos).toBe(1)
+    expect(relatorio.erros).toHaveLength(0)
+  })
 })
