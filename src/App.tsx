@@ -26,40 +26,39 @@ import PrintView from '@/pages/PrintView'
 import NotFound from '@/pages/NotFound'
 
 const App = () => {
-  const x: number = "definitely not a number";
   return (
-  <BrowserRouter>
-    <AuthProvider>
-      <TooltipProvider>
-        <KeepAlive />
-        <Toaster />
-        <Sonner position="top-right" />
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route element={<Layout />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/docentes" element={<Docentes />} />
-            <Route path="/discentes" element={<Discentes />} />
-            <Route path="/egressos" element={<Egressos />} />
-            <Route path="/bancas" element={<Bancas />} />
-            <Route path="/orientacoes" element={<Orientacoes />} />
-            <Route path="/disciplinas" element={<Disciplinas />} />
-            <Route path="/projetos-pesquisa" element={<ProjetosPesquisa />} />
-            <Route path="/publicacoes" element={<Publicacoes />} />
-            <Route path="/producao-tecnica" element={<ProducaoTecnica />} />
-            <Route path="/patentes" element={<Patentes />} />
-            <Route path="/eventos" element={<Eventos />} />
-            <Route path="/mobilidade" element={<Mobilidade />} />
-            <Route path="/impacto-social" element={<ImpactoSocial />} />
-            <Route path="/premiacoes" element={<Premiacoes />} />
-            <Route path="/imprimir/:modulo" element={<PrintView />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </TooltipProvider>
-    </AuthProvider>
-  </BrowserRouter>
-  );
+    <BrowserRouter>
+      <AuthProvider>
+        <TooltipProvider>
+          <KeepAlive />
+          <Toaster />
+          <Sonner position="top-right" />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route element={<Layout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/docentes" element={<Docentes />} />
+              <Route path="/discentes" element={<Discentes />} />
+              <Route path="/egressos" element={<Egressos />} />
+              <Route path="/bancas" element={<Bancas />} />
+              <Route path="/orientacoes" element={<Orientacoes />} />
+              <Route path="/disciplinas" element={<Disciplinas />} />
+              <Route path="/projetos-pesquisa" element={<ProjetosPesquisa />} />
+              <Route path="/publicacoes" element={<Publicacoes />} />
+              <Route path="/producao-tecnica" element={<ProducaoTecnica />} />
+              <Route path="/patentes" element={<Patentes />} />
+              <Route path="/eventos" element={<Eventos />} />
+              <Route path="/mobilidade" element={<Mobilidade />} />
+              <Route path="/impacto-social" element={<ImpactoSocial />} />
+              <Route path="/premiacoes" element={<Premiacoes />} />
+              <Route path="/imprimir/:modulo" element={<PrintView />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </TooltipProvider>
+      </AuthProvider>
+    </BrowserRouter>
+  )
 }
 
 if (typeof window !== 'undefined' && !(import.meta as any).env?.VITE_SUPABASE_URL) {

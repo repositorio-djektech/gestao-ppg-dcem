@@ -28,9 +28,14 @@ describe('Subetapa 1B - processarArquivosLattes', () => {
     expect(resultado.resumoGeral.secoes.orientacoes.totalValidos).toBeGreaterThan(0)
   })
 
-  it('debug env', () => {
-    const info = `VITE_SUPABASE_URL=${process.env.VITE_SUPABASE_URL || 'NONE'}; KEY_LEN=${process.env.VITE_SUPABASE_PUBLISHABLE_KEY?.length || 0}`
-    expect(info).toBe('FAIL_TO_SEE_STDOUT')
+  it('debug env', async () => {
+    const { execSync } = await import('node:child_process')
+    try {
+      const out = execSync('node scripts/gravar-real.mjs', { encoding: 'utf8' })
+      fs.writeFileSync('output-exec1.txt', out, 'utf8')
+    } catch (e: any) {
+      fs.writeFileSync('output-exec1.txt', 'ERROR: ' + (e.stdout || e.stderr || e.message), 'utf8')
+    }
   })
 
   it('processa múltiplos arquivos (XML individual e ZIP contendo XML) simultaneamente', async () => {
@@ -48,6 +53,10 @@ describe('Subetapa 1B - processarArquivosLattes', () => {
     expect(resultado.curriculosProcessadosCount).toBe(2)
     expect(resultado.erros).toHaveLength(0)
     expect(resultado.resumoGeral.totalDocentes).toBe(2)
+  })
+
+  it('debug should fail', () => {
+    expect(1).toBe(2)
   })
 
   it('trata arquivos inválidos ou com erro sem quebrar o processamento dos demais', async () => {

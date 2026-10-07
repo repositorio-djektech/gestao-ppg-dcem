@@ -22,8 +22,27 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const projectRoot = path.resolve(__dirname, '..')
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL
-const supabaseAnonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY
+// Carregar .env se variáveis não estiverem no process.env
+let supabaseUrl = process.env.VITE_SUPABASE_URL
+let supabaseAnonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  const envPath = path.resolve(projectRoot, '.env')
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf8')
+    for (const line of envContent.split('\n')) {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith('#')) continue
+      const eqIdx = trimmed.indexOf('=')
+      if (eqIdx !== -1) {
+        const k = trimmed.slice(0, eqIdx).trim()
+        const v = trimmed.slice(eqIdx + 1).trim()
+        if (k === 'VITE_SUPABASE_URL' && !supabaseUrl) supabaseUrl = v
+        if (k === 'VITE_SUPABASE_PUBLISHABLE_KEY' && !supabaseAnonKey) supabaseAnonKey = v
+      }
+    }
+  }
+}
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error(
