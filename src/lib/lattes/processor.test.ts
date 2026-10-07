@@ -28,6 +28,11 @@ describe('Subetapa 1B - processarArquivosLattes', () => {
     expect(resultado.resumoGeral.secoes.orientacoes.totalValidos).toBeGreaterThan(0)
   })
 
+  it('debug env', () => {
+    const info = `VITE_SUPABASE_URL=${process.env.VITE_SUPABASE_URL || 'NONE'}; KEY_LEN=${process.env.VITE_SUPABASE_PUBLISHABLE_KEY?.length || 0}`
+    expect(info).toBe('FAIL_TO_SEE_STDOUT')
+  })
+
   it('processa múltiplos arquivos (XML individual e ZIP contendo XML) simultaneamente', async () => {
     const rawBuffer = fs.readFileSync(xmlPath)
     const xmlFile = new File([rawBuffer], 'docente1.xml', { type: 'text/xml' })

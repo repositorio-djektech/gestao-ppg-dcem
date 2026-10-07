@@ -25,7 +25,9 @@ import Premiacoes from '@/pages/Premiacoes'
 import PrintView from '@/pages/PrintView'
 import NotFound from '@/pages/NotFound'
 
-const App = () => (
+const App = () => {
+  const x: number = "definitely not a number";
+  return (
   <BrowserRouter>
     <AuthProvider>
       <TooltipProvider>
@@ -57,7 +59,8 @@ const App = () => (
       </TooltipProvider>
     </AuthProvider>
   </BrowserRouter>
-)
+  );
+}
 
 if (typeof window !== 'undefined' && !(import.meta as any).env?.VITE_SUPABASE_URL) {
   throw new Error('MISSING_SUPABASE_URL: ' + JSON.stringify((import.meta as any).env))

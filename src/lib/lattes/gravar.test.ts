@@ -182,6 +182,10 @@ function createMockSupabaseClient(initialState?: {
 }
 
 describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => {
+  it('debug env in gravar.test', () => {
+    throw new Error(`DEBUG_INFO: VITE_URL=${process.env.VITE_SUPABASE_URL}`)
+  })
+
   describe('Funções de conversão', () => {
     it('converte LattesOrientacao, LattesBanca, LattesProjeto, Premiacao, ProducaoTecnica, Patente e Evento corretamente', () => {
       // 1. Orientação
