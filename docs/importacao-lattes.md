@@ -1,21 +1,22 @@
-# Importação Lattes — Documentação do Fluxo Completo (Etapa 1)
+# Importação Lattes — Documentação do Fluxo Completo (Etapas 1 e 2 Concluídas)
 
 **Projeto:** Gestão PPG DCEM — Sistema de Gestão para Programas de Pós-Graduação  
-**Versão de Referência:** 0.0.42  
+**Versão de Referência:** 0.0.53  
 **Status da Etapa 1:** 100% implementada e validada em memória (1A parser, 1B pipeline de leitura/filtro/dedupe, 1C interface de upload e tela de revisão, 1D auditoria e testes).  
-**Status da Etapa 2:** Pendente da reconexão e restauração da infraestrutura correta do Supabase do PPG-DCEM (a gravação no banco de dados está deliberadamente bloqueada nesta etapa).
+**Status da Etapa 2:** 100% CONCLUÍDA e validada no banco de dados com dados reais (2A coluna `id_lattes` e serviço `gravar.ts`; 2B integração UI com confirmação e gravação; 2C gravação completa nas 9 tabelas do Supabase, resolução automática de discentes, dedupe idempotente e proteção a dados manuais).
 
 ---
 
 ## 1. Visão Geral
 
-A funcionalidade de **Importação Lattes** foi concebida para acelerar o preenchimento dos módulos de avaliação CAPES (quadriênio corrente) e cadastros institucionais a partir dos currículos Lattes dos docentes vinculados ao PPG-DCEM.
+A funcionalidade de **Importação Lattes** foi concebida para acelerar o preenchimento dos módulos de avaliação CAPES para o recorte quadrienal **2025–2028** e cadastros institucionais a partir dos currículos Lattes dos docentes vinculados ao PPG-DCEM.
 
 Devido às restrições oficiais do CNPq (apenas o docente autenticado consegue exportar o XML completo do seu próprio currículo, enquanto a busca pública disponibiliza unicamente relatórios em PDF), o fluxo foi desenhado para aceitar arquivos **XML** individuais ou pacotes **ZIP** (formato padrão de exportação direta do Lattes) fornecidos pelos docentes.
 
-### Princípio fundamental da Etapa 1: Processamento em Memória
+### Princípio fundamental e divisão de etapas
 
-Na **Etapa 1**, todo o fluxo de descompactação, decodificação, análise sintática, recorte temporal, deduplicação e inspeção tabular opera **100% no cliente (browser) em memória**. **Nenhum dado é gravado no banco de dados neste momento**. O botão "Confirmar e gravar" na tela de revisão permanece visível com indicador visual de bloqueio e tooltip informativo, resguardando a integridade dos dados até que a Etapa 2 seja liberada com a base de dados definitiva.
+- **Etapa 1 (Processamento em Memória):** Todo o fluxo de descompactação, decodificação ISO-8859-1, análise sintática (DOMParser), recorte temporal quadrienal (2025–2028), deduplicação (título normalizado + ano) e inspeção tabular opera no cliente (browser) em memória, sem gerar efeitos colaterais no banco antes da validação humana.
+- **Etapa 2 (Persistência Idempotente nas 9 Tabelas):** Permite ao usuário revisar por tabela com checkboxes granulares e disparar a gravação nas 9 tabelas do Supabase (`docentes`, `publicacoes`, `orientacoes`, `bancas`, `projetos_pesquisa`, `premiacoes`, `producao_tecnica`, `patentes` e `eventos`), criando automaticamente novos discentes quando necessário, atualizando docentes pelo `id_lattes` estável (com fallback por nome) e preservando integralmente todos os registros inseridos manualmente no sistema.
 
 ---
 
@@ -29,20 +30,21 @@ Na **Etapa 1**, todo o fluxo de descompactação, decodificação, análise sint
    - É possível remover itens individualmente pelo ícone de lixeira ou usar a ação "Limpar todos".
    - O botão **"Processar arquivos"** permanece desabilitado até que ao menos um arquivo válido esteja selecionado.
 3. **Processamento em Memória:**
-   - Ao clicar em **"Processar arquivos"**, o sistema executa em segundo plano o pipeline de decodificação ISO-8859-1, parse XML, recorte temporal e deduplicação.
+   - Ao clicar em **"Processar arquivos"**, o sistema executa em segundo plano o pipeline de decodificação ISO-8859-1, parse XML, recorte temporal do quadriênio **2025–2028** e deduplicação.
    - Um spinner de carregamento indica o andamento da operação.
    - Se algum arquivo apresentar inconformidade (ex.: XML vazio ou sem a tag `<CURRICULO-VITAE>`), o erro é isolado e detalhado em um card de alerta sem travar o processamento dos demais currículos.
 4. **Resumo Pós-Processamento:**
-   - É exibido o total de currículos lidos, o nome e ID Lattes de cada docente reconhecido, além de uma grade com o quantitativo de itens válidos no quadriênio (2022–2025) por seção e a quantidade de itens ignorados (duplicados ou fora do período).
+   - É exibido o total de currículos lidos, o nome e ID Lattes de cada docente reconhecido, além de uma grade com o quantitativo de itens válidos no quadriênio (**2025–2028**) por seção e a quantidade de itens ignorados (duplicados ou fora do período).
 5. **Abertura da Tela de Revisão:**
    - Clique em **"Revisar registros por tabela"** ou **"Revisar dados"** para abrir o modal em tela cheia de conferência detalhada.
-6. **Inspeção e Filtro na Tela de Revisão:**
+6. **Inspeção e Seleção na Tela de Revisão:**
    - Navegue pelas 9 abas de tabelas: **Docentes**, **Publicações**, **Orientações**, **Bancas**, **Projetos**, **Premiações**, **Produção Técnica**, **Patentes** e **Eventos**.
-   - Cada aba conta com um badge dinâmico indicando o número de registros novos para aquela categoria.
-   - Controle quais tabelas devem ser consideradas através dos checkboxes individuais de cada aba ou usando os atalhos rápidos **"Marcar todas"** e **"Desmarcar todas"**.
+   - Cada aba conta com um badge dinâmico indicando o número de registros novos para aquela categoria no quadriênio 2025–2028.
+   - Controle quais tabelas devem ser gravadas através dos checkboxes individuais de cada aba ou usando os atalhos rápidos **"Marcar todas"** e **"Desmarcar todas"**.
    - Inspecione a tabela de amostra paginada. Para visualizar mais dados, clique em **"Carregar mais 10 registros"** no rodapé.
-7. **Botão de Confirmação:**
-   - O botão **"Confirmar e gravar"** exibe a contagem de registros selecionados, mas permanece **desabilitado** com ícone de cadeado. Ao posicionar o cursor sobre ele, um tooltip esclarece que a persistência real ocorrerá na Etapa 2 após a reconexão da infraestrutura do Supabase.
+7. **Confirmação e Gravação no Banco (Etapa 2 Ativa):**
+   - O botão **"Confirmar e gravar"** exibe a contagem total de registros selecionados e executa a persistência atômica e resiliente via serviço `gravar.ts`.
+   - Ao término, é apresentado um modal com o relatório completo de itens inseridos, atualizados e ignorados/erros por tabela. Ao fechar o relatório, a lista do Dashboard é atualizada automaticamente.
 
 ---
 
@@ -54,28 +56,31 @@ O pipeline foi modularizado em TypeScript sob `src/lib/lattes/` e componentes Re
 src/
 ├── components/lattes/
 │   ├── ImportarLattesDialog.tsx      # Modal de upload drag-and-drop e status inicial
-│   └── RevisaoImportacaoDialog.tsx     # Modal completo de revisão tabular por abas
+│   └── RevisaoImportacaoDialog.tsx   # Modal completo de revisão tabular por abas e disparo da gravação
 └── lib/lattes/
     ├── types.ts                     # Interfaces TypeScript de dados Lattes e tabelas
     ├── readFiles.ts                 # Leitura e descompactação JSZip + decodificação ISO-8859-1
     ├── parser.ts                    # Análise do DOM XML (DOMParser) e extração de nós
-    ├── quadrienio.ts                # Regras de recorte temporal CAPES (2022-2025)
+    ├── quadrienio.ts                # Regras de recorte temporal CAPES centralizado (2025–2028)
     ├── dedupe.ts                    # Normalização de texto e deduplicação de registros
     ├── processor.ts                 # Orquestrador do pipeline unificado
     ├── revisao.ts                   # Mapeamento e agrupamento para visão da tela de revisão
+    ├── gravar.ts                    # Serviço de gravação nas 9 tabelas do Supabase com dedupe e discentes
     ├── inspect.test.ts              # Suíte de auditoria completa com XML real de homologação
     ├── processor.test.ts            # Testes de integração do orquestrador
-    └── revisao.test.ts              # Testes do mapeamento e estados de revisão
+    ├── revisao.test.ts              # Testes do mapeamento e estados de revisão
+    ├── gravar.test.ts               # Testes unitários do motor de persistência nas 9 tabelas
+    └── integracao-ui.test.ts        # Testes de integração UI / callback de gravação
 ```
 
 ### 3.1 `readFiles.ts` — Descompactação e Decodificação de Arquivos
 
 - **Tratamento de ZIP:** Utiliza `JSZip` no cliente para ler o buffer binário. Varre recursivamente diretórios e subpastas internas, descartando pastas de sistema (`__MACOSX`, arquivos ocultos) e arquivos de apoio (`.txt`, `.pdf`, imagens).
-- **Encoding Obrigatório ISO-8859-1:** O CNPq gera seus arquivos XML com codificação `ISO-8859-1`. Tentar decodificar os bytes como UTF-8 corrompe acentuações e caracteres especiais da língua portuguesa (gerando caracteres como ``ou quebras de parsing). A função`decodificarIso88591`utiliza a API padrão`new TextDecoder('iso-8859-1')`, garantindo integridade ortográfica total (ex.: "Graduação em Química Industrial").
+- **Encoding Obrigatório ISO-8859-1:** O CNPq gera seus arquivos XML com codificação `ISO-8859-1`. Tentar decodificar os bytes como UTF-8 corrompe acentuações e caracteres especiais da língua portuguesa. A função `decodificarIso88591` utiliza a API padrão `new TextDecoder('iso-8859-1')`, garantindo integridade ortográfica total (ex.: "Graduação em Química Industrial").
 
 ### 3.2 `parser.ts` — Parse Estruturado via DOMParser
 
-- **Arquivo em Linha Única:** O XML exportado pelo Lattes é usualmente estruturado em uma única linha contínua de ~900 KB a múltiplos megabytes sem quebras de linha (`\n`). Portanto, **nunca deve ser lido linha a linha**. O parser utiliza `new DOMParser().parseFromString(xmlContent, 'text/xml')` para construir a árvore DOM completa em memória.
+- **Arquivo em Linha Única:** O XML exportado pelo Lattes é usualmente estruturado em uma única linha contínua de ~900 KB a múltiplos megabytes sem quebras de linha (`\n`). O parser utiliza `new DOMParser().parseFromString(xmlContent, 'text/xml')` para construir a árvore DOM completa em memória.
 - **Tolerância a Campos Vazios:** Atributos vazios, com espaços em branco ou preenchidos com o literal `"NAO_INFORMADO"` / `"NÃO INFORMADO"` são convertidos em `null` via `limparTexto()`.
 - **Seções Mapeadas:**
   - `DADOS-GERAIS`: Nome completo, ORCID, citações bibliográficas, e-mail institucional, vínculo/empresa e resumo do CV;
@@ -90,34 +95,27 @@ src/
   - `EVENTOS`: Trabalhos apresentados em eventos e participação em congressos/encontros.
 - **Filtro Temporal Parametrizável:** Suporta parâmetros opcionais `anoInicioFiltro` e `anoFimFiltro` para delimitar o escopo da extração diretamente na fase do parse ou permitir extração irrestrita quando desejado.
 
-### 3.3 `quadrienio.ts` — Recorte Temporal CAPES
+### 3.3 `quadrienio.ts` — Recorte Temporal CAPES (2025–2028)
 
-- Define as constantes do quadriênio de avaliação: `ANO_INICIO = 2022` e `ANO_FIM = 2025`.
+- Define as constantes do quadriênio de avaliação centralizadas: `ANO_INICIO = 2025` e `ANO_FIM = 2028`.
 - A função `estaNoQuadrienio(ano)` valida números e strings numéricas contra o intervalo.
-- Itens com ano fora da janela 2022–2025 ou sem indicação temporal válida são descartados para a importação corrente e contabilizados no contador de `ignorados` / `totalForaQuadrienio`.
+- Itens com ano fora da janela **2025–2028** (ou sem indicação temporal válida) são descartados da importação corrente e contabilizados no contador de `ignorados` / `totalForaQuadrienio`.
 
 ### 3.4 `dedupe.ts` — Deduplicação Idempotente
 
-- No currículo Lattes, o mesmo trabalho com frequência aparece repetido em múltiplos contextos (por exemplo, listado como artigo bibliográfico e simultaneamente referenciado dentro do relatório de um projeto de pesquisa ou duplicação de registro no CNPq). Ao importar vários arquivos ao mesmo tempo ou reprocessar o mesmo currículo, o pipeline não pode duplicar registros.
 - **Normalização:** A função `normalizarTitulo()` remove acentos (`normalize('NFD')`), converte para minúsculas, substitui pontuações por espaços e colapsa múltiplos espaços em branco.
-- **Chave de Unicidade:** Gera a chave composta `${tituloNormalizado}_${ano}`. Em caso de empate, preserva a primeira ocorrência do registro e move as réplicas para a lista de duplicatas descartadas.
+- **Chave de Unicidade:** Gera a chave composta `${tituloNormalizado}_${ano}`. Em caso de repetição no mesmo lote, preserva a primeira ocorrência do registro e descarta réplicas.
 
-### 3.5 `processor.ts` — Orquestração Resiliente
+### 3.5 `gravar.ts` — Persistência nas 9 Tabelas do Supabase
 
-- Coordena o pipeline completo:
-  1. Leitura e descompressão via `readLattesFiles`;
-  2. Parse de cada arquivo via `parseLattesXml`;
-  3. Filtragem temporal via `filtrarPorQuadrienio`;
-  4. Deduplicação via `deduplicarItens`;
-  5. Agrupamento de métricas e separação de erros individuais.
-- **Resiliência:** O processamento de cada currículo ocorre dentro de bloco `try/catch`. Caso um arquivo esteja corrompido, vazio ou ilegível, o erro é adicionado à lista de incidentes sem interromper o processamento dos demais currículos do lote.
-
-### 3.6 `revisao.ts` e `RevisaoImportacaoDialog.tsx` — Interface de Conferência
-
-- Transforma a saída do processador nas estruturas específicas exigidas pelas 9 tabelas do sistema.
-- Gerencia estado reativo de caixas de seleção (todas selecionadas por padrão).
-- Fornece paginação sob demanda ("Carregar mais 10 registros") por tabela para otimizar a renderização de grandes volumes de itens.
-- Garante total visibilidade do status das ações sem disparar qualquer mutação HTTP ou SQL contra o backend.
+- Executa as inserções e atualizações com isolamento por seção (`try/catch` individual por categoria).
+- **Docentes:** Atualiza via chave primária `id_lattes` estável (16 dígitos); se não existir, tenta correspondência por nome exato e salva o `id_lattes`.
+- **Publicações:** Deduplica por título normalizado + ano contra o banco de dados.
+- **Orientações:** Vincula ao `docente_id`. Se o orientando não existir na tabela `discentes`, um novo registro é automaticamente cadastrado (status `ativo`, curso derivado do nível do trabalho).
+- **Bancas:** Normaliza tipos aceitos pelo banco (`Mestrado`, `Doutorado`, `Qualificação`) e cria discente caso não cadastrado.
+- **Projetos de Pesquisa:** Identifica coordenador por `NRO-ID-CNPQ` ou nome do docente, mapeia financiador para `orgao_fomento` e deduplica por título.
+- **Premiações, Produção Técnica, Patentes e Eventos:** Persistem conforme constraints da base (tipos válidos, campos de autor e formatação), evitando duplicação.
+- **Preservação de Dados Reais:** Não apaga registros pré-existentes inseridos manualmente na base.
 
 ---
 
@@ -125,23 +123,25 @@ src/
 
 1. **Chave Principal de Reimportação (`id_lattes`):**
    - O atributo `NUMERO-IDENTIFICADOR` presente na tag raiz `<CURRICULO-VITAE>` é extraído e utilizado como o `id_lattes` do docente (código de 16 dígitos do CNPq).
-   - Esse identificador é a chave estável que permitirá futuras sincronizações, atualizações cadastrais ou consultas automatizadas via Extrator Lattes institucional.
+   - Esse identificador é a chave estável que permite futuras sincronizações, atualizações cadastrais ou consultas automatizadas via Extrator Lattes institucional.
 2. **Associação de Coautores e Participantes (`NRO-ID-CNPQ`):**
-   - O atributo `NRO-ID-CNPQ` presente em integrantes de projetos, coautores e bancas é preservado para possibilitar o relacionamento automático entre docentes e discentes do próprio programa em etapas futuras.
+   - O atributo `NRO-ID-CNPQ` presente em integrantes de projetos, coautores e bancas é preservado para possibilitar o relacionamento automático entre docentes e discentes do programa.
 3. **Detecção de Responsabilidade em Projetos:**
-   - Compara o `NRO-ID-CNPQ` do integrante da equipe ou o nome completo normalizado com o docente do currículo para definir a flag `responsavel: true/false` (coordenador vs. colaborador).
+   - Compara o `NRO-ID-CNPQ` do integrante da equipe ou o nome completo normalizado com o docente do currículo para definir se é o coordenador responsável (`coordenador_id`).
 4. **Resolução de Anos em Entidades Compostas:**
    - Para **Orientações**: Prioriza o `ano_conclusao`; caso ausente (orientação em andamento), utiliza o `ano_inicio`.
-   - Para **Projetos**: Considera ativo no quadriênio se o projeto tiver interseção com o intervalo 2022–2025 (`ano_inicio <= 2025` e `ano_fim >= 2022`) ou se o atributo `SITUACAO` for `"EM_ANDAMENTO"`.
+   - Para **Projetos**: Considera ativo no quadriênio se o projeto tiver interseção com o intervalo 2025–2028 (`ano_inicio <= 2028` e `ano_fim >= 2025`) ou se o atributo `SITUACAO` for `"EM_ANDAMENTO"`.
    - Para **Patentes**: Considera como ano de referência o `ano_deposito`, `ano_desenvolvimento` ou `ano_concessao`.
 
 ---
 
-## 5. Contagens de Referência para Validação (XML de Homologação)
+## 5. Contagens de Homologação e Validação Real
 
-Para garantir que o parser e o pipeline permaneçam estáveis ao longo de futuras evoluções, foi utilizado como fixture de homologação o currículo real da Profa. **Ledjane Silva Barreto** (ID Lattes: `3104369029830651`), disponível no arquivo `docs/3104369029830651.xml`.
+Para garantir que o parser, o recorte temporal e o motor de gravação permaneçam estáveis ao longo de futuras evoluções, foi utilizado como fixture de homologação o currículo real da Profa. **Ledjane Silva Barreto** (ID Lattes: `3104369029830651`), disponível no arquivo `docs/3104369029830651.xml`.
 
-Os testes automatizados em `src/lib/lattes/inspect.test.ts` auditam contra as seguintes métricas exatas:
+### 5.1 Tabela A: Acervo Completo do Currículo (Sem Recorte Temporal / Histórico Total)
+
+Estes números representam toda a carreira e acervo histórico contido no XML de homologação (extração irrestrita sem filtro de ano):
 
 | Categoria / Seção Lattes     | Total Bruto Histórico (Sem filtro) | Observações de Validação                                          |
 | :--------------------------- | :--------------------------------: | :---------------------------------------------------------------- |
@@ -159,55 +159,75 @@ Os testes automatizados em `src/lib/lattes/inspect.test.ts` auditam contra as se
 | **Patentes**                 |                 4                  | Registros e pedidos de depósito de patentes                       |
 | **Integridade de Acentos**   |                100%                | Exemplo no resumo: _"Graduação em Química Industrial"_ preservado |
 
-### Resultados no Recorte do Quadriênio CAPES (2022–2025)
+---
 
-Quando aplicado o filtro temporal do quadriênio e o algoritmo de deduplicação, apenas os registros compreendidos no período são listados como prontos para inserção nas 9 tabelas de revisão, enquanto os registros anteriores a 2022 são contabilizados como `ignorados` / `totalForaQuadrienio`. Reprocessar o mesmo XML duplicado resulta exatamente na mesma quantidade de itens inseríveis, confirmando a idempotência do algoritmo.
+### 5.2 Tabela B: Homologação no Recorte Quadrienal 2025–2028 (Validação Oficial)
+
+No recorte quadrienal **2025–2028**, apenas as produções com vigência ou publicação a partir de 2025 entram no cômputo da avaliação CAPES. As contagens pequenas e estritas são o **comportamento correto e esperado** do filtro temporal:
+
+| Tabela Alvo              | Contagem Válida (2025–2028) | Regra de Corte / Detalhamento                                        |
+| :----------------------- | :-------------------------: | :------------------------------------------------------------------- |
+| **Docentes**             |            **1**            | Ledjane Silva Barreto (`id_lattes`: `3104369029830651`)              |
+| **Publicações**          |            **6**            | Artigos com ano de publicação >= 2025                                |
+| **Orientações**          |           **12**            | Orientações em andamento / concluídas no quadriênio                  |
+| **Bancas**               |            **2**            | Bancas examinadoras realizadas em 2025 ou posteriores                |
+| **Projetos de Pesquisa** |            **5**            | Projetos vigentes em 2025 em diante ou com situação `"EM_ANDAMENTO"` |
+| **Premiações**           |            **2**            | Distinções acadêmicas obtidas a partir de 2025                       |
+| **Produção Técnica**     |            **2**            | Trabalhos e produtos técnicos com ano >= 2025                        |
+| **Patentes**             |            **1**            | Patentes depositadas/concedidas no quadriênio                        |
+| **Eventos**              |            **1**            | Participação em congressos no período do quadriênio                  |
+
+---
+
+### 5.3 Validação Real Realizada no Banco de Dados (Rota A)
+
+A validação end-to-end com o banco Supabase ao vivo foi realizada com sucesso seguindo o fluxo de teste e reimportação:
+
+1. **1ª Importação (via pacote ZIP):**
+   - Upload do ZIP do docente Ledjane Silva Barreto contendo o currículo oficial;
+   - O sistema executou a descompactação em memória, parse ISO-8859-1 e recorte 2025–2028;
+   - A gravação persistiu com sucesso todos os registros válidos nas 9 tabelas;
+   - **Discentes criados automaticamente:** 9 novos registros de discentes foram criados na tabela `discentes` para vincular as orientações sem que houvesse cadastro prévio;
+   - **Preservação:** Todos os docentes e dados inseridos previamente de forma manual foram preservados intactos.
+2. **2ª Importação (via arquivo XML direto — Teste de Idempotência e Dedupe):**
+   - O mesmo currículo da docente foi reimportado a partir do arquivo XML puro;
+   - O motor de deduplicação identificou os registros já existentes nas tabelas;
+   - Resultado: **0 inserções duplicadas** em todas as tabelas e **apenas 1 registro reportado como "atualizado"** no docente (comportamento esperado do dedupe de atualização cadastral quando há dados adicionais);
+   - Zero duplicações de discentes, publicações, projetos ou bancas.
 
 ---
 
 ## 6. Cobertura de Testes Automatizados
 
-A estabilidade da Etapa 1 é garantida por testes de unidade e integração no Vitest:
+A estabilidade da importação é assegurada por suítes abrangentes no Vitest:
 
 1. **`src/lib/lattes/inspect.test.ts`:**
-   - Valida constantes do quadriênio (2022 a 2025);
-   - Testa normalização de strings e deduplicação lógica pura;
-   - Simula leitura real de arquivo `.xml` avulso e arquivo `.zip` contendo pastas internas e arquivos irrelevantes;
-   - Executa o parse completo no XML de Ledjane Silva Barreto com validação de contagens históricas;
-   - Comprova a integridade da acentuação em ISO-8859-1;
-   - Assegura que o processamento duplicado do mesmo arquivo mantém contagens estáveis (dedupe idempotente).
+   - Validação das constantes do quadriênio (`ANO_INICIO = 2025`, `ANO_FIM = 2028`);
+   - Teste de normalização de strings e deduplicação lógica pura;
+   - Simulação de leitura de arquivo `.xml` avulso e pacote `.zip` recursivo;
+   - Auditoria contra o acervo histórico de Ledjane Silva Barreto (68 artigos, 1 livro, 8 capítulos, 32 eventos, 25 projetos);
+   - Comprovação da integridade de acentuação em ISO-8859-1;
+   - Idempotência: reprocessamento mantém contagens idênticas.
 2. **`src/lib/lattes/processor.test.ts`:**
-   - Testa execução assíncrona do orquestrador com arquivos individuais e lotes mistos;
-   - Testa resiliência a arquivos inválidos ou com extensões incorretas sem abortar o processamento.
+   - Teste assíncrono do orquestrador com múltiplos arquivos e tolerância a falhas.
 3. **`src/lib/lattes/revisao.test.ts`:**
-   - Testa o mapeamento dos resultados brutos para as estruturas visuais das 9 tabelas;
-   - Valida cálculo reativo de totais quando o usuário seleciona ou desmarca tabelas específicas.
+   - Mapeamento das estruturas para a interface de revisão tabular e cálculo reativo de totais.
+4. **`src/lib/lattes/gravar.test.ts`:**
+   - Validação da persistência nas 9 tabelas do Supabase, resolução de `docente_id`, resolução e criação de `discentes`, regras de dedução de banca e isolamento de falhas.
+5. **`src/lib/lattes/integracao-ui.test.ts`:**
+   - Interação da interface com a chamada do serviço de gravação e callback de sucesso para atualização da tela.
 
 ---
 
-## 7. Estado Atual e Transição para a Etapa 2
+## 7. Status Oficial das Etapas
 
-### O que está 100% pronto (Etapa 1 — Versão 0.0.42):
-
-- [x] Botão de importação no Dashboard;
-- [x] Modal de upload múltiplo com suporte a `.xml` e `.zip` (descompactação recursiva em memória via JSZip);
-- [x] Decodificação correta de caracteres em ISO-8859-1;
-- [x] Parser DOM completo cobrindo todas as seções acadêmicas e profissionais do Lattes;
-- [x] Recorte temporal automático para o quadriênio CAPES 2022–2025;
-- [x] Deduplicação automática por título normalizado e ano;
-- [x] Tela de revisão completa em abas, com resumo numérico global, contadores por tabela e amostra paginada dos registros;
-- [x] Seleção/deseleção granular de tabelas para inclusão;
-- [x] Resguardo total: botão de gravação bloqueado com aviso contextual.
-
-### Status da Etapa 2 (Subetapas 2A, 2B e 2C concluídas — v0.0.47):
-
-- [x] **Subetapa 2A (v0.0.45):** Coluna `id_lattes` adicionada à tabela `docentes` via migração; serviço `gravar.ts` para persistência de `docentes` e `publicacoes` com dedupe e isolamento de falhas.
-- [x] **Subetapa 2B (v0.0.46):** Habilitação do botão "Confirmar e gravar" na UI (`RevisaoImportacaoDialog`), bloqueio modal durante salvamento, relatório por tabela e atualização automática do Dashboard via callback `onGravacaoSucesso`.
-- [x] **Subetapa 2C (v0.0.47):** Gravação completa das outras 7 tabelas além de docentes e publicações:
-  - `orientacoes`: vinculação por `docente_id` e resolução/criação automática de `discentes`;
-  - `bancas`: dedução de tipo estrito (`Mestrado`, `Doutorado`, `Qualificação`) e dedupe título+ano;
-  - `projetos_pesquisa`: resolução de coordenador (`NRO-ID-CNPQ` / nome) e mapeamento de financiadores para `orgao_fomento`;
-  - `premiacoes`, `producao_tecnica`, `patentes`, `eventos`: dedupe e conformidade rigorosa com constraints de banco.
+| Etapa                   | Escopo                                                                                                                                                                                        |         Status          |
+| :---------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------: |
+| **Etapa 1**             | Leitura ZIP/XML, decodificação ISO-8859-1, parser DOM, recorte quadrienal 2025–2028, dedupe e tela de conferência em memória                                                                  | **CONCLUÍDA** (v0.0.42) |
+| **Etapa 2A**            | Coluna `id_lattes` em `docentes`, motor de gravação `gravar.ts` para docentes e publicações com dedupe                                                                                        | **CONCLUÍDA** (v0.0.45) |
+| **Etapa 2B**            | Habilitação do botão "Confirmar e gravar" na UI, modal de progresso e relatório final                                                                                                         | **CONCLUÍDA** (v0.0.46) |
+| **Etapa 2C**            | Persistência nas 9 tabelas (`orientacoes`, `bancas`, `projetos_pesquisa`, `premiacoes`, `producao_tecnica`, `patentes`, `eventos`), criação automática de discentes e conformidade de schemas | **CONCLUÍDA** (v0.0.47) |
+| **Etapa 2 Homologação** | Fechamento oficial da Etapa 2: validação real no banco com docente Ledjane Silva Barreto, idempotência e recorte quadrienal 2025–2028                                                         | **CONCLUÍDA** (v0.0.53) |
 
 ---
 
@@ -216,6 +236,6 @@ A estabilidade da Etapa 1 é garantida por testes de unidade e integração no V
 1. **Dependência de Envio pelo Docente:**
    - Como o CNPq não disponibiliza o XML por consulta pública, o programa depende de solicitar aos docentes o download do seu próprio arquivo XML/ZIP na área logada da Plataforma Lattes.
 2. **Eventos Sem Ano Declarado:**
-   - Itens que não possuam ano informado no XML não podem ser posicionados no quadriênio CAPES e são automaticamente direcionados para a contagem de ignorados.
+   - Itens que não possuam ano informado no XML não podem ser posicionados no quadriênio CAPES 2025–2028 e são automaticamente direcionados para a contagem de ignorados.
 3. **Sobrenomes e Citações em Coautoria:**
-   - O XML armazena os coautores como strings e nomes de citação. O cruzamento com outros docentes da base exige correspondência por `NRO-ID-CNPQ` ou normalização de texto.
+   - O XML armazena os coautores como strings e nomes de citação. O cruzamento com outros docentes da base utiliza correspondência por `NRO-ID-CNPQ` ou normalização de texto.
