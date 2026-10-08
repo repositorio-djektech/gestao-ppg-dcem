@@ -1,30 +1,31 @@
 /**
  * Utilitários para busca e mapeamento de perfis na API Scopus (Elsevier).
- * Espelha a lógica de parsing da Edge Function e provê funções puras testáveis no frontend.
- * Usa a agregação de autores a partir dos resultados da Scopus Search API (content/search/scopus).
+ * Espelha a lógica de parsing da Edge Function (Pipeline de duas etapas: Search + Abstract Retrieval).
  */
 
 import { normalizarTitulo } from '@/lib/lattes/dedupe'
 
 export interface ScopusAutorCandidato {
-  /** Apenas dígitos (ex: "6602703039") */
+  /** Apenas dígitos (ex: "55490763400") */
   scopus_id: string
   /** Nome preferido do autor retornado pelo Scopus */
   nome: string
   /** Nome da instituição ou afiliação principal */
   instituicao?: string | null
-  /** Contagem de documentos indexados (disponível no plano básico) */
+  /** Contagem de documentos indexados em que o autor apareceu */
   document_count: number
-  /** Contagem de citações (disponível no plano básico) */
+  /** Contagem de citações acumuladas */
   cited_by_count: number
   /** ORCID (se presente no cadastro Scopus) */
   orcid?: string | null
+  /** Lista de afiliações distintas encontradas para o autor */
+  afiliacoes?: string[]
 }
 
 export interface BuscarAutoresScopusOpcoes {
   /** Filtro textual opcional para afiliação/instituição */
   filtroAfiliacao?: string
-  /** Limite de resultados (padrão 15, máximo 25) */
+  /** Limite de documentos a consultar no Abstract Retrieval (5 a 8) */
   limite?: number
 }
 
@@ -36,17 +37,42 @@ export interface ResultadoBuscaScopus {
   mensagemErro?: string
 }
 
+export interface ScopusDocumentoId {
+  scopus_id: string
+  title?: string
+  cited_by_count?: number
+}
+
+export interface AutorExtraidoDoc {
+  scopus_id: string
+  nome: string
+  afiliacao?: string | null
+  orcid?: string | null
+}
+
+export interface DocumentoComAutores {
+  scopus_id: string
+  title?: string
+  cited_by_count?: number
+  autores: AutorExtraidoDoc[]
+}
+
 /**
- * Normaliza um ID bruto removendo prefixos como "SCOPUS_ID:" ou "AUTHOR_ID:"
+ * Normaliza um ID bruto removendo prefixos como "SCOPUS_ID:" ou caminhos "author_id/..."
  * e caracteres não numéricos.
- * Ex: "SCOPUS_ID:6602703039" -> "6602703039"
+ * Ex: "SCOPUS_ID:55490763400" -> "55490763400"
+ * Ex: "author_id/55490763400" -> "55490763400"
  */
 export function extrairScopusId(rawId: string | null | undefined): string {
   if (!rawId) return ''
-  const digits = String(rawId)
-    .replace(/^[a-zA-Z_-]+:/, '')
+  const str = String(rawId).trim()
+  const lastSlash = str.lastIndexOf('/')
+  const candidate = lastSlash >= 0 ? str.slice(lastSlash + 1) : str
+
+  return candidate
+    .replace(/^[a-zA-Z0-9_.-]+:/, '')
+    .replace(/^2-s2\.0-/, '')
     .replace(/\D/g, '')
-  return digits
 }
 
 /**
@@ -69,7 +95,6 @@ export function montarScopusQuery(termo: string, filtroAfiliacao?: string): stri
   const termoLimpo = normalizarNomeParaScopus(termo)
   if (!termoLimpo) return ''
 
-  // Caso seja ID numérico direto
   if (/^\d+$/.test(termoLimpo)) {
     return `AU-ID(${termoLimpo})`
   }
@@ -117,20 +142,242 @@ export function montarScopusQuery(termo: string, filtroAfiliacao?: string): stri
 }
 
 /**
- * Agrega autores a partir de documentos retornados pelo endpoint Scopus Search (search-results.entry).
+ * Extrai identificadores de documento do Scopus Search (`search-results.entry`)
  */
-export function agregarAutoresDeDocumentos(
-  entries: any[],
+export function extrairDocumentIdsDeBusca(entries: any[]): ScopusDocumentoId[] {
+  if (!Array.isArray(entries)) return []
+
+  const docs: ScopusDocumentoId[] = []
+  const vistos = new Set<string>()
+
+  for (const entry of entries) {
+    if (!entry || typeof entry !== 'object') continue
+
+    const rawId = entry['dc:identifier'] || entry.eid || entry['prism:url'] || ''
+    const scopusId = extrairScopusId(rawId)
+    if (!scopusId || vistos.has(scopusId)) continue
+
+    vistos.add(scopusId)
+    const citedCount = Number(entry['citedby-count'] ?? 0)
+
+    docs.push({
+      scopus_id: scopusId,
+      title: entry['dc:title'] || '',
+      cited_by_count: Number.isFinite(citedCount) ? citedCount : 0,
+    })
+  }
+
+  return docs
+}
+
+function toArray<T = any>(val: any): T[] {
+  if (val === null || val === undefined) return []
+  return Array.isArray(val) ? val : [val]
+}
+
+/**
+ * Extrai autores e afiliações do JSON de Abstract Retrieval da Elsevier
+ */
+export function extrairAutoresDeAbstractRetrieval(abstractJson: any): AutorExtraidoDoc[] {
+  if (!abstractJson || typeof abstractJson !== 'object') return []
+
+  const root =
+    abstractJson['abstracts-retrieval-response'] ||
+    abstractJson['abstract-retrieval-response'] ||
+    abstractJson
+
+  const affilMap = new Map<string, string>()
+  const affilsRaw = toArray(root.affiliation)
+  for (const aff of affilsRaw) {
+    if (!aff || typeof aff !== 'object') continue
+    const id = String(aff['@id'] || aff.afid || aff['affiliation-id'] || '').trim()
+    const name = String(aff.affilname || aff['affiliation-name'] || aff.name || '').trim()
+    if (id && name) affilMap.set(id, name)
+  }
+
+  const autoresEncontrados: AutorExtraidoDoc[] = []
+  const idsVistosNoDoc = new Set<string>()
+
+  const registrarAutor = (
+    rawAuid: any,
+    nomeParam: string,
+    afiliacaoParam?: string | null,
+    orcidParam?: string | null,
+  ) => {
+    const scopusId = extrairScopusId(rawAuid)
+    if (!scopusId || idsVistosNoDoc.has(scopusId)) return
+
+    idsVistosNoDoc.add(scopusId)
+    autoresEncontrados.push({
+      scopus_id: scopusId,
+      nome: nomeParam.trim() || `Autor ${scopusId}`,
+      afiliacao: afiliacaoParam?.trim() || null,
+      orcid: orcidParam ? String(orcidParam).trim() : null,
+    })
+  }
+
+  // 1. root.authors.author
+  const authorsCore = toArray(root.authors?.author)
+  if (authorsCore.length > 0) {
+    for (const au of authorsCore) {
+      if (!au || typeof au !== 'object') continue
+      const rawAuid =
+        au['@auid'] || au.auid || au.authid || au['author-id'] || au['@id'] || au['author-url']
+
+      const prefName = au['preferred-name'] || {}
+      const surname = au['ce:surname'] || prefName['ce:surname'] || au.surname || ''
+      const givenName =
+        au['ce:given-name'] ||
+        prefName['ce:given-name'] ||
+        au['ce:initials'] ||
+        prefName['ce:initials'] ||
+        au['given-name'] ||
+        ''
+      const indexedName = au['ce:indexed-name'] || prefName['ce:indexed-name'] || au.authname || ''
+
+      let nome = ''
+      if (surname && givenName) {
+        nome = `${givenName} ${surname}`.trim()
+      } else if (indexedName) {
+        nome = indexedName
+      } else if (surname) {
+        nome = surname
+      }
+
+      let afiliacao: string | null = null
+      const auAffils = toArray(au.affiliation)
+      for (const af of auAffils) {
+        if (!af) continue
+        const afId = typeof af === 'object' ? String(af['@id'] || af.afid || '') : String(af)
+        if (afId && affilMap.has(afId)) {
+          afiliacao = affilMap.get(afId)!
+          break
+        }
+        if (typeof af === 'object' && (af.affilname || af['affiliation-name'])) {
+          afiliacao = String(af.affilname || af['affiliation-name'])
+          break
+        }
+      }
+
+      if (!afiliacao && affilMap.size > 0) {
+        afiliacao = affilMap.values().next().value || null
+      }
+
+      registrarAutor(rawAuid, nome, afiliacao, au['@orcid'] || au.orcid)
+    }
+  }
+
+  // 2. root.coredata['dc:creator'].author
+  const creatorAuthors = toArray(root.coredata?.['dc:creator']?.author)
+  if (creatorAuthors.length > 0) {
+    for (const au of creatorAuthors) {
+      if (!au || typeof au !== 'object') continue
+      const rawAuid = au['@auid'] || au.auid || au['author-url'] || au['@id']
+      const prefName = au['preferred-name'] || {}
+      const surname = au['ce:surname'] || prefName['ce:surname'] || au.surname || ''
+      const givenName =
+        au['ce:given-name'] ||
+        prefName['ce:given-name'] ||
+        au['ce:initials'] ||
+        prefName['ce:initials'] ||
+        ''
+      const indexedName = au['ce:indexed-name'] || prefName['ce:indexed-name'] || ''
+
+      let nome = ''
+      if (surname && givenName) {
+        nome = `${givenName} ${surname}`.trim()
+      } else if (indexedName) {
+        nome = indexedName
+      } else if (surname) {
+        nome = surname
+      }
+
+      let afiliacao: string | null = null
+      const afObj = au.affiliation
+      if (afObj) {
+        const afId =
+          typeof afObj === 'object' ? String(afObj['@id'] || afObj.afid || '') : String(afObj)
+        if (afId && affilMap.has(afId)) {
+          afiliacao = affilMap.get(afId)!
+        }
+      }
+      if (!afiliacao && affilMap.size > 0) {
+        afiliacao = affilMap.values().next().value || null
+      }
+
+      registrarAutor(rawAuid, nome, afiliacao, au['@orcid'] || au.orcid)
+    }
+  }
+
+  // 3. root.item.bibrecord.head['author-group']
+  const headAuthorGroups = toArray(
+    root.item?.bibrecord?.head?.['author-group'] || root.bibrecord?.head?.['author-group'],
+  )
+  for (const group of headAuthorGroups) {
+    if (!group || typeof group !== 'object') continue
+
+    let groupAffilName: string | null = null
+    const gAff = group.affiliation
+    if (gAff && typeof gAff === 'object') {
+      const org = gAff.organization
+      if (typeof org === 'string') {
+        groupAffilName = org
+      } else if (Array.isArray(org)) {
+        groupAffilName = org
+          .map((o) => (typeof o === 'string' ? o : o?.['$'] || ''))
+          .filter(Boolean)
+          .join(', ')
+      } else if (org && typeof org === 'object') {
+        groupAffilName = org['$'] || null
+      }
+      if (!groupAffilName && gAff['@afid']) {
+        groupAffilName = affilMap.get(String(gAff['@afid'])) || null
+      }
+    }
+
+    const groupAuthors = toArray(group.author)
+    for (const au of groupAuthors) {
+      if (!au || typeof au !== 'object') continue
+      const rawAuid = au['@auid'] || au.auid || au['@id']
+      const surname = au['ce:surname'] || au.surname || ''
+      const givenName = au['ce:given-name'] || au['ce:initials'] || au['given-name'] || ''
+      const indexedName = au['ce:indexed-name'] || ''
+
+      let nome = ''
+      if (surname && givenName) {
+        nome = `${givenName} ${surname}`.trim()
+      } else if (indexedName) {
+        nome = indexedName
+      } else if (surname) {
+        nome = surname
+      }
+
+      registrarAutor(
+        rawAuid,
+        nome,
+        groupAffilName || affilMap.values().next().value || null,
+        au['@orcid'],
+      )
+    }
+  }
+
+  return autoresEncontrados
+}
+
+/**
+ * Agrupa autores a partir dos documentos processados pelo Abstract Retrieval
+ */
+export function agregarAutoresDeAbstracts(
+  docs: DocumentoComAutores[],
   termoDeFiltro?: string,
 ): ScopusAutorCandidato[] {
-  if (!Array.isArray(entries)) return []
+  if (!Array.isArray(docs)) return []
 
   const autoresPorId = new Map<
     string,
     {
       scopus_id: string
       nome: string
-      instituicao: string | null
       document_count: number
       cited_by_count: number
       orcid?: string | null
@@ -138,134 +385,62 @@ export function agregarAutoresDeDocumentos(
     }
   >()
 
-  for (const entry of entries) {
-    if (!entry || typeof entry !== 'object') continue
-
-    const affilMap = new Map<string, string>()
-    if (Array.isArray(entry.affiliation)) {
-      for (const aff of entry.affiliation) {
-        const id = String(aff?.afid || aff?.['@id'] || '')
-        const name = aff?.affilname || aff?.['affiliation-name'] || ''
-        if (id && name) affilMap.set(id, name)
-      }
-    } else if (entry.affiliation && typeof entry.affiliation === 'object') {
-      const id = String(entry.affiliation.afid || entry.affiliation['@id'] || '')
-      const name = entry.affiliation.affilname || entry.affiliation['affiliation-name'] || ''
-      if (id && name) affilMap.set(id, name)
-    }
-
-    const docCitations = Number(entry['citedby-count'] ?? 0)
-    const validDocCitations = Number.isFinite(docCitations) ? docCitations : 0
-
-    const authorsRaw = entry.author
-    let authorList: any[] = []
-    if (Array.isArray(authorsRaw)) {
-      authorList = authorsRaw
-    } else if (authorsRaw && typeof authorsRaw === 'object') {
-      authorList = [authorsRaw]
-    }
-
-    if (authorList.length === 0 && entry['dc:creator']) {
-      authorList.push({
-        authname: String(entry['dc:creator']),
-      })
-    }
-
+  for (const doc of docs) {
+    const validCitations = Number.isFinite(doc.cited_by_count) ? (doc.cited_by_count as number) : 0
     const vistosNesteDoc = new Set<string>()
 
-    for (const a of authorList) {
-      if (!a || typeof a !== 'object') continue
+    for (const au of doc.autores || []) {
+      const id = au.scopus_id
+      if (!id || vistosNesteDoc.has(id)) continue
+      vistosNesteDoc.add(id)
 
-      const rawAuid =
-        a.authid || a.auid || a['@auid'] || a['@seq'] || a['dc:identifier'] || a['author-id']
-      const scopusId = extrairScopusId(rawAuid)
-
-      if (!scopusId) continue
-      if (vistosNesteDoc.has(scopusId)) continue
-      vistosNesteDoc.add(scopusId)
-
-      let nome = ''
-      const surname = a.surname || ''
-      const givenName = a['given-name'] || a.initials || ''
-      if (surname && givenName) {
-        nome = `${givenName} ${surname}`.trim()
-      } else if (a.authname) {
-        nome = a.authname
-      } else if (surname) {
-        nome = surname
-      } else {
-        nome = `Autor ${scopusId}`
-      }
-
-      let affilName: string | null = null
-      if (Array.isArray(a.afid)) {
-        for (const afItem of a.afid) {
-          const afId = typeof afItem === 'object' ? afItem?.['$'] || afItem?.afid : String(afItem)
-          if (afId && affilMap.has(String(afId))) {
-            affilName = affilMap.get(String(afId))!
-            break
-          }
-        }
-      } else if (a.afid) {
-        const afId = typeof a.afid === 'object' ? a.afid?.['$'] || a.afid?.afid : String(a.afid)
-        if (afId && affilMap.has(String(afId))) {
-          affilName = affilMap.get(String(afId))!
-        }
-      }
-
-      if (!affilName && affilMap.size > 0) {
-        affilName = affilMap.values().next().value || null
-      }
-
-      let autorAgregado = autoresPorId.get(scopusId)
-      if (!autorAgregado) {
-        autorAgregado = {
-          scopus_id: scopusId,
-          nome,
-          instituicao: affilName,
+      let registro = autoresPorId.get(id)
+      if (!registro) {
+        registro = {
+          scopus_id: id,
+          nome: au.nome,
           document_count: 0,
           cited_by_count: 0,
-          orcid: a.orcid ? String(a.orcid) : null,
+          orcid: au.orcid || null,
           afiliacoesFreq: new Map<string, number>(),
         }
-        autoresPorId.set(scopusId, autorAgregado)
+        autoresPorId.set(id, registro)
       }
 
-      autorAgregado.document_count += 1
-      autorAgregado.cited_by_count += validDocCitations
+      registro.document_count += 1
+      registro.cited_by_count += validCitations
 
-      if (nome.length > autorAgregado.nome.length) {
-        autorAgregado.nome = nome
+      if (au.nome && au.nome.length > registro.nome.length) {
+        registro.nome = au.nome
       }
 
-      if (a.orcid && !autorAgregado.orcid) {
-        autorAgregado.orcid = String(a.orcid)
+      if (au.orcid && !registro.orcid) {
+        registro.orcid = au.orcid
       }
 
-      if (affilName) {
-        const count = autorAgregado.afiliacoesFreq.get(affilName) || 0
-        autorAgregado.afiliacoesFreq.set(affilName, count + 1)
+      if (au.afiliacao) {
+        const afilTrim = au.afiliacao.trim()
+        if (afilTrim) {
+          const freq = registro.afiliacoesFreq.get(afilTrim) || 0
+          registro.afiliacoesFreq.set(afilTrim, freq + 1)
+        }
       }
     }
   }
 
   const candidatos: ScopusAutorCandidato[] = Array.from(autoresPorId.values()).map((aut) => {
-    let melhorAfiliacao: string | null = aut.instituicao
-    let maiorFreq = 0
-    for (const [afNome, freq] of aut.afiliacoesFreq.entries()) {
-      if (freq > maiorFreq) {
-        maiorFreq = freq
-        melhorAfiliacao = afNome
-      }
-    }
+    const afilsOrdenadas = Array.from(aut.afiliacoesFreq.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([nome]) => nome)
 
     return {
       scopus_id: aut.scopus_id,
       nome: aut.nome,
-      instituicao: melhorAfiliacao,
+      instituicao: afilsOrdenadas[0] || null,
       document_count: aut.document_count,
       cited_by_count: aut.cited_by_count,
       orcid: aut.orcid,
+      afiliacoes: afilsOrdenadas,
     }
   })
 
@@ -295,7 +470,7 @@ export function agregarAutoresDeDocumentos(
 }
 
 /**
- * Mapeia entradas brutas retornadas do JSON da API Scopus (`search-results.entry`)
+ * Fallback para mapeamento de entradas Scopus
  */
 export function mapearEntradasScopus(
   entries: any[],
@@ -335,12 +510,6 @@ export function mapearEntradasScopus(
       if (affilCurrent && typeof affilCurrent === 'object') {
         instituicao = affilCurrent['affiliation-name'] || null
       }
-      if (!instituicao && Array.isArray(entry['affiliation-history'])) {
-        const primeiro = entry['affiliation-history'][0]
-        if (primeiro && typeof primeiro === 'object') {
-          instituicao = primeiro['affiliation-name'] || null
-        }
-      }
 
       const docCount = Number(entry['document-count'] ?? 0)
       const citedCount = Number(entry['cited-by-count'] ?? 0)
@@ -353,10 +522,37 @@ export function mapearEntradasScopus(
         document_count: Number.isFinite(docCount) ? docCount : 0,
         cited_by_count: Number.isFinite(citedCount) ? citedCount : 0,
         orcid,
+        afiliacoes: instituicao ? [instituicao] : [],
       })
     }
     return resultado
   }
 
-  return agregarAutoresDeDocumentos(entries, termoDeFiltro)
+  const docsSimulados: DocumentoComAutores[] = entries.map((entry) => {
+    const rawId = entry['dc:identifier'] || entry.eid || ''
+    const scopusId = extrairScopusId(rawId)
+    const citedCount = Number(entry['citedby-count'] ?? 0)
+
+    const rawAuthors = toArray(entry.author)
+    const autores: AutorExtraidoDoc[] = []
+    for (const a of rawAuthors) {
+      if (!a || typeof a !== 'object') continue
+      const rawAuid = a.authid || a.auid || a['author-id'] || a['@auid']
+      const id = extrairScopusId(rawAuid)
+      if (!id) continue
+      const nome =
+        a.authname ||
+        `${a['given-name'] || a.initials || ''} ${a.surname || ''}`.trim() ||
+        `Autor ${id}`
+      autores.push({ scopus_id: id, nome, afiliacao: null })
+    }
+
+    return {
+      scopus_id: scopusId,
+      cited_by_count: Number.isFinite(citedCount) ? citedCount : 0,
+      autores,
+    }
+  })
+
+  return agregarAutoresDeAbstracts(docsSimulados, termoDeFiltro)
 }

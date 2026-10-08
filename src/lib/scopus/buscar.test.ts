@@ -3,21 +3,28 @@ import {
   extrairScopusId,
   normalizarNomeParaScopus,
   montarScopusQuery,
+  extrairDocumentIdsDeBusca,
+  extrairAutoresDeAbstractRetrieval,
+  agregarAutoresDeAbstracts,
   mapearEntradasScopus,
 } from './buscar'
 import { buscarAutoresScopus } from '@/services/scopus'
 
-describe('Serviço Scopus - Subetapa S1 (Parser, Query Builder e Client)', () => {
+describe('Serviço Scopus - Pipeline em Duas Etapas (Search → Abstract Retrieval → Agregação)', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
   })
 
   describe('Utilitários de normalização e extração', () => {
-    it('extrai ID limpo apenas com dígitos a partir de formatos variados', () => {
-      expect(extrairScopusId('SCOPUS_ID:6602703039')).toBe('6602703039')
+    it('extrai ID limpo apenas com dígitos a partir de formatos variados de ID e URL', () => {
+      expect(extrairScopusId('SCOPUS_ID:55490763400')).toBe('55490763400')
       expect(extrairScopusId('AUTHOR_ID:57201234567')).toBe('57201234567')
-      expect(extrairScopusId('6602703039')).toBe('6602703039')
-      expect(extrairScopusId('ID_12345')).toBe('12345')
+      expect(extrairScopusId('author_id/55490763400')).toBe('55490763400')
+      expect(extrairScopusId('https://api.elsevier.com/content/author/author_id/55490763400')).toBe(
+        '55490763400',
+      )
+      expect(extrairScopusId('2-s2.0-85123456789')).toBe('85123456789')
+      expect(extrairScopusId('85123456789')).toBe('85123456789')
       expect(extrairScopusId('')).toBe('')
       expect(extrairScopusId(null)).toBe('')
       expect(extrairScopusId(undefined)).toBe('')
@@ -33,35 +40,249 @@ describe('Serviço Scopus - Subetapa S1 (Parser, Query Builder e Client)', () =>
     })
 
     it('monta query com AU-ID para termos puramente numéricos', () => {
-      expect(montarScopusQuery('6602703039')).toBe('AU-ID(6602703039)')
+      expect(montarScopusQuery('55490763400')).toBe('AU-ID(55490763400')
       expect(montarScopusQuery('57201234567')).toBe('AU-ID(57201234567)')
     })
 
-    it('monta query de nome composto no formato AUTH-LAST-NAME e AUTH-FIRST', () => {
+    it('monta query de autor para Scopus Search com AUTHLASTNAME e AUTHFIRST', () => {
       expect(montarScopusQuery('Ledjane Silva Barreto')).toBe(
-        'AUTH-LAST-NAME("barreto") AND AUTH-FIRST("ledjane")',
+        'AUTHLASTNAME("barreto") and AUTHFIRST("ledjane")',
       )
       expect(montarScopusQuery('Barreto, Ledjane')).toBe(
-        'AUTH-LAST-NAME("barreto") AND AUTH-FIRST("ledjane")',
+        'AUTHLASTNAME("barreto") and AUTHFIRST("ledjane")',
       )
     })
 
     it('monta query para sobrenome simples ou único', () => {
-      expect(montarScopusQuery('Einstein')).toBe('AUTH-LAST-NAME("einstein")')
+      expect(montarScopusQuery('Einstein')).toBe('AUTHLASTNAME("einstein")')
     })
 
     it('adiciona cláusula AFFIL quando informado filtro de afiliação', () => {
       expect(montarScopusQuery('Ledjane Silva Barreto', 'Sergipe')).toBe(
-        'AUTH-LAST-NAME("barreto") AND AUTH-FIRST("ledjane") AND AFFIL("sergipe")',
+        'AUTHLASTNAME("barreto") and AUTHFIRST("ledjane") and AFFIL("sergipe")',
       )
     })
   })
 
-  describe('mapearEntradasScopus', () => {
-    it('mapeia entradas da resposta Elsevier ignorando campos nulos com tolerância', () => {
-      const entradasBrutas = [
+  describe('Etapa A: extrairDocumentIdsDeBusca', () => {
+    it('extrai os scopus IDs dos documentos do Scopus Search', () => {
+      const entries = [
         {
-          'dc:identifier': 'AUTHOR_ID:6602703039',
+          'dc:identifier': 'SCOPUS_ID:85123456789',
+          'dc:title': 'Photocatalytic properties of zinc oxide',
+          'citedby-count': '42',
+        },
+        {
+          eid: '2-s2.0-85987654321',
+          'dc:title': 'Nanomaterials for wastewater treatment',
+          'citedby-count': '15',
+        },
+        {
+          // documento duplicado deve ser ignorado
+          'dc:identifier': 'SCOPUS_ID:85123456789',
+          'dc:title': 'Duplicata',
+        },
+      ]
+
+      const docs = extrairDocumentIdsDeBusca(entries)
+      expect(docs).toHaveLength(2)
+      expect(docs[0]).toEqual({
+        scopus_id: '85123456789',
+        title: 'Photocatalytic properties of zinc oxide',
+        cited_by_count: 42,
+      })
+      expect(docs[1]).toEqual({
+        scopus_id: '85987654321',
+        title: 'Nanomaterials for wastewater treatment',
+        cited_by_count: 15,
+      })
+    })
+
+    it('retorna lista vazia para entradas nulas ou vazias', () => {
+      expect(extrairDocumentIdsDeBusca([])).toEqual([])
+      expect(extrairDocumentIdsDeBusca(null as any)).toEqual([])
+    })
+  })
+
+  describe('Etapa B: extrairAutoresDeAbstractRetrieval', () => {
+    it('extrai autores com author_id e afiliação de resposta padrão da Elsevier', () => {
+      const mockAbstract = {
+        'abstracts-retrieval-response': {
+          affiliation: [
+            {
+              '@id': '60008544',
+              affilname: 'Universidade Federal de Sergipe',
+              'affiliation-country': 'Brazil',
+            },
+          ],
+          authors: {
+            author: [
+              {
+                '@auid': '55490763400',
+                'ce:given-name': 'Ledjane S.',
+                'ce:surname': 'Barreto',
+                'ce:indexed-name': 'Barreto L.S.',
+                affiliation: { '@id': '60008544' },
+              },
+              {
+                '@auid': '6602703039',
+                'ce:given-name': 'Zélia S.',
+                'ce:surname': 'Macedo',
+                affiliation: { '@id': '60008544' },
+              },
+            ],
+          },
+        },
+      }
+
+      const autores = extrairAutoresDeAbstractRetrieval(mockAbstract)
+      expect(autores).toHaveLength(2)
+      expect(autores[0]).toEqual({
+        scopus_id: '55490763400',
+        nome: 'Ledjane S. Barreto',
+        afiliacao: 'Universidade Federal de Sergipe',
+        orcid: null,
+      })
+      expect(autores[1]).toEqual({
+        scopus_id: '6602703039',
+        nome: 'Zélia S. Macedo',
+        afiliacao: 'Universidade Federal de Sergipe',
+        orcid: null,
+      })
+    })
+
+    it('extrai autores de formato alternativo coredata dc:creator', () => {
+      const mockAbstract = {
+        'abstracts-retrieval-response': {
+          affiliation: [
+            {
+              afid: '12345',
+              affilname: 'Federal University of Sergipe',
+            },
+          ],
+          coredata: {
+            'dc:creator': {
+              author: [
+                {
+                  '@auid': '55490763400',
+                  'preferred-name': {
+                    'ce:given-name': 'Ledjane',
+                    'ce:surname': 'Barreto',
+                  },
+                  affiliation: { afid: '12345' },
+                },
+              ],
+            },
+          },
+        },
+      }
+
+      const autores = extrairAutoresDeAbstractRetrieval(mockAbstract)
+      expect(autores).toHaveLength(1)
+      expect(autores[0].scopus_id).toBe('55490763400')
+      expect(autores[0].nome).toBe('Ledjane Barreto')
+      expect(autores[0].afiliacao).toBe('Federal University of Sergipe')
+    })
+  })
+
+  describe('Agregação de Autores (agregarAutoresDeAbstracts)', () => {
+    it('agrega autor que aparece em múltiplos documentos, somando docs e citações', () => {
+      const docs = [
+        {
+          scopus_id: 'doc1',
+          cited_by_count: 30,
+          autores: [
+            {
+              scopus_id: '55490763400',
+              nome: 'Ledjane S. Barreto',
+              afiliacao: 'Universidade Federal de Sergipe',
+            },
+            {
+              scopus_id: '6602703039',
+              nome: 'Zélia S. Macedo',
+              afiliacao: 'Universidade Federal de Sergipe',
+            },
+          ],
+        },
+        {
+          scopus_id: 'doc2',
+          cited_by_count: 20,
+          autores: [
+            {
+              scopus_id: '55490763400',
+              nome: 'Ledjane Silva Barreto',
+              afiliacao: 'Universidade Federal de Sergipe',
+            },
+            {
+              scopus_id: '99999999999',
+              nome: 'Outro Coautor',
+              afiliacao: 'USP',
+            },
+          ],
+        },
+        {
+          scopus_id: 'doc3',
+          cited_by_count: 10,
+          autores: [
+            {
+              scopus_id: '55490763400',
+              nome: 'Ledjane Silva Barreto',
+              afiliacao: 'Federal University of Sergipe',
+            },
+          ],
+        },
+      ]
+
+      const candidatos = agregarAutoresDeAbstracts(docs, 'Ledjane Barreto')
+      expect(candidatos.length).toBeGreaterThanOrEqual(3)
+
+      const ledjane = candidatos[0]
+      expect(ledjane.scopus_id).toBe('55490763400')
+      // Nome preferido mais longo selecionado
+      expect(ledjane.nome).toBe('Ledjane Silva Barreto')
+      // Apareceu nos 3 documentos
+      expect(ledjane.document_count).toBe(3)
+      // Citações somadas: 30 + 20 + 10 = 60
+      expect(ledjane.cited_by_count).toBe(60)
+      // Afiliação principal mais frequente
+      expect(ledjane.instituicao).toBe('Universidade Federal de Sergipe')
+      // Afiliações deduplicadas registradas
+      expect(ledjane.afiliacoes).toContain('Universidade Federal de Sergipe')
+      expect(ledjane.afiliacoes).toContain('Federal University of Sergipe')
+    })
+
+    it('prioriza no ranking o candidato cujo nome casa com o termo pesquisado', () => {
+      const docs = [
+        {
+          scopus_id: 'doc1',
+          cited_by_count: 100,
+          autores: [
+            {
+              scopus_id: '11111111111',
+              nome: 'Joao da Silva',
+              afiliacao: 'UFBA',
+            },
+            {
+              scopus_id: '55490763400',
+              nome: 'Ledjane Barreto',
+              afiliacao: 'UFS',
+            },
+          ],
+        },
+      ]
+
+      // Mesmo Joao tendo os mesmos docs, Ledjane deve vir primeiro quando buscamos "Ledjane Barreto"
+      const candidatos = agregarAutoresDeAbstracts(docs, 'Ledjane Barreto')
+      expect(candidatos[0].scopus_id).toBe('55490763400')
+      expect(candidatos[0].nome).toBe('Ledjane Barreto')
+    })
+  })
+
+  describe('Tolerância parcial e fallbacks (mapearEntradasScopus)', () => {
+    it('funciona com entradas legadas ou quando o Abstract Retrieval falha', () => {
+      const entries = [
+        {
+          'dc:identifier': 'AUTHOR_ID:55490763400',
           'preferred-name': {
             'given-name': 'Ledjane',
             surname: 'Barreto',
@@ -71,49 +292,18 @@ describe('Serviço Scopus - Subetapa S1 (Parser, Query Builder e Client)', () =>
           },
           'document-count': '62',
           'cited-by-count': '1120',
-          orcid: '0000-0002-1234-5678',
-        },
-        {
-          'dc:identifier': 'SCOPUS_ID:9999999999',
-          'preferred-name': {
-            surname: 'Macedo',
-          },
-          'affiliation-history': [
-            {
-              'affiliation-name': 'Universidade Federal da Bahia',
-            },
-          ],
-          'document-count': 10,
         },
       ]
 
-      const candidatos = mapearEntradasScopus(entradasBrutas)
-      expect(candidatos).toHaveLength(2)
-
-      const c1 = candidatos[0]
-      expect(c1.scopus_id).toBe('6602703039')
-      expect(c1.nome).toBe('Ledjane Barreto')
-      expect(c1.instituicao).toBe('Universidade Federal de Sergipe')
-      expect(c1.document_count).toBe(62)
-      expect(c1.cited_by_count).toBe(1120)
-      expect(c1.orcid).toBe('0000-0002-1234-5678')
-
-      const c2 = candidatos[1]
-      expect(c2.scopus_id).toBe('9999999999')
-      expect(c2.nome).toBe('Macedo')
-      expect(c2.instituicao).toBe('Universidade Federal da Bahia')
-      expect(c2.document_count).toBe(10)
-      expect(c2.cited_by_count).toBe(0)
-    })
-
-    it('ignora entradas inválidas sem scopus_id', () => {
-      const entradasInvalidas = [null, undefined, {}, { 'dc:identifier': '' }]
-      const candidatos = mapearEntradasScopus(entradasInvalidas)
-      expect(candidatos).toEqual([])
+      const candidatos = mapearEntradasScopus(entries)
+      expect(candidatos).toHaveLength(1)
+      expect(candidatos[0].scopus_id).toBe('55490763400')
+      expect(candidatos[0].nome).toBe('Ledjane Barreto')
+      expect(candidatos[0].instituicao).toBe('Universidade Federal de Sergipe')
     })
   })
 
-  describe('buscarAutoresScopus (chamada ao Edge Function)', () => {
+  describe('buscarAutoresScopus client service', () => {
     it('retorna lista vazia imediatamente se nome for vazio ou espaços', async () => {
       const mockInvoke = vi.fn()
       const res = await buscarAutoresScopus('   ', { invokeFn: mockInvoke })
@@ -124,19 +314,20 @@ describe('Serviço Scopus - Subetapa S1 (Parser, Query Builder e Client)', () =>
       expect(mockInvoke).not.toHaveBeenCalled()
     })
 
-    it('invoca a edge function scopus-buscar e retorna os candidatos', async () => {
+    it('invoca a edge function scopus-buscar e retorna os candidatos do pipeline', async () => {
       const mockPayload = {
         sucesso: true,
         candidatos: [
           {
-            scopus_id: '6602703039',
-            nome: 'Ledjane Barreto',
+            scopus_id: '55490763400',
+            nome: 'Ledjane Silva Barreto',
             instituicao: 'Universidade Federal de Sergipe',
-            document_count: 62,
-            cited_by_count: 1120,
+            document_count: 5,
+            cited_by_count: 120,
+            afiliacoes: ['Universidade Federal de Sergipe'],
           },
         ],
-        total: 1,
+        total: 15,
         termoBuscado: 'ledjane barreto',
       }
 
@@ -153,7 +344,8 @@ describe('Serviço Scopus - Subetapa S1 (Parser, Query Builder e Client)', () =>
 
       expect(res.sucesso).toBe(true)
       expect(res.candidatos).toHaveLength(1)
-      expect(res.candidatos[0].scopus_id).toBe('6602703039')
+      expect(res.candidatos[0].scopus_id).toBe('55490763400')
+      expect(res.candidatos[0].document_count).toBe(5)
       expect(mockInvoke).toHaveBeenCalledWith('scopus-buscar', {
         body: {
           termo: 'ledjane barreto',
@@ -163,34 +355,21 @@ describe('Serviço Scopus - Subetapa S1 (Parser, Query Builder e Client)', () =>
       })
     })
 
-    it('trata erro retornado pelo Supabase Functions de forma graciosa', async () => {
-      const mockInvoke = vi.fn().mockResolvedValue({
-        data: null,
-        error: { message: 'Function not found' },
-      })
-
-      const res = await buscarAutoresScopus('Carlos Santos', { invokeFn: mockInvoke })
-
-      expect(res.sucesso).toBe(false)
-      expect(res.candidatos).toEqual([])
-      expect(res.mensagemErro).toContain('Function not found')
-    })
-
-    it('trata erro retornado no payload gracioso do backend (ex: quota 429)', async () => {
+    it('trata erro retornado de forma graciosa sem quebrar a UI', async () => {
       const mockInvoke = vi.fn().mockResolvedValue({
         data: {
           sucesso: false,
           candidatos: [],
           total: 0,
-          mensagemErro: 'Limite de requisições semanais da API Scopus atingido (quota excedida).',
+          mensagemErro: 'Chave da API Scopus inválida ou expirada. Verifique o cadastro no painel.',
         },
         error: null,
       })
 
-      const res = await buscarAutoresScopus('Carlos Santos', { invokeFn: mockInvoke })
-
+      const res = await buscarAutoresScopus('Ledjane Barreto', { invokeFn: mockInvoke })
       expect(res.sucesso).toBe(false)
-      expect(res.mensagemErro).toContain('Limite de requisições semanais')
+      expect(res.candidatos).toEqual([])
+      expect(res.mensagemErro).toContain('Chave da API Scopus inválida ou expirada')
     })
   })
 })

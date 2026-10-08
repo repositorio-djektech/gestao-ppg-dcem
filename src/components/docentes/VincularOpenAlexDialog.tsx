@@ -544,8 +544,16 @@ export function VincularOpenAlexDialog({
                             {candidato.instituicao && (
                               <div className="flex items-center gap-1.5 text-xs text-slate-600 truncate">
                                 <Building2 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                                <span className="truncate" title={candidato.instituicao}>
+                                <span
+                                  className="truncate"
+                                  title={candidato.afiliacoes?.join(' | ') || candidato.instituicao}
+                                >
                                   {candidato.instituicao}
+                                  {candidato.afiliacoes && candidato.afiliacoes.length > 1 && (
+                                    <span className="text-[10px] text-slate-400 ml-1">
+                                      (+{candidato.afiliacoes.length - 1} afiliações)
+                                    </span>
+                                  )}
                                 </span>
                               </div>
                             )}
