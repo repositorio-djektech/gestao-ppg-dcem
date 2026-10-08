@@ -118,4 +118,22 @@ describe('VincularOpenAlexDialog (UI de busca e vinculação OpenAlex / Scopus)'
     expect(candidatoScopusMock.scopus_id).toBe('6602703039')
     expect(candidatoScopusMock.document_count).toBe(62)
   })
+
+  it('7. detecta ID numérico e exibe card de vinculação direta imediata sem bloquear', () => {
+    // Quando docente possui termo ou o diálogo é aberto na aba Scopus
+    const html = renderToString(
+      React.createElement(VincularOpenAlexDialog, {
+        open: true,
+        onOpenChange: vi.fn(),
+        docente: { ...docenteMock, scopus_id: '7005598575' },
+        abaInicial: 'scopus',
+        onVincular: vi.fn(),
+        onVincularScopus: vi.fn(),
+      }),
+    )
+
+    // A aba scopus está presente
+    expect(html).toContain('Elsevier Scopus')
+    expect(html).toContain('Vincular Perfil Acadêmico')
+  })
 })

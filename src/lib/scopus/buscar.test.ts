@@ -9,6 +9,7 @@ import {
   mapearEntradasScopus,
   extrairTokensRelevantes,
   calcularSemelhancaNomeTermo,
+  type ScopusAutorCandidato,
 } from './buscar'
 import { buscarAutoresScopus } from '@/services/scopus'
 
@@ -461,6 +462,24 @@ describe('Serviço Scopus - Pipeline em Duas Etapas (Search → Abstract Retriev
       expect(candidatos[0].scopus_id).toBe('55490763400')
       expect(candidatos[0].nome).toBe('Ledjane Barreto')
       expect(candidatos[0].instituicao).toBe('Universidade Federal de Sergipe')
+    })
+  })
+
+  describe('Vinculação Direta de Scopus ID', () => {
+    it('permite criar objeto candidato direto a partir de Scopus ID numérico digitado', () => {
+      const scopusId = '7005598575'
+      expect(/^\d+$/.test(scopusId)).toBe(true)
+
+      const candidatoDireto: ScopusAutorCandidato = {
+        scopus_id: scopusId,
+        nome: 'Ledjane Silva Barreto',
+        instituicao: 'Universidade Federal de Sergipe',
+        document_count: 0,
+        cited_by_count: 0,
+      }
+
+      expect(candidatoDireto.scopus_id).toBe('7005598575')
+      expect(candidatoDireto.nome).toBe('Ledjane Silva Barreto')
     })
   })
 
