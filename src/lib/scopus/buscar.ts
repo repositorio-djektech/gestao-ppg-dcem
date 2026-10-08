@@ -247,15 +247,26 @@ export function extrairAutoresDeAbstractRetrieval(abstractJson: any): AutorExtra
         au['@auid'] || au.auid || au.authid || au['author-id'] || au['@id'] || au['author-url']
 
       const prefName = au['preferred-name'] || {}
-      const surname = au['ce:surname'] || prefName['ce:surname'] || au.surname || ''
+      // IMPORTANTE: prefName em abstracts pode ser o criador/primeiro autor do documento ou nome preferido geral!
+      // Não usar ce:surname de prefName se o próprio au tiver ce:surname diferente
+      const surname =
+        au['ce:surname'] || au.surname || prefName['ce:surname'] || prefName.surname || ''
       const givenName =
         au['ce:given-name'] ||
-        prefName['ce:given-name'] ||
-        au['ce:initials'] ||
-        prefName['ce:initials'] ||
         au['given-name'] ||
+        au['ce:initials'] ||
+        au.initials ||
+        prefName['ce:given-name'] ||
+        prefName['given-name'] ||
+        prefName['ce:initials'] ||
+        prefName.initials ||
         ''
-      const indexedName = au['ce:indexed-name'] || prefName['ce:indexed-name'] || au.authname || ''
+      const indexedName =
+        au['ce:indexed-name'] ||
+        au.authname ||
+        prefName['ce:indexed-name'] ||
+        prefName['indexed-name'] ||
+        ''
 
       let nome = ''
       if (surname && givenName) {
@@ -289,21 +300,37 @@ export function extrairAutoresDeAbstractRetrieval(abstractJson: any): AutorExtra
     }
   }
 
-  // 2. root.coredata['dc:creator'].author
+  // 2. root.coredata['dc:creator'].author (ou string / array simples)
+  // ATENÇÃO: dc:creator pode ser uma string (ex: "Barreto L.S." ou "Feistauer E.") ou objeto/array com author
+  const dcCreatorObj = root.coredata?.['dc:creator']
+  if (typeof dcCreatorObj === 'string' && dcCreatorObj.trim()) {
+    // Se dc:creator for string e nenhum autor tiver sido registrado ainda ou para complementar
+    const creatorName = dcCreatorObj.trim()
+    // Se tivermos auid em links ou root
+    const rootAuid = root.coredata?.['dc:identifier'] || ''
+    registrarAutor(rootAuid, creatorName, affilMap.values().next().value || null)
+  }
+
   const creatorAuthors = toArray(root.coredata?.['dc:creator']?.author)
   if (creatorAuthors.length > 0) {
     for (const au of creatorAuthors) {
       if (!au || typeof au !== 'object') continue
       const rawAuid = au['@auid'] || au.auid || au['author-url'] || au['@id']
       const prefName = au['preferred-name'] || {}
-      const surname = au['ce:surname'] || prefName['ce:surname'] || au.surname || ''
+      const surname =
+        au['ce:surname'] || au.surname || prefName['ce:surname'] || prefName.surname || ''
       const givenName =
         au['ce:given-name'] ||
-        prefName['ce:given-name'] ||
+        au['given-name'] ||
         au['ce:initials'] ||
+        au.initials ||
+        prefName['ce:given-name'] ||
+        prefName['given-name'] ||
         prefName['ce:initials'] ||
+        prefName.initials ||
         ''
-      const indexedName = au['ce:indexed-name'] || prefName['ce:indexed-name'] || ''
+      const indexedName =
+        au['ce:indexed-name'] || prefName['ce:indexed-name'] || prefName['indexed-name'] || ''
 
       let nome = ''
       if (surname && givenName) {
@@ -330,7 +357,6 @@ export function extrairAutoresDeAbstractRetrieval(abstractJson: any): AutorExtra
       registrarAutor(rawAuid, nome, afiliacao, au['@orcid'] || au.orcid)
     }
   }
-
   // 3. root.item.bibrecord.head['author-group']
   const headAuthorGroups = toArray(
     root.item?.bibrecord?.head?.['author-group'] || root.bibrecord?.head?.['author-group'],
@@ -389,6 +415,152 @@ export function extrairAutoresDeAbstractRetrieval(abstractJson: any): AutorExtra
 /**
  * Agrupa autores a partir dos documentos processados pelo Abstract Retrieval
  */
+/**
+ * Extrai tokens significativos a partir de um texto normalizado (minúsculas, sem acentos, sem pontuação).
+ * Descarta stopwords comuns do português/inglês (da, de, do, dos, das, van, der, etc.).
+ */
+export function extrairTokensRelevantes(texto: string | null | undefined): string[] {
+  if (!texto) return []
+  const norm = normalizarNomeParaScopus(texto)
+  const stopwords = new Set([
+    'de',
+    'da',
+    'do',
+    'dos',
+    'das',
+    'e',
+    'van',
+    'der',
+    'von',
+    'del',
+    'la',
+    'le',
+  ])
+  return norm
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2 && !stopwords.has(t))
+}
+
+/**
+ * Avalia a semelhança entre o nome do candidato e o termo de busca.
+ * Retorna pontuação de casamento:
+ * - tokens termo casados no nome
+ * - se casou todos os tokens do termo
+ * - se casou o sobrenome (último token relevante)
+ * - booleano casou (deve ter sobreposição de pelo menos 1 token relevante, ou match exato de ID)
+ */
+export function calcularSemelhancaNomeTermo(
+  nomeCandidato: string,
+  termoBusca: string,
+): {
+  casou: boolean
+  tokensCasados: number
+  totalTokensTermo: number
+  casouTodosTokensTermo: boolean
+  casouSobrenome: boolean
+} {
+  const normCandidato = normalizarNomeParaScopus(nomeCandidato)
+  const normTermo = normalizarNomeParaScopus(termoBusca)
+
+  if (!normTermo) {
+    return {
+      casou: true,
+      tokensCasados: 0,
+      totalTokensTermo: 0,
+      casouTodosTokensTermo: false,
+      casouSobrenome: false,
+    }
+  }
+
+  // Se o termo for numérico (Scopus ID)
+  if (/^\d+$/.test(normTermo)) {
+    return {
+      casou: true,
+      tokensCasados: 1,
+      totalTokensTermo: 1,
+      casouTodosTokensTermo: true,
+      casouSobrenome: true,
+    }
+  }
+
+  // Se match exato
+  if (normCandidato === normTermo) {
+    const tokensTermo = extrairTokensRelevantes(normTermo)
+    return {
+      casou: true,
+      tokensCasados: tokensTermo.length,
+      totalTokensTermo: tokensTermo.length,
+      casouTodosTokensTermo: true,
+      casouSobrenome: true,
+    }
+  }
+
+  const tokensCandidato = extrairTokensRelevantes(normCandidato)
+  const tokensTermo = extrairTokensRelevantes(normTermo)
+
+  if (tokensTermo.length === 0) {
+    return {
+      casou: true,
+      tokensCasados: 0,
+      totalTokensTermo: 0,
+      casouTodosTokensTermo: false,
+      casouSobrenome: false,
+    }
+  }
+
+  const setCandidato = new Set(tokensCandidato)
+  let tokensCasados = 0
+
+  for (const token of tokensTermo) {
+    // Casamento exato do token ou prefixo forte (para abreviações com mais de 3 chars)
+    if (setCandidato.has(token)) {
+      tokensCasados += 1
+    } else {
+      // Verifica se algum token do candidato contém ou prefixa o token do termo
+      const temPrefixo = tokensCandidato.some((tc) => {
+        if (token.length >= 4 && tc.startsWith(token)) return true
+        if (tc.length >= 4 && token.startsWith(tc)) return true
+        return false
+      })
+      if (temPrefixo) {
+        tokensCasados += 1
+      }
+    }
+  }
+
+  const sobrenomeTermo = tokensTermo[tokensTermo.length - 1]
+  const casouSobrenome = Boolean(
+    sobrenomeTermo &&
+    (setCandidato.has(sobrenomeTermo) ||
+      tokensCandidato.some(
+        (tc) =>
+          (sobrenomeTermo.length >= 4 && tc.startsWith(sobrenomeTermo)) ||
+          (tc.length >= 4 && sobrenomeTermo.startsWith(tc)),
+      )),
+  )
+
+  // Critério de descarte: só promove a candidato se houver sobreposição real de tokens com o termo
+  // Se o termo tem 1 token: precisa casar esse 1 token
+  // Se o termo tem >= 2 tokens: precisa de ao menos 1 token casado (preferencialmente o sobrenome ou o primeiro nome)
+  const casou = tokensCasados > 0
+  const casouTodosTokensTermo = tokensCasados >= tokensTermo.length
+
+  return {
+    casou,
+    tokensCasados,
+    totalTokensTermo: tokensTermo.length,
+    casouTodosTokensTermo,
+    casouSobrenome,
+  }
+}
+
+/**
+ * Agrupa autores a partir dos documentos processados pelo Abstract Retrieval.
+ * Filtra e descarta coautores sem correspondência de tokens com o termo pesquisado.
+ * O autor que melhor casou com o termo da busca vem primeiro na lista;
+ * rankear os demais por nº de documentos e citações.
+ */
 export function agregarAutoresDeAbstracts(
   docs: DocumentoComAutores[],
   termoDeFiltro?: string,
@@ -432,8 +604,17 @@ export function agregarAutoresDeAbstracts(
       registro.document_count += 1
       registro.cited_by_count += validCitations
 
-      if (au.nome && au.nome.length > registro.nome.length) {
-        registro.nome = au.nome
+      // Se o novo nome contiver mais informação e não for apenas iniciais, prioriza
+      const nomeExistente = registro.nome
+      const nomeNovo = au.nome
+      if (nomeNovo) {
+        // Se o nome existente tiver menos de 2 tokens ou tiver formato abreviado (ex "E. E. Feistauer")
+        // e o novo for mais completo ou tiver sobreposição de tokens com o termo, adota o mais completo
+        const tokensExistente = extrairTokensRelevantes(nomeExistente)
+        const tokensNovo = extrairTokensRelevantes(nomeNovo)
+        if (tokensNovo.length > tokensExistente.length || nomeNovo.length > nomeExistente.length) {
+          registro.nome = nomeNovo
+        }
       }
 
       if (au.orcid && !registro.orcid) {
@@ -450,45 +631,65 @@ export function agregarAutoresDeAbstracts(
     }
   }
 
-  const candidatos: ScopusAutorCandidato[] = Array.from(autoresPorId.values()).map((aut) => {
+  const termoLimpo = termoDeFiltro ? normalizarNomeParaScopus(termoDeFiltro) : ''
+
+  // Mapeia e calcula a métrica de semelhança com o termo buscado
+  const todosCandidatos = Array.from(autoresPorId.values()).map((aut) => {
     const afilsOrdenadas = Array.from(aut.afiliacoesFreq.entries())
       .sort((a, b) => b[1] - a[1])
       .map(([nome]) => nome)
 
+    const matchInfo = calcularSemelhancaNomeTermo(aut.nome, termoLimpo)
+
     return {
-      scopus_id: aut.scopus_id,
-      nome: aut.nome,
-      instituicao: afilsOrdenadas[0] || null,
-      document_count: aut.document_count,
-      cited_by_count: aut.cited_by_count,
-      orcid: aut.orcid,
-      afiliacoes: afilsOrdenadas,
+      candidato: {
+        scopus_id: aut.scopus_id,
+        nome: aut.nome,
+        instituicao: afilsOrdenadas[0] || null,
+        document_count: aut.document_count,
+        cited_by_count: aut.cited_by_count,
+        orcid: aut.orcid,
+        afiliacoes: afilsOrdenadas,
+      } as ScopusAutorCandidato,
+      matchInfo,
     }
   })
 
-  const tokensBusca = normalizarNomeParaScopus(termoDeFiltro || '')
-    .split(/\s+/)
-    .filter((w) => w.length > 2)
+  // Se houver termo de busca, descarta coautores que NÃO casam
+  const filtrados = termoLimpo
+    ? todosCandidatos.filter((item) => item.matchInfo.casou)
+    : todosCandidatos
 
-  return candidatos.sort((a, b) => {
-    if (tokensBusca.length > 0) {
-      const nomeA = normalizarNomeParaScopus(a.nome)
-      const nomeB = normalizarNomeParaScopus(b.nome)
+  // Ordenação:
+  // 1. Autor que casou todos os tokens do termo vem antes
+  // 2. Maior número de tokens casados com o termo
+  // 3. Casou sobrenome do termo
+  // 4. Maior número de documentos (document_count)
+  // 5. Maior número de citações (cited_by_count)
+  filtrados.sort((a, b) => {
+    const ma = a.matchInfo
+    const mb = b.matchInfo
 
-      const matchA = tokensBusca.filter((t) => nomeA.includes(t)).length
-      const matchB = tokensBusca.filter((t) => nomeB.includes(t)).length
-
-      if (matchA !== matchB) {
-        return matchB - matchA
-      }
+    if (ma.casouTodosTokensTermo !== mb.casouTodosTokensTermo) {
+      return ma.casouTodosTokensTermo ? -1 : 1
     }
 
-    if (b.document_count !== a.document_count) {
-      return b.document_count - a.document_count
+    if (ma.tokensCasados !== mb.tokensCasados) {
+      return mb.tokensCasados - ma.tokensCasados
     }
 
-    return b.cited_by_count - a.cited_by_count
+    if (ma.casouSobrenome !== mb.casouSobrenome) {
+      return ma.casouSobrenome ? -1 : 1
+    }
+
+    if (b.candidato.document_count !== a.candidato.document_count) {
+      return b.candidato.document_count - a.candidato.document_count
+    }
+
+    return b.candidato.cited_by_count - a.candidato.cited_by_count
   })
+
+  return filtrados.map((item) => item.candidato)
 }
 
 /**
@@ -567,6 +768,12 @@ export function mapearEntradasScopus(
         `${a['given-name'] || a.initials || ''} ${a.surname || ''}`.trim() ||
         `Autor ${id}`
       autores.push({ scopus_id: id, nome, afiliacao: null })
+    }
+
+    // Se o entry tem dc:creator como string e nenhum autor em entry.author
+    if (autores.length === 0 && entry['dc:creator']) {
+      const creatorName = String(entry['dc:creator']).trim()
+      autores.push({ scopus_id: scopusId, nome: creatorName, afiliacao: null })
     }
 
     return {

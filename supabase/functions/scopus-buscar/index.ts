@@ -23,7 +23,7 @@ Deno.serve(async (req: Request) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     if (supabaseUrl && serviceKey) {
       const res = await fetch(
-        `${supabaseUrl}/rest/v1/scopus_val_log?select=*&order=id.desc&limit=15`,
+        `${supabaseUrl}/rest/v1/scopus_val_log?select=*&order=id.desc&limit=5`,
         {
           headers: {
             apikey: serviceKey,
@@ -328,6 +328,9 @@ Deno.serve(async (req: Request) => {
             status: aResp.status,
             ok: true,
             autoresCount: autoresExtraidos.length,
+            primeiroAutor: autoresExtraidos[0]
+              ? { id: autoresExtraidos[0].scopus_id, nome: autoresExtraidos[0].nome }
+              : null,
           })
 
           docsComAutores.push({
@@ -352,9 +355,6 @@ Deno.serve(async (req: Request) => {
     let candidatos: any[] = []
     if (docsComAutores.length > 0) {
       candidatos = agregarAutoresDeAbstracts(docsComAutores, termo)
-    } else {
-      // Se todos os Abstract Retrievals falharam, tenta fallback com as entradas brutas do search
-      candidatos = mapearEntradasScopus(entries, termo)
     }
 
     await logVal('etapa_b_retrieval_complete', {
@@ -371,11 +371,17 @@ Deno.serve(async (req: Request) => {
       })),
     })
 
+    const mensagemErro =
+      candidatos.length === 0
+        ? `Nenhum autor correspondente ao termo "${termo}" foi encontrado nos documentos recuperados.`
+        : undefined
+
     const resSucesso: ScopusRespostaBusca = {
       sucesso: true,
       candidatos,
       total: totalDocs,
       termoBuscado: termo,
+      mensagemErro,
     }
 
     return new Response(JSON.stringify(resSucesso), {

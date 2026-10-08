@@ -89,6 +89,7 @@ export async function buscarAutoresScopus(
       candidatos: Array.isArray(data.candidatos) ? data.candidatos : [],
       total: typeof data.total === 'number' ? data.total : 0,
       termoBuscado: termoNormalizado,
+      mensagemErro: data.mensagemErro || undefined,
     }
   } catch (err: any) {
     return {

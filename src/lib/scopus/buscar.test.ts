@@ -7,6 +7,8 @@ import {
   extrairAutoresDeAbstractRetrieval,
   agregarAutoresDeAbstracts,
   mapearEntradasScopus,
+  extrairTokensRelevantes,
+  calcularSemelhancaNomeTermo,
 } from './buscar'
 import { buscarAutoresScopus } from '@/services/scopus'
 
@@ -46,6 +48,49 @@ describe('Serviço Scopus - Pipeline em Duas Etapas (Search → Abstract Retriev
 
     it('monta query de autor para Scopus Search com AUTHOR-NAME e nome completo', () => {
       expect(montarScopusQuery('Ledjane Silva Barreto')).toBe('AUTHOR-NAME(ledjane silva barreto)')
+    })
+
+    it('extrai tokens relevantes descartando stopwords', () => {
+      expect(extrairTokensRelevantes('Euler Araújo dos Santos')).toEqual([
+        'euler',
+        'araujo',
+        'santos',
+      ])
+      expect(extrairTokensRelevantes('Ledjane Silva Barreto')).toEqual([
+        'ledjane',
+        'silva',
+        'barreto',
+      ])
+      expect(extrairTokensRelevantes('da silva e sousa')).toEqual(['silva', 'sousa'])
+      expect(extrairTokensRelevantes('')).toEqual([])
+    })
+
+    it('calcula semelhança nome termo corretamente', () => {
+      // Coautor sem relação
+      const matchCoautor = calcularSemelhancaNomeTermo('Andréa M. Costa', 'Euler Araujo dos Santos')
+      expect(matchCoautor.casou).toBe(false)
+      expect(matchCoautor.tokensCasados).toBe(0)
+
+      // Autor casamento completo
+      const matchAutor = calcularSemelhancaNomeTermo(
+        'Euler Araújo dos Santos',
+        'Euler Araujo dos Santos',
+      )
+      expect(matchAutor.casou).toBe(true)
+      expect(matchAutor.casouTodosTokensTermo).toBe(true)
+      expect(matchAutor.casouSobrenome).toBe(true)
+
+      // Autor casamento parcial com sobrenome
+      const matchParcial = calcularSemelhancaNomeTermo('Ledjane Silva Barreto', 'Ledjane Barreto')
+      expect(matchParcial.casou).toBe(true)
+      expect(matchParcial.casouTodosTokensTermo).toBe(true)
+      expect(matchParcial.casouSobrenome).toBe(true)
+
+      // Homônimo com apenas 1 token
+      const matchHomonimo = calcularSemelhancaNomeTermo('Ledjane Lima Sobrinho', 'Ledjane Barreto')
+      expect(matchHomonimo.casou).toBe(true)
+      expect(matchHomonimo.casouTodosTokensTermo).toBe(false)
+      expect(matchHomonimo.casouSobrenome).toBe(false)
     })
 
     it('reordena formato "Sobrenome, Nome" para "Nome Sobrenome" na query AUTHOR-NAME', () => {
@@ -197,7 +242,7 @@ describe('Serviço Scopus - Pipeline em Duas Etapas (Search → Abstract Retriev
   })
 
   describe('Agregação de Autores (agregarAutoresDeAbstracts)', () => {
-    it('agrega autor que aparece em múltiplos documentos, somando docs e citações', () => {
+    it('agrega autor que aparece em múltiplos documentos, somando docs e citações e descartando coautores não correlacionados', () => {
       const docs = [
         {
           scopus_id: 'doc1',
@@ -244,12 +289,14 @@ describe('Serviço Scopus - Pipeline em Duas Etapas (Search → Abstract Retriev
         },
       ]
 
+      // Ao buscar por "Ledjane Barreto", apenas Ledjane deve ser mantida como candidata
+      // Coautores "Zélia S. Macedo" e "Outro Coautor" devem ser descartados
       const candidatos = agregarAutoresDeAbstracts(docs, 'Ledjane Barreto')
-      expect(candidatos.length).toBeGreaterThanOrEqual(3)
+      expect(candidatos).toHaveLength(1)
 
       const ledjane = candidatos[0]
       expect(ledjane.scopus_id).toBe('55490763400')
-      // Nome preferido mais longo selecionado
+      // Nome preferido mais completo selecionado
       expect(ledjane.nome).toBe('Ledjane Silva Barreto')
       // Apareceu nos 3 documentos
       expect(ledjane.document_count).toBe(3)
@@ -262,30 +309,107 @@ describe('Serviço Scopus - Pipeline em Duas Etapas (Search → Abstract Retriev
       expect(ledjane.afiliacoes).toContain('Federal University of Sergipe')
     })
 
-    it('prioriza no ranking o candidato cujo nome casa com o termo pesquisado', () => {
+    it('descarta coautores não relacionados com o termo buscado (ex: Euler Araujo dos Santos vs Andréa M. Costa)', () => {
+      const docs = [
+        {
+          scopus_id: 'doc_euler',
+          cited_by_count: 12,
+          autores: [
+            {
+              scopus_id: '35326615700',
+              nome: 'Andréa M. Costa',
+              afiliacao: 'UFS',
+            },
+            {
+              scopus_id: '70012345678',
+              nome: 'Euler Araújo dos Santos',
+              afiliacao: 'Universidade Federal de Sergipe',
+            },
+            {
+              scopus_id: '80012345678',
+              nome: 'Matias de Angelis Korb',
+              afiliacao: 'UFRGS',
+            },
+          ],
+        },
+      ]
+
+      const candidatos = agregarAutoresDeAbstracts(docs, 'Euler Araujo dos Santos')
+      expect(candidatos).toHaveLength(1)
+      expect(candidatos[0].scopus_id).toBe('70012345678')
+      expect(candidatos[0].nome).toBe('Euler Araújo dos Santos')
+      // Andréa e Matias não devem estar na lista
+      expect(candidatos.some((c) => c.nome.includes('Andréa'))).toBe(false)
+      expect(candidatos.some((c) => c.nome.includes('Matias'))).toBe(false)
+    })
+
+    it('coloca o autor que casou com todos os tokens do termo em primeiro lugar', () => {
       const docs = [
         {
           scopus_id: 'doc1',
-          cited_by_count: 100,
+          cited_by_count: 500, // Homônimo com mais citações ou apenas 1 token
           autores: [
             {
-              scopus_id: '11111111111',
-              nome: 'Joao da Silva',
-              afiliacao: 'UFBA',
+              scopus_id: '35265209700',
+              nome: 'Ledjane Lima Sobrinho',
+              afiliacao: 'UFPB',
             },
             {
               scopus_id: '55490763400',
-              nome: 'Ledjane Barreto',
+              nome: 'Ledjane Silva Barreto',
               afiliacao: 'UFS',
             },
           ],
         },
       ]
 
-      // Mesmo Joao tendo os mesmos docs, Ledjane deve vir primeiro quando buscamos "Ledjane Barreto"
+      // Buscando "Ledjane Barreto":
+      // "Ledjane Silva Barreto" casa 2 tokens ("ledjane" e "barreto")
+      // "Ledjane Lima Sobrinho" casa apenas 1 token ("ledjane")
+      // Portanto "Ledjane Silva Barreto" DEVE vir em primeiro lugar, mesmo que o outro tenha mais citações
       const candidatos = agregarAutoresDeAbstracts(docs, 'Ledjane Barreto')
       expect(candidatos[0].scopus_id).toBe('55490763400')
-      expect(candidatos[0].nome).toBe('Ledjane Barreto')
+      expect(candidatos[0].nome).toBe('Ledjane Silva Barreto')
+    })
+
+    it('retorna lista vazia se nenhum autor do abstract casar com o termo buscado', () => {
+      const docs = [
+        {
+          scopus_id: 'doc1',
+          cited_by_count: 50,
+          autores: [
+            {
+              scopus_id: '35326615700',
+              nome: 'Andréa M. Costa',
+              afiliacao: 'UFS',
+            },
+            {
+              scopus_id: '54682012500',
+              nome: 'Matias de Angelis Korb',
+              afiliacao: 'UFRGS',
+            },
+          ],
+        },
+      ]
+
+      const candidatos = agregarAutoresDeAbstracts(docs, 'Zélia Soares Macedo')
+      expect(candidatos).toEqual([])
+    })
+
+    it('se não houver termo de busca, mantém todos os autores ordenados por docs e citações', () => {
+      const docs = [
+        {
+          scopus_id: 'doc1',
+          cited_by_count: 10,
+          autores: [
+            { scopus_id: '1', nome: 'Autor A' },
+            { scopus_id: '2', nome: 'Autor B' },
+          ],
+        },
+      ]
+
+      const candidatos = agregarAutoresDeAbstracts(docs, '')
+      expect(candidatos).toHaveLength(2)
     })
   })
 
