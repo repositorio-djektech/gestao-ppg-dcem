@@ -33,7 +33,7 @@ export function useCrudData<T extends { id: number | string }>(service: CrudServ
   )
 
   const update = useCallback(
-    async (id: number | string, item: Omit<T, 'id'>) => {
+    async (id: number | string, item: Partial<Omit<T, 'id'>>) => {
       await service.update(id, item as unknown as Partial<T>)
       setData(await service.list())
     },

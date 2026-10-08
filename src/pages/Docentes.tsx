@@ -30,7 +30,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Search, Plus, Edit, Trash2, Printer } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Printer, Sparkles } from 'lucide-react'
+import { VincularOpenAlexDialog } from '@/components/docentes/VincularOpenAlexDialog'
+import type { OpenAlexAutorCandidato } from '@/lib/openalex/buscar'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
@@ -58,6 +60,8 @@ export default function Docentes() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | string | null>(null)
+  const [openAlexDialogOpen, setOpenAlexDialogOpen] = useState(false)
+  const [docenteParaOpenAlex, setDocenteParaOpenAlex] = useState<Docente | null>(null)
   const [page, setPage] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState<Omit<Docente, 'id'>>(emptyForm)
@@ -102,6 +106,30 @@ export default function Docentes() {
       toast.success('Docente removido')
     } catch {
       toast.error('Erro ao remover')
+    }
+  }
+
+  const handleAbrirOpenAlex = (docente: Docente) => {
+    setDocenteParaOpenAlex(docente)
+    setOpenAlexDialogOpen(true)
+  }
+
+  const handleVincularOpenAlex = async (
+    docenteId: number | string,
+    candidato: OpenAlexAutorCandidato,
+  ) => {
+    try {
+      // Atualiza o docente no Supabase gravando openalex_id e indice_h (h_index do candidato)
+      await update(docenteId, {
+        openalex_id: candidato.openalex_id,
+        indice_h: candidato.h_index,
+      })
+      toast.success(
+        `Docente vinculado com sucesso ao OpenAlex (${candidato.openalex_id}, h-index ${candidato.h_index})`,
+      )
+    } catch (err: any) {
+      toast.error(`Erro ao vincular perfil OpenAlex: ${err?.message || 'Falha na gravação'}`)
+      throw err
     }
   }
 
@@ -260,6 +288,7 @@ export default function Docentes() {
                 <TableHead className="font-semibold text-slate-700">Bolsa CNPq</TableHead>
                 <TableHead className="text-center font-semibold text-slate-700">JDP</TableHead>
                 <TableHead className="font-semibold text-slate-700">Licença</TableHead>
+                <TableHead className="font-semibold text-slate-700">OpenAlex</TableHead>
                 {canEdit && (
                   <TableHead className="text-right font-semibold text-slate-700">Ações</TableHead>
                 )}
@@ -269,7 +298,7 @@ export default function Docentes() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: canEdit ? 7 : 6 }).map((_, j) => (
+                    {Array.from({ length: canEdit ? 8 : 7 }).map((_, j) => (
                       <TableCell key={j}>
                         <Skeleton className="h-6 w-full" />
                       </TableCell>
@@ -314,6 +343,46 @@ export default function Docentes() {
                         <span className="text-slate-400">-</span>
                       )}
                     </TableCell>
+                    <TableCell>
+                      {d.openalex_id ? (
+                        canEdit ? (
+                          <button
+                            type="button"
+                            onClick={() => handleAbrirOpenAlex(d)}
+                            className="inline-flex items-center gap-1.5 group cursor-pointer focus:outline-none"
+                            title="Clique para alterar a vinculação OpenAlex"
+                          >
+                            <Badge
+                              variant="outline"
+                              className="font-mono text-xs text-indigo-700 border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 transition-colors"
+                            >
+                              <Sparkles className="h-3 w-3 text-indigo-500 mr-1" />
+                              {d.openalex_id}
+                            </Badge>
+                          </button>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="font-mono text-xs text-indigo-700 border-indigo-200 bg-indigo-50/70"
+                          >
+                            <Sparkles className="h-3 w-3 text-indigo-500 mr-1" />
+                            {d.openalex_id}
+                          </Badge>
+                        )
+                      ) : canEdit ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAbrirOpenAlex(d)}
+                          className="h-7 px-2.5 text-xs gap-1.5 text-indigo-700 hover:text-indigo-800 border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50/50"
+                        >
+                          <Sparkles className="h-3 w-3 text-indigo-500" />
+                          <span>Buscar OpenAlex</span>
+                        </Button>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
+                    </TableCell>
                     {canEdit && (
                       <TableCell className="text-right">
                         <Button
@@ -321,6 +390,7 @@ export default function Docentes() {
                           size="icon"
                           onClick={() => handleOpen(d)}
                           className="h-8 w-8"
+                          title="Editar Docente"
                         >
                           <Edit className="h-4 w-4 text-slate-400 hover:text-primary" />
                         </Button>
@@ -340,7 +410,7 @@ export default function Docentes() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={canEdit ? 7 : 6} className="h-32 text-center text-slate-500">
+                  <TableCell colSpan={canEdit ? 8 : 7} className="h-32 text-center text-slate-500">
                     Nenhum docente encontrado.
                   </TableCell>
                 </TableRow>
@@ -376,6 +446,13 @@ export default function Docentes() {
           </div>
         )}
       </div>
+
+      <VincularOpenAlexDialog
+        open={openAlexDialogOpen}
+        onOpenChange={setOpenAlexDialogOpen}
+        docente={docenteParaOpenAlex}
+        onVincular={handleVincularOpenAlex}
+      />
     </div>
   )
 }
