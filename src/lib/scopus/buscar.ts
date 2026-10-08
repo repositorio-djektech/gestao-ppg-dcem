@@ -84,51 +84,68 @@ export function normalizarNomeParaScopus(nome: string | null | undefined): strin
 }
 
 /**
+ * Reordena o nome se vier no formato "Sobrenome, Nome" para "Nome Sobrenome".
+ * Remove pontuações desnecessárias mantendo espaços limpos.
+ */
+export function reordenarNomeSeComVirgula(nome: string): string {
+  if (!nome) return ''
+  const str = nome.trim()
+  if (!str.includes(',')) return str.replace(/\s+/g, ' ').trim()
+
+  const parts = str
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean)
+  if (parts.length >= 2) {
+    const sobrenome = parts[0]
+    const resto = parts.slice(1).join(' ')
+    return `${resto} ${sobrenome}`.replace(/\s+/g, ' ').trim()
+  }
+  return parts[0] || str
+}
+
+/**
+ * Extrai o último token de um nome completo como sobrenome para fallback.
+ */
+export function extrairUltimoSobrenome(nome: string): string {
+  const limpo = reordenarNomeSeComVirgula(nome)
+  const tokens = limpo.split(/\s+/).filter(Boolean)
+  if (tokens.length === 0) return ''
+  return tokens[tokens.length - 1].replace(/[()"]/g, '').trim()
+}
+
+/**
  * Monta a query para o endpoint /content/search/scopus da Elsevier.
  * - Se termo for numérico: AU-ID(123456)
- * - Se contiver vírgula ("Sobrenome, Nome"): AUTHLASTNAME("Sobrenome") and AUTHFIRST("Nome")
- * - Se for nome composto ("Ledjane Silva Barreto"): AUTHLASTNAME("Barreto") and AUTHFIRST("Ledjane")
- * - Se for palavra única: AUTHLASTNAME("Barreto")
+ * - Se usar AUTHOR-NAME: AUTHOR-NAME("<nome completo>") com reordenação se houver vírgula
+ * - Fallback para sobrenome: AUTHLASTNAME("<sobrenome>")
  * - Se informado filtro de afiliação: and AFFIL("Sergipe")
  */
-export function montarScopusQuery(termo: string, filtroAfiliacao?: string): string {
+export function montarScopusQuery(
+  termo: string,
+  filtroAfiliacao?: string,
+  opcoes?: { usarFallbackSobrenome?: boolean },
+): string {
   const termoLimpo = normalizarNomeParaScopus(termo)
   if (!termoLimpo) return ''
 
+  // Se for ID numérico direto
   if (/^\d+$/.test(termoLimpo)) {
     return `AU-ID(${termoLimpo})`
   }
 
-  let lastName = ''
-  let firstName = ''
-
-  if (termoLimpo.includes(',')) {
-    const parts = termoLimpo
-      .split(',')
-      .map((p) => p.trim())
-      .filter(Boolean)
-    lastName = parts[0] || ''
-    firstName = parts[1] || ''
-  } else {
-    const words = termoLimpo.split(/\s+/).filter(Boolean)
-    if (words.length === 1) {
-      lastName = words[0]
-    } else {
-      lastName = words[words.length - 1]
-      firstName = words[0]
-    }
-  }
-
-  lastName = lastName.replace(/[()"]/g, '').trim()
-  firstName = firstName.replace(/[()"]/g, '').trim()
-
   let query = ''
-  if (lastName && firstName) {
-    query = `AUTHLASTNAME("${lastName}") and AUTHFIRST("${firstName}")`
-  } else if (lastName) {
-    query = `AUTHLASTNAME("${lastName}")`
+
+  if (opcoes?.usarFallbackSobrenome) {
+    const sobrenome = extrairUltimoSobrenome(termoLimpo)
+    if (sobrenome) {
+      query = `AUTHLASTNAME(${sobrenome})`
+    } else {
+      query = `AUTHOR-NAME(${termoLimpo.replace(/[()"]/g, '')})`
+    }
   } else {
-    query = `AUTH("${termoLimpo.replace(/[()"]/g, '')}")`
+    const nomeReordenado = reordenarNomeSeComVirgula(termoLimpo).replace(/[()"]/g, '').trim()
+    query = `AUTHOR-NAME(${nomeReordenado})`
   }
 
   if (filtroAfiliacao) {
@@ -152,6 +169,11 @@ export function extrairDocumentIdsDeBusca(entries: any[]): ScopusDocumentoId[] {
 
   for (const entry of entries) {
     if (!entry || typeof entry !== 'object') continue
+
+    // Se a entrada for um aviso de erro/vazio (ex: {"error": "Result set was empty"})
+    if (entry.error || (entry['@_fa'] === 'false' && !entry['dc:identifier'] && !entry.eid)) {
+      continue
+    }
 
     const rawId = entry['dc:identifier'] || entry.eid || entry['prism:url'] || ''
     const scopusId = extrairScopusId(rawId)

@@ -40,27 +40,38 @@ describe('Serviço Scopus - Pipeline em Duas Etapas (Search → Abstract Retriev
     })
 
     it('monta query com AU-ID para termos puramente numéricos', () => {
-      expect(montarScopusQuery('55490763400')).toBe('AU-ID(55490763400')
+      expect(montarScopusQuery('55490763400')).toBe('AU-ID(55490763400)')
       expect(montarScopusQuery('57201234567')).toBe('AU-ID(57201234567)')
     })
 
-    it('monta query de autor para Scopus Search com AUTHLASTNAME e AUTHFIRST', () => {
-      expect(montarScopusQuery('Ledjane Silva Barreto')).toBe(
-        'AUTHLASTNAME("barreto") and AUTHFIRST("ledjane")',
-      )
-      expect(montarScopusQuery('Barreto, Ledjane')).toBe(
-        'AUTHLASTNAME("barreto") and AUTHFIRST("ledjane")',
-      )
+    it('monta query de autor para Scopus Search com AUTHOR-NAME e nome completo', () => {
+      expect(montarScopusQuery('Ledjane Silva Barreto')).toBe('AUTHOR-NAME(ledjane silva barreto)')
     })
 
-    it('monta query para sobrenome simples ou único', () => {
-      expect(montarScopusQuery('Einstein')).toBe('AUTHLASTNAME("einstein")')
+    it('reordena formato "Sobrenome, Nome" para "Nome Sobrenome" na query AUTHOR-NAME', () => {
+      expect(montarScopusQuery('Barreto, Ledjane Silva')).toBe('AUTHOR-NAME(ledjane silva barreto)')
+      expect(montarScopusQuery('Barreto, Ledjane')).toBe('AUTHOR-NAME(ledjane barreto)')
+    })
+
+    it('monta query de fallback para AUTHLASTNAME sozinho', () => {
+      expect(
+        montarScopusQuery('Ledjane Silva Barreto', undefined, { usarFallbackSobrenome: true }),
+      ).toBe('AUTHLASTNAME(barreto)')
+      expect(
+        montarScopusQuery('Barreto, Ledjane Silva', undefined, { usarFallbackSobrenome: true }),
+      ).toBe('AUTHLASTNAME(barreto)')
+      expect(montarScopusQuery('Einstein', undefined, { usarFallbackSobrenome: true })).toBe(
+        'AUTHLASTNAME(einstein)',
+      )
     })
 
     it('adiciona cláusula AFFIL quando informado filtro de afiliação', () => {
       expect(montarScopusQuery('Ledjane Silva Barreto', 'Sergipe')).toBe(
-        'AUTHLASTNAME("barreto") and AUTHFIRST("ledjane") and AFFIL("sergipe")',
+        'AUTHOR-NAME(ledjane silva barreto) and AFFIL("sergipe")',
       )
+      expect(
+        montarScopusQuery('Ledjane Silva Barreto', 'Sergipe', { usarFallbackSobrenome: true }),
+      ).toBe('AUTHLASTNAME(barreto) and AFFIL("sergipe")')
     })
   })
 
