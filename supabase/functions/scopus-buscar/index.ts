@@ -71,6 +71,29 @@ Deno.serve(async (req: Request) => {
     scopusUrl.searchParams.set('count', String(limite))
     scopusUrl.searchParams.set('view', 'STANDARD')
 
+    // Grava telemetria segura na tabela public.scopus_val_log se ela existir
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')
+      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+      if (supabaseUrl && serviceKey) {
+        await fetch(`${supabaseUrl}/rest/v1/scopus_val_log`, {
+          method: 'POST',
+          headers: {
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=minimal',
+          },
+          body: JSON.stringify({
+            stage: 'before_elsevier_fetch',
+            data: { termo, query, hasApiKey: Boolean(apiKey) },
+          }),
+        })
+      }
+    } catch (_) {
+      // Ignora falhas no log
+    }
+
     // Timeout com AbortController de 12 segundos
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 12000)
@@ -121,6 +144,32 @@ Deno.serve(async (req: Request) => {
           'Os servidores da Elsevier Scopus estão temporariamente indisponíveis. Tente novamente mais tarde.'
       }
 
+      // Grava erro HTTP em scopus_val_log
+      try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')
+        const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+        if (supabaseUrl && serviceKey) {
+          const errText = await response.text().catch(() => '')
+          await fetch(`${supabaseUrl}/rest/v1/scopus_val_log`, {
+            method: 'POST',
+            headers: {
+              apikey: serviceKey,
+              Authorization: `Bearer ${serviceKey}`,
+              'Content-Type': 'application/json',
+              Prefer: 'return=minimal',
+            },
+            body: JSON.stringify({
+              stage: 'http_error',
+              data: {
+                status: response.status,
+                mensagemAmigavel,
+                errBodySnippet: errText.slice(0, 500),
+              },
+            }),
+          })
+        }
+      } catch (_) {}
+
       const resErroHttp: ScopusRespostaBusca = {
         sucesso: false,
         candidatos: [],
@@ -141,6 +190,41 @@ Deno.serve(async (req: Request) => {
 
     // Agrupa e extrai autores únicos dos documentos retornados
     const candidatos = mapearEntradasScopus(entries, termo)
+
+    // Grava telemetria de sucesso na tabela public.scopus_val_log
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')
+      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+      if (supabaseUrl && serviceKey) {
+        await fetch(`${supabaseUrl}/rest/v1/scopus_val_log`, {
+          method: 'POST',
+          headers: {
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=minimal',
+          },
+          body: JSON.stringify({
+            stage: 'success',
+            data: {
+              status: response.status,
+              totalDocs,
+              entriesCount: Array.isArray(entries) ? entries.length : 0,
+              candidatosCount: candidatos.length,
+              candidatos: candidatos.map((c) => ({
+                scopus_id: c.scopus_id,
+                nome: c.nome,
+                instituicao: c.instituicao,
+                document_count: c.document_count,
+                cited_by_count: c.cited_by_count,
+              })),
+            },
+          }),
+        })
+      }
+    } catch (_) {
+      // Ignora falhas de log
+    }
 
     const resSucesso: ScopusRespostaBusca = {
       sucesso: true,

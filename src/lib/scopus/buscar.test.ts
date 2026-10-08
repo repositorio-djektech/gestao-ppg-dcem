@@ -153,7 +153,7 @@ describe('Serviço Scopus - Subetapa S1 (Parser, Query Builder e Client)', () =>
 
       expect(res.sucesso).toBe(true)
       expect(res.candidatos).toHaveLength(1)
-      expect(res.candidatos[0].scopus_id).toBe('FAIL_EXPECTATION_TO_SEE_IF_TEST_RUNS')
+      expect(res.candidatos[0].scopus_id).toBe('6602703039')
       expect(mockInvoke).toHaveBeenCalledWith('scopus-buscar', {
         body: {
           termo: 'ledjane barreto',
