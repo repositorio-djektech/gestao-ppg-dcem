@@ -223,7 +223,12 @@ export function extrairAutoresDeAbstractRetrieval(abstractJson: any): AutorExtra
     for (const au of authorsCore) {
       if (!au || typeof au !== 'object') continue
       const rawAuid =
-        au['@auid'] || au.auid || au.authid || au['author-id'] || au['@id'] || au['author-url']
+        au['@auid'] ||
+        au.auid ||
+        au.authid ||
+        au['author-id'] ||
+        au['@id'] ||
+        au['author-url']
 
       const prefName = au['preferred-name'] || {}
       const surname = au['ce:surname'] || prefName['ce:surname'] || au.surname || ''
@@ -298,8 +303,7 @@ export function extrairAutoresDeAbstractRetrieval(abstractJson: any): AutorExtra
       let afiliacao: string | null = null
       const afObj = au.affiliation
       if (afObj) {
-        const afId =
-          typeof afObj === 'object' ? String(afObj['@id'] || afObj.afid || '') : String(afObj)
+        const afId = typeof afObj === 'object' ? String(afObj['@id'] || afObj.afid || '') : String(afObj)
         if (afId && affilMap.has(afId)) {
           afiliacao = affilMap.get(afId)!
         }
@@ -314,7 +318,8 @@ export function extrairAutoresDeAbstractRetrieval(abstractJson: any): AutorExtra
 
   // 3. Caminho detalhado de bibrecord: root.item.bibrecord.head['author-group']
   const headAuthorGroups = toArray(
-    root.item?.bibrecord?.head?.['author-group'] || root.bibrecord?.head?.['author-group'],
+    root.item?.bibrecord?.head?.['author-group'] ||
+      root.bibrecord?.head?.['author-group'],
   )
   for (const group of headAuthorGroups) {
     if (!group || typeof group !== 'object') continue
@@ -327,10 +332,7 @@ export function extrairAutoresDeAbstractRetrieval(abstractJson: any): AutorExtra
       if (typeof org === 'string') {
         groupAffilName = org
       } else if (Array.isArray(org)) {
-        groupAffilName = org
-          .map((o) => (typeof o === 'string' ? o : o?.['$'] || ''))
-          .filter(Boolean)
-          .join(', ')
+        groupAffilName = org.map((o) => (typeof o === 'string' ? o : o?.['$'] || '')).filter(Boolean).join(', ')
       } else if (org && typeof org === 'object') {
         groupAffilName = org['$'] || null
       }
@@ -356,12 +358,7 @@ export function extrairAutoresDeAbstractRetrieval(abstractJson: any): AutorExtra
         nome = surname
       }
 
-      registrarAutor(
-        rawAuid,
-        nome,
-        groupAffilName || affilMap.values().next().value || null,
-        au['@orcid'],
-      )
+      registrarAutor(rawAuid, nome, groupAffilName || affilMap.values().next().value || null, au['@orcid'])
     }
   }
 

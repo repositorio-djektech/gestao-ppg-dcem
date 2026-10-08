@@ -138,24 +138,17 @@ Deno.serve(async (req: Request) => {
     if (!searchResp.ok) {
       let mensagemAmigavel = `Falha na consulta Scopus Search (status ${searchResp.status}).`
       if (searchResp.status === 401) {
-        mensagemAmigavel =
-          'Chave da API Scopus inválida ou expirada. Verifique o cadastro no painel.'
+        mensagemAmigavel = 'Chave da API Scopus inválida ou expirada. Verifique o cadastro no painel.'
       } else if (searchResp.status === 403) {
         mensagemAmigavel = 'Acesso não autorizado ao recurso Scopus. O plano pode não ter acesso.'
       } else if (searchResp.status === 429) {
-        mensagemAmigavel =
-          'Limite de requisições semanais da API Scopus excedido (quota). Aguarde a renovação.'
+        mensagemAmigavel = 'Limite de requisições semanais da API Scopus excedido (quota). Aguarde a renovação.'
       } else if (searchResp.status >= 500) {
-        mensagemAmigavel =
-          'Os servidores da Elsevier Scopus estão temporariamente indisponíveis. Tente novamente mais tarde.'
+        mensagemAmigavel = 'Os servidores da Elsevier Scopus estão temporariamente indisponíveis. Tente novamente mais tarde.'
       }
 
       const errBody = await searchResp.text().catch(() => '')
-      await logVal('etapa_a_search_http_error', {
-        status: searchResp.status,
-        mensagemAmigavel,
-        errBody: errBody.slice(0, 300),
-      })
+      await logVal('etapa_a_search_http_error', { status: searchResp.status, mensagemAmigavel, errBody: errBody.slice(0, 300) })
 
       const resErroHttp: ScopusRespostaBusca = {
         sucesso: false,
