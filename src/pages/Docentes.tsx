@@ -31,8 +31,13 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Search, Plus, Edit, Trash2, Printer, Sparkles } from 'lucide-react'
-import { VincularOpenAlexDialog } from '@/components/docentes/VincularOpenAlexDialog'
+import {
+  VincularOpenAlexDialog,
+  type FonteIdentificador,
+} from '@/components/docentes/VincularOpenAlexDialog'
 import type { OpenAlexAutorCandidato } from '@/lib/openalex/buscar'
+import type { ScopusAutorCandidato } from '@/services/scopus'
+import { Database } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
@@ -60,8 +65,9 @@ export default function Docentes() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | string | null>(null)
-  const [openAlexDialogOpen, setOpenAlexDialogOpen] = useState(false)
-  const [docenteParaOpenAlex, setDocenteParaOpenAlex] = useState<Docente | null>(null)
+  const [dialogoVinculoAberto, setDialogoVinculoAberto] = useState(false)
+  const [docenteParaVinculo, setDocenteParaVinculo] = useState<Docente | null>(null)
+  const [abaInicialVinculo, setAbaInicialVinculo] = useState<FonteIdentificador>('openalex')
   const [page, setPage] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState<Omit<Docente, 'id'>>(emptyForm)
@@ -109,9 +115,10 @@ export default function Docentes() {
     }
   }
 
-  const handleAbrirOpenAlex = (docente: Docente) => {
-    setDocenteParaOpenAlex(docente)
-    setOpenAlexDialogOpen(true)
+  const handleAbrirVinculo = (docente: Docente, fonte: FonteIdentificador = 'openalex') => {
+    setDocenteParaVinculo(docente)
+    setAbaInicialVinculo(fonte)
+    setDialogoVinculoAberto(true)
   }
 
   const handleVincularOpenAlex = async (
@@ -119,7 +126,7 @@ export default function Docentes() {
     candidato: OpenAlexAutorCandidato,
   ) => {
     try {
-      // Atualiza o docente no Supabase gravando openalex_id e indice_h (h_index do candidato)
+      // Atualiza o docente no Supabase gravando openalex_id e indice_h (h_index do OpenAlex)
       await update(docenteId, {
         openalex_id: candidato.openalex_id,
         indice_h: candidato.h_index,
@@ -129,6 +136,22 @@ export default function Docentes() {
       )
     } catch (err: any) {
       toast.error(`Erro ao vincular perfil OpenAlex: ${err?.message || 'Falha na gravação'}`)
+      throw err
+    }
+  }
+
+  const handleVincularScopus = async (
+    docenteId: number | string,
+    candidato: ScopusAutorCandidato,
+  ) => {
+    try {
+      // Grava APENAS o campo scopus_id. NÃO atualiza indice_h (entitlement básico não traz h-index)
+      await update(docenteId, {
+        scopus_id: candidato.scopus_id,
+      })
+      toast.success(`Docente vinculado com sucesso ao Scopus (Scopus ID: ${candidato.scopus_id})`)
+    } catch (err: any) {
+      toast.error(`Erro ao vincular perfil Scopus: ${err?.message || 'Falha na gravação'}`)
       throw err
     }
   }
@@ -309,8 +332,46 @@ export default function Docentes() {
                 paginated.map((d) => (
                   <TableRow key={d.id} className="hover:bg-slate-50/50">
                     <TableCell className="font-medium text-slate-900">{d.nome}</TableCell>
-                    <TableCell className="text-slate-500 font-mono text-sm">
-                      {d.scopus_id || '-'}
+                    <TableCell>
+                      {d.scopus_id ? (
+                        canEdit ? (
+                          <button
+                            type="button"
+                            onClick={() => handleAbrirVinculo(d, 'scopus')}
+                            className="inline-flex items-center gap-1.5 group cursor-pointer focus:outline-none"
+                            title="Clique para gerenciar a vinculação Scopus"
+                          >
+                            <Badge
+                              variant="outline"
+                              className="font-mono text-xs text-emerald-800 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 transition-colors"
+                            >
+                              <Database className="h-3 w-3 text-emerald-600 mr-1" />
+                              {d.scopus_id}
+                            </Badge>
+                          </button>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="font-mono text-xs text-emerald-800 border-emerald-300 bg-emerald-50"
+                          >
+                            <Database className="h-3 w-3 text-emerald-600 mr-1" />
+                            {d.scopus_id}
+                          </Badge>
+                        )
+                      ) : canEdit ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAbrirVinculo(d, 'scopus')}
+                          className="h-7 px-2 text-xs gap-1 text-emerald-700 hover:text-emerald-800 border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50/50"
+                          title="Buscar autor no Scopus"
+                        >
+                          <Database className="h-3 w-3 text-emerald-600" />
+                          <span>Buscar Scopus</span>
+                        </Button>
+                      ) : (
+                        <span className="text-slate-400 font-mono text-sm">-</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-center font-medium text-slate-700">
                       {d.indice_h}
@@ -348,7 +409,7 @@ export default function Docentes() {
                         canEdit ? (
                           <button
                             type="button"
-                            onClick={() => handleAbrirOpenAlex(d)}
+                            onClick={() => handleAbrirVinculo(d, 'openalex')}
                             className="inline-flex items-center gap-1.5 group cursor-pointer focus:outline-none"
                             title="Clique para alterar a vinculação OpenAlex"
                           >
@@ -373,7 +434,7 @@ export default function Docentes() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleAbrirOpenAlex(d)}
+                          onClick={() => handleAbrirVinculo(d, 'openalex')}
                           className="h-7 px-2.5 text-xs gap-1.5 text-indigo-700 hover:text-indigo-800 border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50/50"
                         >
                           <Sparkles className="h-3 w-3 text-indigo-500" />
@@ -448,10 +509,12 @@ export default function Docentes() {
       </div>
 
       <VincularOpenAlexDialog
-        open={openAlexDialogOpen}
-        onOpenChange={setOpenAlexDialogOpen}
-        docente={docenteParaOpenAlex}
+        open={dialogoVinculoAberto}
+        onOpenChange={setDialogoVinculoAberto}
+        docente={docenteParaVinculo}
+        abaInicial={abaInicialVinculo}
         onVincular={handleVincularOpenAlex}
+        onVincularScopus={handleVincularScopus}
       />
     </div>
   )
