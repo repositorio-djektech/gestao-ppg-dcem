@@ -32,7 +32,8 @@ Deno.serve(async (req: Request) => {
     const termo = typeof body.termo === 'string' ? body.termo.trim() : ''
     const filtroAfiliacao =
       typeof body.filtroAfiliacao === 'string' ? body.filtroAfiliacao.trim() : undefined
-    const limite = Math.min(Math.max(1, Number(body.limite) || 10), 25)
+    // Para agregação de autores, buscamos mais documentos na Scopus Search (ex: até 25)
+    const limite = Math.min(Math.max(1, Number(body.limite) || 15), 25)
 
     if (!termo) {
       const resVazia: ScopusRespostaBusca = {
@@ -63,14 +64,16 @@ Deno.serve(async (req: Request) => {
       })
     }
 
+    // Usar o endpoint Scopus Search (content/search/scopus), suportado no entitlement básico
     const query = montarScopusQuery(termo, filtroAfiliacao)
-    const scopusUrl = new URL('https://api.elsevier.com/content/search/author')
+    const scopusUrl = new URL('https://api.elsevier.com/content/search/scopus')
     scopusUrl.searchParams.set('query', query)
     scopusUrl.searchParams.set('count', String(limite))
+    scopusUrl.searchParams.set('view', 'STANDARD')
 
-    // Timeout com AbortController de 10 segundos
+    // Timeout com AbortController de 12 segundos
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 10000)
+    const timer = setTimeout(() => controller.abort(), 12000)
 
     let response: Response
     try {
@@ -112,7 +115,7 @@ Deno.serve(async (req: Request) => {
           'Acesso não autorizado ao recurso Scopus solicitado. O plano básico da chave pode não ter acesso a este endpoint.'
       } else if (response.status === 429) {
         mensagemAmigavel =
-          'Limite de requisições semanais da API Scopus atingido (quota excedida). Aguarde a renovação da cota.'
+          'Limite de requisições da API Scopus atingido (quota semanal excedida). Aguarde a renovação da cota.'
       } else if (response.status >= 500) {
         mensagemAmigavel =
           'Os servidores da Elsevier Scopus estão temporariamente indisponíveis. Tente novamente mais tarde.'
@@ -133,15 +136,16 @@ Deno.serve(async (req: Request) => {
     const data = await response.json()
     const searchResults = data?.['search-results']
     const entries = searchResults?.entry || []
-    const totalRaw = searchResults?.['opensearch:totalResults']
-    const totalCount = Number(totalRaw) || (Array.isArray(entries) ? entries.length : 0)
+    const totalDocsRaw = searchResults?.['opensearch:totalResults']
+    const totalDocs = Number(totalDocsRaw) || (Array.isArray(entries) ? entries.length : 0)
 
-    const candidatos = mapearEntradasScopus(entries)
+    // Agrupa e extrai autores únicos dos documentos retornados
+    const candidatos = mapearEntradasScopus(entries, termo)
 
     const resSucesso: ScopusRespostaBusca = {
       sucesso: true,
       candidatos,
-      total: totalCount,
+      total: totalDocs,
       termoBuscado: termo,
     }
 

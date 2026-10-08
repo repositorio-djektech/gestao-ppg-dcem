@@ -488,7 +488,7 @@ export function VincularOpenAlexDialog({
             </form>
 
             <div className="text-[11px] text-slate-500 bg-emerald-50/50 border border-emerald-100 rounded px-2.5 py-1 flex items-center justify-between">
-              <span>Busca oficial via Elsevier Author Search API (Entitlement Básico)</span>
+              <span>Busca oficial via Elsevier Scopus Search API (Entitlement Básico)</span>
               <span className="text-slate-400 font-mono">Chave segura via backend</span>
             </div>
 
