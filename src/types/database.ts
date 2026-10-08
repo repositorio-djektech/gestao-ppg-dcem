@@ -17,6 +17,7 @@ export type Docente = {
   jdp: boolean
   licenca: string
   id_lattes?: string | null
+  openalex_id?: string | null
 }
 
 export type Publicacao = {
