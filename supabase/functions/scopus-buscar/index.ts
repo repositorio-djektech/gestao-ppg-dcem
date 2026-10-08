@@ -16,28 +16,6 @@ Deno.serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
-  // Endpoint administrativo/teste para checar logs e telemetria
-  const inspectLogs = new URL(req.url).searchParams.get('inspect_logs')
-  if (inspectLogs) {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    if (supabaseUrl && serviceKey) {
-      const res = await fetch(
-        `${supabaseUrl}/rest/v1/scopus_val_log?select=*&order=id.desc&limit=5`,
-        {
-          headers: {
-            apikey: serviceKey,
-            Authorization: `Bearer ${serviceKey}`,
-          },
-        },
-      )
-      const logsData = await res.json()
-      return new Response(JSON.stringify(logsData), {
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      })
-    }
-  }
-
   try {
     let body: any = {}
     if (req.method === 'POST') {
@@ -355,6 +333,23 @@ Deno.serve(async (req: Request) => {
     let candidatos: any[] = []
     if (docsComAutores.length > 0) {
       candidatos = agregarAutoresDeAbstracts(docsComAutores, termo)
+    }
+
+    // FALLBACK HÍBRIDO: se os abstracts recuperados não continham o autor (ex.: Abstract Retrieval
+    // retornou apenas o primeiro autor no dc:creator com entitlement básico, e o pesquisado era coautor),
+    // ou se o Abstract Retrieval falhou para todos os docs, recorre aos autores já indexados
+    // no próprio Scopus Search (`entries.author`), combinando os metadados.
+    if (candidatos.length === 0 && Array.isArray(entries) && entries.length > 0) {
+      const candidatosSearch = mapearEntradasScopus(entries, termo)
+      if (candidatosSearch.length > 0) {
+        candidatos = candidatosSearch
+        await logVal('etapa_b_fallback_entries_used', {
+          motivo:
+            'Abstract Retrieval retornou 0 candidatos casados, mas entries do Search tinham autores',
+          candidatosEncontrados: candidatos.length,
+          nomes: candidatos.map((c) => c.nome),
+        })
+      }
     }
 
     await logVal('etapa_b_retrieval_complete', {

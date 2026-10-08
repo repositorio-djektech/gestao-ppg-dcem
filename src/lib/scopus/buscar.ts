@@ -513,14 +513,16 @@ export function calcularSemelhancaNomeTermo(
   let tokensCasados = 0
 
   for (const token of tokensTermo) {
-    // Casamento exato do token ou prefixo forte (para abreviações com mais de 3 chars)
+    // Casamento exato do token ou prefixo forte (para abreviações ou iniciais)
     if (setCandidato.has(token)) {
       tokensCasados += 1
     } else {
       // Verifica se algum token do candidato contém ou prefixa o token do termo
       const temPrefixo = tokensCandidato.some((tc) => {
-        if (token.length >= 4 && tc.startsWith(token)) return true
-        if (tc.length >= 4 && token.startsWith(tc)) return true
+        if (token.length === 1 && tc.startsWith(token)) return true
+        if (tc.length === 1 && token.startsWith(tc)) return true
+        if (token.length >= 3 && tc.startsWith(token)) return true
+        if (tc.length >= 3 && token.startsWith(tc)) return true
         return false
       })
       if (temPrefixo) {
@@ -535,15 +537,19 @@ export function calcularSemelhancaNomeTermo(
     (setCandidato.has(sobrenomeTermo) ||
       tokensCandidato.some(
         (tc) =>
-          (sobrenomeTermo.length >= 4 && tc.startsWith(sobrenomeTermo)) ||
-          (tc.length >= 4 && sobrenomeTermo.startsWith(tc)),
+          (sobrenomeTermo.length >= 3 && tc.startsWith(sobrenomeTermo)) ||
+          (tc.length >= 3 && sobrenomeTermo.startsWith(tc)),
       )),
   )
 
-  // Critério de descarte: só promove a candidato se houver sobreposição real de tokens com o termo
-  // Se o termo tem 1 token: precisa casar esse 1 token
-  // Se o termo tem >= 2 tokens: precisa de ao menos 1 token casado (preferencialmente o sobrenome ou o primeiro nome)
-  const casou = tokensCasados > 0
+  // O candidato casou se:
+  // 1. O sobrenome do termo casou (no Scopus, o sobrenome é a âncora principal do autor)
+  // 2. OU pelo menos 2 tokens casaram
+  // 3. OU (se o termo só tem 1 token) esse 1 token casou
+  const casou =
+    casouSobrenome ||
+    tokensCasados >= Math.min(2, tokensTermo.length) ||
+    (tokensTermo.length === 1 && tokensCasados > 0)
   const casouTodosTokensTermo = tokensCasados >= tokensTermo.length
 
   return {

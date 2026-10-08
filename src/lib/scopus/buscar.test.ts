@@ -372,6 +372,32 @@ describe('Serviço Scopus - Pipeline em Duas Etapas (Search → Abstract Retriev
       expect(candidatos[0].nome).toBe('Ledjane Silva Barreto')
     })
 
+    it('reconhece autores com nomes abreviados por inicial quando o sobrenome casa (ex: L. S. Barreto para Ledjane Barreto)', () => {
+      const docs = [
+        {
+          scopus_id: 'doc_abrev',
+          cited_by_count: 45,
+          autores: [
+            {
+              scopus_id: '55490763400',
+              nome: 'L. S. Barreto',
+              afiliacao: 'Universidade Federal de Sergipe',
+            },
+            {
+              scopus_id: '99999999999',
+              nome: 'Carlos Eduardo Santos',
+              afiliacao: 'USP',
+            },
+          ],
+        },
+      ]
+
+      const candidatos = agregarAutoresDeAbstracts(docs, 'Ledjane Barreto')
+      expect(candidatos).toHaveLength(1)
+      expect(candidatos[0].scopus_id).toBe('55490763400')
+      expect(candidatos[0].nome).toBe('L. S. Barreto')
+    })
+
     it('retorna lista vazia se nenhum autor do abstract casar com o termo buscado', () => {
       const docs = [
         {

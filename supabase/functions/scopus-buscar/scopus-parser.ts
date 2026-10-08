@@ -539,8 +539,11 @@ export function calcularSemelhancaNomeTermo(
       tokensCasados += 1
     } else {
       const temPrefixo = tokensCandidato.some((tc) => {
-        if (token.length >= 4 && tc.startsWith(token)) return true
-        if (tc.length >= 4 && token.startsWith(tc)) return true
+        // Se um dos tokens for inicial isolada (ex: 'l' de 'l s barreto' casa com 'ledjane')
+        if (token.length === 1 && tc.startsWith(token)) return true
+        if (tc.length === 1 && token.startsWith(tc)) return true
+        if (token.length >= 3 && tc.startsWith(token)) return true
+        if (tc.length >= 3 && token.startsWith(tc)) return true
         return false
       })
       if (temPrefixo) {
@@ -555,12 +558,19 @@ export function calcularSemelhancaNomeTermo(
     (setCandidato.has(sobrenomeTermo) ||
       tokensCandidato.some(
         (tc) =>
-          (sobrenomeTermo.length >= 4 && tc.startsWith(sobrenomeTermo)) ||
-          (tc.length >= 4 && sobrenomeTermo.startsWith(tc)),
+          (sobrenomeTermo.length >= 3 && tc.startsWith(sobrenomeTermo)) ||
+          (tc.length >= 3 && sobrenomeTermo.startsWith(tc)),
       )),
   )
 
-  const casou = tokensCasados > 0
+  // O candidato casou se:
+  // 1. O sobrenome do termo casou (no Scopus, o sobrenome é a âncora principal do autor)
+  // 2. OU pelo menos 2 tokens casaram
+  // 3. OU (se o termo só tem 1 token) esse 1 token casou
+  const casou =
+    casouSobrenome ||
+    tokensCasados >= Math.min(2, tokensTermo.length) ||
+    (tokensTermo.length === 1 && tokensCasados > 0)
   const casouTodosTokensTermo = tokensCasados >= tokensTermo.length
 
   return {
@@ -717,6 +727,56 @@ export function mapearEntradasScopus(
 ): ScopusAutorCandidato[] {
   if (!Array.isArray(entries) || entries.length === 0) return []
 
+  const primeira = entries[0]
+  if (
+    primeira &&
+    (primeira['preferred-name'] ||
+      (primeira['dc:identifier'] && String(primeira['dc:identifier']).startsWith('AUTHOR_ID')))
+  ) {
+    const resultado: ScopusAutorCandidato[] = []
+    for (const entry of entries) {
+      if (!entry || typeof entry !== 'object') continue
+      const rawId = entry['dc:identifier'] || entry['author-id'] || entry['@author-id'] || ''
+      const scopusId = extrairScopusId(rawId)
+      if (!scopusId) continue
+
+      const prefName = entry['preferred-name'] || {}
+      const surname = prefName['surname'] || ''
+      const givenName = prefName['given-name'] || prefName['initials'] || ''
+      let nomeCompleto = ''
+      if (surname && givenName) {
+        nomeCompleto = `${givenName} ${surname}`.trim()
+      } else if (surname) {
+        nomeCompleto = surname
+      } else if (entry['authname']) {
+        nomeCompleto = entry['authname']
+      } else {
+        nomeCompleto = `Autor ${scopusId}`
+      }
+
+      let instituicao: string | null = null
+      const affilCurrent = entry['affiliation-current']
+      if (affilCurrent && typeof affilCurrent === 'object') {
+        instituicao = affilCurrent['affiliation-name'] || null
+      }
+
+      const docCount = Number(entry['document-count'] ?? 0)
+      const citedCount = Number(entry['cited-by-count'] ?? 0)
+      const orcid = entry['orcid'] ? String(entry['orcid']) : null
+
+      resultado.push({
+        scopus_id: scopusId,
+        nome: nomeCompleto,
+        instituicao,
+        document_count: Number.isFinite(docCount) ? docCount : 0,
+        cited_by_count: Number.isFinite(citedCount) ? citedCount : 0,
+        orcid,
+        afiliacoes: instituicao ? [instituicao] : [],
+      })
+    }
+    return resultado
+  }
+
   const docsSimulados: DocumentoComAutores[] = entries.map((entry) => {
     const rawId = entry['dc:identifier'] || entry.eid || ''
     const scopusId = extrairScopusId(rawId)
@@ -738,6 +798,7 @@ export function mapearEntradasScopus(
 
     if (autores.length === 0 && entry['dc:creator']) {
       const creatorName = String(entry['dc:creator']).trim()
+      // Se tiver autor sem auid, associar com id do documento como chave de autor apenas se houver auid no link
       autores.push({ scopus_id: scopusId, nome: creatorName, afiliacao: null })
     }
 
