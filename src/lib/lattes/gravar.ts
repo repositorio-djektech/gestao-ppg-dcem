@@ -426,12 +426,12 @@ export function converterLattesEvento(
 }
 
 /**
- * Grava docentes no Supabase seguindo as regras da Subetapa 2A:
- * - Casar por `id_lattes` se presente.
- * - Se existir docente com esse id_lattes -> UPDATE (nome e demais campos extraídos);
- *   senão INSERT.
- * - Se id_lattes ausente / nulo / vazio, casar por nome exato (trim).
- *   Se encontrar -> UPDATE; senão INSERT.
+ * Grava docentes no Supabase:
+ * - Casar primeiro por `id_lattes` se presente.
+ * - Se busca por id_lattes não encontrar (ou id_lattes ausente), tentar casar por nome
+ *   (exato e normalizado: minúsculas, sem acentos, trim, colapsar espaços) ANTES do INSERT.
+ * - Se encontrar por nome -> UPDATE (preenchendo id_lattes e demais campos extraídos).
+ * - Só fazer INSERT se nem id_lattes nem nome casarem.
  * - Retorna contagem { inseridos, atualizados, ignorados }.
  */
 export async function gravarDocentes(
@@ -465,6 +465,7 @@ export async function gravarDocentes(
   // Mapas para busca rápida
   const porIdLattes = new Map<string, DocenteExistenteBanco>()
   const porNomeExato = new Map<string, DocenteExistenteBanco>()
+  const porNomeNormalizado = new Map<string, DocenteExistenteBanco>()
 
   for (const d of listaExistentes) {
     if (d.id_lattes && d.id_lattes.trim() !== '') {
@@ -472,6 +473,7 @@ export async function gravarDocentes(
     }
     if (d.nome && d.nome.trim() !== '') {
       porNomeExato.set(d.nome.trim(), d)
+      porNomeNormalizado.set(normalizarTitulo(d.nome), d)
     }
   }
 
@@ -484,16 +486,19 @@ export async function gravarDocentes(
       continue
     }
 
-    // Procura match
+    // Procura match:
+    // 1. Por id_lattes se informado
     let encontrado: DocenteExistenteBanco | undefined
     if (idLattesLimpo) {
       encontrado = porIdLattes.get(idLattesLimpo)
     }
 
-    // Se id_lattes ausente ou não encontrou por id_lattes mas sem id_lattes informado:
-    // "Se id_lattes ausente, casar por nome exato."
-    if (!idLattesLimpo && !encontrado) {
-      encontrado = porNomeExato.get(nomeLimpo)
+    // 2. Se não encontrou por id_lattes (ou não tinha id_lattes),
+    // tenta casar por nome ANTES do INSERT:
+    // primeiro nome exato, depois nome normalizado (minúsculas, sem acentos, trim, colapsar espaços)
+    if (!encontrado) {
+      encontrado =
+        porNomeExato.get(nomeLimpo) || porNomeNormalizado.get(normalizarTitulo(nomeLimpo))
     }
 
     if (encontrado) {
@@ -541,6 +546,7 @@ export async function gravarDocentes(
         }
         encontrado.nome = nomeLimpo
         porNomeExato.set(nomeLimpo, encontrado)
+        porNomeNormalizado.set(normalizarTitulo(nomeLimpo), encontrado)
       }
     } else {
       // INSERT
@@ -586,6 +592,7 @@ export async function gravarDocentes(
           }
           if (rec.nome) {
             porNomeExato.set(rec.nome, rec)
+            porNomeNormalizado.set(normalizarTitulo(rec.nome), rec)
           }
         }
       }

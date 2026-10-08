@@ -410,6 +410,76 @@ describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => 
       expect(resultado.contagem.atualizados).toBe(0)
       expect(mock.insertCalls.docentes).toHaveLength(1)
     })
+
+    it('cenário Zélia: docente existente sem id_lattes + XML com id_lattes e nome que casa normalizado -> UPDATE com preenchimento de id_lattes, NUNCA INSERT', async () => {
+      const mock = createMockSupabaseClient({
+        docentes: [
+          {
+            id: 3,
+            nome: 'Zélia Soares Macedo',
+            id_lattes: null,
+            scopus_id: '6602984180',
+            indice_h: 18,
+            bolsa_cnpq: 'PQ-2',
+          },
+        ],
+      })
+
+      const docenteImportadoLattes: DocenteParaGravar[] = [
+        {
+          id_lattes: '4820658428841295',
+          nome: 'Zelia Soares Macedo',
+        },
+      ]
+
+      const resultado = await gravarDocentes(docenteImportadoLattes, mock.client)
+
+      expect(resultado.contagem.inseridos).toBe(0)
+      expect(resultado.contagem.atualizados).toBe(1)
+      expect(resultado.contagem.ignorados).toBe(0)
+      expect(resultado.erros).toHaveLength(0)
+
+      expect(mock.insertCalls.docentes).toHaveLength(0)
+      expect(mock.updateCalls.docentes).toHaveLength(1)
+
+      const alvo = mock.database.docentes.find((d) => d.id === 3)
+      expect(alvo).toBeDefined()
+      expect(alvo?.id_lattes).toBe('4820658428841295')
+      expect(alvo?.nome).toBe('Zelia Soares Macedo')
+      // Preserva dados preexistentes se não sobrescritos
+      expect(alvo?.scopus_id).toBe('6602984180')
+      expect(alvo?.indice_h).toBe(18)
+      expect(alvo?.bolsa_cnpq).toBe('PQ-2')
+    })
+
+    it('cenário id_lattes novo e nome que NÃO casa normalizado -> preserva comportamento de INSERT', async () => {
+      const mock = createMockSupabaseClient({
+        docentes: [
+          {
+            id: 3,
+            nome: 'Zélia Soares Macedo',
+            id_lattes: null,
+          },
+        ],
+      })
+
+      const docenteInedito: DocenteParaGravar[] = [
+        {
+          id_lattes: '9999888877776666',
+          nome: 'Outro Professor Diferente',
+        },
+      ]
+
+      const resultado = await gravarDocentes(docenteInedito, mock.client)
+
+      expect(resultado.contagem.inseridos).toBe(1)
+      expect(resultado.contagem.atualizados).toBe(0)
+      expect(resultado.contagem.ignorados).toBe(0)
+      expect(mock.insertCalls.docentes).toHaveLength(1)
+      expect(mock.updateCalls.docentes).toHaveLength(0)
+      expect(mock.database.docentes).toHaveLength(2)
+      expect(mock.database.docentes.some((d) => d.id_lattes === '9999888877776666')).toBe(true)
+    })
   })
 
   describe('Gravação de publicações', () => {
