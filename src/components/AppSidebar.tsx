@@ -74,8 +74,8 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="h-16 flex items-center justify-start border-b px-4 bg-slate-50">
-        <h2 className="text-base font-bold text-primary flex items-center gap-2">
+      <SidebarHeader className="h-16 flex items-center justify-center border-b px-4 bg-slate-50">
+        <h2 className="text-base font-bold text-primary flex items-center justify-center gap-2 w-full text-center">
           <img src={dcemLogo} alt="DCEM Logo" className="h-8 w-8 object-contain shrink-0" />
           <span className="truncate">Gestão PPG-DCEM</span>
         </h2>

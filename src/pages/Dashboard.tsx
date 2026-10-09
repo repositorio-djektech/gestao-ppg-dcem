@@ -43,6 +43,7 @@ type CategoryTheme = {
   hoverBorder: string
   badge: string
   accentBar: string
+  progressBar: string
   iconColor: string
   bgSoft: string
 }
@@ -61,6 +62,7 @@ const categories: CategoryConfig[] = [
       hoverBorder: 'hover:border-blue-400',
       badge: 'bg-blue-100 text-blue-800 border-blue-200',
       accentBar: 'bg-blue-500',
+      progressBar: 'bg-blue-500',
       iconColor: 'text-blue-500 group-hover:text-blue-600',
       bgSoft: 'bg-blue-50/40',
     },
@@ -83,6 +85,7 @@ const categories: CategoryConfig[] = [
       hoverBorder: 'hover:border-emerald-400',
       badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
       accentBar: 'bg-emerald-500',
+      progressBar: 'bg-emerald-500',
       iconColor: 'text-emerald-500 group-hover:text-emerald-600',
       bgSoft: 'bg-emerald-50/40',
     },
@@ -118,6 +121,7 @@ const categories: CategoryConfig[] = [
       hoverBorder: 'hover:border-amber-400',
       badge: 'bg-amber-100 text-amber-800 border-amber-200',
       accentBar: 'bg-amber-500',
+      progressBar: 'bg-amber-500',
       iconColor: 'text-amber-500 group-hover:text-amber-600',
       bgSoft: 'bg-amber-50/40',
     },
@@ -146,6 +150,7 @@ const categories: CategoryConfig[] = [
       hoverBorder: 'hover:border-purple-400',
       badge: 'bg-purple-100 text-purple-800 border-purple-200',
       accentBar: 'bg-purple-500',
+      progressBar: 'bg-purple-500',
       iconColor: 'text-purple-500 group-hover:text-purple-600',
       bgSoft: 'bg-purple-50/40',
     },
@@ -308,7 +313,11 @@ export default function Dashboard() {
                 <div className="text-2xl font-bold text-slate-900">{cat.subtotal}</div>
               )}
               <p className="text-xs text-slate-500 mt-1">Meta: {cat.target} registros</p>
-              <Progress value={cat.percent} className="mt-3 h-2" />
+              <Progress
+                value={cat.percent}
+                className="mt-3 h-2 bg-slate-100"
+                indicatorClassName={cat.theme.progressBar}
+              />
             </CardContent>
           </Card>
         ))}
@@ -353,7 +362,11 @@ export default function Dashboard() {
                           <p className="text-xs text-slate-500">Meta: {mod.target}</p>
                           <span className="text-xs font-medium text-slate-600">{percent}%</span>
                         </div>
-                        <Progress value={percent} className="mt-2 h-1.5" />
+                        <Progress
+                          value={percent}
+                          className="mt-2 h-1.5 bg-slate-100"
+                          indicatorClassName={cat.theme.progressBar}
+                        />
                       </CardContent>
                     </Card>
                   </Link>
