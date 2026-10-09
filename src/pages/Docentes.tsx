@@ -450,12 +450,18 @@ export default function Docentes() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleAbrirVinculo(d, 'openalex')}
-                          className="h-7 px-2.5 text-xs gap-1.5 text-indigo-700 hover:text-indigo-800 border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50/50"
+                          className="h-7 px-2.5 text-xs gap-1.5 text-orange-700 hover:text-orange-800 border-orange-300 hover:border-orange-400 bg-orange-50 hover:bg-orange-100 transition-colors"
+                          title="Buscar autor no OpenAlex"
                         >
-                          <span>Buscar OpenAlex</span>
+                          <span className="font-medium">Buscar OpenAlex</span>
                         </Button>
                       ) : (
-                        <span className="text-slate-400">-</span>
+                        <Badge
+                          variant="outline"
+                          className="font-mono text-xs text-orange-700 border-orange-300 bg-orange-50"
+                        >
+                          Buscar OpenAlex
+                        </Badge>
                       )}
                     </TableCell>
                     {canEdit && (

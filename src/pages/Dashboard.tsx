@@ -38,14 +38,32 @@ type ModuleConfig = {
   target: number
 }
 
+type CategoryTheme = {
+  border: string
+  hoverBorder: string
+  badge: string
+  accentBar: string
+  iconColor: string
+  bgSoft: string
+}
+
 type CategoryConfig = {
   label: string
+  theme: CategoryTheme
   modules: ModuleConfig[]
 }
 
 const categories: CategoryConfig[] = [
   {
     label: 'Pessoas',
+    theme: {
+      border: 'border-blue-200',
+      hoverBorder: 'hover:border-blue-400',
+      badge: 'bg-blue-100 text-blue-800 border-blue-200',
+      accentBar: 'bg-blue-500',
+      iconColor: 'text-blue-500 group-hover:text-blue-600',
+      bgSoft: 'bg-blue-50/40',
+    },
     modules: [
       { name: 'Docentes', table: 'docentes', route: '/docentes', icon: Users, target: 20 },
       {
@@ -60,6 +78,14 @@ const categories: CategoryConfig[] = [
   },
   {
     label: 'Acadêmico',
+    theme: {
+      border: 'border-emerald-200',
+      hoverBorder: 'hover:border-emerald-400',
+      badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      accentBar: 'bg-emerald-500',
+      iconColor: 'text-emerald-500 group-hover:text-emerald-600',
+      bgSoft: 'bg-emerald-50/40',
+    },
     modules: [
       { name: 'Bancas', table: 'bancas', route: '/bancas', icon: ClipboardList, target: 30 },
       {
@@ -87,6 +113,14 @@ const categories: CategoryConfig[] = [
   },
   {
     label: 'Produção',
+    theme: {
+      border: 'border-amber-200',
+      hoverBorder: 'hover:border-amber-400',
+      badge: 'bg-amber-100 text-amber-800 border-amber-200',
+      accentBar: 'bg-amber-500',
+      iconColor: 'text-amber-500 group-hover:text-amber-600',
+      bgSoft: 'bg-amber-50/40',
+    },
     modules: [
       {
         name: 'Publicações',
@@ -107,6 +141,14 @@ const categories: CategoryConfig[] = [
   },
   {
     label: 'Difusão/Outros',
+    theme: {
+      border: 'border-purple-200',
+      hoverBorder: 'hover:border-purple-400',
+      badge: 'bg-purple-100 text-purple-800 border-purple-200',
+      accentBar: 'bg-purple-500',
+      iconColor: 'text-purple-500 group-hover:text-purple-600',
+      bgSoft: 'bg-purple-50/40',
+    },
     modules: [
       { name: 'Eventos', table: 'eventos', route: '/eventos', icon: Calendar, target: 50 },
       {
@@ -166,6 +208,7 @@ export default function Dashboard() {
     const target = cat.modules.reduce((s, m) => s + m.target, 0)
     return {
       label: cat.label,
+      theme: cat.theme,
       subtotal,
       target,
       percent: target > 0 ? Math.round((subtotal / target) * 100) : 0,
@@ -188,16 +231,20 @@ export default function Dashboard() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => setLattesDialogOpen(true)}
+            onClick={fetchCounts}
             className="inline-flex items-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800"
           >
-            <FileUp className="h-4 w-4 text-primary" />
-            Importar Lattes
+            <TrendingUp className="h-4 w-4 text-primary" />
+            Atualizar
           </Button>
 
-          <Button type="button" onClick={fetchCounts} className="inline-flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Atualizar
+          <Button
+            type="button"
+            onClick={() => setLattesDialogOpen(true)}
+            className="inline-flex items-center gap-2"
+          >
+            <FileUp className="h-4 w-4" />
+            Importar Lattes
           </Button>
         </div>
       </div>
@@ -223,12 +270,12 @@ export default function Dashboard() {
       />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="border-0 shadow-sm bg-primary text-primary-foreground lg:col-span-1">
+        <Card className="border border-primary/20 shadow-md hover:shadow-lg transition-all duration-200 bg-primary text-primary-foreground lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-primary-foreground/80">
+            <CardTitle className="text-sm font-medium text-primary-foreground/90">
               Total de Registros
             </CardTitle>
-            <Database className="h-5 w-5 text-primary-foreground/60" />
+            <Database className="h-5 w-5 text-primary-foreground/75" />
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -236,18 +283,21 @@ export default function Dashboard() {
             ) : (
               <div className="text-4xl font-bold">{totalRecords}</div>
             )}
-            <p className="text-xs text-primary-foreground/70 mt-2">
+            <p className="text-xs text-primary-foreground/80 mt-2">
               Meta: {overallTarget} registros · {overallPercent}% concluído
             </p>
-            <Progress value={overallPercent} className="mt-3 h-2 bg-primary-foreground/20" />
+            <Progress value={overallPercent} className="mt-3 h-2 bg-primary-foreground/25" />
           </CardContent>
         </Card>
 
         {categoryStats.map((cat) => (
-          <Card key={cat.label} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+          <Card
+            key={cat.label}
+            className={`border ${cat.theme.border} shadow-md hover:shadow-lg transition-all duration-200 bg-white`}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-600">{cat.label}</CardTitle>
-              <Badge variant="secondary" className="text-xs">
+              <CardTitle className="text-sm font-medium text-slate-700">{cat.label}</CardTitle>
+              <Badge variant="outline" className={`text-xs font-semibold ${cat.theme.badge}`}>
                 {cat.percent}%
               </Badge>
             </CardHeader>
@@ -269,8 +319,11 @@ export default function Dashboard() {
         return (
           <div key={cat.label} className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">{cat.label}</h2>
-              <span className="text-sm text-slate-500">
+              <div className="flex items-center gap-2">
+                <span className={`h-4 w-1.5 rounded-full ${cat.theme.accentBar}`} />
+                <h2 className="text-lg font-semibold text-slate-900">{cat.label}</h2>
+              </div>
+              <span className="text-sm text-slate-500 font-medium">
                 {catStat?.subtotal ?? 0} / {catStat?.target ?? 0} registros
               </span>
             </div>
@@ -281,12 +334,14 @@ export default function Dashboard() {
                   mod.target > 0 ? Math.min(Math.round((count / mod.target) * 100), 100) : 0
                 return (
                   <Link key={mod.table} to={mod.route} className="block group">
-                    <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200 group-hover:border-primary/30 h-full">
+                    <Card
+                      className={`border ${cat.theme.border} ${cat.theme.hoverBorder} shadow-sm hover:shadow-md transition-all duration-200 h-full bg-white`}
+                    >
                       <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-slate-600">
+                        <CardTitle className="text-sm font-medium text-slate-700">
                           {mod.name}
                         </CardTitle>
-                        <mod.icon className="h-4 w-4 text-slate-400 group-hover:text-primary transition-colors" />
+                        <mod.icon className={`h-4 w-4 ${cat.theme.iconColor} transition-colors`} />
                       </CardHeader>
                       <CardContent>
                         {loading ? (

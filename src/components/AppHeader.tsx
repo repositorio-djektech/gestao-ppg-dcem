@@ -21,7 +21,7 @@ export function AppHeader() {
     <header className="flex h-16 shrink-0 items-center justify-between border-b bg-white px-4 shadow-sm md:px-6">
       <div className="flex items-center gap-4">
         <SidebarTrigger className="text-slate-500 hover:text-primary" />
-        <div className="hidden md:flex items-center relative w-64">
+        <div className="hidden md:flex items-center relative w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             type="search"

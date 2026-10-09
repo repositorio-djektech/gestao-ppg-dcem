@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import dcemLogo from '@/assets/dcem-logo-trans-3d28d.webp'
 import {
   LayoutDashboard,
   Users,
@@ -73,10 +74,10 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="h-16 flex items-center justify-center border-b px-6 bg-slate-50">
-        <h2 className="text-lg font-bold text-primary flex items-center gap-2">
-          <FlaskConical className="h-6 w-6" />
-          <span>Gestão PPG DCEM</span>
+      <SidebarHeader className="h-16 flex items-center justify-start border-b px-4 bg-slate-50">
+        <h2 className="text-base font-bold text-primary flex items-center gap-2">
+          <img src={dcemLogo} alt="DCEM Logo" className="h-8 w-8 object-contain shrink-0" />
+          <span className="truncate">Gestão PPG-DCEM</span>
         </h2>
       </SidebarHeader>
       <SidebarContent className="bg-white">
