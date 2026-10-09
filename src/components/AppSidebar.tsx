@@ -101,7 +101,7 @@ export function AppSidebar() {
         </SidebarGroup>
         {navGroups.map((group) => (
           <SidebarGroup key={group.label}>
-            <SidebarGroupLabel className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-4">
+            <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider px-4 text-[#2463EB]">
               {group.label}
             </SidebarGroupLabel>
             <SidebarGroupContent>
