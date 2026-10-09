@@ -1,5 +1,4 @@
 import { useAuth } from '@/hooks/use-auth'
-import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -18,15 +17,14 @@ export function AppHeader() {
   const { profile, signOut } = useAuth()
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b bg-white px-4 shadow-sm md:px-6">
+    <header className="flex h-16 shrink-0 items-center justify-between border-b bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 px-4 shadow-sm md:px-6">
       <div className="flex items-center gap-4">
-        <SidebarTrigger className="text-slate-500 hover:text-primary" />
-        <div className="hidden md:flex items-center relative w-96">
+        <div className="flex items-center relative w-64 sm:w-80 md:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             type="search"
             placeholder="Pesquisar..."
-            className="w-full bg-slate-50 pl-9 rounded-full border-slate-200 focus-visible:ring-primary/20"
+            className="w-full bg-slate-50 dark:bg-neutral-800 pl-9 rounded-full border-slate-200 dark:border-neutral-700 focus-visible:ring-primary/20"
           />
         </div>
       </div>

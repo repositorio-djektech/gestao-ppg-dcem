@@ -1,5 +1,11 @@
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import dcemLogo from '@/assets/dcem-logo-trans-3d28d.webp'
+import { Sidebar, SidebarBody, SidebarLink, useSidebar } from '@/components/ui/sidebar'
+import { useAuth } from '@/hooks/use-auth'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
   Users,
@@ -16,115 +22,241 @@ import {
   Plane,
   HeartHandshake,
   Award,
+  LogOut,
 } from 'lucide-react'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarHeader,
-} from '@/components/ui/sidebar'
 
-const navGroups = [
+export const Logo = () => {
+  return (
+    <Link
+      to="/"
+      className="font-normal flex items-center gap-2 py-1 relative z-20 text-neutral-900 dark:text-neutral-100"
+    >
+      <img src={dcemLogo} alt="DCEM Logo" className="h-7 w-7 object-contain shrink-0" />
+      <motion.span
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="font-semibold text-primary text-sm whitespace-pre tracking-tight"
+      >
+        Gestão PPG-DCEM
+      </motion.span>
+    </Link>
+  )
+}
+
+export const LogoIcon = () => {
+  return (
+    <Link
+      to="/"
+      className="font-normal flex items-center justify-center py-1 relative z-20"
+      title="Gestão PPG-DCEM"
+    >
+      <img src={dcemLogo} alt="DCEM Logo" className="h-7 w-7 object-contain shrink-0" />
+    </Link>
+  )
+}
+
+interface NavSection {
+  title: string
+  items: {
+    label: string
+    href: string
+    icon: React.ReactNode
+  }[]
+}
+
+const navSections: NavSection[] = [
   {
-    label: 'Pessoas',
+    title: 'Geral',
     items: [
-      { title: 'Docentes', url: '/docentes', icon: Users },
-      { title: 'Discentes', url: '/discentes', icon: GraduationCap },
-      { title: 'Egressos', url: '/egressos', icon: UserCheck },
+      {
+        label: 'Dashboard',
+        href: '/',
+        icon: <LayoutDashboard className="h-5 w-5 shrink-0" />,
+      },
     ],
   },
   {
-    label: 'Acadêmico',
+    title: 'Pessoas',
     items: [
-      { title: 'Bancas', url: '/bancas', icon: ClipboardList },
-      { title: 'Orientações', url: '/orientacoes', icon: Users2 },
-      { title: 'Disciplinas', url: '/disciplinas', icon: Library },
-      { title: 'Projetos de Pesquisa', url: '/projetos-pesquisa', icon: FlaskConical },
+      {
+        label: 'Docentes',
+        href: '/docentes',
+        icon: <Users className="h-5 w-5 shrink-0" />,
+      },
+      {
+        label: 'Discentes',
+        href: '/discentes',
+        icon: <GraduationCap className="h-5 w-5 shrink-0" />,
+      },
+      {
+        label: 'Egressos',
+        href: '/egressos',
+        icon: <UserCheck className="h-5 w-5 shrink-0" />,
+      },
     ],
   },
   {
-    label: 'Produção',
+    title: 'Acadêmico',
     items: [
-      { title: 'Publicações', url: '/publicacoes', icon: FileText },
-      { title: 'Produção Técnica', url: '/producao-tecnica', icon: Wrench },
-      { title: 'Patentes', url: '/patentes', icon: Lightbulb },
+      {
+        label: 'Bancas',
+        href: '/bancas',
+        icon: <ClipboardList className="h-5 w-5 shrink-0" />,
+      },
+      {
+        label: 'Orientações',
+        href: '/orientacoes',
+        icon: <Users2 className="h-5 w-5 shrink-0" />,
+      },
+      {
+        label: 'Disciplinas',
+        href: '/disciplinas',
+        icon: <Library className="h-5 w-5 shrink-0" />,
+      },
+      {
+        label: 'Projetos de Pesquisa',
+        href: '/projetos-pesquisa',
+        icon: <FlaskConical className="h-5 w-5 shrink-0" />,
+      },
     ],
   },
   {
-    label: 'Difusão/Outros',
+    title: 'Produção',
     items: [
-      { title: 'Eventos', url: '/eventos', icon: Calendar },
-      { title: 'Mobilidade', url: '/mobilidade', icon: Plane },
-      { title: 'Impacto Social', url: '/impacto-social', icon: HeartHandshake },
-      { title: 'Premiações', url: '/premiacoes', icon: Award },
+      {
+        label: 'Publicações',
+        href: '/publicacoes',
+        icon: <FileText className="h-5 w-5 shrink-0" />,
+      },
+      {
+        label: 'Produção Técnica',
+        href: '/producao-tecnica',
+        icon: <Wrench className="h-5 w-5 shrink-0" />,
+      },
+      {
+        label: 'Patentes',
+        href: '/patentes',
+        icon: <Lightbulb className="h-5 w-5 shrink-0" />,
+      },
+    ],
+  },
+  {
+    title: 'Difusão/Outros',
+    items: [
+      {
+        label: 'Eventos',
+        href: '/eventos',
+        icon: <Calendar className="h-5 w-5 shrink-0" />,
+      },
+      {
+        label: 'Mobilidade',
+        href: '/mobilidade',
+        icon: <Plane className="h-5 w-5 shrink-0" />,
+      },
+      {
+        label: 'Impacto Social',
+        href: '/impacto-social',
+        icon: <HeartHandshake className="h-5 w-5 shrink-0" />,
+      },
+      {
+        label: 'Premiações',
+        href: '/premiacoes',
+        icon: <Award className="h-5 w-5 shrink-0" />,
+      },
     ],
   },
 ]
 
-const menuButtonClass =
-  'text-slate-600 hover:text-slate-900 hover:bg-slate-100 data-[active=true]:bg-primary/10 data-[active=true]:text-primary font-medium'
-
-export function AppSidebar() {
+function SidebarContentWithSections() {
+  const { open } = useSidebar()
   const location = useLocation()
+  const { profile, signOut } = useAuth()
 
   return (
-    <Sidebar>
-      <SidebarHeader className="h-16 flex items-center justify-center border-b px-4 bg-slate-50">
-        <h2 className="text-base font-bold text-primary flex items-center justify-center gap-2 w-full text-center">
-          <img src={dcemLogo} alt="DCEM Logo" className="h-8 w-8 object-contain shrink-0" />
-          <span className="truncate">Gestão PPG-DCEM</span>
-        </h2>
-      </SidebarHeader>
-      <SidebarContent className="bg-white">
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-2 p-2">
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={location.pathname === '/'}
-                  className={menuButtonClass}
-                >
-                  <Link to="/">
-                    <LayoutDashboard className="h-4 w-4 mr-2" />
-                    <span>Dashboard</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        {navGroups.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider px-4 text-[#2463EB]">
-              {group.label}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-1 px-2 pb-2">
-                {group.items.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location.pathname === item.url}
-                      className={menuButtonClass}
-                    >
-                      <Link to={item.url}>
-                        <item.icon className="h-4 w-4 mr-2" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
-      </SidebarContent>
+    <>
+      <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden pr-1">
+        <div className="mb-4">{open ? <Logo /> : <LogoIcon />}</div>
+
+        <div className="flex flex-col gap-4">
+          {navSections.map((section) => (
+            <div key={section.title} className="flex flex-col gap-1">
+              {open && (
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/70 px-2 pt-1">
+                  {section.title}
+                </span>
+              )}
+              {section.items.map((item) => {
+                const isActive = location.pathname === item.href
+                return (
+                  <SidebarLink
+                    key={item.href}
+                    link={item}
+                    className={cn(
+                      'rounded-md px-2 py-1.5 transition-colors',
+                      isActive
+                        ? 'bg-primary/10 text-primary font-semibold [&_svg]:text-primary'
+                        : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/60 dark:text-neutral-300 dark:hover:text-white dark:hover:bg-neutral-700/60 [&_svg]:text-neutral-600 dark:[&_svg]:text-neutral-300',
+                    )}
+                  />
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="pt-2 border-t border-neutral-200 dark:border-neutral-700 flex flex-col gap-1">
+        <div
+          className={cn(
+            'flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60 transition-colors cursor-pointer',
+            !open && 'justify-center',
+          )}
+          title={`${profile?.name ?? 'Usuário'} (${profile?.email ?? ''})`}
+        >
+          <Avatar className="h-7 w-7 border border-neutral-300 dark:border-neutral-600 shrink-0">
+            <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+              {profile?.name?.charAt(0) ?? 'U'}
+            </AvatarFallback>
+          </Avatar>
+          {open && (
+            <div className="flex flex-col overflow-hidden text-left flex-1 min-w-0">
+              <span className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate">
+                {profile?.name ?? 'Usuário'}
+              </span>
+              <span className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
+                {profile?.email ?? ''}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => signOut()}
+          className={cn(
+            'flex items-center gap-2 px-2 py-1.5 rounded-md text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors w-full text-left',
+            !open && 'justify-center',
+          )}
+          title="Sair da conta"
+        >
+          <LogOut className="h-5 w-5 shrink-0" />
+          {open && <span className="text-xs font-medium">Sair da conta</span>}
+        </button>
+      </div>
+    </>
+  )
+}
+
+export function AppSidebar() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Sidebar open={open} setOpen={setOpen}>
+      <SidebarBody className="justify-between gap-4 border-r border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-sm">
+        <SidebarContentWithSections />
+      </SidebarBody>
     </Sidebar>
   )
 }
+
+export default AppSidebar
