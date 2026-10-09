@@ -18,6 +18,7 @@ import {
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
+  AlertTriangle,
   Users,
   GraduationCap,
   UserCheck,
@@ -82,6 +83,11 @@ const navSections: NavSection[] = [
         label: 'Dashboard',
         href: '/',
         icon: <LayoutDashboard className="h-5 w-5 shrink-0" />,
+      },
+      {
+        label: 'Lacunas',
+        href: '/lacunas',
+        icon: <AlertTriangle className="h-5 w-5 shrink-0" />,
       },
     ],
   },
