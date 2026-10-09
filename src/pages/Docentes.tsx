@@ -46,6 +46,29 @@ import {
   type FonteIdentificador,
 } from '@/components/docentes/VincularOpenAlexDialog'
 import { VisualizarDocenteDialog } from '@/components/docentes/VisualizarDocenteDialog'
+import {
+  ModalSelecaoAbasImpressao,
+  type DefinicaoAbaImpressao,
+} from '@/components/docentes/ModalSelecaoAbasImpressao'
+import {
+  DocentePrintDocument,
+  type TabKey,
+  type DadosDocenteCompleto,
+} from '@/components/docentes/DocentePrintDocument'
+import { createPortal } from 'react-dom'
+import {
+  User as UserIcon,
+  FileText as FileTextIcon,
+  Users2 as Users2Icon,
+  ClipboardList as ClipboardListIcon,
+  FlaskConical as FlaskConicalIcon,
+  Award as AwardIcon,
+  Wrench as WrenchIcon,
+  Lightbulb as LightbulbIcon,
+  Calendar as CalendarIcon,
+  Plane as PlaneIcon,
+  HeartHandshake as HeartHandshakeIcon,
+} from 'lucide-react'
 import type { OpenAlexAutorCandidato } from '@/lib/openalex/buscar'
 import type { ScopusAutorCandidato } from '@/services/scopus'
 import { Database } from 'lucide-react'
@@ -81,6 +104,28 @@ export default function Docentes() {
   const [abaInicialVinculo, setAbaInicialVinculo] = useState<FonteIdentificador>('openalex')
   const [docenteParaVisualizar, setDocenteParaVisualizar] = useState<Docente | null>(null)
   const [dialogoVisualizarAberto, setDialogoVisualizarAberto] = useState(false)
+
+  // Estados para Impressão de Docente
+  const [modalImprimirAberto, setModalImprimirAberto] = useState(false)
+  const [docenteParaImprimir, setDocenteParaImprimir] = useState<Docente | null>(null)
+  const [dadosParaImprimir, setDadosParaImprimir] = useState<DadosDocenteCompleto | null>(null)
+  const [documentoImpressaoAtivo, setDocumentoImpressaoAtivo] = useState(false)
+  const [abasSelecionadasParaImprimir, setAbasSelecionadasParaImprimir] = useState<
+    Record<TabKey, boolean>
+  >({
+    geral: true,
+    publicacoes: true,
+    orientacoes: true,
+    bancas: true,
+    projetos: true,
+    premiacoes: true,
+    producao_tecnica: true,
+    patentes: true,
+    eventos: true,
+    mobilidade: true,
+    impacto_social: true,
+  })
+
   const [page, setPage] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState<Omit<Docente, 'id'>>(emptyForm)
@@ -140,6 +185,131 @@ export default function Docentes() {
     setDocenteParaVisualizar(docente)
     setDialogoVisualizarAberto(true)
   }
+
+  const handleAbrirSelecaoImpressao = (docente: Docente, dadosDocente: DadosDocenteCompleto) => {
+    setDocenteParaImprimir(docente)
+    setDadosParaImprimir(dadosDocente)
+    // Mantém o estado de seleção ou reseta para todas selecionadas
+    setAbasSelecionadasParaImprimir({
+      geral: true,
+      publicacoes: true,
+      orientacoes: true,
+      bancas: true,
+      projetos: true,
+      premiacoes: true,
+      producao_tecnica: true,
+      patentes: true,
+      eventos: true,
+      mobilidade: true,
+      impacto_social: true,
+    })
+    setModalImprimirAberto(true)
+  }
+
+  const alternarTodasAbasImpressao = (marcar: boolean) => {
+    setAbasSelecionadasParaImprimir({
+      geral: marcar,
+      publicacoes: marcar,
+      orientacoes: marcar,
+      bancas: marcar,
+      projetos: marcar,
+      premiacoes: marcar,
+      producao_tecnica: marcar,
+      patentes: marcar,
+      eventos: marcar,
+      mobilidade: marcar,
+      impacto_social: marcar,
+    })
+  }
+
+  const alternarAbaIndividualImpressao = (tab: TabKey, checked: boolean) => {
+    setAbasSelecionadasParaImprimir((prev) => ({
+      ...prev,
+      [tab]: checked,
+    }))
+  }
+
+  const handleConfirmarImpressao = () => {
+    // Requisito: fechar COMPLETAMENTE os dois modais antes de imprimir
+    setModalImprimirAberto(false)
+    setDialogoVisualizarAberto(false)
+
+    // Monta o documento de impressão dedicado via portal no body
+    setDocumentoImpressaoAtivo(true)
+
+    // Aguarda o React renderizar o portal no DOM e o Radix limpar overlays
+    setTimeout(() => {
+      window.print()
+      // Após o fechamento do diálogo de impressão (ou cancelamento), desfaz a montagem do documento
+      setTimeout(() => {
+        setDocumentoImpressaoAtivo(false)
+      }, 500)
+    }, 150)
+  }
+
+  const definicoesAbasImpressao: DefinicaoAbaImpressao[] = [
+    { id: 'geral', rotulo: 'Dados Cadastrais', icone: UserIcon, total: 1 },
+    {
+      id: 'publicacoes',
+      rotulo: 'Publicações',
+      icone: FileTextIcon,
+      total: dadosParaImprimir?.publicacoes.length ?? 0,
+    },
+    {
+      id: 'orientacoes',
+      rotulo: 'Orientações',
+      icone: Users2Icon,
+      total: dadosParaImprimir?.orientacoes.length ?? 0,
+    },
+    {
+      id: 'bancas',
+      rotulo: 'Bancas',
+      icone: ClipboardListIcon,
+      total: dadosParaImprimir?.bancas.length ?? 0,
+    },
+    {
+      id: 'projetos',
+      rotulo: 'Projetos',
+      icone: FlaskConicalIcon,
+      total: dadosParaImprimir?.projetos.length ?? 0,
+    },
+    {
+      id: 'premiacoes',
+      rotulo: 'Premiações',
+      icone: AwardIcon,
+      total: dadosParaImprimir?.premiacoes.length ?? 0,
+    },
+    {
+      id: 'producao_tecnica',
+      rotulo: 'Produção Técnica',
+      icone: WrenchIcon,
+      total: dadosParaImprimir?.producaoTecnica.length ?? 0,
+    },
+    {
+      id: 'patentes',
+      rotulo: 'Patentes',
+      icone: LightbulbIcon,
+      total: dadosParaImprimir?.patentes.length ?? 0,
+    },
+    {
+      id: 'eventos',
+      rotulo: 'Eventos',
+      icone: CalendarIcon,
+      total: dadosParaImprimir?.eventos.length ?? 0,
+    },
+    {
+      id: 'mobilidade',
+      rotulo: 'Mobilidade',
+      icone: PlaneIcon,
+      total: dadosParaImprimir?.mobilidade.length ?? 0,
+    },
+    {
+      id: 'impacto_social',
+      rotulo: 'Impacto Social',
+      icone: HeartHandshakeIcon,
+      total: dadosParaImprimir?.impactoSocial.length ?? 0,
+    },
+  ]
 
   const handleVincularOpenAlex = async (
     docenteId: number | string,
@@ -560,7 +730,34 @@ export default function Docentes() {
         open={dialogoVisualizarAberto}
         onOpenChange={setDialogoVisualizarAberto}
         docente={docenteParaVisualizar}
+        onAbrirImpressao={handleAbrirSelecaoImpressao}
       />
+
+      {/* Modal de Seleção de Abas para Impressão - montado no nível da página */}
+      <ModalSelecaoAbasImpressao
+        open={modalImprimirAberto}
+        onOpenChange={setModalImprimirAberto}
+        abasDefinicao={definicoesAbasImpressao}
+        abasSelecionadas={abasSelecionadasParaImprimir}
+        onAlternarTodas={alternarTodasAbasImpressao}
+        onAlternarAba={alternarAbaIndividualImpressao}
+        onConfirmarImpressao={handleConfirmarImpressao}
+      />
+
+      {/* Documento de Impressão Dedicado montado via Portal direto no document.body */}
+      {documentoImpressaoAtivo &&
+        docenteParaImprimir &&
+        dadosParaImprimir &&
+        createPortal(
+          <div className="docente-print-container">
+            <DocentePrintDocument
+              docente={docenteParaImprimir}
+              dados={dadosParaImprimir}
+              abasSelecionadas={abasSelecionadasParaImprimir}
+            />
+          </div>,
+          document.body,
+        )}
 
       {/* Modal de confirmação antes de excluir docente */}
       <AlertDialog

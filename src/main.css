@@ -167,11 +167,8 @@
     background-color: transparent !important;
   }
 
-  /* Quando o container de impressão de docente estiver presente, ocultar os modais interativos */
-  body:has(.docente-print-container) [role='dialog'],
-  body:has(.docente-print-container) [data-radix-portal],
-  body:has(.docente-print-container) [data-state='open'][role='dialog'],
-  body:has(.docente-print-container) > div:has([role='dialog']) {
+  /* Quando o documento de impressão dedicado do docente existir, ocultar o #root INTEIRO */
+  body:has(.docente-print-container) #root {
     display: none !important;
   }
 
@@ -228,6 +225,24 @@
   .print-header {
     page-break-inside: avoid;
     page-break-after: avoid;
+    break-inside: avoid;
+    break-after: avoid;
+  }
+
+  /* Seções com quebra de página entre seções */
+  .print-section {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .print-section + .print-section {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .print-section h2 {
+    page-break-after: avoid;
+    break-after: avoid;
   }
 
   /* Tabelas limpas para impressão com bordas nítidas */
