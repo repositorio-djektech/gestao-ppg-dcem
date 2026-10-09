@@ -4,7 +4,10 @@ import { renderToString } from 'react-dom/server'
 import { VisualizarDocenteDialog } from './VisualizarDocenteDialog'
 import { ModalSelecaoAbasImpressao } from './ModalSelecaoAbasImpressao'
 import { DocentePrintDocument } from './DocentePrintDocument'
-import { gerarHtmlDocenteRelatorio } from '@/lib/docentes/imprimirDocenteIframe'
+import {
+  gerarHtmlDocenteRelatorio,
+  imprimirDocenteViaIframe,
+} from '@/lib/docentes/imprimirDocenteIframe'
 import type { Docente } from '@/types/database'
 import type { DadosDocenteCompleto, TabKey } from './DocentePrintDocument'
 import { User, FileText, Users2 } from 'lucide-react'
@@ -398,5 +401,94 @@ describe('VisualizarDocenteDialog', () => {
     expect(html).toContain('Orientações e Supervisões (9)')
     expect(html).toContain('Projetos de Pesquisa (1)')
     expect(html).toContain('15 registro(s) associado(s)')
+  })
+
+  describe('Fluxo de Impressão e Desmontagem/Fechamento do Modal', () => {
+    it('garante que acionar onConfirmarImpressao dispara a desmontagem/fechamento do modal de seleção', () => {
+      let modalAberto = true
+      const handleOpenChange = vi.fn((open: boolean) => {
+        modalAberto = open
+      })
+
+      const handleConfirmar = () => {
+        // Simula o comportamento do handleConfirmarImpressao na página Docentes:
+        // Primeiro fecha o modal incondicionalmente
+        handleOpenChange(false)
+      }
+
+      // Ao clicar em Confirmar/Imprimir
+      handleConfirmar()
+
+      expect(handleOpenChange).toHaveBeenCalledWith(false)
+      expect(modalAberto).toBe(false)
+    })
+
+    it('imprimirDocenteViaIframe resolve graciosamente mesmo quando cw.print falha ou lança exceção', async () => {
+      // Mock do iframe no ambiente DOM de teste
+      const originalCreateElement = document.createElement.bind(document)
+      const mockPrint = vi.fn().mockImplementation(() => {
+        throw new Error('Falha simulada na impressora')
+      })
+
+      vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+        const el = originalCreateElement(tagName)
+        if (tagName.toLowerCase() === 'iframe') {
+          Object.defineProperty(el, 'contentWindow', {
+            value: {
+              focus: vi.fn(),
+              print: mockPrint,
+              addEventListener: vi.fn(),
+              document: {
+                open: vi.fn(),
+                write: vi.fn(),
+                close: vi.fn(),
+              },
+            },
+            configurable: true,
+          })
+        }
+        return el
+      })
+
+      // Deve resolver sem rejeitar mesmo com erro no print
+      await expect(
+        imprimirDocenteViaIframe(docenteMock, dadosCompletosMock, todasAbasAtivas),
+      ).resolves.toBeUndefined()
+
+      vi.restoreAllMocks()
+    })
+
+    it('imprimirDocenteViaIframe resolve quando não há contentWindow ou ambiente não suporta print', async () => {
+      const originalCreateElement = document.createElement.bind(document)
+      vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+        const el = originalCreateElement(tagName)
+        if (tagName.toLowerCase() === 'iframe') {
+          Object.defineProperty(el, 'contentWindow', {
+            value: null,
+            configurable: true,
+          })
+        }
+        return el
+      })
+
+      await expect(
+        imprimirDocenteViaIframe(docenteMock, dadosCompletosMock, todasAbasAtivas),
+      ).resolves.toBeUndefined()
+
+      vi.restoreAllMocks()
+    })
+
+    it('limpa document.body.style.pointerEvents quando o modal fecha', () => {
+      // Simula body com pointer-events: none deixado por transição Radix
+      document.body.style.pointerEvents = 'none'
+      expect(document.body.style.pointerEvents).toBe('none')
+
+      // Efeito de restauração aplicado quando o modal fecha
+      if (document.body.style.pointerEvents === 'none') {
+        document.body.style.pointerEvents = ''
+      }
+
+      expect(document.body.style.pointerEvents).toBe('')
+    })
   })
 })

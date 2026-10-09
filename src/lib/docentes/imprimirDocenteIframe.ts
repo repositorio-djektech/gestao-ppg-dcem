@@ -741,43 +741,65 @@ export function imprimirDocenteViaIframe(
       if (printAcionado) return
       printAcionado = true
 
+      let removido = false
+      const limpar = () => {
+        if (removido) return
+        removido = true
+        try {
+          if (iframe.parentNode) {
+            iframe.parentNode.removeChild(iframe)
+          }
+        } catch {
+          // noop
+        }
+        // Restaura a interação e o foco no documento principal
+        try {
+          if (document.body && document.body.style.pointerEvents === 'none') {
+            document.body.style.pointerEvents = ''
+          }
+          window.focus()
+        } catch {
+          // noop
+        }
+        resolve()
+      }
+
       try {
         const cw = iframe.contentWindow
         if (cw) {
-          cw.focus()
-          // Ouve o evento afterprint se disponível
-          let removido = false
-          const limpar = () => {
-            if (removido) return
-            removido = true
-            try {
-              if (iframe.parentNode) {
-                iframe.parentNode.removeChild(iframe)
-              }
-            } catch {
-              // noop
-            }
-            resolve()
-          }
-
+          // Ouve evento afterprint no contentWindow e no window principal
           try {
             cw.addEventListener('afterprint', limpar, { once: true })
           } catch {
             // noop
           }
+          try {
+            window.addEventListener('afterprint', limpar, { once: true })
+          } catch {
+            // noop
+          }
 
-          cw.print()
+          try {
+            cw.focus()
+          } catch {
+            // noop
+          }
 
-          // Fallback para caso afterprint não dispare (ex: Safari ou fechamento rápido)
+          try {
+            cw.print()
+          } catch (printErr) {
+            console.warn('Chamada de cw.print() falhou ou não suportada:', printErr)
+          }
+
+          // Fallback determinístico para caso afterprint não dispare
+          // (ex: Safari, cancelamento silencioso ou browser sem suporte completo a afterprint)
           setTimeout(limpar, 1000)
         } else {
-          if (iframe.parentNode) iframe.parentNode.removeChild(iframe)
-          resolve()
+          limpar()
         }
       } catch (err) {
         console.error('Erro ao acionar impressão via iframe:', err)
-        if (iframe.parentNode) iframe.parentNode.removeChild(iframe)
-        resolve()
+        limpar()
       }
     }
 

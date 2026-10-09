@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCrudData } from '@/hooks/use-crud-data'
 import { docentesService } from '@/services/docentes'
@@ -233,22 +233,56 @@ export default function Docentes() {
     }))
   }
 
-  const handleConfirmarImpressao = () => {
-    if (!docenteParaImprimir || !dadosParaImprimir) return
+  // Garante que qualquer resíduo de pointer-events no body deixado por transições
+  // de modais ou diálogos de impressão seja limpo quando o modal de impressão fecha.
+  useEffect(() => {
+    if (!modalImprimirAberto && typeof document !== 'undefined') {
+      const timer = setTimeout(() => {
+        if (
+          !dialogoVisualizarAberto &&
+          !dialogoVinculoAberto &&
+          !isDialogOpen &&
+          idParaExcluir === null
+        ) {
+          if (document.body.style.pointerEvents === 'none') {
+            document.body.style.pointerEvents = ''
+          }
+        }
+      }, 50)
+      return () => clearTimeout(timer)
+    }
+  }, [
+    modalImprimirAberto,
+    dialogoVisualizarAberto,
+    dialogoVinculoAberto,
+    isDialogOpen,
+    idParaExcluir,
+  ])
 
-    // Fecha o modal de seleção imediatamente
+  const handleConfirmarImpressao = () => {
+    // 1. Fecha o modal de seleção imediatamente, de forma incondicional
     setModalImprimirAberto(false)
 
-    // Impressão via técnica de iframe oculto independente:
-    // Monta um documento HTML completo e autônomo, sem depender de CSS do app,
-    // :has() ou setTimeout de animações do Radix.
-    imprimirDocenteViaIframe(
-      docenteParaImprimir,
-      dadosParaImprimir,
-      abasSelecionadasParaImprimir,
-    ).catch((err) => {
-      console.error('Falha ao imprimir via iframe:', err)
-    })
+    // 2. Garante que se o usuário cancelar ou se faltarem dados, nada bloqueia
+    if (!docenteParaImprimir || !dadosParaImprimir) return
+
+    const docenteAlvo = docenteParaImprimir
+    const dadosAlvo = dadosParaImprimir
+    const abasAlvo = { ...abasSelecionadasParaImprimir }
+
+    // 3. Defer da impressão para o próximo tick:
+    // Permite que o React processe a desmontagem/fechamento do Dialog Radix,
+    // execute suas animações e libere os pointer-events antes de qualquer
+    // chamada síncrona/bloqueante de print() do navegador.
+    setTimeout(() => {
+      try {
+        imprimirDocenteViaIframe(docenteAlvo, dadosAlvo, abasAlvo).catch((err) => {
+          console.error('Falha ao imprimir via iframe:', err)
+        })
+      } catch (err) {
+        console.error('Exceção síncrona ao disparar impressão:', err)
+      }
+    }, 150)
   }
 
   const definicoesAbasImpressao: DefinicaoAbaImpressao[] = [
