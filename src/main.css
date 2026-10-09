@@ -167,11 +167,6 @@
     background-color: transparent !important;
   }
 
-  /* Quando o documento de impressão dedicado do docente existir, ocultar o #root INTEIRO */
-  body:has(.docente-print-container) #root {
-    display: none !important;
-  }
-
   /* Layout sem restrições de scroll ou padding residual do layout */
   #root,
   main,
@@ -190,36 +185,11 @@
     background-color: transparent !important;
   }
 
-  /* Bloco do documento para impressão */
+  /* Bloco do documento para impressão (ex: páginas de impressão direta /imprimir/*) */
   .print-document {
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-  }
-
-  /* Impressão específica do modal Visualizar Docente */
-  .docente-print-container {
-    display: block !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-  }
-
-  .docente-print-document {
-    display: block !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-  }
-
-  .docente-print-document * {
-    color: #0f172a;
   }
 
   .print-header {
@@ -271,13 +241,6 @@
   }
 
   th {
-    background-color: #f1f5f9 !important;
-    color: #0f172a !important;
-    font-weight: 700;
-  }
-
-  .docente-print-document th,
-  .docente-print-document tr.bg-slate-100 {
     background-color: #f1f5f9 !important;
     color: #0f172a !important;
     font-weight: 700;

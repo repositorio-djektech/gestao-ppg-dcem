@@ -50,12 +50,8 @@ import {
   ModalSelecaoAbasImpressao,
   type DefinicaoAbaImpressao,
 } from '@/components/docentes/ModalSelecaoAbasImpressao'
-import {
-  DocentePrintDocument,
-  type TabKey,
-  type DadosDocenteCompleto,
-} from '@/components/docentes/DocentePrintDocument'
-import { createPortal } from 'react-dom'
+import { type TabKey, type DadosDocenteCompleto } from '@/components/docentes/DocentePrintDocument'
+import { imprimirDocenteViaIframe } from '@/lib/docentes/imprimirDocenteIframe'
 import {
   User as UserIcon,
   FileText as FileTextIcon,
@@ -109,7 +105,6 @@ export default function Docentes() {
   const [modalImprimirAberto, setModalImprimirAberto] = useState(false)
   const [docenteParaImprimir, setDocenteParaImprimir] = useState<Docente | null>(null)
   const [dadosParaImprimir, setDadosParaImprimir] = useState<DadosDocenteCompleto | null>(null)
-  const [documentoImpressaoAtivo, setDocumentoImpressaoAtivo] = useState(false)
   const [abasSelecionadasParaImprimir, setAbasSelecionadasParaImprimir] = useState<
     Record<TabKey, boolean>
   >({
@@ -187,9 +182,13 @@ export default function Docentes() {
   }
 
   const handleAbrirSelecaoImpressao = (docente: Docente, dadosDocente: DadosDocenteCompleto) => {
+    // Requisito anti-empilhamento Radix:
+    // NUNCA empilhar dois dialogs Radix simultâneos (causa bloqueio de pointer-events no body).
+    // Primeiro fecha o dialog de Visualizar Docente.
+    setDialogoVisualizarAberto(false)
+
     setDocenteParaImprimir(docente)
     setDadosParaImprimir(dadosDocente)
-    // Mantém o estado de seleção ou reseta para todas selecionadas
     setAbasSelecionadasParaImprimir({
       geral: true,
       publicacoes: true,
@@ -203,7 +202,12 @@ export default function Docentes() {
       mobilidade: true,
       impacto_social: true,
     })
-    setModalImprimirAberto(true)
+
+    // Abre o modal de seleção apenas após a desmontagem do diálogo de Visualizar
+    // usando requestAnimationFrame / pequeno defer para garantir que a pilha de dialogs Radix liberou o body
+    setTimeout(() => {
+      setModalImprimirAberto(true)
+    }, 100)
   }
 
   const alternarTodasAbasImpressao = (marcar: boolean) => {
@@ -230,21 +234,21 @@ export default function Docentes() {
   }
 
   const handleConfirmarImpressao = () => {
-    // Requisito: fechar COMPLETAMENTE os dois modais antes de imprimir
+    if (!docenteParaImprimir || !dadosParaImprimir) return
+
+    // Fecha o modal de seleção imediatamente
     setModalImprimirAberto(false)
-    setDialogoVisualizarAberto(false)
 
-    // Monta o documento de impressão dedicado via portal no body
-    setDocumentoImpressaoAtivo(true)
-
-    // Aguarda o React renderizar o portal no DOM e o Radix limpar overlays
-    setTimeout(() => {
-      window.print()
-      // Após o fechamento do diálogo de impressão (ou cancelamento), desfaz a montagem do documento
-      setTimeout(() => {
-        setDocumentoImpressaoAtivo(false)
-      }, 500)
-    }, 150)
+    // Impressão via técnica de iframe oculto independente:
+    // Monta um documento HTML completo e autônomo, sem depender de CSS do app,
+    // :has() ou setTimeout de animações do Radix.
+    imprimirDocenteViaIframe(
+      docenteParaImprimir,
+      dadosParaImprimir,
+      abasSelecionadasParaImprimir,
+    ).catch((err) => {
+      console.error('Falha ao imprimir via iframe:', err)
+    })
   }
 
   const definicoesAbasImpressao: DefinicaoAbaImpressao[] = [
@@ -743,21 +747,6 @@ export default function Docentes() {
         onAlternarAba={alternarAbaIndividualImpressao}
         onConfirmarImpressao={handleConfirmarImpressao}
       />
-
-      {/* Documento de Impressão Dedicado montado via Portal direto no document.body */}
-      {documentoImpressaoAtivo &&
-        docenteParaImprimir &&
-        dadosParaImprimir &&
-        createPortal(
-          <div className="docente-print-container">
-            <DocentePrintDocument
-              docente={docenteParaImprimir}
-              dados={dadosParaImprimir}
-              abasSelecionadas={abasSelecionadasParaImprimir}
-            />
-          </div>,
-          document.body,
-        )}
 
       {/* Modal de confirmação antes de excluir docente */}
       <AlertDialog

@@ -4,6 +4,7 @@ import { renderToString } from 'react-dom/server'
 import { VisualizarDocenteDialog } from './VisualizarDocenteDialog'
 import { ModalSelecaoAbasImpressao } from './ModalSelecaoAbasImpressao'
 import { DocentePrintDocument } from './DocentePrintDocument'
+import { gerarHtmlDocenteRelatorio } from '@/lib/docentes/imprimirDocenteIframe'
 import type { Docente } from '@/types/database'
 import type { DadosDocenteCompleto, TabKey } from './DocentePrintDocument'
 import { User, FileText, Users2 } from 'lucide-react'
@@ -217,5 +218,185 @@ describe('VisualizarDocenteDialog', () => {
     expect(html).not.toContain('1. Identificação e Índices Bibliométricos')
     expect(html).not.toContain('Orientações e Supervisões (1)')
     expect(html).not.toContain('Projetos de Pesquisa (1)')
+  })
+
+  it('gerarHtmlDocenteRelatorio gera documento HTML independente com @page ABNT, seções apenas para abas marcadas e dados corretos', () => {
+    const html = gerarHtmlDocenteRelatorio(docenteMock, dadosCompletosMock, todasAbasAtivas)
+
+    // Estrutura HTML completa e independente
+    expect(html).toContain('<!DOCTYPE html>')
+    expect(html).toContain('<html lang="pt-BR">')
+    expect(html).toContain(
+      '<title>Relatório Curricular Individual — Prof. Dra. Maria Silva</title>',
+    )
+
+    // Configuração ABNT de @page com margens 2,5cm superior/esquerda e 2cm direita/inferior
+    expect(html).toContain('size: A4 portrait;')
+    expect(html).toContain('margin-top: 25mm;')
+    expect(html).toContain('margin-left: 25mm;')
+    expect(html).toContain('margin-right: 20mm;')
+    expect(html).toContain('margin-bottom: 20mm;')
+
+    // Quebra de página entre seções
+    expect(html).toContain('.print-section + .print-section')
+    expect(html).toContain('page-break-before: always;')
+
+    // Cabeçalho ABNT com dados institucionais
+    expect(html).toContain(
+      'Programa de Pós-Graduação em Ciência e Engenharia de Materiais — PPG DCEM',
+    )
+    expect(html).toContain('Relatório Curricular Individual — Prof. Dra. Maria Silva')
+    expect(html).toContain('3 registro(s) associado(s)')
+
+    // Conteúdo das seções
+    expect(html).toContain('1. Identificação e Índices Bibliométricos')
+    expect(html).toContain('Publicações em Periódicos (1)')
+    expect(html).toContain('Artigo sobre Nanomateriais de Carbono')
+    expect(html).toContain('Orientações e Supervisões (1)')
+    expect(html).toContain('João Pedro Santos')
+    expect(html).toContain('Projetos de Pesquisa (1)')
+    expect(html).toContain('Desenvolvimento de Biocompósitos Avançados')
+  })
+
+  it('gerarHtmlDocenteRelatorio omite seções desmarcadas', () => {
+    const apenasGeral: Record<TabKey, boolean> = {
+      geral: true,
+      publicacoes: false,
+      orientacoes: false,
+      bancas: false,
+      projetos: false,
+      premiacoes: false,
+      producao_tecnica: false,
+      patentes: false,
+      eventos: false,
+      mobilidade: false,
+      impacto_social: false,
+    }
+
+    const html = gerarHtmlDocenteRelatorio(docenteMock, dadosCompletosMock, apenasGeral)
+
+    expect(html).toContain('1. Identificação e Índices Bibliométricos')
+    expect(html).not.toContain('Publicações em Periódicos')
+    expect(html).not.toContain('Orientações e Supervisões')
+    expect(html).not.toContain('Projetos de Pesquisa')
+  })
+
+  it('valida geração de relatório da Ledjane com dados reais (5 publicações, 9 orientações, 1 projeto)', () => {
+    const docenteLedjane: Docente = {
+      id: 4,
+      nome: 'Ledjane Silva Barreto',
+      id_lattes: '3104369029830651',
+      scopus_id: '7005598575',
+      openalex_id: 'A5012512598',
+      indice_h: 22,
+      bolsa_cnpq: '',
+      jdp: false,
+      licenca: '',
+    }
+
+    const dadosLedjane: DadosDocenteCompleto = {
+      docente: docenteLedjane,
+      publicacoes: [
+        {
+          id: 1,
+          titulo: 'Pub 1',
+          ano: 2024,
+          periodico: 'Periódico A',
+          autores: 'Barreto, L. S.',
+          doi: '',
+          justificativa: '',
+          link_comprovacao: '',
+          observacoes: '',
+        },
+        {
+          id: 2,
+          titulo: 'Pub 2',
+          ano: 2024,
+          periodico: 'Periódico B',
+          autores: 'Barreto, L. S.',
+          doi: '',
+          justificativa: '',
+          link_comprovacao: '',
+          observacoes: '',
+        },
+        {
+          id: 3,
+          titulo: 'Pub 3',
+          ano: 2023,
+          periodico: 'Periódico C',
+          autores: 'Barreto, L. S.',
+          doi: '',
+          justificativa: '',
+          link_comprovacao: '',
+          observacoes: '',
+        },
+        {
+          id: 4,
+          titulo: 'Pub 4',
+          ano: 2022,
+          periodico: 'Periódico D',
+          autores: 'Barreto, L. S.',
+          doi: '',
+          justificativa: '',
+          link_comprovacao: '',
+          observacoes: '',
+        },
+        {
+          id: 5,
+          titulo: 'Pub 5',
+          ano: 2021,
+          periodico: 'Periódico E',
+          autores: 'Barreto, L. S.',
+          doi: '',
+          justificativa: '',
+          link_comprovacao: '',
+          observacoes: '',
+        },
+      ],
+      orientacoes: Array.from({ length: 9 }).map((_, i) => ({
+        id: i + 1,
+        docente_id: 4,
+        discente_id: 100 + i,
+        discente_nome: `Discente Orientado ${i + 1}`,
+        tipo: 'Mestrado',
+        inicio: '2023',
+        fim: '2025',
+        status: 'ativo',
+        link_comprovacao: '',
+        observacoes: '',
+      })),
+      bancas: [],
+      projetos: [
+        {
+          id: 50,
+          titulo: 'Projeto Nanotecnologia e Materiais Funcionais',
+          coordenador_id: 4,
+          inicio: '2022',
+          fim: '2025',
+          financiamento: true,
+          orgao_fomento: 'FAPITEC',
+          descricao: 'Projeto coordenado por Ledjane',
+          link_comprovacao: '',
+          observacoes: '',
+        },
+      ],
+      premiacoes: [],
+      producaoTecnica: [],
+      patentes: [],
+      eventos: [],
+      mobilidade: [],
+      impactoSocial: [],
+    }
+
+    const html = gerarHtmlDocenteRelatorio(docenteLedjane, dadosLedjane, todasAbasAtivas)
+
+    expect(html).toContain('Relatório Curricular Individual — Ledjane Silva Barreto')
+    expect(html).toContain('7005598575') // Scopus ID real
+    expect(html).toContain('A5012512598') // OpenAlex ID real
+    expect(html).toContain('3104369029830651') // Lattes ID
+    expect(html).toContain('Publicações em Periódicos (5)')
+    expect(html).toContain('Orientações e Supervisões (9)')
+    expect(html).toContain('Projetos de Pesquisa (1)')
+    expect(html).toContain('15 registro(s) associado(s)')
   })
 })
