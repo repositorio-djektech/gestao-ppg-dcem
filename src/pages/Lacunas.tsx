@@ -15,10 +15,17 @@ import {
   CheckCircle2,
   Calendar,
   Layers,
+  Filter,
+  Search,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { obterRelatorioLacunas } from '@/services/lacunas'
-import type { RelatorioLacunasResposta, ResumoRegraLacuna } from '@/lib/lacunas/types'
+import type {
+  RelatorioLacunasResposta,
+  ResumoRegraLacuna,
+  SeveridadeLacuna,
+  ItemLacunaRegistro,
+} from '@/lib/lacunas/types'
 
 export type GrupoVisualId = 'pessoas' | 'academico' | 'producao' | 'difusao'
 
@@ -162,16 +169,46 @@ export interface GrupoEstatisticas {
   totalLacunas: number
 }
 
+export interface ItemLacunaIndividual {
+  idRegistro: number
+  nome: string
+  motivo: string
+  regraId: string
+  regraDescricao: string
+  grupoVisualId: GrupoVisualId
+  grupoVisualLabel: string
+  severidade: SeveridadeLacuna
+  tabela: string
+}
+
+export type FiltroGrupo = 'todos' | GrupoVisualId
+export type FiltroSeveridade = 'todas' | SeveridadeLacuna
+
 interface LacunasProps {
   /** Injeção de loader para testes unitários */
   carregarDadosFn?: () => ReturnType<typeof obterRelatorioLacunas>
+  filtroGrupoInicial?: FiltroGrupo
+  filtroSeveridadeInicial?: FiltroSeveridade
+  filtroRegraInicial?: string
 }
 
-export default function Lacunas({ carregarDadosFn }: LacunasProps = {}) {
+export default function Lacunas({
+  carregarDadosFn,
+  filtroGrupoInicial = 'todos',
+  filtroSeveridadeInicial = 'todas',
+  filtroRegraInicial = 'todas',
+}: LacunasProps = {}) {
   const [relatorio, setRelatorio] = useState<RelatorioLacunasResposta | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [origem, setOrigem] = useState<'edge_function' | 'local_fallback' | null>(null)
+
+  // Filtros da lista detalhada (Etapa 3)
+  const [filtroGrupo, setFiltroGrupo] = useState<FiltroGrupo>(filtroGrupoInicial)
+  const [filtroSeveridade, setFiltroSeveridade] =
+    useState<FiltroSeveridade>(filtroSeveridadeInicial)
+  const [filtroRegra, setFiltroRegra] = useState<string>(filtroRegraInicial)
+  const [termoBusca, setTermoBusca] = useState<string>('')
 
   const carregarRelatorio = useCallback(async () => {
     setCarregando(true)
@@ -266,6 +303,103 @@ export default function Lacunas({ carregarDadosFn }: LacunasProps = {}) {
       return relatorio.gerado_em
     }
   }, [relatorio?.gerado_em])
+
+  // Desdobra todas as lacunas individuais com metadados para a lista detalhada
+  const todasLacunasIndividuais = useMemo<ItemLacunaIndividual[]>(() => {
+    if (!relatorio?.lacunas || !Array.isArray(relatorio.lacunas)) {
+      return []
+    }
+
+    // Mapa de metadados das regras pelo resumo
+    const mapaResumo = new Map<string, ResumoRegraLacuna>()
+    if (relatorio.resumo) {
+      for (const r of relatorio.resumo) {
+        mapaResumo.set(r.regra_id, r)
+      }
+    }
+
+    const lista: ItemLacunaIndividual[] = []
+    for (const det of relatorio.lacunas) {
+      const resumoRegra = mapaResumo.get(det.regra_id)
+      const regraDescricao = resumoRegra?.descricao || det.regra_id
+      const grupoOrig = det.grupo || resumoRegra?.grupo || ''
+      const grupoVisualId = mapearGrupoParaVisual(grupoOrig)
+      const configVisual = GRUPOS_VISUAIS.find((g) => g.id === grupoVisualId)
+      const grupoVisualLabel = configVisual?.label || 'Pessoas'
+      const tabela =
+        resumoRegra?.tabela || (det.regra_id.startsWith('docente') ? 'docentes' : 'discentes')
+
+      if (Array.isArray(det.registros)) {
+        for (const reg of det.registros) {
+          lista.push({
+            idRegistro: reg.id,
+            nome: reg.nome || `ID ${reg.id}`,
+            motivo: reg.motivo || regraDescricao,
+            regraId: det.regra_id,
+            regraDescricao,
+            grupoVisualId,
+            grupoVisualLabel,
+            severidade: det.severidade,
+            tabela,
+          })
+        }
+      }
+    }
+
+    return lista
+  }, [relatorio])
+
+  // Lista de regras disponíveis para filtro dinâmico
+  const regrasDisponiveis = useMemo(() => {
+    const mapa = new Map<string, { id: string; descricao: string; grupoVisualId: GrupoVisualId }>()
+    for (const item of todasLacunasIndividuais) {
+      if (!mapa.has(item.regraId)) {
+        mapa.set(item.regraId, {
+          id: item.regraId,
+          descricao: item.regraDescricao,
+          grupoVisualId: item.grupoVisualId,
+        })
+      }
+    }
+    return Array.from(mapa.values())
+  }, [todasLacunasIndividuais])
+
+  // Aplicação dos filtros sobre as lacunas individuais
+  const lacunasFiltradas = useMemo(() => {
+    return todasLacunasIndividuais.filter((item) => {
+      // Filtro de Grupo
+      if (filtroGrupo !== 'todos' && item.grupoVisualId !== filtroGrupo) {
+        return false
+      }
+
+      // Filtro de Severidade
+      if (filtroSeveridade !== 'todas' && item.severidade !== filtroSeveridade) {
+        return false
+      }
+
+      // Filtro por Regra específica (se selecionada)
+      if (filtroRegra !== 'todas' && item.regraId !== filtroRegra) {
+        return false
+      }
+
+      // Busca textual livre por nome ou motivo
+      if (termoBusca.trim()) {
+        const buscaNorm = termoBusca.toLowerCase().trim()
+        const nomeNorm = item.nome.toLowerCase()
+        const motivoNorm = item.motivo.toLowerCase()
+        const regraNorm = item.regraDescricao.toLowerCase()
+        if (
+          !nomeNorm.includes(buscaNorm) &&
+          !motivoNorm.includes(buscaNorm) &&
+          !regraNorm.includes(buscaNorm)
+        ) {
+          return false
+        }
+      }
+
+      return true
+    })
+  }, [todasLacunasIndividuais, filtroGrupo, filtroSeveridade, filtroRegra, termoBusca])
 
   return (
     <div className="space-y-6 animate-fade-in" data-testid="pagina-lacunas">
@@ -573,6 +707,292 @@ export default function Lacunas({ carregarDadosFn }: LacunasProps = {}) {
               </Card>
             )
           })}
+        </div>
+      </div>
+
+      {/* TAREFA A — Etapa 3: Lista detalhada individual com filtros */}
+      <div className="space-y-4 pt-4 border-t border-slate-200" data-testid="secao-lista-detalhada">
+        {/* Cabeçalho da seção */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="h-5 w-1 rounded-full bg-slate-700" />
+              <h2 className="text-lg font-semibold text-slate-900">Lista Detalhada de Lacunas</h2>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Identificação nominal de cada docente ou discente com campos pendentes de
+              preenchimento.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-100 px-3 py-1.5 rounded-md self-start sm:self-auto font-medium">
+            <Filter className="h-3.5 w-3.5 text-slate-500" />
+            <span data-testid="contagem-lacunas-encontradas">
+              {carregando
+                ? 'Carregando lacunas...'
+                : `${lacunasFiltradas.length} ${
+                    lacunasFiltradas.length === 1 ? 'lacuna encontrada' : 'lacunas encontradas'
+                  }`}
+            </span>
+          </div>
+        </div>
+
+        {/* Barra de Filtros */}
+        <Card className="border border-slate-200 shadow-xs bg-slate-50/70 p-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Filtro por Grupo */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="filtro-grupo"
+                className="text-xs font-semibold text-slate-700 flex items-center gap-1.5"
+              >
+                <span>Grupo</span>
+              </label>
+              <select
+                id="filtro-grupo"
+                data-testid="filtro-grupo"
+                value={filtroGrupo}
+                onChange={(e) => setFiltroGrupo(e.target.value as FiltroGrupo)}
+                className="w-full text-xs h-9 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary"
+              >
+                <option value="todos">Todos os Grupos</option>
+                {GRUPOS_VISUAIS.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtro por Severidade */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="filtro-severidade"
+                className="text-xs font-semibold text-slate-700 flex items-center gap-1.5"
+              >
+                <span>Severidade</span>
+              </label>
+              <select
+                id="filtro-severidade"
+                data-testid="filtro-severidade"
+                value={filtroSeveridade}
+                onChange={(e) => setFiltroSeveridade(e.target.value as FiltroSeveridade)}
+                className="w-full text-xs h-9 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary"
+              >
+                <option value="todas">Todas as Severidades</option>
+                <option value="critica">🔴 Críticas</option>
+                <option value="atencao">🟡 Atenção</option>
+              </select>
+            </div>
+
+            {/* Filtro por Regra Específica */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="filtro-regra"
+                className="text-xs font-semibold text-slate-700 flex items-center gap-1.5"
+              >
+                <span>Regra / Pendência</span>
+              </label>
+              <select
+                id="filtro-regra"
+                data-testid="filtro-regra"
+                value={filtroRegra}
+                onChange={(e) => setFiltroRegra(e.target.value)}
+                className="w-full text-xs h-9 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary truncate"
+              >
+                <option value="todas">Todas as Regras</option>
+                {regrasDisponiveis.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.descricao}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Busca textual por Nome / Motivo */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="filtro-busca"
+                className="text-xs font-semibold text-slate-700 flex items-center gap-1.5"
+              >
+                <span>Buscar por Nome</span>
+              </label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                <input
+                  id="filtro-busca"
+                  data-testid="filtro-busca"
+                  type="text"
+                  placeholder="Nome do docente/discente..."
+                  value={termoBusca}
+                  onChange={(e) => setTermoBusca(e.target.value)}
+                  className="w-full text-xs h-9 pl-8 pr-2.5 rounded-md border border-slate-300 bg-white text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Botão limpar filtros se houver filtro ativo */}
+          {(filtroGrupo !== 'todos' ||
+            filtroSeveridade !== 'todas' ||
+            filtroRegra !== 'todas' ||
+            termoBusca.trim() !== '') && (
+            <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-xs">
+              <span className="text-slate-500">Filtros personalizados aplicados</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setFiltroGrupo('todos')
+                  setFiltroSeveridade('todas')
+                  setFiltroRegra('todas')
+                  setTermoBusca('')
+                }}
+                className="text-primary hover:underline font-medium cursor-pointer"
+              >
+                Limpar todos os filtros
+              </button>
+            </div>
+          )}
+        </Card>
+
+        {/* Tabela / Lista Detalhada */}
+        <div className="rounded-lg border border-slate-200 bg-white shadow-xs overflow-hidden">
+          {carregando ? (
+            <div className="p-4 space-y-3" data-testid="skeletons-lista-lacunas">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : lacunasFiltradas.length === 0 ? (
+            /* Estado quando nenhum resultado corresponde aos filtros */
+            <div className="py-12 px-4 text-center" data-testid="mensagem-sem-resultados">
+              <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto mb-2" />
+              <h3 className="text-sm font-semibold text-slate-800">
+                Nenhuma lacuna corresponde aos filtros selecionados
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                Tente alterar ou limpar os filtros de Grupo, Severidade ou Regra para visualizar
+                outras pendências do programa.
+              </p>
+              {(filtroGrupo !== 'todos' ||
+                filtroSeveridade !== 'todas' ||
+                filtroRegra !== 'todas' ||
+                termoBusca.trim() !== '') && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setFiltroGrupo('todos')
+                    setFiltroSeveridade('todas')
+                    setFiltroRegra('todas')
+                    setTermoBusca('')
+                  }}
+                  className="mt-3 text-xs border-slate-300"
+                >
+                  Limpar filtros
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                    <th scope="col" className="py-3 px-4 min-w-[200px]">
+                      Quem
+                    </th>
+                    <th scope="col" className="py-3 px-4 min-w-[240px]">
+                      O que falta
+                    </th>
+                    <th scope="col" className="py-3 px-4 w-[140px]">
+                      Grupo
+                    </th>
+                    <th scope="col" className="py-3 px-4 w-[130px] text-right sm:text-left">
+                      Severidade
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {lacunasFiltradas.map((item, idx) => {
+                    const configGrupo = GRUPOS_VISUAIS.find((g) => g.id === item.grupoVisualId)
+                    const badgeClass =
+                      configGrupo?.theme.badge || 'bg-slate-100 text-slate-800 border-slate-200'
+                    const isCritica = item.severidade === 'critica'
+
+                    return (
+                      <tr
+                        key={`${item.regraId}-${item.idRegistro}-${idx}`}
+                        className="hover:bg-slate-50/70 transition-colors"
+                        data-testid={`linha-lacuna-${item.regraId}-${item.idRegistro}`}
+                      >
+                        {/* Coluna Quem */}
+                        <td className="py-3 px-4 font-medium text-slate-900">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                isCritica ? 'bg-red-500' : 'bg-amber-500'
+                              }`}
+                            />
+                            <span
+                              className="truncate max-w-[260px] sm:max-w-none"
+                              title={item.nome}
+                            >
+                              {item.nome}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-normal">
+                              ({item.tabela === 'docentes' ? 'Docente' : 'Discente'} #
+                              {item.idRegistro})
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Coluna O que falta */}
+                        <td className="py-3 px-4 text-slate-700">
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-slate-800">
+                              {item.regraDescricao}
+                            </span>
+                            {item.motivo && item.motivo !== item.regraDescricao && (
+                              <span className="text-[11px] text-slate-500 mt-0.5">
+                                {item.motivo}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Coluna Grupo */}
+                        <td className="py-3 px-4">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${badgeClass}`}
+                          >
+                            {item.grupoVisualLabel}
+                          </span>
+                        </td>
+
+                        {/* Coluna Severidade */}
+                        <td className="py-3 px-4 text-right sm:text-left">
+                          {isCritica ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-800 border border-red-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                              Crítica
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                              Atenção
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>

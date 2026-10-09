@@ -38,7 +38,7 @@ export const SidebarProvider = ({
   setOpen?: React.Dispatch<React.SetStateAction<boolean>>
   animate?: boolean
 }) => {
-  const [openState, setOpenState] = useState(false)
+  const [openState, setOpenState] = useState(true)
 
   const open = openProp !== undefined ? openProp : openState
   const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState

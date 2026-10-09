@@ -54,7 +54,49 @@ describe('Página Lacunas - Etapa 2', () => {
         total_lacunas: 8,
       },
     ],
-    lacunas: [],
+    lacunas: [
+      {
+        regra_id: 'docente_sem_scopus_id',
+        severidade: 'critica',
+        grupo: 'Identificadores e Métricas',
+        registros: [
+          {
+            id: 5,
+            nome: 'Euler Araujo dos Santos',
+            motivo: 'Scopus ID não informado',
+          },
+          {
+            id: 6,
+            nome: 'Iara de Fatima Gimenez',
+            motivo: 'Scopus ID não informado',
+          },
+        ],
+      },
+      {
+        regra_id: 'docente_sem_openalex_id',
+        severidade: 'atencao',
+        grupo: 'Identificadores e Métricas',
+        registros: [
+          {
+            id: 5,
+            nome: 'Euler Araujo dos Santos',
+            motivo: 'OpenAlex ID não informado',
+          },
+        ],
+      },
+      {
+        regra_id: 'discente_sem_cpf',
+        severidade: 'critica',
+        grupo: 'Identificação Cadastral',
+        registros: [
+          {
+            id: 101,
+            nome: 'Lucas Silva',
+            motivo: 'CPF não informado',
+          },
+        ],
+      },
+    ],
   }
 
   describe('mapearGrupoParaVisual', () => {
@@ -209,6 +251,133 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('Falha ao carregar o relatório de lacunas')
       expect(html).toContain('Erro simulado de conexão ao Supabase')
       expect(html).toContain('Tentar novamente')
+    })
+  })
+
+  describe('Etapa 3 - Lista Detalhada de Lacunas e Filtros', () => {
+    it('renderiza a tabela com as colunas Quem, O que falta, Grupo e Severidade', () => {
+      const html = renderToString(
+        <Lacunas
+          carregarDadosFn={() =>
+            Promise.resolve({
+              sucesso: true,
+              dados: dadosMock,
+              origem: 'edge_function',
+            })
+          }
+        />,
+      )
+
+      expect(html).toContain('Lista Detalhada de Lacunas')
+      expect(html).toContain('Quem')
+      expect(html).toContain('O que falta')
+      expect(html).toContain('Grupo')
+      expect(html).toContain('Severidade')
+      expect(html).toContain('4 lacunas encontradas')
+
+      // Registros individuais presentes
+      expect(html).toContain('Euler Araujo dos Santos')
+      expect(html).toContain('Iara de Fatima Gimenez')
+      expect(html).toContain('Lucas Silva')
+    })
+
+    it('critério do cliente: Ledjane Silva Barreto (com scopus_id gravado) NÃO deve constar na regra Docentes sem Scopus ID; demais sem scopus_id devem aparecer', () => {
+      // Simula avaliação com Ledjane Silva Barreto (scopus_id = '7005598575') e dois sem scopus_id
+      const relatorioComDocentes: RelatorioLacunasResposta = {
+        gerado_em: '2026-10-10T14:30:00.000Z',
+        resumo: [
+          {
+            grupo: 'Identificadores e Métricas',
+            tabela: 'docentes',
+            regra_id: 'docente_sem_scopus_id',
+            descricao: 'Docente sem Scopus ID',
+            severidade: 'critica',
+            total_registros: 3,
+            total_lacunas: 2,
+          },
+        ],
+        lacunas: [
+          {
+            regra_id: 'docente_sem_scopus_id',
+            severidade: 'critica',
+            grupo: 'Identificadores e Métricas',
+            registros: [
+              {
+                id: 5,
+                nome: 'Euler Araujo dos Santos',
+                motivo: 'Scopus ID não informado',
+              },
+              {
+                id: 6,
+                nome: 'Iara de Fatima Gimenez',
+                motivo: 'Scopus ID não informado',
+              },
+              // Ledjane Silva Barreto NÃO está presente aqui porque possui scopus_id = 7005598575
+            ],
+          },
+        ],
+      }
+
+      const html = renderToString(
+        <Lacunas
+          carregarDadosFn={() =>
+            Promise.resolve({
+              sucesso: true,
+              dados: relatorioComDocentes,
+              origem: 'edge_function',
+            })
+          }
+          filtroRegraInicial="docente_sem_scopus_id"
+        />,
+      )
+
+      // Ledjane não pode aparecer nesta lista
+      expect(html).not.toContain('Ledjane Silva Barreto')
+
+      // Os demais docentes sem scopus_id devem aparecer
+      expect(html).toContain('Euler Araujo dos Santos')
+      expect(html).toContain('Iara de Fatima Gimenez')
+      expect(html).toContain('Docente sem Scopus ID')
+      expect(html).toContain('2 lacunas encontradas')
+    })
+
+    it('aplica filtro de severidade (ex.: apenas Críticas)', () => {
+      const html = renderToString(
+        <Lacunas
+          carregarDadosFn={() =>
+            Promise.resolve({
+              sucesso: true,
+              dados: dadosMock,
+              origem: 'edge_function',
+            })
+          }
+          filtroSeveridadeInicial="critica"
+        />,
+      )
+
+      // Críticas: docente_sem_scopus_id (2) e discente_sem_cpf (1) = 3 lacunas
+      expect(html).toContain('3 lacunas encontradas')
+      expect(html).toContain('Euler Araujo dos Santos')
+      expect(html).toContain('Lucas Silva')
+    })
+
+    it('aplica filtro por grupo visual (ex.: grupo sem lacunas exibe mensagem limpa)', () => {
+      const html = renderToString(
+        <Lacunas
+          carregarDadosFn={() =>
+            Promise.resolve({
+              sucesso: true,
+              dados: dadosMock,
+              origem: 'edge_function',
+            })
+          }
+          filtroGrupoInicial="producao"
+        />,
+      )
+
+      // Grupo Produção não tem lacunas no dadosMock
+      expect(html).toContain('0 lacunas encontradas')
+      expect(html).toContain('Nenhuma lacuna corresponde aos filtros selecionados')
     })
   })
 })
