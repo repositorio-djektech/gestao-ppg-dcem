@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Printer, AlertCircle, RefreshCw } from 'lucide-react'
+import { formatarCpf } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { docentesService } from '@/services/docentes'
 import { discentesService } from '@/services/discentes'
@@ -73,7 +74,7 @@ export default function PrintView() {
       service: discentesService,
       columns: [
         { key: 'nome', label: 'Nome' },
-        { key: 'cpf', label: 'CPF', render: (d) => d.cpf || '—' },
+        { key: 'cpf', label: 'CPF', render: (d) => (d.cpf ? formatarCpf(d.cpf) : '—') },
         { key: 'data_ingresso', label: 'Data de Ingresso', render: (d) => d.data_ingresso || '—' },
         { key: 'status', label: 'Status', render: (d) => String(d.status || '—').toUpperCase() },
         { key: 'link_lattes', label: 'Currículo Lattes', render: (d) => d.link_lattes || '—' },

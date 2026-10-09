@@ -487,9 +487,9 @@ export function RevisaoImportacaoDialog({
               onValueChange={(val) => setAbaAtiva(val as TabelaAlvoId)}
               className="flex-1 flex flex-col overflow-hidden"
             >
-              {/* Barra de Seleção de Tabelas */}
-              <div className="overflow-x-auto pb-2 shrink-0 border-b">
-                <TabsList className="bg-slate-100 p-1 h-auto flex flex-nowrap w-max min-w-full justify-start gap-1">
+              {/* Barra de Seleção de Tabelas: abas em múltiplas linhas (wrap) sem scroll lateral */}
+              <div className="pb-2 shrink-0 border-b">
+                <TabsList className="bg-slate-100 p-1.5 h-auto flex flex-wrap w-full justify-start gap-1.5 rounded-lg">
                   {TABELAS_ORDEM.map(({ id, rotulo, icone: Icone }) => {
                     const info = dadosPorTabela[id]
                     const marcada = tabelasSelecionadas[id]
@@ -498,7 +498,9 @@ export function RevisaoImportacaoDialog({
                       <div
                         key={id}
                         className={`flex items-center gap-1.5 px-2 py-1 rounded transition-colors ${
-                          abaAtiva === id ? 'bg-white shadow-sm' : 'hover:bg-slate-200/60'
+                          abaAtiva === id
+                            ? 'bg-white shadow-sm ring-1 ring-slate-200'
+                            : 'hover:bg-slate-200/60'
                         }`}
                       >
                         <Checkbox

@@ -22,6 +22,16 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -63,6 +73,7 @@ export default function Publicacoes() {
   const [page, setPage] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState<Omit<Publicacao, 'id'>>(emptyForm)
+  const [idParaExcluir, setIdParaExcluir] = useState<number | string | null>(null)
 
   const canEdit = profile?.role === 'admin' || profile?.role === 'editor'
   const canDelete = profile?.role === 'admin'
@@ -112,12 +123,13 @@ export default function Publicacoes() {
   }
 
   const handleDelete = async (id: number | string) => {
-    if (!confirm('Remover?')) return
     try {
       await remove(id)
-      toast.success('Removido')
+      toast.success('Publicação removida com sucesso')
     } catch {
       toast.error('Erro ao remover')
+    } finally {
+      setIdParaExcluir(null)
     }
   }
 
@@ -341,18 +353,20 @@ export default function Publicacoes() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleOpen(p)}
-                          className="h-8 w-8"
+                          className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                          title="Editar"
                         >
-                          <Edit className="h-4 w-4 text-slate-400" />
+                          <Edit className="h-4 w-4 text-primary" />
                         </Button>
                         {canDelete && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleDelete(p.id)}
+                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => setIdParaExcluir(p.id)}
+                            title="Excluir"
                           >
-                            <Trash2 className="h-4 w-4 text-slate-400" />
+                            <Trash2 className="h-4 w-4 text-red-600" />
                           </Button>
                         )}
                       </TableCell>
@@ -397,6 +411,36 @@ export default function Publicacoes() {
           </div>
         )}
       </div>
+
+      {/* Modal de confirmação antes de excluir publicação */}
+      <AlertDialog
+        open={idParaExcluir !== null}
+        onOpenChange={(open) => {
+          if (!open) setIdParaExcluir(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão de Publicação</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza de que deseja remover esta publicação? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (idParaExcluir !== null) {
+                  handleDelete(idParaExcluir)
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Sim, excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

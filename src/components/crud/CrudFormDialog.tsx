@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { formatarCpf } from '@/lib/utils'
 import type { FieldDef } from './types'
 
 interface CrudFormDialogProps {
@@ -117,11 +118,16 @@ export function CrudFormDialog({
                             ? 'email'
                             : 'text'
                   }
-                  value={formData[field.key] ?? ''}
+                  value={
+                    field.key.toLowerCase().includes('cpf')
+                      ? formatarCpf(formData[field.key])
+                      : (formData[field.key] ?? '')
+                  }
                   placeholder={field.placeholder}
                   required={field.required}
                   min={field.min}
                   max={field.max}
+                  maxLength={field.key.toLowerCase().includes('cpf') ? 14 : undefined}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -130,7 +136,9 @@ export function CrudFormDialog({
                           ? e.target.value === ''
                             ? null
                             : Number(e.target.value)
-                          : e.target.value,
+                          : field.key.toLowerCase().includes('cpf')
+                            ? formatarCpf(e.target.value)
+                            : e.target.value,
                     })
                   }
                 />

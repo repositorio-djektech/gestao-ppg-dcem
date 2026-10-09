@@ -23,6 +23,16 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -30,7 +40,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Search, Plus, Edit, Trash2, Printer, Sparkles } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Printer } from 'lucide-react'
 import {
   VincularOpenAlexDialog,
   type FonteIdentificador,
@@ -71,6 +81,7 @@ export default function Docentes() {
   const [page, setPage] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState<Omit<Docente, 'id'>>(emptyForm)
+  const [idParaExcluir, setIdParaExcluir] = useState<number | string | null>(null)
 
   const canEdit = profile?.role === 'admin' || profile?.role === 'editor'
   const canDelete = profile?.role === 'admin'
@@ -106,12 +117,13 @@ export default function Docentes() {
   }
 
   const handleDelete = async (id: number | string) => {
-    if (!confirm('Remover este docente?')) return
     try {
       await remove(id)
-      toast.success('Docente removido')
+      toast.success('Docente removido com sucesso')
     } catch {
       toast.error('Erro ao remover')
+    } finally {
+      setIdParaExcluir(null)
     }
   }
 
@@ -363,14 +375,19 @@ export default function Docentes() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleAbrirVinculo(d, 'scopus')}
-                          className="h-7 px-2 text-xs gap-1 text-emerald-700 hover:text-emerald-800 border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50/50"
+                          className="h-7 px-2 text-xs gap-1 text-orange-700 hover:text-orange-800 border-orange-300 hover:border-orange-400 bg-orange-50 hover:bg-orange-100 transition-colors"
                           title="Buscar autor no Scopus"
                         >
-                          <Database className="h-3 w-3 text-emerald-600" />
-                          <span>Buscar Scopus</span>
+                          <Database className="h-3 w-3 text-orange-600" />
+                          <span className="font-medium">Buscar Scopus</span>
                         </Button>
                       ) : (
-                        <span className="text-slate-400 font-mono text-sm">-</span>
+                        <Badge
+                          variant="outline"
+                          className="font-mono text-xs text-orange-700 border-orange-300 bg-orange-50"
+                        >
+                          Buscar Scopus
+                        </Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-center font-medium text-slate-700">
@@ -417,7 +434,6 @@ export default function Docentes() {
                               variant="outline"
                               className="font-mono text-xs text-indigo-700 border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 transition-colors"
                             >
-                              <Sparkles className="h-3 w-3 text-indigo-500 mr-1" />
                               {d.openalex_id}
                             </Badge>
                           </button>
@@ -426,7 +442,6 @@ export default function Docentes() {
                             variant="outline"
                             className="font-mono text-xs text-indigo-700 border-indigo-200 bg-indigo-50/70"
                           >
-                            <Sparkles className="h-3 w-3 text-indigo-500 mr-1" />
                             {d.openalex_id}
                           </Badge>
                         )
@@ -437,7 +452,6 @@ export default function Docentes() {
                           onClick={() => handleAbrirVinculo(d, 'openalex')}
                           className="h-7 px-2.5 text-xs gap-1.5 text-indigo-700 hover:text-indigo-800 border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50/50"
                         >
-                          <Sparkles className="h-3 w-3 text-indigo-500" />
                           <span>Buscar OpenAlex</span>
                         </Button>
                       ) : (
@@ -450,19 +464,20 @@ export default function Docentes() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleOpen(d)}
-                          className="h-8 w-8"
+                          className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
                           title="Editar Docente"
                         >
-                          <Edit className="h-4 w-4 text-slate-400 hover:text-primary" />
+                          <Edit className="h-4 w-4 text-primary" />
                         </Button>
                         {canDelete && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleDelete(d.id)}
+                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => setIdParaExcluir(d.id)}
+                            title="Excluir Docente"
                           >
-                            <Trash2 className="h-4 w-4 text-slate-400 hover:text-destructive" />
+                            <Trash2 className="h-4 w-4 text-red-600" />
                           </Button>
                         )}
                       </TableCell>
@@ -516,6 +531,36 @@ export default function Docentes() {
         onVincular={handleVincularOpenAlex}
         onVincularScopus={handleVincularScopus}
       />
+
+      {/* Modal de confirmação antes de excluir docente */}
+      <AlertDialog
+        open={idParaExcluir !== null}
+        onOpenChange={(open) => {
+          if (!open) setIdParaExcluir(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão de Docente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza de que deseja remover este docente? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (idParaExcluir !== null) {
+                  handleDelete(idParaExcluir)
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Sim, excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

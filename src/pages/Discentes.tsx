@@ -3,6 +3,7 @@ import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { discentesService } from '@/services/discentes'
 import { Badge } from '@/components/ui/badge'
 import type { Discente } from '@/types/database'
+import { formatarCpf } from '@/lib/utils'
 
 const emptyForm = {
   nome: '',
@@ -22,7 +23,11 @@ const statusColors: Record<string, string> = {
 
 const columns: ColumnDef<Discente>[] = [
   { key: 'nome', label: 'Nome', className: 'font-medium text-slate-900' },
-  { key: 'cpf', label: 'CPF' },
+  {
+    key: 'cpf',
+    label: 'CPF',
+    render: (d) => (d.cpf ? formatarCpf(d.cpf) : '—'),
+  },
   { key: 'data_ingresso', label: 'Ingresso' },
   {
     key: 'status',

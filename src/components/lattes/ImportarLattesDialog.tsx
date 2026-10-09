@@ -16,7 +16,6 @@ import {
   Trash2,
   AlertCircle,
   CheckCircle2,
-  Sparkles,
   Loader2,
   Info,
   TableProperties,
@@ -254,10 +253,10 @@ export function ImportarLattesDialog({
                           removerArquivo(idx)
                         }}
                         disabled={processando}
-                        className="text-slate-400 hover:text-rose-600 p-1 rounded transition-colors disabled:opacity-40"
+                        className="text-red-500 hover:text-red-700 p-1 rounded transition-colors disabled:opacity-40"
                         title="Remover arquivo"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
                       </button>
                     </div>
                   )
@@ -403,10 +402,7 @@ export function ImportarLattesDialog({
                   Processando...
                 </>
               ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  Processar arquivos
-                </>
+                <>Processar arquivos</>
               )}
             </Button>
           )}

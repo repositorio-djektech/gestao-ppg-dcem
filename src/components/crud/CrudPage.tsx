@@ -23,6 +23,17 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { formatarCpf } from '@/lib/utils'
 import { CrudFormDialog } from './CrudFormDialog'
 import type { ColumnDef, FieldDef } from './types'
 
@@ -58,6 +69,7 @@ export function CrudPage<T extends { id: number | string }>({
   const [page, setPage] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState<Record<string, any>>(emptyForm)
+  const [idParaExcluir, setIdParaExcluir] = useState<number | string | null>(null)
   const [fieldOptions, setFieldOptions] = useState<
     Record<string, { value: string; label: string }[]>
   >({})
@@ -122,12 +134,13 @@ export function CrudPage<T extends { id: number | string }>({
   }
 
   const handleDelete = async (id: number | string) => {
-    if (!confirm('Remover este registro?')) return
     try {
       await remove(id)
-      toast.success(`${entityName} removido`)
+      toast.success(`${entityName} removido com sucesso`)
     } catch {
       toast.error('Erro ao remover')
+    } finally {
+      setIdParaExcluir(null)
     }
   }
 
@@ -204,7 +217,11 @@ export function CrudPage<T extends { id: number | string }>({
                   <TableRow key={item.id} className="hover:bg-slate-50/50">
                     {columns.map((col) => (
                       <TableCell key={String(col.key)} className={col.className}>
-                        {col.render ? col.render(item) : String(item[col.key] ?? '-')}
+                        {col.render
+                          ? col.render(item)
+                          : String(col.key).toLowerCase().includes('cpf') && item[col.key]
+                            ? formatarCpf(String(item[col.key]))
+                            : String(item[col.key] ?? '-')}
                       </TableCell>
                     ))}
                     {canEdit && (
@@ -213,18 +230,20 @@ export function CrudPage<T extends { id: number | string }>({
                           variant="ghost"
                           size="icon"
                           onClick={() => handleOpen(item)}
-                          className="h-8 w-8"
+                          className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                          title="Editar"
                         >
-                          <Edit className="h-4 w-4 text-slate-400 hover:text-primary" />
+                          <Edit className="h-4 w-4 text-primary" />
                         </Button>
                         {canDelete && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleDelete(item.id)}
+                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => setIdParaExcluir(item.id)}
+                            title="Excluir"
                           >
-                            <Trash2 className="h-4 w-4 text-slate-400 hover:text-destructive" />
+                            <Trash2 className="h-4 w-4 text-red-600" />
                           </Button>
                         )}
                       </TableCell>
@@ -283,6 +302,37 @@ export function CrudPage<T extends { id: number | string }>({
           entityName={entityName}
         />
       )}
+
+      {/* Modal de confirmação antes de excluir */}
+      <AlertDialog
+        open={idParaExcluir !== null}
+        onOpenChange={(open) => {
+          if (!open) setIdParaExcluir(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão de {entityName}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza de que deseja remover este registro de {entityName.toLowerCase()}? Esta
+              ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (idParaExcluir !== null) {
+                  handleDelete(idParaExcluir)
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Sim, excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

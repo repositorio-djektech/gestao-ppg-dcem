@@ -15,7 +15,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 224 64% 33%; /* #1e3a8a - Deep Blue */
+    --primary: 221.2 83.2% 53.3%; /* #2563EB - Royal / Blue 600 */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 215 16% 47%; /* #64748b - Slate Grey */
@@ -32,18 +32,18 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 224 64% 33%;
+    --ring: 221.2 83.2% 53.3%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222.2 84% 4.9%;
-    --sidebar-primary: 224 64% 33%;
+    --sidebar-primary: 221.2 83.2% 53.3%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 210 40% 96.1%;
     --sidebar-accent-foreground: 222.2 84% 4.9%;
     --sidebar-border: 214.3 31.8% 91.4%;
-    --sidebar-ring: 224 64% 33%;
+    --sidebar-ring: 221.2 83.2% 53.3%;
   }
 
   body {
