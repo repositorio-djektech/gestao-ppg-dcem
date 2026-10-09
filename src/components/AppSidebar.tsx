@@ -5,6 +5,16 @@ import dcemLogo from '@/assets/dcem-logo-trans-3d28d.webp'
 import { Sidebar, SidebarBody, SidebarLink, useSidebar } from '@/components/ui/sidebar'
 import { useAuth } from '@/hooks/use-auth'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
@@ -23,8 +33,6 @@ import {
   HeartHandshake,
   Award,
   LogOut,
-  PanelLeftClose,
-  PanelLeftOpen,
 } from 'lucide-react'
 
 export const Logo = () => {
@@ -174,37 +182,24 @@ interface SidebarContentProps {
 }
 
 function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
-  const { open, setOpen } = useSidebar()
+  const { open } = useSidebar()
   const location = useLocation()
   const { profile, signOut } = useAuth()
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
 
   return (
     <div className="flex flex-col h-full justify-between">
       {/* Topo e navegação */}
       <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
-        {/* Cabeçalho da Sidebar: Logo + Botão toggle manual (Item 3) */}
+        {/* Cabeçalho da Sidebar: Logo institucional (toggle movido para o Header) */}
         <div
-          className={cn(
-            'mb-4 flex items-center',
-            open ? 'justify-between px-1' : 'justify-center flex-col gap-2',
-          )}
+          className={cn('mb-4 flex items-center', open ? 'justify-start px-1' : 'justify-center')}
         >
           {open ? <Logo /> : <LogoIcon />}
-
-          {/* Botão de abertura / recolhimento manual (desktop e mobile) */}
-          <button
-            type="button"
-            onClick={() => setOpen(!open)}
-            className="p-1.5 rounded-md text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800 transition-colors cursor-pointer shrink-0"
-            title={open ? 'Recolher menu lateral' : 'Expandir menu lateral'}
-            aria-label={open ? 'Recolher menu lateral' : 'Expandir menu lateral'}
-          >
-            {open ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
-          </button>
         </div>
 
         {/* Grupos de navegação — Item 6: gap-6 quando fechada (+50% vs gap-4 quando aberta) */}
-        <div className={cn('flex flex-col transition-all duration-200', open ? 'gap-4' : 'gap-6')}>
+        <div className={cn('flex flex-col transition-all duration-150', open ? 'gap-4' : 'gap-6')}>
           {navSections.map((section) => (
             <div key={section.title} className="flex flex-col gap-1 items-stretch">
               {open && (
@@ -270,18 +265,40 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
           {/* Botão de SAIR: apenas ícone LogOut alinhado à direita na mesma linha */}
           <button
             type="button"
-            onClick={() => signOut()}
+            onClick={() => setShowLogoutModal(true)}
             className={cn(
               'p-1.5 rounded-md text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer shrink-0 flex items-center justify-center',
               !open && 'w-8 h-8',
             )}
-            title="Sair da conta"
-            aria-label="Sair da conta"
+            title="Sair do sistema"
+            aria-label="Sair do sistema"
           >
             <LogOut className="h-4 w-4 shrink-0" />
           </button>
         </div>
       </div>
+
+      {/* Modal de confirmação de saída */}
+      <AlertDialog open={showLogoutModal} onOpenChange={setShowLogoutModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sair do sistema?</AlertDialogTitle>
+            <AlertDialogDescription>Você será desconectado da sua conta.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowLogoutModal(false)
+                signOut()
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sair
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -298,8 +315,8 @@ export function AppSidebar({ open: openProp, setOpen: setOpenProp }: AppSidebarP
 
   return (
     <Sidebar open={open} setOpen={setOpen}>
-      {/* Item 1: sem borda vertical divisória à direita, unindo com o headerbar tipo boomerang */}
-      <SidebarBody className="bg-white dark:bg-neutral-900">
+      {/* Sidebar com borda vertical nítida à direita e leve sombra */}
+      <SidebarBody className="bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 shadow-sm">
         <SidebarContentWithSections onNavigate={() => setOpen(false)} />
       </SidebarBody>
     </Sidebar>

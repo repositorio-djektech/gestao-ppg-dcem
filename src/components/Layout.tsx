@@ -35,13 +35,16 @@ export function Layout() {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-slate-100/60 dark:bg-neutral-950">
-      {/* Estrutura boomerang contínua: Sidebar + Header unidos */}
+    <div className="flex h-screen w-full overflow-hidden bg-slate-100/70 dark:bg-neutral-950">
+      {/* Sidebar lateral com borda direita */}
       <AppSidebar open={sidebarOpen} setOpen={setSidebarOpen} />
       <div className="flex flex-1 flex-col min-w-0 w-full overflow-hidden">
-        <AppHeader onToggleSidebar={() => setSidebarOpen((prev) => !prev)} />
-        {/* Canto interno com curva de 90 graus no encontro com a área de conteúdo principal */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+        <AppHeader
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+        />
+        {/* Área interna de conteúdo: fundo com contraste suave e sombra sutil para destaque */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 shadow-inner">
           <Outlet />
         </main>
       </div>

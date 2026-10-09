@@ -100,13 +100,13 @@ export const DesktopSidebar = ({
   return (
     <motion.div
       className={cn(
-        'h-full hidden md:flex md:flex-col bg-white dark:bg-neutral-900 w-[240px] flex-shrink-0 transition-[width] duration-300 ease-in-out',
+        'h-full hidden md:flex md:flex-col bg-white dark:bg-neutral-900 w-[240px] flex-shrink-0',
         className,
       )}
       animate={{
         width: animate ? (open ? '240px' : '48px') : '240px',
       }}
-      transition={{ duration: 0.25, ease: 'easeInOut' }}
+      transition={{ type: 'spring', stiffness: 450, damping: 35 }}
       {...props}
     >
       {children}
@@ -137,8 +137,9 @@ export const MobileSidebar = ({ className, children, ...props }: React.Component
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{
-                duration: 0.3,
-                ease: 'easeInOut',
+                type: 'spring',
+                stiffness: 450,
+                damping: 35,
               }}
               className={cn(
                 'fixed inset-y-0 left-0 max-w-[85vw] sm:max-w-[320px] w-full bg-white dark:bg-neutral-900 p-4 z-[100] flex flex-col justify-between shadow-2xl border-r border-neutral-200 dark:border-neutral-800 overflow-hidden',
@@ -187,7 +188,7 @@ export const SidebarLink = ({
           display: animate ? (open ? 'inline-block' : 'none') : 'inline-block',
           opacity: animate ? (open ? 1 : 0) : 1,
         }}
-        transition={{ duration: 0.15 }}
+        transition={{ duration: 0.12, ease: 'easeOut' }}
         className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-0.5 transition duration-150 whitespace-pre inline-block !p-0 !m-0 overflow-hidden text-ellipsis"
       >
         {link.label}

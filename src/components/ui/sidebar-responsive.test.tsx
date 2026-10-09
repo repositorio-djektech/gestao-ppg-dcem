@@ -65,14 +65,14 @@ describe('Responsividade Sidebar e Header (Mobile e Tablet Portrait)', () => {
     expect(html).toContain('Menu Desktop')
   })
 
-  it('4. AppHeader renderiza botão de hambúrguer em telas mobile/tablet quando onToggleSidebar é fornecido e badge 2025 - 2028', () => {
+  it('4. AppHeader renderiza botão de alternância à esquerda da busca e badge 2025 - 2028 à direita sem avatar', () => {
     const onToggle = vi.fn()
-    const html = renderToString(<AppHeader onToggleSidebar={onToggle} />)
+    const html = renderToString(<AppHeader onToggleSidebar={onToggle} sidebarOpen={false} />)
 
-    expect(html).toContain('md:hidden')
-    expect(html).toContain('Abrir menu')
+    expect(html).toContain('Expandir menu lateral')
     expect(html).toContain('Pesquisar...')
     expect(html).toContain('2025 - 2028')
+    expect(html).not.toContain('Sair da conta') // Avatar e dropdown removidos do Header
   })
 
   it('5. SidebarTrigger renderiza botão de alternância funcional', () => {
@@ -97,5 +97,15 @@ describe('Responsividade Sidebar e Header (Mobile e Tablet Portrait)', () => {
     expect(html).toContain('/producao-tecnica')
     expect(html).toContain('Docentes')
     expect(html).toContain('Gestão PPG-DCEM')
+  })
+
+  it('7. AppSidebar renderiza botão de saída e modal de confirmação (AlertDialog)', () => {
+    const html = renderToString(
+      <MemoryRouter initialEntries={['/']}>
+        <AppSidebar open={true} />
+      </MemoryRouter>,
+    )
+
+    expect(html).toContain('Sair do sistema')
   })
 })
