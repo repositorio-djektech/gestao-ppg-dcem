@@ -202,7 +202,7 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
       </div>
 
       {/* Navegação rolável: apenas a lista de links tem scroll vertical */}
-      <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden px-2 py-3 min-h-0">
+      <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden px-2 py-3 min-h-0 sidebar-scrollbar [scrollbar-gutter:auto]">
         {/* Grupos de navegação — gap-6 quando fechada (+50% vs gap-4 quando aberta) */}
         <div className={cn('flex flex-col transition-all duration-150', open ? 'gap-4' : 'gap-6')}>
           {navSections.map((section) => (

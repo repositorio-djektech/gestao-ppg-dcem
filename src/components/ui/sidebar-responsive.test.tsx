@@ -123,5 +123,14 @@ describe('Responsividade Sidebar e Header (Mobile e Tablet Portrait)', () => {
     expect(html).toContain('border-t border-neutral-200')
     // Lista de links com container de scroll próprio
     expect(html).toContain('overflow-y-auto')
+    // Scrollbar fina e sutil sem gutter reservado
+    expect(html).toContain('sidebar-scrollbar')
+  })
+
+  it('9. AppHeader possui badge 2025 - 2028 sem efeito hover (pointer-events-none, cursor-default)', () => {
+    const html = renderToString(<AppHeader />)
+    expect(html).toContain('2025 - 2028')
+    expect(html).toContain('pointer-events-none')
+    expect(html).toContain('cursor-default')
   })
 })

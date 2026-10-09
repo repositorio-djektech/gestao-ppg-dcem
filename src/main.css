@@ -52,6 +52,38 @@
 }
 
 @layer utilities {
+  /* Scrollbar fina, translúcida e suave para a barra lateral */
+  .sidebar-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(203, 213, 225, 0.6) transparent; /* slate-300 bem suave */
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(203, 213, 225, 0.6); /* slate-300 claro / 50% mais claro */
+    border-radius: 9999px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(148, 163, 184, 0.7); /* slate-400 no hover */
+  }
+
+  .dark .sidebar-scrollbar {
+    scrollbar-color: rgba(82, 82, 91, 0.5) transparent;
+  }
+
+  .dark .sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(82, 82, 91, 0.5);
+  }
+
   @keyframes fade-in {
     from {
       opacity: 0;
@@ -112,6 +144,12 @@
     display: none !important;
   }
 
+  /* Quando imprimindo dados do docente via modal, esconder o dialog original da tela */
+  body:has(.docente-print-container) [role='dialog'],
+  body:has(.docente-print-container) [data-radix-portal] {
+    display: none !important;
+  }
+
   /* Layout sem restrições de scroll ou padding residual do layout */
   main,
   [data-sidebar='inset'],
@@ -130,6 +168,14 @@
 
   /* Bloco do documento para impressão */
   .print-document {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Impressão específica do modal Visualizar Docente */
+  .docente-print-document {
+    display: block !important;
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
