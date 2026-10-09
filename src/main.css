@@ -114,17 +114,21 @@
 @media print {
   @page {
     size: A4 portrait;
-    /* Margens ABNT NBR 14724: Superior: 3cm, Esquerda: 3cm, Direita: 2cm, Inferior: 2cm */
-    margin-top: 30mm;
-    margin-left: 30mm;
+    /* Margens configuradas: Superior: 2,5cm, Esquerda: 2,5cm, Direita: 2cm, Inferior: 2cm */
+    margin-top: 25mm;
+    margin-left: 25mm;
     margin-right: 20mm;
     margin-bottom: 20mm;
   }
 
+  /* Reset radical para evitar fundos escuros de dark mode ou overlays de dialogs */
+  :root,
+  .dark,
   html,
   body {
     background: #ffffff !important;
-    color: #000000 !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
     font-size: 10pt;
     line-height: 1.35;
     margin: 0 !important;
@@ -134,23 +138,45 @@
     print-color-adjust: exact !important;
   }
 
-  /* Ocultar elementos de navegação e controles interativos na impressão */
+  /* Ocultar elementos de navegação, controles interativos, botões e toasts */
   .no-print,
   nav,
   aside,
   [data-sidebar='sidebar'],
   header.shrink-0,
-  button {
+  button,
+  [data-sonner-toaster],
+  [role='status'] {
     display: none !important;
   }
 
-  /* Quando imprimindo dados do docente via modal, esconder o dialog original da tela */
+  /*
+   * Neutralizar e ocultar overlays/backdrops escuros de modais (Radix Dialog Overlay, etc.)
+   * O Radix renderiza overlays em portais com classes 'fixed inset-0 bg-black/80'.
+   * Na impressão eles NUNCA devem sobrepor o documento nem pintar a página de preto.
+   */
+  [data-state][class*='bg-black'],
+  [data-state][class*='fixed inset-0'],
+  [class*='bg-black/80'],
+  [class*='bg-black/'],
+  [data-radix-dialog-overlay],
+  [data-radix-overlay],
+  div.fixed.inset-0 {
+    display: none !important;
+    background: transparent !important;
+    background-color: transparent !important;
+  }
+
+  /* Quando o container de impressão de docente estiver presente, ocultar os modais interativos */
   body:has(.docente-print-container) [role='dialog'],
-  body:has(.docente-print-container) [data-radix-portal] {
+  body:has(.docente-print-container) [data-radix-portal],
+  body:has(.docente-print-container) [data-state='open'][role='dialog'],
+  body:has(.docente-print-container) > div:has([role='dialog']) {
     display: none !important;
   }
 
   /* Layout sem restrições de scroll ou padding residual do layout */
+  #root,
   main,
   [data-sidebar='inset'],
   .print-container {
@@ -164,6 +190,7 @@
     max-width: 100% !important;
     box-shadow: none !important;
     background: transparent !important;
+    background-color: transparent !important;
   }
 
   /* Bloco do documento para impressão */
@@ -174,11 +201,28 @@
   }
 
   /* Impressão específica do modal Visualizar Docente */
+  .docente-print-container {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+
   .docente-print-document {
     display: block !important;
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  .docente-print-document * {
+    color: #0f172a;
   }
 
   .print-header {
@@ -212,6 +256,13 @@
   }
 
   th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    font-weight: 700;
+  }
+
+  .docente-print-document th,
+  .docente-print-document tr.bg-slate-100 {
     background-color: #f1f5f9 !important;
     color: #0f172a !important;
     font-weight: 700;

@@ -196,10 +196,10 @@ export function VisualizarDocenteDialog({
 
   const executarImpressao = () => {
     setModalImprimirAberto(false)
-    // Pequeno timeout para o Radix dialog do modal de impressão fechar o overlay
+    // Timeout para o Radix dialog do modal de impressão desmontar seu overlay
     setTimeout(() => {
       window.print()
-    }, 150)
+    }, 200)
   }
 
   const currentDateFormatted = new Date().toLocaleDateString('pt-BR', {
@@ -1902,7 +1902,9 @@ export function VisualizarDocenteDialog({
       </Dialog>
 
       {/* Relatório Oculto na Tela / Visível na Impressão contendo apenas as abas selecionadas */}
-      <div className="hidden print:block docente-print-container">{renderDocumentoImpressao()}</div>
+      <div className="hidden print:block docente-print-container bg-white text-slate-900">
+        {renderDocumentoImpressao()}
+      </div>
     </Dialog>
   )
 }

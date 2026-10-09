@@ -63,4 +63,15 @@ describe('VisualizarDocenteDialog', () => {
     expect(html).toContain('Gerar Impressão')
     expect(html).toContain('Relatório Curricular Individual')
   })
+
+  it('renderiza o container de impressão com classes de fundo branco e texto escuro', () => {
+    const html = renderToString(
+      <VisualizarDocenteDialog open={true} onOpenChange={vi.fn()} docente={docenteMock} />,
+    )
+
+    expect(html).toContain('docente-print-container')
+    expect(html).toContain('bg-white')
+    expect(html).toContain('text-slate-900')
+    expect(html).toContain('docente-print-document')
+  })
 })
