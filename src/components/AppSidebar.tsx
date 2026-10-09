@@ -167,7 +167,11 @@ const navSections: NavSection[] = [
   },
 ]
 
-function SidebarContentWithSections() {
+interface SidebarContentProps {
+  onNavigate?: () => void
+}
+
+function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
   const { open } = useSidebar()
   const location = useLocation()
   const { profile, signOut } = useAuth()
@@ -191,6 +195,9 @@ function SidebarContentWithSections() {
                   <SidebarLink
                     key={item.href}
                     link={item}
+                    onClick={() => {
+                      if (onNavigate) onNavigate()
+                    }}
                     className={cn(
                       'rounded-md px-2 py-1.5 transition-colors',
                       isActive
@@ -247,13 +254,20 @@ function SidebarContentWithSections() {
   )
 }
 
-export function AppSidebar() {
-  const [open, setOpen] = useState(false)
+interface AppSidebarProps {
+  open?: boolean
+  setOpen?: React.Dispatch<React.SetStateAction<boolean>>
+}
+
+export function AppSidebar({ open: openProp, setOpen: setOpenProp }: AppSidebarProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = openProp !== undefined ? openProp : internalOpen
+  const setOpen = setOpenProp !== undefined ? setOpenProp : setInternalOpen
 
   return (
     <Sidebar open={open} setOpen={setOpen}>
       <SidebarBody className="justify-between gap-4 border-r border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-sm">
-        <SidebarContentWithSections />
+        <SidebarContentWithSections onNavigate={() => setOpen(false)} />
       </SidebarBody>
     </Sidebar>
   )

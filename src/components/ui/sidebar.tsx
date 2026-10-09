@@ -3,6 +3,7 @@ import { Link, LinkProps } from 'react-router-dom'
 import React, { useState, createContext, useContext } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Menu, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface Links {
   label: string
@@ -65,6 +66,22 @@ export const Sidebar = ({
   )
 }
 
+export const SidebarTrigger = ({ className, ...props }: React.ComponentProps<typeof Button>) => {
+  const { open, setOpen } = useSidebar()
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className={cn('md:hidden h-9 w-9 text-neutral-700 dark:text-neutral-200 shrink-0', className)}
+      onClick={() => setOpen(!open)}
+      aria-label="Alternar menu lateral"
+      {...props}
+    >
+      <Menu className="h-5 w-5" />
+    </Button>
+  )
+}
+
 export const SidebarBody = (props: React.ComponentProps<typeof motion.div>) => {
   return (
     <>
@@ -101,46 +118,48 @@ export const DesktopSidebar = ({
 export const MobileSidebar = ({ className, children, ...props }: React.ComponentProps<'div'>) => {
   const { open, setOpen } = useSidebar()
   return (
-    <>
-      <div
-        className={cn(
-          'h-10 px-4 py-4 flex flex-row md:hidden items-center justify-between bg-neutral-100 dark:bg-neutral-800 w-full',
-        )}
-        {...props}
-      >
-        <div className="flex justify-end z-20 w-full">
-          <Menu
-            className="text-neutral-800 dark:text-neutral-200 cursor-pointer"
-            onClick={() => setOpen(!open)}
-          />
-        </div>
-        <AnimatePresence>
-          {open && (
+    <div className="md:hidden" {...props}>
+      <AnimatePresence>
+        {open && (
+          <>
+            {/* Backdrop escuro com fechar ao clicar */}
             <motion.div
-              initial={{ x: '-100%', opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: '-100%', opacity: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setOpen(false)}
+              className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[99]"
+              aria-hidden="true"
+            />
+            {/* Drawer lateral deslizante */}
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
               transition={{
                 duration: 0.3,
                 ease: 'easeInOut',
               }}
               className={cn(
-                'fixed h-full w-full inset-0 bg-white dark:bg-neutral-900 p-10 z-[100] flex flex-col justify-between',
+                'fixed inset-y-0 left-0 max-w-[85vw] sm:max-w-[320px] w-full bg-white dark:bg-neutral-900 p-4 z-[100] flex flex-col justify-between shadow-2xl border-r border-neutral-200 dark:border-neutral-800 overflow-hidden',
                 className,
               )}
             >
               <div
-                className="absolute right-10 top-10 z-50 text-neutral-800 dark:text-neutral-200 cursor-pointer"
-                onClick={() => setOpen(!open)}
+                className="absolute right-4 top-4 z-50 text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white cursor-pointer p-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                onClick={() => setOpen(false)}
+                aria-label="Fechar menu"
+                role="button"
               >
-                <X />
+                <X className="h-5 w-5" />
               </div>
               {children}
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 
@@ -151,8 +170,7 @@ export const SidebarLink = ({
 }: {
   link: Links
   className?: string
-  props?: LinkProps
-}) => {
+} & Omit<LinkProps, 'to'>) => {
   const { open, animate } = useSidebar()
   return (
     <Link
