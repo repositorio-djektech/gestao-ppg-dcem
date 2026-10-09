@@ -190,7 +190,7 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
   return (
     <div className="flex flex-col h-full justify-between">
       {/* Cabeçalho fixo da Sidebar com a mesma altura e linha horizontal que o AppHeader (h-16) */}
-      <div className="h-16 border-b border-neutral-200 dark:border-neutral-800 shrink-0 bg-inherit flex items-center px-2">
+      <div className="h-16 border-b border-neutral-200 dark:border-neutral-800 shadow-sm shrink-0 bg-inherit flex items-center px-2">
         <div
           className={cn(
             'flex items-center min-w-0 w-full',

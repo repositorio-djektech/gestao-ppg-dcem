@@ -40,11 +40,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Search, Plus, Edit, Trash2, Printer } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Printer, Eye } from 'lucide-react'
 import {
   VincularOpenAlexDialog,
   type FonteIdentificador,
 } from '@/components/docentes/VincularOpenAlexDialog'
+import { VisualizarDocenteDialog } from '@/components/docentes/VisualizarDocenteDialog'
 import type { OpenAlexAutorCandidato } from '@/lib/openalex/buscar'
 import type { ScopusAutorCandidato } from '@/services/scopus'
 import { Database } from 'lucide-react'
@@ -78,6 +79,8 @@ export default function Docentes() {
   const [dialogoVinculoAberto, setDialogoVinculoAberto] = useState(false)
   const [docenteParaVinculo, setDocenteParaVinculo] = useState<Docente | null>(null)
   const [abaInicialVinculo, setAbaInicialVinculo] = useState<FonteIdentificador>('openalex')
+  const [docenteParaVisualizar, setDocenteParaVisualizar] = useState<Docente | null>(null)
+  const [dialogoVisualizarAberto, setDialogoVisualizarAberto] = useState(false)
   const [page, setPage] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState<Omit<Docente, 'id'>>(emptyForm)
@@ -131,6 +134,11 @@ export default function Docentes() {
     setDocenteParaVinculo(docente)
     setAbaInicialVinculo(fonte)
     setDialogoVinculoAberto(true)
+  }
+
+  const handleVisualizarDocente = (docente: Docente) => {
+    setDocenteParaVisualizar(docente)
+    setDialogoVisualizarAberto(true)
   }
 
   const handleVincularOpenAlex = async (
@@ -324,16 +332,14 @@ export default function Docentes() {
                 <TableHead className="text-center font-semibold text-slate-700">JDP</TableHead>
                 <TableHead className="font-semibold text-slate-700">Licença</TableHead>
                 <TableHead className="font-semibold text-slate-700">OpenAlex</TableHead>
-                {canEdit && (
-                  <TableHead className="text-right font-semibold text-slate-700">Ações</TableHead>
-                )}
+                <TableHead className="text-right font-semibold text-slate-700">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: canEdit ? 8 : 7 }).map((_, j) => (
+                    {Array.from({ length: 8 }).map((_, j) => (
                       <TableCell key={j}>
                         <Skeleton className="h-6 w-full" />
                       </TableCell>
@@ -464,17 +470,29 @@ export default function Docentes() {
                         </Badge>
                       )}
                     </TableCell>
-                    {canEdit && (
-                      <TableCell className="text-right">
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleOpen(d)}
-                          className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                          title="Editar Docente"
+                          onClick={() => handleVisualizarDocente(d)}
+                          className="h-8 w-8 text-slate-600 hover:text-primary hover:bg-primary/10"
+                          title="Visualizar"
+                          aria-label="Visualizar Docente"
                         >
-                          <Edit className="h-4 w-4 text-primary" />
+                          <Eye className="h-4 w-4" />
                         </Button>
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpen(d)}
+                            className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                            title="Editar Docente"
+                          >
+                            <Edit className="h-4 w-4 text-primary" />
+                          </Button>
+                        )}
                         {canDelete && (
                           <Button
                             variant="ghost"
@@ -486,13 +504,13 @@ export default function Docentes() {
                             <Trash2 className="h-4 w-4 text-red-600" />
                           </Button>
                         )}
-                      </TableCell>
-                    )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={canEdit ? 8 : 7} className="h-32 text-center text-slate-500">
+                  <TableCell colSpan={8} className="h-32 text-center text-slate-500">
                     Nenhum docente encontrado.
                   </TableCell>
                 </TableRow>
@@ -536,6 +554,12 @@ export default function Docentes() {
         abaInicial={abaInicialVinculo}
         onVincular={handleVincularOpenAlex}
         onVincularScopus={handleVincularScopus}
+      />
+
+      <VisualizarDocenteDialog
+        open={dialogoVisualizarAberto}
+        onOpenChange={setDialogoVisualizarAberto}
+        docente={docenteParaVisualizar}
       />
 
       {/* Modal de confirmação antes de excluir docente */}
