@@ -23,19 +23,21 @@ import {
   HeartHandshake,
   Award,
   LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react'
 
 export const Logo = () => {
   return (
     <Link
       to="/"
-      className="font-normal flex items-center gap-2 py-1 relative z-20 text-neutral-900 dark:text-neutral-100"
+      className="font-normal flex items-center gap-2 py-1 relative z-20 text-neutral-900 dark:text-neutral-100 min-w-0"
     >
       <img src={dcemLogo} alt="DCEM Logo" className="h-7 w-7 object-contain shrink-0" />
       <motion.span
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="font-semibold text-primary text-sm whitespace-pre tracking-tight"
+        className="font-semibold text-primary text-sm whitespace-pre tracking-tight truncate"
       >
         Gestão PPG-DCEM
       </motion.span>
@@ -172,20 +174,41 @@ interface SidebarContentProps {
 }
 
 function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
-  const { open } = useSidebar()
+  const { open, setOpen } = useSidebar()
   const location = useLocation()
   const { profile, signOut } = useAuth()
 
   return (
-    <>
-      <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden pr-1">
-        <div className="mb-4">{open ? <Logo /> : <LogoIcon />}</div>
+    <div className="flex flex-col h-full justify-between">
+      {/* Topo e navegação */}
+      <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
+        {/* Cabeçalho da Sidebar: Logo + Botão toggle manual (Item 3) */}
+        <div
+          className={cn(
+            'mb-4 flex items-center',
+            open ? 'justify-between px-1' : 'justify-center flex-col gap-2',
+          )}
+        >
+          {open ? <Logo /> : <LogoIcon />}
 
-        <div className="flex flex-col gap-4">
+          {/* Botão de abertura / recolhimento manual (desktop e mobile) */}
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            className="p-1.5 rounded-md text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800 transition-colors cursor-pointer shrink-0"
+            title={open ? 'Recolher menu lateral' : 'Expandir menu lateral'}
+            aria-label={open ? 'Recolher menu lateral' : 'Expandir menu lateral'}
+          >
+            {open ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+          </button>
+        </div>
+
+        {/* Grupos de navegação — Item 6: gap-6 quando fechada (+50% vs gap-4 quando aberta) */}
+        <div className={cn('flex flex-col transition-all duration-200', open ? 'gap-4' : 'gap-6')}>
           {navSections.map((section) => (
-            <div key={section.title} className="flex flex-col gap-1">
+            <div key={section.title} className="flex flex-col gap-1 items-stretch">
               {open && (
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/70 px-2 pt-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/70 px-2 pt-1 truncate">
                   {section.title}
                 </span>
               )}
@@ -199,10 +222,12 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
                       if (onNavigate) onNavigate()
                     }}
                     className={cn(
-                      'rounded-md px-2 py-1.5 transition-colors',
+                      'rounded-md transition-all select-none',
+                      // Item 2: no estado recolhido, o highlight envolve todo o ícone regularmente (w-8 h-8 rounded-md mx-auto)
                       isActive
                         ? 'bg-primary/10 text-primary font-semibold [&_svg]:text-primary'
-                        : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/60 dark:text-neutral-300 dark:hover:text-white dark:hover:bg-neutral-700/60 [&_svg]:text-neutral-600 dark:[&_svg]:text-neutral-300',
+                        : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:text-white dark:hover:bg-neutral-800 [&_svg]:text-neutral-600 dark:[&_svg]:text-neutral-300',
+                      !open && 'w-8 h-8 !p-0 mx-auto justify-center',
                     )}
                   />
                 )
@@ -212,45 +237,52 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
         </div>
       </div>
 
-      <div className="pt-2 border-t border-neutral-200 dark:border-neutral-700 flex flex-col gap-1">
+      {/* Item 4: Rodapé alinhado em linha única — avatar/dados + botão de LogOut à direita */}
+      <div className="p-2 border-t border-neutral-100 dark:border-neutral-800 shrink-0">
         <div
           className={cn(
-            'flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60 transition-colors cursor-pointer',
-            !open && 'justify-center',
+            'flex items-center gap-2 rounded-md',
+            open ? 'justify-between px-1.5 py-1' : 'flex-col justify-center gap-2',
           )}
-          title={`${profile?.name ?? 'Usuário'} (${profile?.email ?? ''})`}
         >
-          <Avatar className="h-7 w-7 border border-neutral-300 dark:border-neutral-600 shrink-0">
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-              {profile?.name?.charAt(0) ?? 'U'}
-            </AvatarFallback>
-          </Avatar>
-          {open && (
-            <div className="flex flex-col overflow-hidden text-left flex-1 min-w-0">
-              <span className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate">
-                {profile?.name ?? 'Usuário'}
-              </span>
-              <span className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
-                {profile?.email ?? ''}
-              </span>
-            </div>
-          )}
-        </div>
+          {/* Identificação do Usuário */}
+          <div
+            className={cn('flex items-center gap-2 min-w-0 flex-1', !open && 'justify-center')}
+            title={`${profile?.name ?? 'Usuário'} (${profile?.email ?? ''})`}
+          >
+            <Avatar className="h-7 w-7 border border-neutral-200 dark:border-neutral-700 shrink-0">
+              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+                {profile?.name?.charAt(0) ?? 'U'}
+              </AvatarFallback>
+            </Avatar>
+            {open && (
+              <div className="flex flex-col overflow-hidden text-left min-w-0 flex-1">
+                <span className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate">
+                  {profile?.name ?? 'Usuário'}
+                </span>
+                <span className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
+                  {profile?.email ?? ''}
+                </span>
+              </div>
+            )}
+          </div>
 
-        <button
-          type="button"
-          onClick={() => signOut()}
-          className={cn(
-            'flex items-center gap-2 px-2 py-1.5 rounded-md text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors w-full text-left',
-            !open && 'justify-center',
-          )}
-          title="Sair da conta"
-        >
-          <LogOut className="h-5 w-5 shrink-0" />
-          {open && <span className="text-xs font-medium">Sair da conta</span>}
-        </button>
+          {/* Botão de SAIR: apenas ícone LogOut alinhado à direita na mesma linha */}
+          <button
+            type="button"
+            onClick={() => signOut()}
+            className={cn(
+              'p-1.5 rounded-md text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer shrink-0 flex items-center justify-center',
+              !open && 'w-8 h-8',
+            )}
+            title="Sair da conta"
+            aria-label="Sair da conta"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+          </button>
+        </div>
       </div>
-    </>
+    </div>
   )
 }
 
@@ -266,7 +298,8 @@ export function AppSidebar({ open: openProp, setOpen: setOpenProp }: AppSidebarP
 
   return (
     <Sidebar open={open} setOpen={setOpen}>
-      <SidebarBody className="justify-between gap-4 border-r border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-sm">
+      {/* Item 1: sem borda vertical divisória à direita, unindo com o headerbar tipo boomerang */}
+      <SidebarBody className="bg-white dark:bg-neutral-900">
         <SidebarContentWithSections onNavigate={() => setOpen(false)} />
       </SidebarBody>
     </Sidebar>

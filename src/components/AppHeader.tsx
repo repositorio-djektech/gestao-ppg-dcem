@@ -21,8 +21,18 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps = {}) {
   const { profile, signOut } = useAuth()
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 px-3 sm:px-4 shadow-sm md:px-6">
+    <header className="flex h-16 shrink-0 items-center justify-between bg-white dark:bg-neutral-900 px-3 sm:px-4 md:px-6 z-10 border-b border-neutral-100 dark:border-neutral-800/60 shadow-xs">
       <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0 mr-2">
+        <div className="flex items-center">
+          {/* Badge de Quadriênio CAPES no canto esquerdo do header (Item 7) */}
+          <Badge
+            variant="default"
+            className="bg-primary text-primary-foreground hover:bg-primary/95 text-xs font-semibold px-2.5 py-1 rounded-md shadow-xs select-none shrink-0"
+          >
+            2025 - 2028
+          </Badge>
+        </div>
+
         {onToggleSidebar && (
           <Button
             type="button"
@@ -35,6 +45,7 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps = {}) {
             <Menu className="h-5 w-5" />
           </Button>
         )}
+
         <div className="flex items-center relative w-full max-w-[200px] sm:max-w-xs md:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <Input

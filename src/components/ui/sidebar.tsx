@@ -96,18 +96,17 @@ export const DesktopSidebar = ({
   children,
   ...props
 }: React.ComponentProps<typeof motion.div>) => {
-  const { open, setOpen, animate } = useSidebar()
+  const { open, animate } = useSidebar()
   return (
     <motion.div
       className={cn(
-        'h-full px-4 py-4 hidden md:flex md:flex-col bg-neutral-100 dark:bg-neutral-800 w-[300px] flex-shrink-0',
+        'h-full hidden md:flex md:flex-col bg-white dark:bg-neutral-900 w-[240px] flex-shrink-0 transition-[width] duration-300 ease-in-out',
         className,
       )}
       animate={{
-        width: animate ? (open ? '300px' : '60px') : '300px',
+        width: animate ? (open ? '240px' : '48px') : '240px',
       }}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      transition={{ duration: 0.25, ease: 'easeInOut' }}
       {...props}
     >
       {children}
@@ -175,16 +174,21 @@ export const SidebarLink = ({
   return (
     <Link
       to={link.href}
-      className={cn('flex items-center justify-start gap-2 group/sidebar py-2', className)}
+      className={cn(
+        'flex items-center group/sidebar transition-colors',
+        open ? 'justify-start gap-2.5 px-2.5 py-1.5' : 'justify-center p-2',
+        className,
+      )}
       {...props}
     >
-      {link.icon}
+      <div className="flex items-center justify-center shrink-0">{link.icon}</div>
       <motion.span
         animate={{
           display: animate ? (open ? 'inline-block' : 'none') : 'inline-block',
           opacity: animate ? (open ? 1 : 0) : 1,
         }}
-        className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+        transition={{ duration: 0.15 }}
+        className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-0.5 transition duration-150 whitespace-pre inline-block !p-0 !m-0 overflow-hidden text-ellipsis"
       >
         {link.label}
       </motion.span>

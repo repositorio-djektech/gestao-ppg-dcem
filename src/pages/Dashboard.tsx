@@ -291,7 +291,11 @@ export default function Dashboard() {
             <p className="text-xs text-primary-foreground/80 mt-2">
               Meta: {overallTarget} registros · {overallPercent}% concluído
             </p>
-            <Progress value={overallPercent} className="mt-3 h-2 bg-primary-foreground/25" />
+            <Progress
+              value={overallPercent}
+              className="mt-3 h-2 bg-primary-foreground/25"
+              indicatorClassName="bg-primary-foreground"
+            />
           </CardContent>
         </Card>
 

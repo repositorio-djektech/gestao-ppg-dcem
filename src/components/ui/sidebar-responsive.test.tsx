@@ -65,13 +65,14 @@ describe('Responsividade Sidebar e Header (Mobile e Tablet Portrait)', () => {
     expect(html).toContain('Menu Desktop')
   })
 
-  it('4. AppHeader renderiza botão de hambúrguer em telas mobile/tablet quando onToggleSidebar é fornecido', () => {
+  it('4. AppHeader renderiza botão de hambúrguer em telas mobile/tablet quando onToggleSidebar é fornecido e badge 2025 - 2028', () => {
     const onToggle = vi.fn()
     const html = renderToString(<AppHeader onToggleSidebar={onToggle} />)
 
     expect(html).toContain('md:hidden')
     expect(html).toContain('Abrir menu')
     expect(html).toContain('Pesquisar...')
+    expect(html).toContain('2025 - 2028')
   })
 
   it('5. SidebarTrigger renderiza botão de alternância funcional', () => {
