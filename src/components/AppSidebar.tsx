@@ -189,16 +189,21 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
 
   return (
     <div className="flex flex-col h-full justify-between">
-      {/* Topo e navegação */}
-      <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
-        {/* Cabeçalho da Sidebar: Logo institucional (toggle movido para o Header) */}
+      {/* Cabeçalho fixo da Sidebar com a mesma estrutura do bottom: fixo (shrink-0), linha separadora e mesma cor de fundo */}
+      <div className="p-2 border-b border-neutral-100 dark:border-neutral-800 shrink-0 bg-inherit">
         <div
-          className={cn('mb-4 flex items-center', open ? 'justify-start px-1' : 'justify-center')}
+          className={cn(
+            'flex items-center min-w-0',
+            open ? 'justify-start px-1.5 py-1' : 'justify-center py-1',
+          )}
         >
           {open ? <Logo /> : <LogoIcon />}
         </div>
+      </div>
 
-        {/* Grupos de navegação — Item 6: gap-6 quando fechada (+50% vs gap-4 quando aberta) */}
+      {/* Navegação rolável: apenas a lista de links tem scroll vertical */}
+      <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden px-2 py-3 min-h-0">
+        {/* Grupos de navegação — gap-6 quando fechada (+50% vs gap-4 quando aberta) */}
         <div className={cn('flex flex-col transition-all duration-150', open ? 'gap-4' : 'gap-6')}>
           {navSections.map((section) => (
             <div key={section.title} className="flex flex-col gap-1 items-stretch">
@@ -218,7 +223,7 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
                     }}
                     className={cn(
                       'rounded-md transition-all select-none',
-                      // Item 2: no estado recolhido, o highlight envolve todo o ícone regularmente (w-8 h-8 rounded-md mx-auto)
+                      // no estado recolhido, o highlight envolve todo o ícone regularmente (w-8 h-8 rounded-md mx-auto)
                       isActive
                         ? 'bg-primary/10 text-primary font-semibold [&_svg]:text-primary'
                         : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:text-white dark:hover:bg-neutral-800 [&_svg]:text-neutral-600 dark:[&_svg]:text-neutral-300',
@@ -232,8 +237,8 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
         </div>
       </div>
 
-      {/* Item 4: Rodapé alinhado em linha única — avatar/dados + botão de LogOut à direita */}
-      <div className="p-2 border-t border-neutral-100 dark:border-neutral-800 shrink-0">
+      {/* Rodapé alinhado em linha única — avatar/dados + botão de LogOut à direita */}
+      <div className="p-2 border-t border-neutral-100 dark:border-neutral-800 shrink-0 bg-inherit">
         <div
           className={cn(
             'flex items-center gap-2 rounded-md',

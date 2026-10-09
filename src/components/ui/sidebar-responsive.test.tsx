@@ -108,4 +108,19 @@ describe('Responsividade Sidebar e Header (Mobile e Tablet Portrait)', () => {
 
     expect(html).toContain('Sair do sistema')
   })
+
+  it('8. AppSidebar possui header com estrutura fixa, linha divisória border-b e corpo rolável', () => {
+    const html = renderToString(
+      <MemoryRouter initialEntries={['/']}>
+        <AppSidebar open={true} />
+      </MemoryRouter>,
+    )
+
+    // Header fixo separado com linha border-b
+    expect(html).toContain('border-b border-neutral-100')
+    // Rodapé fixo separado com linha border-t
+    expect(html).toContain('border-t border-neutral-100')
+    // Lista de links com container de scroll próprio
+    expect(html).toContain('overflow-y-auto')
+  })
 })
