@@ -116,10 +116,11 @@ describe('Responsividade Sidebar e Header (Mobile e Tablet Portrait)', () => {
       </MemoryRouter>,
     )
 
-    // Header fixo separado com linha border-b
-    expect(html).toContain('border-b border-neutral-100')
+    // Header fixo separado com linha border-b e alinhado com AppHeader (h-16 border-b border-neutral-200)
+    expect(html).toContain('h-16')
+    expect(html).toContain('border-b border-neutral-200')
     // Rodapé fixo separado com linha border-t
-    expect(html).toContain('border-t border-neutral-100')
+    expect(html).toContain('border-t border-neutral-200')
     // Lista de links com container de scroll próprio
     expect(html).toContain('overflow-y-auto')
   })

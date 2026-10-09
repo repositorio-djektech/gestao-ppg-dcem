@@ -42,11 +42,11 @@ export function AppHeader({ onToggleSidebar, sidebarOpen }: AppHeaderProps = {})
         </div>
       </div>
 
-      {/* Extremidade DIREITA do header: Badge "2025 - 2028" com a MESMA UI do badge de Scopus ID (cor azul primária + ícone Calendar) */}
+      {/* Extremidade DIREITA do header: Badge "2025 - 2028" com cantos totalmente arredondados (rounded-full) */}
       <div className="flex items-center shrink-0">
         <Badge
           variant="secondary"
-          className="font-mono text-xs sm:text-sm px-2.5 sm:px-3 py-1 bg-primary/10 text-primary border border-primary/25 rounded-md flex items-center gap-1.5 shadow-xs select-none font-medium"
+          className="font-mono text-xs sm:text-sm px-2.5 sm:px-3 py-1 bg-primary/10 text-primary border border-primary/25 rounded-full flex items-center gap-1.5 shadow-xs select-none font-medium"
           title="Quadriênio de Avaliação CAPES"
         >
           <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />

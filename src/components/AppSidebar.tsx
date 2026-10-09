@@ -189,12 +189,12 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
 
   return (
     <div className="flex flex-col h-full justify-between">
-      {/* Cabeçalho fixo da Sidebar com a mesma estrutura do bottom: fixo (shrink-0), linha separadora e mesma cor de fundo */}
-      <div className="p-2 border-b border-neutral-100 dark:border-neutral-800 shrink-0 bg-inherit">
+      {/* Cabeçalho fixo da Sidebar com a mesma altura e linha horizontal que o AppHeader (h-16) */}
+      <div className="h-16 border-b border-neutral-200 dark:border-neutral-800 shrink-0 bg-inherit flex items-center px-2">
         <div
           className={cn(
-            'flex items-center min-w-0',
-            open ? 'justify-start px-1.5 py-1' : 'justify-center py-1',
+            'flex items-center min-w-0 w-full',
+            open ? 'justify-start px-1.5' : 'justify-center',
           )}
         >
           {open ? <Logo /> : <LogoIcon />}
@@ -238,7 +238,7 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
       </div>
 
       {/* Rodapé alinhado em linha única — avatar/dados + botão de LogOut à direita */}
-      <div className="p-2 border-t border-neutral-100 dark:border-neutral-800 shrink-0 bg-inherit">
+      <div className="p-2 border-t border-neutral-200 dark:border-neutral-800 shrink-0 bg-inherit">
         <div
           className={cn(
             'flex items-center gap-2 rounded-md',

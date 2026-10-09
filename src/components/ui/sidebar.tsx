@@ -104,7 +104,7 @@ export const DesktopSidebar = ({
         className,
       )}
       animate={{
-        width: animate ? (open ? '240px' : '48px') : '240px',
+        width: animate ? (open ? '240px' : '55px') : '240px',
       }}
       transition={{ type: 'spring', stiffness: 450, damping: 35 }}
       {...props}
