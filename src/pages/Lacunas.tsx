@@ -393,7 +393,7 @@ export default function Lacunas({
             if (el) el.focus()
           }, 150)
         }
-      } else {
+      } else if (item.tabela === 'discentes') {
         // Discentes: carregar dados do discente e abrir CrudFormDialog
         const { data: disc, error } = await supabase
           .from('discentes')
@@ -426,6 +426,11 @@ export default function Lacunas({
 
         setCampoFocoDiscente(focoCampo)
         setDialogoDiscenteAberto(true)
+      } else {
+        // Demais tabelas (Publicações, Orientações, Projetos, etc.): ação documentada para a próxima etapa (sem diálogo novo)
+        toast.info(
+          `Correção contextual para "${item.tabela}": disponível na página correspondente do menu lateral (ou na próxima etapa do plano).`,
+        )
       }
     } catch (err: any) {
       toast.error(`Falha ao preparar correção: ${err?.message || 'Erro inesperado'}`)
@@ -1217,8 +1222,7 @@ export default function Lacunas({
                               {item.nome}
                             </span>
                             <span className="text-[10px] text-slate-400 font-normal">
-                              ({item.tabela === 'docentes' ? 'Docente' : 'Discente'} #
-                              {item.idRegistro})
+                              ({item.tabela} #{item.idRegistro})
                             </span>
                           </div>
                         </td>

@@ -121,6 +121,7 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(mapearGrupoParaVisual('publicacoes')).toBe('producao')
       expect(mapearGrupoParaVisual('producao_tecnica')).toBe('producao')
       expect(mapearGrupoParaVisual('patentes')).toBe('producao')
+      expect(mapearGrupoParaVisual('Produção')).toBe('producao')
       expect(mapearGrupoParaVisual('Produção Científica')).toBe('producao')
 
       // Difusão

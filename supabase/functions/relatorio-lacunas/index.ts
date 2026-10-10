@@ -3,7 +3,18 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
 export type SeveridadeLacuna = 'critica' | 'atencao'
-export type TabelaAlvoLacuna = 'docentes' | 'discentes'
+export type TabelaAlvoLacuna =
+  | 'docentes'
+  | 'discentes'
+  | 'publicacoes'
+  | 'orientacoes'
+  | 'projetos_pesquisa'
+  | 'bancas'
+  | 'eventos'
+  | 'mobilidade_docente'
+  | 'patentes'
+  | 'premiacoes'
+  | 'producao_tecnica'
 
 export interface ItemLacunaRegistro {
   id: number
@@ -27,6 +38,23 @@ function textoVazio(val: unknown): boolean {
   return false
 }
 
+function anoInvalido(val: unknown): boolean {
+  if (val === null || val === undefined) return true
+  const num = Number(val)
+  return isNaN(num) || num <= 0
+}
+
+function extrairNomeRegistro(registro: any): string {
+  if (!registro) return 'Registro'
+  if (registro.nome) return String(registro.nome)
+  if (registro.titulo) return String(registro.titulo)
+  if (registro.titulo_trabalho) return String(registro.titulo_trabalho)
+  if (registro.evento) return String(registro.evento)
+  if (registro.tipo && registro.inicio) return `${registro.tipo} (${registro.inicio})`
+  return `ID ${registro.id}`
+}
+
+// 1. DOCENTES (5 regras)
 export const REGRAS_DOCENTES_EDGE: RegraLacunaDef[] = [
   {
     id: 'docente_sem_scopus_id',
@@ -106,6 +134,7 @@ export const REGRAS_DOCENTES_EDGE: RegraLacunaDef[] = [
   },
 ]
 
+// 2. DISCENTES (4 regras)
 export const REGRAS_DISCENTES_EDGE: RegraLacunaDef[] = [
   {
     id: 'discente_sem_cpf',
@@ -169,7 +198,350 @@ export const REGRAS_DISCENTES_EDGE: RegraLacunaDef[] = [
   },
 ]
 
-function avaliarColecaoEdge<T extends { id: number; nome: string }>(
+// 3. PUBLICAÇÕES (3 regras)
+export const REGRAS_PUBLICACOES_EDGE: RegraLacunaDef[] = [
+  {
+    id: 'publicacao_sem_ano',
+    tabela: 'publicacoes',
+    campos: ['ano'],
+    descricao: 'Publicação sem ano',
+    severidade: 'critica',
+    grupo: 'Produção',
+    avaliar: (pub) => {
+      const tem = anoInvalido(pub.ano)
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Ano de publicação não informado ou inválido' : undefined,
+      }
+    },
+  },
+  {
+    id: 'publicacao_sem_doi',
+    tabela: 'publicacoes',
+    campos: ['doi'],
+    descricao: 'Publicação sem DOI',
+    severidade: 'atencao',
+    grupo: 'Produção',
+    avaliar: (pub) => {
+      const tem = textoVazio(pub.doi)
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'DOI da publicação não informado' : undefined,
+      }
+    },
+  },
+  {
+    id: 'publicacao_sem_periodico',
+    tabela: 'publicacoes',
+    campos: ['periodico'],
+    descricao: 'Publicação sem periódico',
+    severidade: 'atencao',
+    grupo: 'Produção',
+    avaliar: (pub) => {
+      const tem = textoVazio(pub.periodico)
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Nome do periódico/revista não informado' : undefined,
+      }
+    },
+  },
+]
+
+// 4. ORIENTAÇÕES (3 regras)
+export const REGRAS_ORIENTACOES_EDGE: RegraLacunaDef[] = [
+  {
+    id: 'orientacao_sem_docente',
+    tabela: 'orientacoes',
+    campos: ['docente_id'],
+    descricao: 'Orientação sem docente vinculado',
+    severidade: 'critica',
+    grupo: 'Acadêmico',
+    avaliar: (ori) => {
+      const tem =
+        ori.docente_id === null || ori.docente_id === undefined || Number(ori.docente_id) <= 0
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Docente orientador não vinculado' : undefined,
+      }
+    },
+  },
+  {
+    id: 'orientacao_sem_discente',
+    tabela: 'orientacoes',
+    campos: ['discente_id'],
+    descricao: 'Orientação sem discente vinculado',
+    severidade: 'critica',
+    grupo: 'Acadêmico',
+    avaliar: (ori) => {
+      const tem =
+        ori.discente_id === null || ori.discente_id === undefined || Number(ori.discente_id) <= 0
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Discente orientado não vinculado' : undefined,
+      }
+    },
+  },
+  {
+    id: 'orientacao_sem_periodo',
+    tabela: 'orientacoes',
+    campos: ['inicio'],
+    descricao: 'Orientação sem período de início',
+    severidade: 'atencao',
+    grupo: 'Acadêmico',
+    avaliar: (ori) => {
+      const tem = textoVazio(ori.inicio)
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Data ou ano de início da orientação não informado' : undefined,
+      }
+    },
+  },
+]
+
+// 5. PROJETOS DE PESQUISA (3 regras)
+export const REGRAS_PROJETOS_PESQUISA_EDGE: RegraLacunaDef[] = [
+  {
+    id: 'projeto_sem_coordenador',
+    tabela: 'projetos_pesquisa',
+    campos: ['coordenador_id'],
+    descricao: 'Projeto sem coordenador vinculado',
+    severidade: 'critica',
+    grupo: 'Acadêmico',
+    avaliar: (proj) => {
+      const tem =
+        proj.coordenador_id === null ||
+        proj.coordenador_id === undefined ||
+        Number(proj.coordenador_id) <= 0
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Docente coordenador do projeto não vinculado' : undefined,
+      }
+    },
+  },
+  {
+    id: 'projeto_sem_periodo',
+    tabela: 'projetos_pesquisa',
+    campos: ['inicio'],
+    descricao: 'Projeto sem período de início',
+    severidade: 'atencao',
+    grupo: 'Acadêmico',
+    avaliar: (proj) => {
+      const tem = textoVazio(proj.inicio)
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Data ou ano de início do projeto não informado' : undefined,
+      }
+    },
+  },
+  {
+    id: 'projeto_financiado_sem_orgao_fomento',
+    tabela: 'projetos_pesquisa',
+    campos: ['financiamento', 'orgao_fomento'],
+    descricao: 'Projeto financiado sem órgão de fomento',
+    severidade: 'atencao',
+    grupo: 'Acadêmico',
+    avaliar: (proj) => {
+      const tem = Boolean(proj.financiamento) && textoVazio(proj.orgao_fomento)
+      return {
+        temLacuna: tem,
+        motivo: tem
+          ? 'Projeto marcado como financiado mas sem órgão de fomento informado'
+          : undefined,
+      }
+    },
+  },
+]
+
+// 6. BANCAS (2 regras)
+export const REGRAS_BANCAS_EDGE: RegraLacunaDef[] = [
+  {
+    id: 'banca_sem_data',
+    tabela: 'bancas',
+    campos: ['data'],
+    descricao: 'Banca sem data informada',
+    severidade: 'critica',
+    grupo: 'Acadêmico',
+    avaliar: (banca) => {
+      const tem = textoVazio(banca.data)
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Data de realização da banca não informada' : undefined,
+      }
+    },
+  },
+  {
+    id: 'banca_sem_membros',
+    tabela: 'bancas',
+    campos: ['membros'],
+    descricao: 'Banca sem docentes/membros avaliadores',
+    severidade: 'critica',
+    grupo: 'Acadêmico',
+    avaliar: (banca) => {
+      const tem = textoVazio(banca.membros)
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Membros da banca examinadora não informados' : undefined,
+      }
+    },
+  },
+]
+
+// 7. EVENTOS (2 regras)
+export const REGRAS_EVENTOS_EDGE: RegraLacunaDef[] = [
+  {
+    id: 'evento_sem_docente',
+    tabela: 'eventos',
+    campos: ['docente'],
+    descricao: 'Evento sem vinculação de docente',
+    severidade: 'critica',
+    grupo: 'Difusão',
+    avaliar: (ev) => {
+      const tem = textoVazio(ev.docente)
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Docente participante não informado no evento' : undefined,
+      }
+    },
+  },
+  {
+    id: 'evento_sem_data',
+    tabela: 'eventos',
+    campos: ['local_data'],
+    descricao: 'Evento sem local/data informada',
+    severidade: 'atencao',
+    grupo: 'Difusão',
+    avaliar: (ev) => {
+      const tem = textoVazio(ev.local_data)
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Local ou data do evento não preenchido' : undefined,
+      }
+    },
+  },
+]
+
+// 8. MOBILIDADE (2 regras)
+export const REGRAS_MOBILIDADE_EDGE: RegraLacunaDef[] = [
+  {
+    id: 'mobilidade_sem_pessoa',
+    tabela: 'mobilidade_docente',
+    campos: ['nome'],
+    descricao: 'Mobilidade sem docente/discente vinculado',
+    severidade: 'critica',
+    grupo: 'Difusão',
+    avaliar: (mob) => {
+      const tem = textoVazio(mob.nome)
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Nome do docente ou discente em mobilidade não informado' : undefined,
+      }
+    },
+  },
+  {
+    id: 'mobilidade_sem_periodo',
+    tabela: 'mobilidade_docente',
+    campos: ['periodo'],
+    descricao: 'Mobilidade sem período',
+    severidade: 'atencao',
+    grupo: 'Difusão',
+    avaliar: (mob) => {
+      const tem = textoVazio(mob.periodo)
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Período da mobilidade acadêmica não informado' : undefined,
+      }
+    },
+  },
+]
+
+// 9. PATENTES (2 regras)
+export const REGRAS_PATENTES_EDGE: RegraLacunaDef[] = [
+  {
+    id: 'patente_sem_autores',
+    tabela: 'patentes',
+    campos: ['autores'],
+    descricao: 'Patente sem inventores/vinculação',
+    severidade: 'critica',
+    grupo: 'Produção',
+    avaliar: (pat) => {
+      const tem = textoVazio(pat.autores)
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Inventores/autores da patente não cadastrados' : undefined,
+      }
+    },
+  },
+  {
+    id: 'patente_sem_deposito',
+    tabela: 'patentes',
+    campos: ['inpi'],
+    descricao: 'Patente sem número de depósito (INPI)',
+    severidade: 'atencao',
+    grupo: 'Produção',
+    avaliar: (pat) => {
+      const tem = textoVazio(pat.inpi)
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Número de processo/depósito no INPI não informado' : undefined,
+      }
+    },
+  },
+]
+
+// 10. PREMIAÇÕES (2 regras)
+export const REGRAS_PREMIACOES_EDGE: RegraLacunaDef[] = [
+  {
+    id: 'premiacao_sem_premiado',
+    tabela: 'premiacoes',
+    campos: ['nome_premiado'],
+    descricao: 'Premiação sem premiado vinculado',
+    severidade: 'critica',
+    grupo: 'Difusão',
+    avaliar: (prem) => {
+      const tem = textoVazio(prem.nome_premiado)
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Nome do docente ou discente premiado não informado' : undefined,
+      }
+    },
+  },
+  {
+    id: 'premiacao_sem_ano',
+    tabela: 'premiacoes',
+    campos: ['ano'],
+    descricao: 'Premiação sem ano',
+    severidade: 'atencao',
+    grupo: 'Difusão',
+    avaliar: (prem) => {
+      const tem = anoInvalido(prem.ano)
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Ano da concessão do prêmio não informado ou inválido' : undefined,
+      }
+    },
+  },
+]
+
+// 11. PRODUÇÃO TÉCNICA (1 regra)
+export const REGRAS_PRODUCAO_TECNICA_EDGE: RegraLacunaDef[] = [
+  {
+    id: 'producao_tecnica_sem_autores',
+    tabela: 'producao_tecnica',
+    campos: ['autores'],
+    descricao: 'Produção técnica sem autores vinculados',
+    severidade: 'critica',
+    grupo: 'Produção',
+    avaliar: (pt) => {
+      const tem = textoVazio(pt.autores)
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Autores/desenvolvedores da produção técnica não informados' : undefined,
+      }
+    },
+  },
+]
+
+function avaliarColecaoEdge<T extends { id: number; [key: string]: any }>(
   registros: T[],
   regras: RegraLacunaDef<T>[],
 ) {
@@ -184,7 +556,7 @@ function avaliarColecaoEdge<T extends { id: number; nome: string }>(
       if (resultado.temLacuna) {
         pendentes.push({
           id: reg.id,
-          nome: reg.nome || `ID ${reg.id}`,
+          nome: extrairNomeRegistro(reg),
           motivo: resultado.motivo || regra.descricao,
         })
       }
@@ -244,8 +616,20 @@ Deno.serve(async (req: Request) => {
       },
     })
 
-    // Consultas eficientes em paralelo: exatamente 2 queries para ler docentes e discentes
-    const [docentesRes, discentesRes] = await Promise.all([
+    // Consultas eficientes em paralelo sobre as 11 tabelas
+    const [
+      docentesRes,
+      discentesRes,
+      publicacoesRes,
+      orientacoesRes,
+      projetosRes,
+      bancasRes,
+      eventosRes,
+      mobilidadeRes,
+      patentesRes,
+      premiacoesRes,
+      producaoTecnicaRes,
+    ] = await Promise.all([
       supabase
         .from('docentes')
         .select('id, nome, scopus_id, openalex_id, id_lattes, indice_h, bolsa_cnpq')
@@ -254,14 +638,51 @@ Deno.serve(async (req: Request) => {
         .from('discentes')
         .select('id, nome, cpf, data_ingresso, status, link_lattes')
         .order('nome', { ascending: true }),
+      supabase
+        .from('publicacoes')
+        .select('id, titulo, autores, periodico, ano, doi')
+        .order('ano', { ascending: false }),
+      supabase.from('orientacoes').select('id, tipo, inicio, fim, status, docente_id, discente_id'),
+      supabase
+        .from('projetos_pesquisa')
+        .select('id, titulo, inicio, fim, financiamento, orgao_fomento, coordenador_id'),
+      supabase.from('bancas').select('id, titulo_trabalho, data, membros, tipo, discente_id'),
+      supabase.from('eventos').select('id, docente, evento, local_data, papel'),
+      supabase
+        .from('mobilidade_docente')
+        .select('id, tipo, nome, instituicao, periodo, modalidade'),
+      supabase.from('patentes').select('id, titulo, status, autores, inpi'),
+      supabase
+        .from('premiacoes')
+        .select('id, titulo, ano, nome_premiado, instituicao')
+        .order('ano', { ascending: false }),
+      supabase
+        .from('producao_tecnica')
+        .select('id, titulo, ano, autores, tipo')
+        .order('ano', { ascending: false }),
     ])
 
-    if (docentesRes.error) {
-      console.error('[relatorio-lacunas] erro ao consultar docentes:', docentesRes.error)
+    // Verificar se houve erro crítico de leitura em alguma tabela essencial
+    const erros = [
+      docentesRes.error,
+      discentesRes.error,
+      publicacoesRes.error,
+      orientacoesRes.error,
+      projetosRes.error,
+      bancasRes.error,
+      eventosRes.error,
+      mobilidadeRes.error,
+      patentesRes.error,
+      premiacoesRes.error,
+      producaoTecnicaRes.error,
+    ].filter(Boolean)
+
+    if (erros.length > 0) {
+      console.error('[relatorio-lacunas] erro ao consultar tabelas:', erros[0])
       return new Response(
         JSON.stringify({
           sucesso: false,
-          mensagem: `Erro ao consultar docentes: ${docentesRes.error.message}`,
+          mensagem: `Erro ao consultar tabelas: ${erros[0]?.message}`,
         }),
         {
           status: 500,
@@ -270,30 +691,49 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    if (discentesRes.error) {
-      console.error('[relatorio-lacunas] erro ao consultar discentes:', discentesRes.error)
-      return new Response(
-        JSON.stringify({
-          sucesso: false,
-          mensagem: `Erro ao consultar discentes: ${discentesRes.error.message}`,
-        }),
-        {
-          status: 500,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        },
-      )
-    }
-
-    const docentes = docentesRes.data || []
-    const discentes = discentesRes.data || []
-
-    const avalDocentes = avaliarColecaoEdge(docentes, REGRAS_DOCENTES_EDGE)
-    const avalDiscentes = avaliarColecaoEdge(discentes, REGRAS_DISCENTES_EDGE)
+    const avalDocentes = avaliarColecaoEdge(docentesRes.data || [], REGRAS_DOCENTES_EDGE)
+    const avalDiscentes = avaliarColecaoEdge(discentesRes.data || [], REGRAS_DISCENTES_EDGE)
+    const avalPublicacoes = avaliarColecaoEdge(publicacoesRes.data || [], REGRAS_PUBLICACOES_EDGE)
+    const avalOrientacoes = avaliarColecaoEdge(orientacoesRes.data || [], REGRAS_ORIENTACOES_EDGE)
+    const avalProjetos = avaliarColecaoEdge(projetosRes.data || [], REGRAS_PROJETOS_PESQUISA_EDGE)
+    const avalBancas = avaliarColecaoEdge(bancasRes.data || [], REGRAS_BANCAS_EDGE)
+    const avalEventos = avaliarColecaoEdge(eventosRes.data || [], REGRAS_EVENTOS_EDGE)
+    const avalMobilidade = avaliarColecaoEdge(mobilidadeRes.data || [], REGRAS_MOBILIDADE_EDGE)
+    const avalPatentes = avaliarColecaoEdge(patentesRes.data || [], REGRAS_PATENTES_EDGE)
+    const avalPremiacoes = avaliarColecaoEdge(premiacoesRes.data || [], REGRAS_PREMIACOES_EDGE)
+    const avalProducaoTecnica = avaliarColecaoEdge(
+      producaoTecnicaRes.data || [],
+      REGRAS_PRODUCAO_TECNICA_EDGE,
+    )
 
     const respostaConsolidada = {
       gerado_em: new Date().toISOString(),
-      resumo: [...avalDocentes.resumo, ...avalDiscentes.resumo],
-      lacunas: [...avalDocentes.lacunas, ...avalDiscentes.lacunas],
+      resumo: [
+        ...avalDocentes.resumo,
+        ...avalDiscentes.resumo,
+        ...avalPublicacoes.resumo,
+        ...avalOrientacoes.resumo,
+        ...avalProjetos.resumo,
+        ...avalBancas.resumo,
+        ...avalEventos.resumo,
+        ...avalMobilidade.resumo,
+        ...avalPatentes.resumo,
+        ...avalPremiacoes.resumo,
+        ...avalProducaoTecnica.resumo,
+      ],
+      lacunas: [
+        ...avalDocentes.lacunas,
+        ...avalDiscentes.lacunas,
+        ...avalPublicacoes.lacunas,
+        ...avalOrientacoes.lacunas,
+        ...avalProjetos.lacunas,
+        ...avalBancas.lacunas,
+        ...avalEventos.lacunas,
+        ...avalMobilidade.lacunas,
+        ...avalPatentes.lacunas,
+        ...avalPremiacoes.lacunas,
+        ...avalProducaoTecnica.lacunas,
+      ],
     }
 
     return new Response(JSON.stringify(respostaConsolidada), {

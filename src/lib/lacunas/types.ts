@@ -1,5 +1,16 @@
 export type SeveridadeLacuna = 'critica' | 'atencao'
-export type TabelaAlvoLacuna = 'docentes' | 'discentes'
+export type TabelaAlvoLacuna =
+  | 'docentes'
+  | 'discentes'
+  | 'publicacoes'
+  | 'orientacoes'
+  | 'projetos_pesquisa'
+  | 'bancas'
+  | 'eventos'
+  | 'mobilidade_docente'
+  | 'patentes'
+  | 'premiacoes'
+  | 'producao_tecnica'
 
 export interface ItemLacunaRegistro {
   id: number

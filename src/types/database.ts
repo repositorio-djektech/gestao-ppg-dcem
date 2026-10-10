@@ -169,3 +169,5 @@ export type Premicao = {
   link_comprovacao: string
   observacoes: string
 }
+
+export type Premiacao = Premicao
