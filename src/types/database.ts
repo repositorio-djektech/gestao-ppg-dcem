@@ -18,6 +18,7 @@ export type Docente = {
   licenca: string
   id_lattes?: string | null
   openalex_id?: string | null
+  categoria?: 'permanente' | 'colaborador' | null
 }
 
 export type Publicacao = {
@@ -30,6 +31,7 @@ export type Publicacao = {
   justificativa: string
   link_comprovacao: string
   observacoes: string
+  fator_impacto_jcr?: number | null
 }
 
 export type Mobilidade = {
@@ -103,9 +105,11 @@ export type Orientacao = {
   tipo: string
   inicio: string
   fim: string
-  status: 'ativo' | 'concluido' | 'cancelado'
+  status: 'ativo' | 'concluido' | 'cancelado' | 'em_andamento'
   link_comprovacao: string
   observacoes: string
+  data_defesa?: string | null
+  flag_orientador_principal?: boolean
 }
 
 export type ProjetoPesquisa = {
@@ -129,6 +133,14 @@ export type Disciplina = {
   ano_semestre: string
   link_comprovacao: string
   observacoes: string
+  docente_id?: number | null
+}
+
+export type ProjetoParticipante = {
+  projeto_id: number
+  docente_id: number
+  papel?: string | null
+  created_at?: string
 }
 
 export type ProducaoTecnica = {

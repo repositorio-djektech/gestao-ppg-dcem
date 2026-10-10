@@ -44,6 +44,7 @@ export interface DocenteParaGravar {
   bolsa_cnpq?: string | null
   jdp?: boolean | null
   licenca?: string | null
+  categoria?: 'permanente' | 'colaborador' | null
 }
 
 export interface PublicacaoParaGravar {
@@ -54,6 +55,7 @@ export interface PublicacaoParaGravar {
   doi?: string | null
   link_comprovacao?: string | null
   observacoes?: string | null
+  fator_impacto_jcr?: number | null
 }
 
 export interface OrientacaoParaGravar {
@@ -64,11 +66,13 @@ export interface OrientacaoParaGravar {
   tipo: string
   inicio: string
   fim?: string | null
-  status: 'ativo' | 'concluido' | 'cancelado'
+  status: 'ativo' | 'concluido' | 'cancelado' | 'em_andamento'
   link_comprovacao?: string | null
   observacoes?: string | null
   titulo_trabalho?: string | null
   ano_referencia?: number | null
+  data_defesa?: string | null
+  flag_orientador_principal?: boolean
 }
 
 export interface BancaParaGravar {
@@ -138,12 +142,14 @@ interface DocenteExistenteBanco {
   id: number
   nome: string
   id_lattes: string | null
+  categoria?: 'permanente' | 'colaborador' | null
 }
 
 interface PublicacaoExistenteBanco {
   id: number
   titulo: string
   ano: number
+  fator_impacto_jcr?: number | null
 }
 
 // Tipo flexível para permitir injeção de dependência / mock do Supabase nos testes unitários
@@ -524,6 +530,9 @@ export async function gravarDocentes(
       if (doc.licenca !== undefined && doc.licenca !== null) {
         payload.licenca = doc.licenca
       }
+      if (doc.categoria !== undefined) {
+        payload.categoria = doc.categoria
+      }
 
       const { error: updErr } = await (client as any)
         .from('docentes')
@@ -568,6 +577,9 @@ export async function gravarDocentes(
       }
       if (doc.licenca !== undefined && doc.licenca !== null) {
         payload.licenca = doc.licenca
+      }
+      if (doc.categoria !== undefined) {
+        payload.categoria = doc.categoria
       }
 
       const { data: inserido, error: insErr } = await (client as any)
@@ -676,6 +688,9 @@ export async function gravarPublicacoes(
       if (pub.observacoes !== undefined && pub.observacoes !== null) {
         payload.observacoes = pub.observacoes
       }
+      if (pub.fator_impacto_jcr !== undefined) {
+        payload.fator_impacto_jcr = pub.fator_impacto_jcr
+      }
 
       const { error: updErr } = await (client as any)
         .from('publicacoes')
@@ -702,6 +717,7 @@ export async function gravarPublicacoes(
         doi: pub.doi || '',
         link_comprovacao: pub.link_comprovacao ?? '',
         observacoes: pub.observacoes ?? '',
+        fator_impacto_jcr: pub.fator_impacto_jcr ?? null,
       }
 
       const { data: inserido, error: insErr } = await (client as any)
@@ -918,6 +934,8 @@ export async function gravarOrientacoes(
       discente_id: discenteId,
       link_comprovacao: ori.link_comprovacao || '',
       observacoes: ori.observacoes || '',
+      data_defesa: ori.data_defesa ?? null,
+      flag_orientador_principal: ori.flag_orientador_principal ?? false,
     }
 
     if (existente) {
