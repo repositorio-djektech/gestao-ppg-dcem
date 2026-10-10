@@ -1,6 +1,7 @@
 {
   "_versions": {
-    "scopus-buscar": 97,
-    "relatorio-lacunas": 21
+    "scopus-buscar": 99,
+    "relatorio-lacunas": 23,
+    "avaliacao-reconducao": 1
   }
 }
