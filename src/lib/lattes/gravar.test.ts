@@ -192,6 +192,8 @@ describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => 
         ano_inicio: 2022,
         ano_conclusao: 2024,
         situacao: 'CONCLUIDA',
+        status: 'concluido',
+        flag_orientador_principal: true,
         tipo_orientacao: 'ORIENTADOR_PRINCIPAL',
         instituicao: 'UFS',
         curso: 'DCEM',
@@ -479,6 +481,126 @@ describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => 
       expect(mock.updateCalls.docentes).toHaveLength(0)
       expect(mock.database.docentes).toHaveLength(2)
       expect(mock.database.docentes.some((d) => d.id_lattes === '9999888877776666')).toBe(true)
+    })
+  })
+
+  describe('Etapa B - Recondução (orientacoes status/data_defesa/flag e publicacoes JCR e docentes categoria)', () => {
+    it('preserva fator_impacto_jcr existente ao reimportar publicação sem JCR no XML', async () => {
+      const mock = createMockSupabaseClient({
+        publicacoes: [
+          {
+            id: 10,
+            titulo: 'Síntese de Óxido de Grafeno',
+            ano: 2025,
+            autores: 'Silva, A.',
+            periodico: 'Carbon',
+            fator_impacto_jcr: 4.521,
+          },
+        ],
+      })
+
+      // Reimportação do Lattes que não traz fator_impacto_jcr
+      const pubReimportada: PublicacaoParaGravar[] = [
+        {
+          titulo: 'Síntese de Óxido de Grafeno',
+          ano: 2025,
+          autores: 'Silva, A.; Barreto, L.',
+          periodico: 'Carbon Journal',
+          // fator_impacto_jcr ausente ou nulo
+        },
+      ]
+
+      const resultado = await gravarPublicacoes(pubReimportada, mock.client)
+      expect(resultado.contagem.atualizados).toBe(1)
+      const pubNoBanco = mock.database.publicacoes.find((p) => p.id === 10)
+      expect(pubNoBanco?.fator_impacto_jcr).toBe(4.521)
+    })
+
+    it('grava fator_impacto_jcr informado na importação de publicação', async () => {
+      const mock = createMockSupabaseClient({
+        publicacoes: [],
+      })
+
+      const novaPub: PublicacaoParaGravar[] = [
+        {
+          titulo: 'Artigo com JCR Alto',
+          ano: 2025,
+          autores: 'Docente A',
+          periodico: 'Nature Materials',
+          fator_impacto_jcr: 12.345,
+        },
+      ]
+
+      const resultado = await gravarPublicacoes(novaPub, mock.client)
+      expect(resultado.contagem.inseridos).toBe(1)
+      const pubNoBanco = mock.database.publicacoes[0]
+      expect(pubNoBanco.fator_impacto_jcr).toBe(12.345)
+    })
+
+    it('grava orientações com status concluido, data_defesa e flag_orientador_principal', async () => {
+      const mock = createMockSupabaseClient({
+        docentes: [{ id: 1, nome: 'Prof Orientador', id_lattes: '1234567890123456' }],
+        discentes: [{ id: 10, nome: 'Aluno Concluinte' }],
+        orientacoes: [],
+      })
+
+      const listaOri: OrientacaoParaGravar[] = [
+        {
+          docente_identificador: '1234567890123456',
+          discente_nome: 'Aluno Concluinte',
+          tipo: 'Mestrado',
+          inicio: '2023',
+          fim: '2025',
+          status: 'concluido',
+          data_defesa: '2025-03-15',
+          flag_orientador_principal: true,
+        },
+      ]
+
+      const res = await gravarOrientacoes(listaOri, mock.client)
+      expect(res.contagem.inseridos).toBe(1)
+      const oriGravada = mock.database.orientacoes[0]
+      expect(oriGravada.status).toBe('concluido')
+      expect(oriGravada.data_defesa).toBe('2025-03-15')
+      expect(oriGravada.flag_orientador_principal).toBe(true)
+    })
+
+    it('reimportação de orientações é idempotente e preserva integridade sem duplicar', async () => {
+      const mock = createMockSupabaseClient({
+        docentes: [{ id: 1, nome: 'Prof Orientador', id_lattes: '1234567890123456' }],
+        discentes: [{ id: 10, nome: 'Aluno Concluinte' }],
+        orientacoes: [
+          {
+            id: 50,
+            docente_id: 1,
+            discente_id: 10,
+            tipo: 'Mestrado',
+            inicio: '2023',
+            fim: '2025',
+            status: 'concluido',
+            data_defesa: '2025-03-15',
+            flag_orientador_principal: true,
+          },
+        ],
+      })
+
+      const reimportacao: OrientacaoParaGravar[] = [
+        {
+          docente_identificador: '1234567890123456',
+          discente_nome: 'Aluno Concluinte',
+          tipo: 'Mestrado',
+          inicio: '2023',
+          fim: '2025',
+          status: 'concluido',
+          data_defesa: '2025-03-15',
+          flag_orientador_principal: true,
+        },
+      ]
+
+      const res = await gravarOrientacoes(reimportacao, mock.client)
+      expect(res.contagem.atualizados).toBe(1)
+      expect(res.contagem.inseridos).toBe(0)
+      expect(mock.database.orientacoes).toHaveLength(1)
     })
   })
 

@@ -197,8 +197,13 @@ export function converterLattesOrientacao(
   else if (o.tipo === 'GRADUACAO') tipoDb = 'TCC / Graduação'
   else tipoDb = o.tipo || 'Mestrado'
 
-  const statusDb: 'ativo' | 'concluido' | 'cancelado' =
-    o.situacao === 'CONCLUIDA' ? 'concluido' : 'ativo'
+  const statusDb: 'ativo' | 'concluido' | 'cancelado' | 'em_andamento' =
+    o.status || (o.situacao === 'CONCLUIDA' ? 'concluido' : 'em_andamento')
+
+  const flagOrientadorPrincipal =
+    typeof o.flag_orientador_principal === 'boolean'
+      ? o.flag_orientador_principal
+      : o.tipo_orientacao !== 'CO_ORIENTADOR'
 
   const anoRef = o.ano_conclusao || o.ano_inicio || null
   const inicioStr = o.ano_inicio ? String(o.ano_inicio) : anoRef ? String(anoRef) : ''
@@ -206,7 +211,9 @@ export function converterLattesOrientacao(
 
   const obsPartes: string[] = []
   if (o.titulo_trabalho) obsPartes.push(`Título: ${o.titulo_trabalho.trim()}`)
-  if (o.tipo_orientacao === 'CO_ORIENTADOR') obsPartes.push('Co-orientador')
+  if (!flagOrientadorPrincipal || o.tipo_orientacao === 'CO_ORIENTADOR') {
+    obsPartes.push('Co-orientador')
+  }
   if (o.instituicao) obsPartes.push(`Instituição: ${o.instituicao}`)
   if (o.curso) obsPartes.push(`Curso: ${o.curso}`)
   if (o.agencia_fomento) obsPartes.push(`Fomento: ${o.agencia_fomento}`)
@@ -222,6 +229,8 @@ export function converterLattesOrientacao(
     observacoes: obsPartes.join(' | '),
     titulo_trabalho: o.titulo_trabalho ? o.titulo_trabalho.trim() : null,
     ano_referencia: anoRef,
+    data_defesa: o.data_defesa ?? null,
+    flag_orientador_principal: flagOrientadorPrincipal,
   }
 }
 
@@ -638,7 +647,7 @@ export async function gravarPublicacoes(
   // 1. Carrega todas as publicações existentes no banco para comparação por título normalizado + ano
   const { data: existentes, error: buscaErro } = await (client as any)
     .from('publicacoes')
-    .select('id, titulo, ano')
+    .select('id, titulo, ano, fator_impacto_jcr')
 
   if (buscaErro) {
     erros.push({
@@ -688,8 +697,15 @@ export async function gravarPublicacoes(
       if (pub.observacoes !== undefined && pub.observacoes !== null) {
         payload.observacoes = pub.observacoes
       }
-      if (pub.fator_impacto_jcr !== undefined) {
+      // Se a publicação já tiver fator_impacto_jcr no banco e a importação trouxer null/undefined,
+      // preserva o valor manual existente do banco sem sobrescrever
+      if (pub.fator_impacto_jcr !== undefined && pub.fator_impacto_jcr !== null) {
         payload.fator_impacto_jcr = pub.fator_impacto_jcr
+      } else if (
+        encontrado.fator_impacto_jcr !== undefined &&
+        encontrado.fator_impacto_jcr !== null
+      ) {
+        payload.fator_impacto_jcr = encontrado.fator_impacto_jcr
       }
 
       const { error: updErr } = await (client as any)

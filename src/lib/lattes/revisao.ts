@@ -31,6 +31,7 @@ export interface ItemAmostraPublicacao {
   autores: string
   veiculo: string
   doi: string
+  fator_impacto_jcr?: number | null
 }
 
 export interface ItemAmostraOrientacao {
@@ -251,6 +252,7 @@ export function mapearDadosParaRevisao(
         autores: pub.autores || '-',
         veiculo: pub.veiculo || '-',
         doi: pub.doi || '-',
+        fator_impacto_jcr: null,
       } as ItemAmostraPublicacao)
     })
     tabelas.publicacoes.inseridos += resArq.estatisticas.publicacoes.a_inserir

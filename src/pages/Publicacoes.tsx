@@ -60,6 +60,7 @@ const emptyForm: Omit<Publicacao, 'id'> = {
   justificativa: '',
   link_comprovacao: '',
   observacoes: '',
+  fator_impacto_jcr: null,
 }
 
 export default function Publicacoes() {
@@ -248,17 +249,43 @@ export default function Publicacoes() {
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="pub-doi">DOI</Label>
-                    <Input
-                      id="pub-doi"
-                      placeholder="10.1016/j.jmatchem.2025.01.001"
-                      value={formData.doi}
-                      onChange={(e) => setFormData({ ...formData, doi: e.target.value })}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="pub-doi">DOI</Label>
+                      <Input
+                        id="pub-doi"
+                        placeholder="10.1016/j.jmatchem.2025.01.001"
+                        value={formData.doi}
+                        onChange={(e) => setFormData({ ...formData, doi: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="pub-jcr">Fator de Impacto (JCR)</Label>
+                      <Input
+                        id="pub-jcr"
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        max="999.999"
+                        placeholder="Ex: 3.850"
+                        value={
+                          formData.fator_impacto_jcr !== null &&
+                          formData.fator_impacto_jcr !== undefined
+                            ? formData.fator_impacto_jcr
+                            : ''
+                        }
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? null : parseFloat(e.target.value)
+                          setFormData({
+                            ...formData,
+                            fator_impacto_jcr: val !== null && !isNaN(val) ? val : null,
+                          })
+                        }}
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="pub-justificativa">Justificativa de Impacto e Relevância</Label>
+                    <Label htmlFor="pub-justificativa">Justificativa de Impacto e Relevância</Label>{' '}
                     <Textarea
                       id="pub-justificativa"
                       rows={3}
@@ -309,27 +336,30 @@ export default function Publicacoes() {
           <Table>
             <TableHeader className="bg-slate-50/80 sticky top-0">
               <TableRow>
-                <TableHead className="w-[35%] font-semibold text-slate-700">
+                <TableHead className="w-[30%] font-semibold text-slate-700">
                   Título & Autores
                 </TableHead>
                 <TableHead className="font-semibold text-slate-700">Periódico</TableHead>
                 <TableHead className="font-semibold text-slate-700">Ano</TableHead>
+                <TableHead className="font-semibold text-slate-700">
+                  Fator de Impacto (JCR)
+                </TableHead>
                 <TableHead className="font-semibold text-slate-700">DOI</TableHead>
-                <TableHead className="w-[20%] font-semibold text-slate-700">Impacto</TableHead>
+                <TableHead className="w-[18%] font-semibold text-slate-700">Impacto</TableHead>
                 {canEdit && (
                   <TableHead className="text-right font-semibold text-slate-700">Ações</TableHead>
-                )}
+                )}{' '}
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: canEdit ? 6 : 5 }).map((_, j) => (
+                    {Array.from({ length: canEdit ? 7 : 6 }).map((_, j) => (
                       <TableCell key={j}>
                         <Skeleton className="h-6 w-full" />
                       </TableCell>
-                    ))}
+                    ))}{' '}
                   </TableRow>
                 ))
               ) : paginated.length > 0 ? (
@@ -341,12 +371,17 @@ export default function Publicacoes() {
                     </TableCell>
                     <TableCell className="text-slate-700">{p.periodico}</TableCell>
                     <TableCell className="font-medium">{p.ano}</TableCell>
+                    <TableCell className="font-mono text-xs font-semibold text-slate-800">
+                      {p.fator_impacto_jcr !== null && p.fator_impacto_jcr !== undefined
+                        ? Number(p.fator_impacto_jcr).toFixed(3)
+                        : '—'}
+                    </TableCell>
                     <TableCell className="font-mono text-sm text-primary hover:underline cursor-pointer">
                       {p.doi}
                     </TableCell>
                     <TableCell className="text-xs text-slate-600 line-clamp-2">
                       {p.justificativa}
-                    </TableCell>
+                    </TableCell>{' '}
                     {canEdit && (
                       <TableCell className="text-right">
                         <Button
@@ -375,9 +410,9 @@ export default function Publicacoes() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={canEdit ? 6 : 5} className="h-32 text-center text-slate-500">
+                  <TableCell colSpan={canEdit ? 7 : 6} className="h-32 text-center text-slate-500">
                     Nenhuma publicação encontrada.
-                  </TableCell>
+                  </TableCell>{' '}
                 </TableRow>
               )}
             </TableBody>

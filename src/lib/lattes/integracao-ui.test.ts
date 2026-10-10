@@ -43,6 +43,8 @@ describe('Subetapa 2B - Integração UI de Gravação (Lógica Offline)', () => 
             orientando: 'Aluno A',
             ano_conclusao: 2023,
             situacao: 'CONCLUIDA',
+            status: 'concluido',
+            flag_orientador_principal: true,
             tipo_orientacao: 'ORIENTADOR_PRINCIPAL',
           },
         ],

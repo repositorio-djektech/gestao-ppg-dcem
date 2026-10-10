@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Input } from '@/components/ui/input'
 import {
   Users,
   FileText,
@@ -124,6 +125,9 @@ export function RevisaoImportacaoDialog({
     patentes: true,
     eventos: true,
   })
+
+  // Fator de Impacto JCR editável por publicação no diálogo de revisão
+  const [jcrPorPublicacao, setJcrPorPublicacao] = useState<Record<string, number | null>>({})
 
   // Estados de gravação
   const [gravando, setGravando] = useState(false)
@@ -233,9 +237,17 @@ export function RevisaoImportacaoDialog({
 
     // 2. Publicações se marcadas
     const listaPublicacoes = tabelasSelecionadas.publicacoes
-      ? resList
-          .flatMap((r) => (Array.isArray(r.publicacoes) ? r.publicacoes : []))
-          .map(converterLattesPublicacao)
+      ? resList.flatMap((r) =>
+          (Array.isArray(r.publicacoes) ? r.publicacoes : []).map((pub, idx) => {
+            const pubConv = converterLattesPublicacao(pub)
+            const pubId = `pub-${r.id_lattes}-${idx}`
+            const jcrInformado = jcrPorPublicacao[pubId]
+            if (jcrInformado !== undefined) {
+              pubConv.fator_impacto_jcr = jcrInformado
+            }
+            return pubConv
+          }),
+        )
       : []
 
     // 3. Orientações se marcadas
@@ -610,7 +622,13 @@ export function RevisaoImportacaoDialog({
                             <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                               {renderCabecalhoTabela(id)}
                             </TableHeader>
-                            <TableBody>{renderLinhasTabela(id, itensVisiveisSecao)}</TableBody>
+                            <TableBody>
+                              {renderLinhasTabela(id, itensVisiveisSecao, {
+                                jcrPorPublicacao,
+                                setJcrPorPublicacao,
+                                gravando,
+                              })}
+                            </TableBody>
                           </Table>
                         )}
                       </div>
@@ -837,11 +855,12 @@ function renderCabecalhoTabela(tabelaId: TabelaAlvoId) {
     case 'publicacoes':
       return (
         <TableRow>
-          <TableHead className="w-[12%]">Tipo</TableHead>
-          <TableHead className="w-[40%]">Título</TableHead>
+          <TableHead className="w-[10%]">Tipo</TableHead>
+          <TableHead className="w-[35%]">Título</TableHead>
           <TableHead className="w-[8%]">Ano</TableHead>
-          <TableHead className="w-[20%]">Periódico / Livro / Editora</TableHead>
-          <TableHead className="w-[20%]">Autores</TableHead>
+          <TableHead className="w-[18%]">Periódico / Livro / Editora</TableHead>
+          <TableHead className="w-[17%]">Autores</TableHead>
+          <TableHead className="w-[12%]">Fator de Impacto (JCR)</TableHead>
         </TableRow>
       )
     case 'orientacoes':
@@ -927,7 +946,14 @@ function textoSeguro(val: unknown): string {
 }
 
 /** Renderiza as linhas dos registros correspondentes */
-function renderLinhasTabela(tabelaId: TabelaAlvoId, itens: any[]) {
+interface OpcoesLinhasTabela {
+  jcrPorPublicacao?: Record<string, number | null>
+  setJcrPorPublicacao?: React.Dispatch<React.SetStateAction<Record<string, number | null>>>
+  gravando?: boolean
+}
+
+function renderLinhasTabela(tabelaId: TabelaAlvoId, itens: any[], opcoes: OpcoesLinhasTabela = {}) {
+  const { jcrPorPublicacao = {}, setJcrPorPublicacao, gravando = false } = opcoes
   if (!Array.isArray(itens)) return null
 
   switch (tabelaId) {
@@ -957,6 +983,7 @@ function renderLinhasTabela(tabelaId: TabelaAlvoId, itens: any[]) {
         const tipoStr = String(item.tipo ?? '').toUpperCase()
         const doiStr = item.doi ? String(item.doi).trim() : ''
         const autoresStr = textoSeguro(item.autores)
+        const valorJcrAtual = jcrPorPublicacao[key] ?? item.fator_impacto_jcr ?? ''
         return (
           <TableRow key={key}>
             <TableCell>
@@ -987,6 +1014,27 @@ function renderLinhasTabela(tabelaId: TabelaAlvoId, itens: any[]) {
             <TableCell className="text-slate-600 text-xs">{textoSeguro(item.veiculo)}</TableCell>
             <TableCell className="text-slate-500 text-xs truncate max-w-xs" title={autoresStr}>
               {autoresStr}
+            </TableCell>
+            <TableCell>
+              <Input
+                type="number"
+                step="0.001"
+                min="0"
+                max="999.999"
+                placeholder="Ex: 3.850"
+                className="h-8 text-xs font-mono w-28 bg-white"
+                value={valorJcrAtual ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value === '' ? null : parseFloat(e.target.value)
+                  if (setJcrPorPublicacao) {
+                    setJcrPorPublicacao((prev) => ({
+                      ...prev,
+                      [key]: val !== null && !isNaN(val) ? val : null,
+                    }))
+                  }
+                }}
+                disabled={gravando}
+              />
             </TableCell>
           </TableRow>
         )

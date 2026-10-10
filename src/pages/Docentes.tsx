@@ -86,6 +86,7 @@ const emptyForm: Omit<Docente, 'id'> = {
   bolsa_cnpq: '',
   jdp: false,
   licenca: '',
+  categoria: null,
 }
 
 export default function Docentes() {
@@ -510,6 +511,27 @@ export default function Docentes() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="categoria">Categoria no PPG-DCEM</Label>
+                    <Select
+                      value={formData.categoria || '__none__'}
+                      onValueChange={(v) =>
+                        setFormData({
+                          ...formData,
+                          categoria: v === '__none__' ? null : (v as 'permanente' | 'colaborador'),
+                        })
+                      }
+                    >
+                      <SelectTrigger id="categoria">
+                        <SelectValue placeholder="Selecione a categoria..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Sem categoria (Não informado)</SelectItem>
+                        <SelectItem value="permanente">Permanente</SelectItem>
+                        <SelectItem value="colaborador">Colaborador</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="licenca">Licença Saúde / Parental</Label>
                     <Input
                       id="licenca"
@@ -565,7 +587,27 @@ export default function Docentes() {
               ) : paginated.length > 0 ? (
                 paginated.map((d) => (
                   <TableRow key={d.id} className="hover:bg-slate-50/50">
-                    <TableCell className="font-medium text-slate-900">{d.nome}</TableCell>
+                    <TableCell className="font-medium text-slate-900">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span>{d.nome}</span>
+                        {d.categoria === 'permanente' && (
+                          <Badge
+                            variant="secondary"
+                            className="bg-blue-100 text-blue-800 border-blue-200 text-[10px] font-semibold"
+                          >
+                            Permanente
+                          </Badge>
+                        )}
+                        {d.categoria === 'colaborador' && (
+                          <Badge
+                            variant="outline"
+                            className="bg-amber-50 text-amber-800 border-amber-300 text-[10px] font-semibold"
+                          >
+                            Colaborador
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       {d.scopus_id ? (
                         canEdit ? (

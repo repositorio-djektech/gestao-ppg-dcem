@@ -431,6 +431,46 @@ export function parseLattesXml(
   const chavesOrientacoes = new Set<string>()
   let oriIgnorados = 0
 
+  function extrairDataDefesa(
+    dadosBasicos: Element | null,
+    detalhamento: Element | null,
+    el: Element,
+    anoConclusao: number | null,
+  ): string | null {
+    const rawData =
+      dadosBasicos?.getAttribute('DATA-DA-DEFESA') ||
+      detalhamento?.getAttribute('DATA-DA-DEFESA') ||
+      el.getAttribute('DATA-DA-DEFESA') ||
+      ''
+
+    if (rawData) {
+      const matchIso = rawData.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+      if (matchIso) {
+        const y = matchIso[1]
+        const m = matchIso[2].padStart(2, '0')
+        const d = matchIso[3].padStart(2, '0')
+        return `${y}-${m}-${d}`
+      }
+      const matchBr = rawData.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/)
+      if (matchBr) {
+        const d = matchBr[1].padStart(2, '0')
+        const m = matchBr[2].padStart(2, '0')
+        const y = matchBr[3]
+        return `${y}-${m}-${d}`
+      }
+      const matchAnoOnly = rawData.match(/^(\d{4})$/)
+      if (matchAnoOnly) {
+        return `${matchAnoOnly[1]}-12-31`
+      }
+    }
+
+    if (anoConclusao) {
+      return `${anoConclusao}-12-31`
+    }
+
+    return null
+  }
+
   function processarOrientacao(el: Element, situacao: 'CONCLUIDA' | 'EM_ANDAMENTO') {
     const tagName = el.tagName.toUpperCase()
     let tipo: LattesOrientacao['tipo'] = 'OUTRA'
@@ -443,11 +483,11 @@ export function parseLattesXml(
 
     const dadosBasicos =
       el.querySelector(
-        'DADOS-BASICOS-DE-ORIENTACOES-CONCLUIDAS-PARA-MESTRADO, DADOS-BASICOS-DE-ORIENTACOES-CONCLUIDAS-PARA-DOUTORADO, DADOS-BASICOS-DE-OUTRAS-ORIENTACOES-CONCLUIDAS, DADOS-BASICOS-DA-ORIENTACAO-EM-ANDAMENTO',
+        'DADOS-BASICOS-DE-ORIENTACOES-CONCLUIDAS-PARA-MESTRADO, DADOS-BASICOS-DE-ORIENTACOES-CONCLUIDAS-PARA-DOUTORADO, DADOS-BASICOS-DE-ORIENTACOES-CONCLUIDAS-PARA-POS-DOUTORADO, DADOS-BASICOS-DE-ORIENTACOES-CONCLUIDAS-PARA-INICIACAO-CIENTIFICA, DADOS-BASICOS-DE-ORIENTACOES-CONCLUIDAS-PARA-GRADUACAO, DADOS-BASICOS-DE-OUTRAS-ORIENTACOES-CONCLUIDAS, DADOS-BASICOS-DA-ORIENTACAO-EM-ANDAMENTO-DE-MESTRADO, DADOS-BASICOS-DA-ORIENTACAO-EM-ANDAMENTO-DE-DOUTORADO, DADOS-BASICOS-DA-ORIENTACAO-EM-ANDAMENTO-DE-POS-DOUTORADO, DADOS-BASICOS-DA-ORIENTACAO-EM-ANDAMENTO-DE-INICIACAO-CIENTIFICA, DADOS-BASICOS-DA-ORIENTACAO-EM-ANDAMENTO-DE-GRADUACAO, DADOS-BASICOS-DE-OUTRAS-ORIENTACOES-EM-ANDAMENTO, DADOS-BASICOS-DA-ORIENTACAO-EM-ANDAMENTO',
       ) || el.children[0]
     const detalhamento =
       el.querySelector(
-        'DETALHAMENTO-DE-ORIENTACOES-CONCLUIDAS-PARA-MESTRADO, DETALHAMENTO-DE-ORIENTACOES-CONCLUIDAS-PARA-DOUTORADO, DETALHAMENTO-DE-OUTRAS-ORIENTACOES-CONCLUIDAS, DETALHAMENTO-DA-ORIENTACAO-EM-ANDAMENTO',
+        'DETALHAMENTO-DE-ORIENTACOES-CONCLUIDAS-PARA-MESTRADO, DETALHAMENTO-DE-ORIENTACOES-CONCLUIDAS-PARA-DOUTORADO, DETALHAMENTO-DE-ORIENTACOES-CONCLUIDAS-PARA-POS-DOUTORADO, DETALHAMENTO-DE-ORIENTACOES-CONCLUIDAS-PARA-INICIACAO-CIENTIFICA, DETALHAMENTO-DE-ORIENTACOES-CONCLUIDAS-PARA-GRADUACAO, DETALHAMENTO-DE-OUTRAS-ORIENTACOES-CONCLUIDAS, DETALHAMENTO-DA-ORIENTACAO-EM-ANDAMENTO-DE-MESTRADO, DETALHAMENTO-DA-ORIENTACAO-EM-ANDAMENTO-DE-DOUTORADO, DETALHAMENTO-DA-ORIENTACAO-EM-ANDAMENTO-DE-POS-DOUTORADO, DETALHAMENTO-DA-ORIENTACAO-EM-ANDAMENTO-DE-INICIACAO-CIENTIFICA, DETALHAMENTO-DA-ORIENTACAO-EM-ANDAMENTO-DE-GRADUACAO, DETALHAMENTO-DE-OUTRAS-ORIENTACOES-EM-ANDAMENTO, DETALHAMENTO-DA-ORIENTACAO-EM-ANDAMENTO',
       ) || el.children[1]
 
     const titulo = limparTexto(
@@ -459,7 +499,14 @@ export function parseLattesXml(
       detalhamento?.getAttribute('NOME-DO-ORIENTANDO') || el.getAttribute('NOME-DO-ORIENTANDO'),
     )
     const anoConclusao =
-      parseInt(dadosBasicos?.getAttribute('ANO') || el.getAttribute('ANO') || '', 10) || null
+      parseInt(
+        dadosBasicos?.getAttribute('ANO-DE-CONCLUSAO') ||
+          dadosBasicos?.getAttribute('ANO') ||
+          el.getAttribute('ANO-DE-CONCLUSAO') ||
+          el.getAttribute('ANO') ||
+          '',
+        10,
+      ) || null
     const anoInicioOri =
       parseInt(
         dadosBasicos?.getAttribute('ANO-DE-INICIO') || el.getAttribute('ANO-DE-INICIO') || '',
@@ -476,10 +523,18 @@ export function parseLattesXml(
     )
     const tipoOriRaw =
       detalhamento?.getAttribute('TIPO-DE-ORIENTACAO') || el.getAttribute('TIPO-DE-ORIENTACAO')
-    const tipoOri: LattesOrientacao['tipo_orientacao'] =
-      tipoOriRaw && tipoOriRaw.toUpperCase().includes('CO')
-        ? 'CO_ORIENTADOR'
-        : 'ORIENTADOR_PRINCIPAL'
+    const flagOrientadorPrincipal =
+      tipoOriRaw && tipoOriRaw.toUpperCase().includes('CO') ? false : true
+    const tipoOri: LattesOrientacao['tipo_orientacao'] = flagOrientadorPrincipal
+      ? 'ORIENTADOR_PRINCIPAL'
+      : 'CO_ORIENTADOR'
+    const status: LattesOrientacao['status'] =
+      situacao === 'CONCLUIDA' ? 'concluido' : 'em_andamento'
+    const dataDefesa: string | null =
+      situacao === 'CONCLUIDA'
+        ? extrairDataDefesa(dadosBasicos, detalhamento, el, anoConclusao)
+        : null
+
     const bolsa =
       (detalhamento?.getAttribute('FLAG-BOLSA') || el.getAttribute('FLAG-BOLSA')) === 'SIM'
     const agencia = limparTexto(
@@ -518,6 +573,9 @@ export function parseLattesXml(
     orientacoes.push({
       tipo,
       situacao,
+      status,
+      data_defesa: dataDefesa,
+      flag_orientador_principal: flagOrientadorPrincipal,
       titulo_trabalho: titulo,
       orientando,
       ano_inicio: anoInicioOri,
@@ -533,7 +591,7 @@ export function parseLattesXml(
   // Tags concluídas
   raiz
     .querySelectorAll(
-      'ORIENTACOES-CONCLUIDAS-PARA-MESTRADO, ORIENTACOES-CONCLUIDAS-PARA-DOUTORADO, OUTRAS-ORIENTACOES-CONCLUIDAS, ORIENTACOES-CONCLUIDAS-PARA-POS-DOUTORADO',
+      'ORIENTACOES-CONCLUIDAS-PARA-MESTRADO, ORIENTACOES-CONCLUIDAS-PARA-DOUTORADO, ORIENTACOES-CONCLUIDAS-PARA-POS-DOUTORADO, ORIENTACOES-CONCLUIDAS-PARA-INICIACAO-CIENTIFICA, ORIENTACOES-CONCLUIDAS-PARA-GRADUACAO, OUTRAS-ORIENTACOES-CONCLUIDAS',
     )
     .forEach((el) => {
       processarOrientacao(el, 'CONCLUIDA')
@@ -542,7 +600,7 @@ export function parseLattesXml(
   // Tags em andamento
   raiz
     .querySelectorAll(
-      'ORIENTACAO-EM-ANDAMENTO-DE-MESTRADO, ORIENTACAO-EM-ANDAMENTO-DE-DOUTORADO, ORIENTACAO-EM-ANDAMENTO-DE-POS-DOUTORADO, ORIENTACAO-EM-ANDAMENTO-DE-INICIACAO-CIENTIFICA, OUTRAS-ORIENTACOES-EM-ANDAMENTO',
+      'ORIENTACAO-EM-ANDAMENTO-DE-MESTRADO, ORIENTACAO-EM-ANDAMENTO-DE-DOUTORADO, ORIENTACAO-EM-ANDAMENTO-DE-POS-DOUTORADO, ORIENTACAO-EM-ANDAMENTO-DE-INICIACAO-CIENTIFICA, ORIENTACAO-EM-ANDAMENTO-DE-GRADUACAO, OUTRAS-ORIENTACOES-EM-ANDAMENTO',
     )
     .forEach((el) => {
       processarOrientacao(el, 'EM_ANDAMENTO')

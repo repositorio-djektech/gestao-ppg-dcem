@@ -39,6 +39,9 @@ export interface LattesPublicacao {
 export interface LattesOrientacao {
   tipo: 'MESTRADO' | 'DOUTORADO' | 'POS-DOUTORADO' | 'GRADUACAO' | 'INICIACAO_CIENTIFICA' | 'OUTRA'
   situacao: 'CONCLUIDA' | 'EM_ANDAMENTO'
+  status: 'concluido' | 'em_andamento'
+  data_defesa?: string | null // YYYY-MM-DD
+  flag_orientador_principal: boolean
   titulo_trabalho?: string | null
   orientando: string
   ano_inicio?: number | null
