@@ -1063,20 +1063,36 @@ export default function Lacunas({
               >
                 <span>Grupo</span>
               </label>
-              <select
-                id="filtro-grupo"
-                data-testid="filtro-grupo"
-                value={filtroGrupo}
-                onChange={(e) => setFiltroGrupo(e.target.value as FiltroGrupo)}
-                className="w-full text-xs h-9 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary"
-              >
-                <option value="todos">Todos os Grupos</option>
-                {GRUPOS_VISUAIS.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.label}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  id="filtro-grupo"
+                  data-testid="filtro-grupo"
+                  value={filtroGrupo}
+                  onChange={(e) => setFiltroGrupo(e.target.value as FiltroGrupo)}
+                  className="w-full text-xs h-9 appearance-none rounded-md border border-slate-300 bg-white pl-3 pr-10 py-1 text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer truncate"
+                >
+                  <option value="todos">Todos os Grupos</option>
+                  {GRUPOS_VISUAIS.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-500">
+                  <svg
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </span>
+              </div>
             </div>
 
             {/* Filtro por Severidade */}
@@ -1087,17 +1103,33 @@ export default function Lacunas({
               >
                 <span>Severidade</span>
               </label>
-              <select
-                id="filtro-severidade"
-                data-testid="filtro-severidade"
-                value={filtroSeveridade}
-                onChange={(e) => setFiltroSeveridade(e.target.value as FiltroSeveridade)}
-                className="w-full text-xs h-9 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary"
-              >
-                <option value="todas">Todas as Severidades</option>
-                <option value="critica">🔴 Críticas</option>
-                <option value="atencao">🟡 Atenção</option>
-              </select>
+              <div className="relative">
+                <select
+                  id="filtro-severidade"
+                  data-testid="filtro-severidade"
+                  value={filtroSeveridade}
+                  onChange={(e) => setFiltroSeveridade(e.target.value as FiltroSeveridade)}
+                  className="w-full text-xs h-9 appearance-none rounded-md border border-slate-300 bg-white pl-3 pr-10 py-1 text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer truncate"
+                >
+                  <option value="todas">Todas as Severidades</option>
+                  <option value="critica">🔴 Críticas</option>
+                  <option value="atencao">🟡 Atenção</option>
+                </select>
+                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-500">
+                  <svg
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </span>
+              </div>
             </div>
 
             {/* Filtro por Regra Específica */}
@@ -1108,20 +1140,36 @@ export default function Lacunas({
               >
                 <span>Regra / Pendência</span>
               </label>
-              <select
-                id="filtro-regra"
-                data-testid="filtro-regra"
-                value={filtroRegra}
-                onChange={(e) => setFiltroRegra(e.target.value)}
-                className="w-full text-xs h-9 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary truncate"
-              >
-                <option value="todas">Todas as Regras</option>
-                {regrasDisponiveis.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.descricao}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  id="filtro-regra"
+                  data-testid="filtro-regra"
+                  value={filtroRegra}
+                  onChange={(e) => setFiltroRegra(e.target.value)}
+                  className="w-full text-xs h-9 appearance-none rounded-md border border-slate-300 bg-white pl-3 pr-10 py-1 text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer truncate"
+                >
+                  <option value="todas">Todas as Regras</option>
+                  {regrasDisponiveis.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.descricao}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-500">
+                  <svg
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </span>
+              </div>
             </div>
 
             {/* Busca textual por Nome / Motivo */}

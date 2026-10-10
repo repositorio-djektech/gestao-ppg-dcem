@@ -457,6 +457,27 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('Imprimir')
       expect(html).toContain('Atualizar')
     })
+
+    it('renderiza os 3 filtros selects de Grupo, Severidade e Regra com padding e chevron destacados', () => {
+      const html = renderToString(
+        <Lacunas
+          carregarDadosFn={() =>
+            Promise.resolve({
+              sucesso: true,
+              dados: dadosMock,
+              origem: 'edge_function',
+            })
+          }
+        />,
+      )
+
+      // Verifica os três selects e suas classes de respiro (pr-10) e posicionamento do chevron (right-3)
+      expect(html).toContain('data-testid="filtro-grupo"')
+      expect(html).toContain('data-testid="filtro-severidade"')
+      expect(html).toContain('data-testid="filtro-regra"')
+      expect(html).toContain('pr-10')
+      expect(html).toContain('right-3')
+    })
   })
 
   describe('TAREFA 2 - Gerador de Impressão e Exportação em PDF de Lacunas', () => {
