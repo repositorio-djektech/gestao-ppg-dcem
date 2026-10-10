@@ -260,6 +260,8 @@ describe('Página Recondução (Etapa D)', () => {
     expect(html).toContain('Avaliação quadrienal de permanência docente no PPG-DCEM')
     expect(html).toContain('Atualizar')
     expect(html).toContain('data-testid="btn-atualizar-reconducao"')
+    expect(html).toContain('Imprimir Relatório')
+    expect(html).toContain('data-testid="btn-imprimir-relatorio-reconducao"')
   })
 
   it('renderiza os 5 cards de métricas no topo com números fiéis ao ResumoReconducao', () => {

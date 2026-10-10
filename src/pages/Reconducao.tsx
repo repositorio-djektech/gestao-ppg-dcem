@@ -53,9 +53,11 @@ import {
   FlaskConical,
   FileText,
   Info,
+  Printer,
 } from 'lucide-react'
 import { obterAvaliacaoReconducao } from '@/services/reconducao'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { imprimirRelatorioReconducaoViaIframe } from '@/lib/reconducao/imprimirReconducaoIframe'
 import type {
   AvaliacaoDocenteReconducao,
   RelatorioReconducaoResposta,
@@ -95,6 +97,8 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
     null,
   )
   const [dialogAberto, setDialogAberto] = useState(false)
+  const [imprimindoGeral, setImprimindoGeral] = useState(false)
+  const [imprimindoDocente, setImprimindoDocente] = useState(false)
 
   const carregarRelatorio = useCallback(async () => {
     setCarregando(true)
@@ -164,6 +168,35 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
   const handleAbrirDetalhes = (doc: AvaliacaoDocenteReconducao) => {
     setDocenteSelecionado(doc)
     setDialogAberto(true)
+  }
+
+  const handleImprimirRelatorio = async () => {
+    if (!relatorio) return
+    setImprimindoGeral(true)
+    try {
+      await imprimirRelatorioReconducaoViaIframe(relatorio, {
+        filtroVeredito,
+        termoBusca: buscaNome,
+      })
+    } catch (err) {
+      console.error('Erro ao disparar impressão do relatório:', err)
+    } finally {
+      setImprimindoGeral(false)
+    }
+  }
+
+  const handleImprimirDocente = async (doc: AvaliacaoDocenteReconducao) => {
+    if (!relatorio) return
+    setImprimindoDocente(true)
+    try {
+      await imprimirRelatorioReconducaoViaIframe(relatorio, {
+        docenteUnicoId: doc.docente_id,
+      })
+    } catch (err) {
+      console.error('Erro ao disparar impressão do docente:', err)
+    } finally {
+      setImprimindoDocente(false)
+    }
   }
 
   const renderBadgeVeredito = (
@@ -634,12 +667,23 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
             type="button"
             variant="outline"
             onClick={carregarRelatorio}
-            disabled={carregando}
+            disabled={carregando || imprimindoGeral}
             className="inline-flex items-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800"
             data-testid="btn-atualizar-reconducao"
           >
             <RefreshCw className={`h-4 w-4 text-primary ${carregando ? 'animate-spin' : ''}`} />
             {carregando ? 'Atualizando...' : 'Atualizar'}
+          </Button>
+
+          <Button
+            type="button"
+            onClick={handleImprimirRelatorio}
+            disabled={carregando || !relatorio || imprimindoGeral}
+            className="inline-flex items-center gap-2 shadow-sm"
+            data-testid="btn-imprimir-relatorio-reconducao"
+          >
+            <Printer className="h-4 w-4" />
+            {imprimindoGeral ? 'Preparando...' : 'Imprimir Relatório'}
           </Button>
         </div>
       </div>
@@ -980,14 +1024,32 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
         <Dialog open={dialogAberto} onOpenChange={setDialogAberto}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-lg">
-                <Award className="h-5 w-5 text-primary" />
-                Dossiê e Evidências de Recondução Docente
-              </DialogTitle>
-              <DialogDescription>
-                Detalhamento dos 4 critérios normativos, cálculo do PDQ e composições do NP estrito
-                vs. teto.
-              </DialogDescription>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <DialogTitle className="flex items-center gap-2 text-lg">
+                    <Award className="h-5 w-5 text-primary" />
+                    Dossiê e Evidências de Recondução Docente
+                  </DialogTitle>
+                  <DialogDescription>
+                    Detalhamento dos 4 critérios normativos, cálculo do PDQ e composições do NP
+                    estrito vs. teto.
+                  </DialogDescription>
+                </div>
+                {docenteSelecionado && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleImprimirDocente(docenteSelecionado)}
+                    disabled={imprimindoDocente}
+                    className="inline-flex items-center gap-1.5 text-xs shrink-0"
+                    data-testid="btn-imprimir-dossie-docente"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    {imprimindoDocente ? 'Imprimindo...' : 'Imprimir Dossiê'}
+                  </Button>
+                )}
+              </div>
             </DialogHeader>
 
             {docenteSelecionado && renderDrilldownConteudo(docenteSelecionado)}
@@ -997,13 +1059,30 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
         <Drawer open={dialogAberto} onOpenChange={setDialogAberto}>
           <DrawerContent className="max-h-[85vh]">
             <DrawerHeader className="text-left border-b border-slate-100">
-              <DrawerTitle className="text-base flex items-center gap-2">
-                <Award className="h-4 w-4 text-primary" />
-                Evidências de Recondução
-              </DrawerTitle>
-              <DrawerDescription className="text-xs">
-                Dossiê detalhado dos critérios de avaliação normativa
-              </DrawerDescription>
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <DrawerTitle className="text-base flex items-center gap-2">
+                    <Award className="h-4 w-4 text-primary" />
+                    Evidências de Recondução
+                  </DrawerTitle>
+                  <DrawerDescription className="text-xs">
+                    Dossiê detalhado dos critérios de avaliação normativa
+                  </DrawerDescription>
+                </div>
+                {docenteSelecionado && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleImprimirDocente(docenteSelecionado)}
+                    disabled={imprimindoDocente}
+                    className="inline-flex items-center gap-1 text-xs shrink-0"
+                  >
+                    <Printer className="h-3 w-3" />
+                    Imprimir
+                  </Button>
+                )}
+              </div>
             </DrawerHeader>
 
             <div className="overflow-y-auto p-4 max-h-[70vh]">
