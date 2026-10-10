@@ -8,7 +8,12 @@ import { Loader2 } from 'lucide-react'
 export function Layout() {
   const { session, loading } = useAuth()
   const location = useLocation()
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768
+    }
+    return true
+  })
 
   if (loading) {
     return (

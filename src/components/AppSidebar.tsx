@@ -320,7 +320,12 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ open: openProp, setOpen: setOpenProp }: AppSidebarProps = {}) {
-  const [internalOpen, setInternalOpen] = useState(true)
+  const [internalOpen, setInternalOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768
+    }
+    return true
+  })
   const open = openProp !== undefined ? openProp : internalOpen
   const setOpen = setOpenProp !== undefined ? setOpenProp : setInternalOpen
 

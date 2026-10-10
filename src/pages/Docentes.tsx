@@ -134,10 +134,18 @@ export default function Docentes() {
   const totalPages = Math.ceil(filtered.length / PER_PAGE)
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
-  const handleOpen = (docente?: Docente) => {
+  const handleOpen = (docente?: Docente, campoFoco?: keyof Docente) => {
     setEditingId(docente?.id ?? null)
     setFormData(docente ?? emptyForm)
     setIsDialogOpen(true)
+    if (campoFoco) {
+      setTimeout(() => {
+        const el = document.getElementById(String(campoFoco))
+        if (el) {
+          el.focus()
+        }
+      }, 100)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

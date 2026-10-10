@@ -50,6 +50,9 @@ describe('Responsividade Sidebar e Header (Mobile e Tablet Portrait)', () => {
     expect(html).toContain('fixed inset-y-0 left-0')
     expect(html).toContain('Itens do Menu Mobile')
     expect(html).toContain('bg-black/50') // backdrop
+    // Largura reduzida em 20%: max-w-[68vw] e sm:max-w-[256px]
+    expect(html).toContain('max-w-[68vw]')
+    expect(html).toContain('sm:max-w-[256px]')
   })
 
   it('3. DesktopSidebar possui classe hidden md:flex garantindo que não colapse telas pequenas', () => {
@@ -132,5 +135,36 @@ describe('Responsividade Sidebar e Header (Mobile e Tablet Portrait)', () => {
     expect(html).toContain('2025 - 2028')
     expect(html).toContain('pointer-events-none')
     expect(html).toContain('cursor-default')
+  })
+
+  it('10. SidebarProvider e AppSidebar inicializam fechados no mobile (< 768px) e abertos no desktop (>= 768px)', () => {
+    // Simula viewport mobile (< 768px)
+    const originalInnerWidth = window.innerWidth
+    try {
+      window.innerWidth = 400
+      const htmlMobile = renderToString(
+        <SidebarProvider>
+          <MobileSidebar>
+            <div data-testid="mobile-conteudo">Mobile Fechado</div>
+          </MobileSidebar>
+        </SidebarProvider>,
+      )
+      // No mobile default inicial deve estar fechado (conteúdo do drawer não aparece sem clique)
+      expect(htmlMobile).not.toContain('Mobile Fechado')
+
+      // Simula viewport desktop (>= 768px)
+      window.innerWidth = 1024
+      const htmlDesktop = renderToString(
+        <SidebarProvider>
+          <DesktopSidebar>
+            <div data-testid="desktop-conteudo">Desktop Aberto</div>
+          </DesktopSidebar>
+        </SidebarProvider>,
+      )
+      // No desktop continua renderizando aberto
+      expect(htmlDesktop).toContain('Desktop Aberto')
+    } finally {
+      window.innerWidth = originalInnerWidth
+    }
   })
 })

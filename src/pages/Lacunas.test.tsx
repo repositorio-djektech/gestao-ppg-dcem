@@ -254,8 +254,27 @@ describe('Página Lacunas - Etapa 2', () => {
     })
   })
 
-  describe('Etapa 3 - Lista Detalhada de Lacunas e Filtros', () => {
-    it('renderiza a tabela com as colunas Quem, O que falta, Grupo e Severidade', () => {
+  describe('Etapa 3 e Etapa 4 - Lista Detalhada de Lacunas e Ação Corrigir', () => {
+    it('renderiza botão Corrigir para cada pendência com atributo data-testid acessível', () => {
+      const html = renderToString(
+        <Lacunas
+          carregarDadosFn={() =>
+            Promise.resolve({
+              sucesso: true,
+              dados: dadosMock,
+              origem: 'edge_function',
+            })
+          }
+        />,
+      )
+
+      expect(html).toContain('btn-corrigir-docente_sem_scopus_id-5')
+      expect(html).toContain('btn-corrigir-docente_sem_scopus_id-6')
+      expect(html).toContain('btn-corrigir-docente_sem_openalex_id-5')
+      expect(html).toContain('btn-corrigir-discente_sem_cpf-101')
+    })
+
+    it('renderiza a tabela com as colunas Quem, O que falta, Grupo, Severidade e Ação Corrigir', () => {
       const html = renderToString(
         <Lacunas
           carregarDadosFn={() =>
@@ -273,12 +292,18 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('O que falta')
       expect(html).toContain('Grupo')
       expect(html).toContain('Severidade')
+      expect(html).toContain('Ação')
       expect(html).toContain('4 lacunas encontradas')
 
       // Registros individuais presentes
       expect(html).toContain('Euler Araujo dos Santos')
       expect(html).toContain('Iara de Fatima Gimenez')
       expect(html).toContain('Lucas Silva')
+
+      // Botão de Corrigir presente nas linhas
+      expect(html).toContain('Corrigir')
+      expect(html).toContain('btn-corrigir-docente_sem_scopus_id-5')
+      expect(html).toContain('btn-corrigir-discente_sem_cpf-101')
     })
 
     it('critério do cliente: Ledjane Silva Barreto (com scopus_id gravado) NÃO deve constar na regra Docentes sem Scopus ID; demais sem scopus_id devem aparecer', () => {

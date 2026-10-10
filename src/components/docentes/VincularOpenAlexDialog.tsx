@@ -36,6 +36,7 @@ export interface VincularOpenAlexDialogProps {
   abaInicial?: FonteIdentificador
   onVincular: (docenteId: number | string, candidato: OpenAlexAutorCandidato) => Promise<void>
   onVincularScopus?: (docenteId: number | string, candidato: ScopusAutorCandidato) => Promise<void>
+  onSucesso?: () => void
 }
 
 export function VincularOpenAlexDialog({
@@ -45,6 +46,7 @@ export function VincularOpenAlexDialog({
   abaInicial = 'openalex',
   onVincular,
   onVincularScopus,
+  onSucesso,
 }: VincularOpenAlexDialogProps) {
   const [fonteAtiva, setFonteAtiva] = useState<FonteIdentificador>(abaInicial)
 
@@ -250,6 +252,7 @@ export function VincularOpenAlexDialog({
       }
       await onVincularScopus(docente.id, candidatoDireto)
       onOpenChange(false)
+      onSucesso?.()
     } catch {
       // O erro já é tratado com toast pelo chamador
     } finally {
@@ -263,6 +266,7 @@ export function VincularOpenAlexDialog({
     try {
       await onVincular(docente.id, candidato)
       onOpenChange(false)
+      onSucesso?.()
     } catch {
       // O erro já é tratado com toast pelo chamador
     } finally {
@@ -276,6 +280,7 @@ export function VincularOpenAlexDialog({
     try {
       await onVincularScopus(docente.id, candidato)
       onOpenChange(false)
+      onSucesso?.()
     } catch {
       // O erro já é tratado com toast pelo chamador
     } finally {

@@ -1,3 +1,4 @@
+import React from 'react'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -25,6 +26,7 @@ interface CrudFormDialogProps {
   onSubmit: (e: React.FormEvent) => void
   submitting: boolean
   entityName: string
+  campoFocoInicial?: string
 }
 
 export function CrudFormDialog({
@@ -38,7 +40,20 @@ export function CrudFormDialog({
   onSubmit,
   submitting,
   entityName,
+  campoFocoInicial,
 }: CrudFormDialogProps) {
+  React.useEffect(() => {
+    if (open && campoFocoInicial) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(campoFocoInicial)
+        if (el) {
+          el.focus()
+        }
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [open, campoFocoInicial])
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">

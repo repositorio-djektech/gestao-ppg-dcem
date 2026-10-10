@@ -38,7 +38,12 @@ export const SidebarProvider = ({
   setOpen?: React.Dispatch<React.SetStateAction<boolean>>
   animate?: boolean
 }) => {
-  const [openState, setOpenState] = useState(true)
+  const [openState, setOpenState] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768
+    }
+    return true
+  })
 
   const open = openProp !== undefined ? openProp : openState
   const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState
@@ -142,7 +147,7 @@ export const MobileSidebar = ({ className, children, ...props }: React.Component
                 damping: 35,
               }}
               className={cn(
-                'fixed inset-y-0 left-0 max-w-[85vw] sm:max-w-[320px] w-full bg-white dark:bg-neutral-900 p-4 z-[100] flex flex-col justify-between shadow-2xl border-r border-neutral-200 dark:border-neutral-800 overflow-hidden',
+                'fixed inset-y-0 left-0 max-w-[68vw] sm:max-w-[256px] w-full bg-white dark:bg-neutral-900 p-4 z-[100] flex flex-col justify-between shadow-2xl border-r border-neutral-200 dark:border-neutral-800 overflow-hidden',
                 className,
               )}
             >

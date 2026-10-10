@@ -59,6 +59,7 @@ export interface VisualizarDocenteDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   docente: Docente | null
+  abaInicial?: TabKey
   onAbrirImpressao?: (docente: Docente, dados: DadosDocenteCompleto) => void
 }
 
@@ -103,10 +104,11 @@ export function VisualizarDocenteDialog({
   open,
   onOpenChange,
   docente,
+  abaInicial = 'geral',
   onAbrirImpressao,
 }: VisualizarDocenteDialogProps) {
   const [loading, setLoading] = useState(false)
-  const [abaAtiva, setAbaAtiva] = useState<TabKey>('geral')
+  const [abaAtiva, setAbaAtiva] = useState<TabKey>(abaInicial)
   const [dados, setDados] = useState<DadosDocenteCompleto>({
     docente: null,
     publicacoes: [],
@@ -146,7 +148,7 @@ export function VisualizarDocenteDialog({
   useEffect(() => {
     if (!open || !docente) return
 
-    setAbaAtiva('geral')
+    setAbaAtiva(abaInicial || 'geral')
     setLimitesPaginacao({
       geral: ITENS_POR_PAGINA,
       publicacoes: ITENS_POR_PAGINA,

@@ -4,6 +4,17 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Users,
   GraduationCap,
@@ -17,9 +28,24 @@ import {
   Layers,
   Filter,
   Search,
+  Wrench,
+  Loader2,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { toast } from 'sonner'
 import { obterRelatorioLacunas } from '@/services/lacunas'
+import { supabase } from '@/lib/supabase/client'
+import { docentesService } from '@/services/docentes'
+import { discentesService } from '@/services/discentes'
+import { CrudFormDialog } from '@/components/crud/CrudFormDialog'
+import type { FieldDef } from '@/components/crud/types'
+import {
+  VincularOpenAlexDialog,
+  type FonteIdentificador,
+} from '@/components/docentes/VincularOpenAlexDialog'
+import type { OpenAlexAutorCandidato } from '@/lib/openalex/buscar'
+import type { ScopusAutorCandidato } from '@/services/scopus'
+import type { Docente, Discente } from '@/types/database'
 import type {
   RelatorioLacunasResposta,
   ResumoRegraLacuna,
@@ -192,6 +218,55 @@ interface LacunasProps {
   filtroRegraInicial?: string
 }
 
+const camposDiscente: FieldDef[] = [
+  {
+    key: 'nome',
+    label: 'Nome Completo',
+    type: 'text',
+    required: true,
+    placeholder: 'Nome completo do aluno',
+  },
+  {
+    key: 'cpf',
+    label: 'CPF',
+    type: 'text',
+    placeholder: '000.000.000-00',
+    helperText: 'Apenas números ou formatado',
+  },
+  {
+    key: 'data_ingresso',
+    label: 'Data de Ingresso',
+    type: 'date',
+    required: true,
+    helperText: 'Data de matrícula inicial no programa',
+  },
+  {
+    key: 'status',
+    label: 'Status',
+    type: 'select',
+    required: true,
+    options: [
+      { value: 'ativo', label: 'Ativo' },
+      { value: 'titulado', label: 'Titulado' },
+      { value: 'desligado', label: 'Desligado' },
+    ],
+  },
+  {
+    key: 'link_lattes',
+    label: 'Currículo Lattes',
+    type: 'url',
+    placeholder: 'http://lattes.cnpq.br/...',
+  },
+  {
+    key: 'link_comprovacao',
+    label: 'Link de Comprovação',
+    type: 'url',
+    placeholder: 'https://...',
+    helperText: 'Ficha de matrícula ou documento comprobatório',
+  },
+  { key: 'observacoes', label: 'Observações', type: 'textarea', rows: 2 },
+]
+
 export default function Lacunas({
   carregarDadosFn,
   filtroGrupoInicial = 'todos',
@@ -209,6 +284,36 @@ export default function Lacunas({
     useState<FiltroSeveridade>(filtroSeveridadeInicial)
   const [filtroRegra, setFiltroRegra] = useState<string>(filtroRegraInicial)
   const [termoBusca, setTermoBusca] = useState<string>('')
+
+  // Estados de Correção (Tarefa B)
+  const [carregandoCorrecaoId, setCarregandoCorrecaoId] = useState<number | null>(null)
+
+  // Diálogo de Vinculação (Scopus / OpenAlex) para Docentes
+  const [dialogoVinculoAberto, setDialogoVinculoAberto] = useState(false)
+  const [docenteParaVinculo, setDocenteParaVinculo] = useState<Docente | null>(null)
+  const [abaInicialVinculo, setAbaInicialVinculo] = useState<FonteIdentificador>('openalex')
+
+  // Diálogo de Edição Cadastral de Docente (ID Lattes, Bolsa CNPq, etc.)
+  const [dialogoDocenteAberto, setDialogoDocenteAberto] = useState(false)
+  const [docenteEditando, setDocenteEditando] = useState<Docente | null>(null)
+  const [formDocente, setFormDocente] = useState<Omit<Docente, 'id'>>({
+    nome: '',
+    scopus_id: '',
+    id_lattes: '',
+    indice_h: 0,
+    bolsa_cnpq: '',
+    jdp: false,
+    licenca: '',
+  })
+  const [salvandoDocente, setSalvandoDocente] = useState(false)
+  const [campoFocoDocente, setCampoFocoDocente] = useState<string | null>(null)
+
+  // Diálogo CrudFormDialog para Discentes
+  const [dialogoDiscenteAberto, setDialogoDiscenteAberto] = useState(false)
+  const [discenteEditandoId, setDiscenteEditandoId] = useState<number | null>(null)
+  const [formDiscente, setFormDiscente] = useState<Record<string, any>>({})
+  const [salvandoDiscente, setSalvandoDiscente] = useState(false)
+  const [campoFocoDiscente, setCampoFocoDiscente] = useState<string | undefined>(undefined)
 
   const carregarRelatorio = useCallback(async () => {
     setCarregando(true)
@@ -232,6 +337,172 @@ export default function Lacunas({
   useEffect(() => {
     carregarRelatorio()
   }, [carregarRelatorio])
+
+  // Ação de correção rápida da linha
+  const handleCorrigirLacuna = async (item: ItemLacunaIndividual) => {
+    setCarregandoCorrecaoId(item.idRegistro)
+    try {
+      if (item.tabela === 'docentes') {
+        const { data: doc, error } = await supabase
+          .from('docentes')
+          .select('*')
+          .eq('id', item.idRegistro)
+          .single()
+
+        if (error || !doc) {
+          toast.error('Não foi possível carregar os dados do docente para correção.')
+          return
+        }
+
+        const docenteData = doc as Docente
+
+        // Se a lacuna for de Scopus ID ou OpenAlex / índice-h:
+        if (item.regraId === 'docente_sem_scopus_id') {
+          setDocenteParaVinculo(docenteData)
+          setAbaInicialVinculo('scopus')
+          setDialogoVinculoAberto(true)
+        } else if (
+          item.regraId === 'docente_sem_openalex_id' ||
+          item.regraId === 'docente_indice_h_ausente_ou_zero'
+        ) {
+          setDocenteParaVinculo(docenteData)
+          setAbaInicialVinculo('openalex')
+          setDialogoVinculoAberto(true)
+        } else {
+          // Demais regras cadastrais de docente: ID Lattes, Bolsa CNPq, etc.
+          setDocenteEditando(docenteData)
+          setFormDocente({
+            nome: docenteData.nome || '',
+            scopus_id: docenteData.scopus_id || '',
+            id_lattes: docenteData.id_lattes || '',
+            indice_h: docenteData.indice_h ?? 0,
+            bolsa_cnpq: docenteData.bolsa_cnpq || '',
+            jdp: !!docenteData.jdp,
+            licenca: docenteData.licenca || '',
+          })
+          const campoFoco =
+            item.regraId === 'docente_sem_id_lattes'
+              ? 'idLattes'
+              : item.regraId === 'docente_sem_bolsa_cnpq'
+                ? 'bolsaCnpq'
+                : 'nome'
+          setCampoFocoDocente(campoFoco)
+          setDialogoDocenteAberto(true)
+          setTimeout(() => {
+            const el = document.getElementById(campoFoco)
+            if (el) el.focus()
+          }, 150)
+        }
+      } else {
+        // Discentes: carregar dados do discente e abrir CrudFormDialog
+        const { data: disc, error } = await supabase
+          .from('discentes')
+          .select('*')
+          .eq('id', item.idRegistro)
+          .single()
+
+        if (error || !disc) {
+          toast.error('Não foi possível carregar os dados do discente para correção.')
+          return
+        }
+
+        const discenteData = disc as Discente
+        setDiscenteEditandoId(discenteData.id)
+        setFormDiscente({
+          nome: discenteData.nome || '',
+          cpf: discenteData.cpf || '',
+          data_ingresso: discenteData.data_ingresso || '',
+          status: discenteData.status || 'ativo',
+          link_lattes: discenteData.link_lattes || '',
+          link_comprovacao: discenteData.link_comprovacao || '',
+          observacoes: discenteData.observacoes || '',
+        })
+
+        let focoCampo = 'nome'
+        if (item.regraId === 'discente_sem_cpf') focoCampo = 'cpf'
+        else if (item.regraId === 'discente_sem_data_ingresso') focoCampo = 'data_ingresso'
+        else if (item.regraId === 'discente_sem_status') focoCampo = 'status'
+        else if (item.regraId === 'discente_sem_link_lattes') focoCampo = 'link_lattes'
+
+        setCampoFocoDiscente(focoCampo)
+        setDialogoDiscenteAberto(true)
+      }
+    } catch (err: any) {
+      toast.error(`Falha ao preparar correção: ${err?.message || 'Erro inesperado'}`)
+    } finally {
+      setCarregandoCorrecaoId(null)
+    }
+  }
+
+  // Handlers de vinculação Scopus e OpenAlex em Lacunas
+  const handleVincularOpenAlex = async (
+    docenteId: number | string,
+    candidato: OpenAlexAutorCandidato,
+  ) => {
+    try {
+      await docentesService.update(docenteId, {
+        openalex_id: candidato.openalex_id,
+        indice_h: candidato.h_index,
+      })
+      toast.success(
+        `Docente vinculado com sucesso ao OpenAlex (${candidato.openalex_id}, h-index ${candidato.h_index})`,
+      )
+      await carregarRelatorio()
+    } catch (err: any) {
+      toast.error(`Erro ao vincular perfil OpenAlex: ${err?.message || 'Falha na gravação'}`)
+      throw err
+    }
+  }
+
+  const handleVincularScopus = async (
+    docenteId: number | string,
+    candidato: ScopusAutorCandidato,
+  ) => {
+    try {
+      await docentesService.update(docenteId, {
+        scopus_id: candidato.scopus_id,
+      })
+      toast.success(`Docente vinculado com sucesso ao Scopus (Scopus ID: ${candidato.scopus_id})`)
+      await carregarRelatorio()
+    } catch (err: any) {
+      toast.error(`Erro ao vincular perfil Scopus: ${err?.message || 'Falha na gravação'}`)
+      throw err
+    }
+  }
+
+  // Handler de salvamento do formulário de Docente
+  const handleSalvarDocente = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!docenteEditando) return
+    setSalvandoDocente(true)
+    try {
+      await docentesService.update(docenteEditando.id, formDocente)
+      toast.success('Docente atualizado com sucesso!')
+      setDialogoDocenteAberto(false)
+      await carregarRelatorio()
+    } catch (err: any) {
+      toast.error(`Erro ao salvar docente: ${err?.message || 'Falha na gravação'}`)
+    } finally {
+      setSalvandoDocente(false)
+    }
+  }
+
+  // Handler de salvamento do formulário de Discente
+  const handleSalvarDiscente = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!discenteEditandoId) return
+    setSalvandoDiscente(true)
+    try {
+      await discentesService.update(discenteEditandoId, formDiscente)
+      toast.success('Discente atualizado com sucesso!')
+      setDialogoDiscenteAberto(false)
+      await carregarRelatorio()
+    } catch (err: any) {
+      toast.error(`Erro ao salvar discente: ${err?.message || 'Falha na gravação'}`)
+    } finally {
+      setSalvandoDiscente(false)
+    }
+  }
 
   const { dadosPorGrupo, totalGeralCriticas, totalGeralAtencao, totalGeralLacunas } =
     useMemo(() => {
@@ -910,8 +1181,11 @@ export default function Lacunas({
                     <th scope="col" className="py-3 px-4 w-[140px]">
                       Grupo
                     </th>
-                    <th scope="col" className="py-3 px-4 w-[130px] text-right sm:text-left">
+                    <th scope="col" className="py-3 px-4 w-[130px] text-left">
                       Severidade
+                    </th>
+                    <th scope="col" className="py-3 px-4 w-[120px] text-right">
+                      Ação
                     </th>
                   </tr>
                 </thead>
@@ -973,7 +1247,7 @@ export default function Lacunas({
                         </td>
 
                         {/* Coluna Severidade */}
-                        <td className="py-3 px-4 text-right sm:text-left">
+                        <td className="py-3 px-4 text-left">
                           {isCritica ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-800 border border-red-200">
                               <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
@@ -986,6 +1260,27 @@ export default function Lacunas({
                             </span>
                           )}
                         </td>
+
+                        {/* Coluna Ação: Corrigir */}
+                        <td className="py-3 px-4 text-right">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={carregandoCorrecaoId === item.idRegistro}
+                            onClick={() => handleCorrigirLacuna(item)}
+                            className="h-7 px-2.5 text-xs gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary font-medium"
+                            title={`Corrigir pendência de ${item.nome}`}
+                            data-testid={`btn-corrigir-${item.regraId}-${item.idRegistro}`}
+                          >
+                            {carregandoCorrecaoId === item.idRegistro ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Wrench className="h-3.5 w-3.5" />
+                            )}
+                            <span>Corrigir</span>
+                          </Button>
+                        </td>
                       </tr>
                     )
                   })}
@@ -995,6 +1290,149 @@ export default function Lacunas({
           )}
         </div>
       </div>
+
+      {/* Diálogo de Vinculação Scopus / OpenAlex (Docentes) */}
+      <VincularOpenAlexDialog
+        open={dialogoVinculoAberto}
+        onOpenChange={setDialogoVinculoAberto}
+        docente={docenteParaVinculo}
+        abaInicial={abaInicialVinculo}
+        onVincular={handleVincularOpenAlex}
+        onVincularScopus={handleVincularScopus}
+        onSucesso={carregarRelatorio}
+      />
+
+      {/* Diálogo de Edição de Docente (ID Lattes, Bolsa CNPq, etc.) */}
+      <Dialog open={dialogoDocenteAberto} onOpenChange={setDialogoDocenteAberto}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>Corrigir Cadastro do Docente</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSalvarDocente} className="space-y-4 mt-2">
+            <div className="space-y-2">
+              <Label htmlFor="nomeDocente">
+                Nome Completo <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="nomeDocente"
+                placeholder="Ex: Prof. Dr. Carlos Alberto..."
+                value={formDocente.nome}
+                onChange={(e) => setFormDocente({ ...formDocente, nome: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="idLattes">ID Lattes (CNPq - 16 dígitos)</Label>
+              <Input
+                id="idLattes"
+                placeholder="Ex: 3104369029830651"
+                value={formDocente.id_lattes ?? ''}
+                maxLength={16}
+                onChange={(e) => setFormDocente({ ...formDocente, id_lattes: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="scopusId">Scopus Author ID</Label>
+                <Input
+                  id="scopusId"
+                  placeholder="Ex: 57201234567"
+                  value={formDocente.scopus_id ?? ''}
+                  onChange={(e) => setFormDocente({ ...formDocente, scopus_id: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="indiceH">Índice-H</Label>
+                <Input
+                  id="indiceH"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={formDocente.indice_h ?? 0}
+                  onChange={(e) =>
+                    setFormDocente({ ...formDocente, indice_h: Number(e.target.value) })
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bolsaCnpq">Bolsa de Produtividade CNPq</Label>
+              <Select
+                value={formDocente.bolsa_cnpq || '__none__'}
+                onValueChange={(v) =>
+                  setFormDocente({ ...formDocente, bolsa_cnpq: v === '__none__' ? '' : v })
+                }
+              >
+                <SelectTrigger id="bolsaCnpq">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Nenhuma Bolsa —</SelectItem>
+                  <SelectItem value="PQ-1A">PQ 1A</SelectItem>
+                  <SelectItem value="PQ-1B">PQ 1B</SelectItem>
+                  <SelectItem value="PQ-1C">PQ 1C</SelectItem>
+                  <SelectItem value="PQ-1D">PQ 1D</SelectItem>
+                  <SelectItem value="PQ-2">PQ 2</SelectItem>
+                  <SelectItem value="DT-1A">DT 1A</SelectItem>
+                  <SelectItem value="DT-1B">DT 1B</SelectItem>
+                  <SelectItem value="DT-2">DT 2</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between border border-slate-200 rounded-lg p-3 bg-slate-50/50">
+              <div className="space-y-0.5">
+                <Label htmlFor="jdp" className="cursor-pointer">
+                  Indicado como JDP?
+                </Label>
+                <p className="text-xs text-slate-500">
+                  Jovem Doutor Pesquisador (até 5 anos pós-doc)
+                </p>
+              </div>
+              <Switch
+                id="jdp"
+                checked={formDocente.jdp}
+                onCheckedChange={(c) => setFormDocente({ ...formDocente, jdp: c })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="licenca">Licença Saúde / Parental</Label>
+              <Input
+                id="licenca"
+                placeholder="Ex: Licença Maternidade (6 meses em 2024)"
+                value={formDocente.licenca ?? ''}
+                onChange={(e) => setFormDocente({ ...formDocente, licenca: e.target.value })}
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDialogoDocenteAberto(false)}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={salvandoDocente}>
+                {salvandoDocente ? 'Salvando...' : 'Salvar Correção'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de Edição de Discente (CPF, Ingresso, Status, Lattes, etc.) */}
+      <CrudFormDialog
+        open={dialogoDiscenteAberto}
+        onOpenChange={setDialogoDiscenteAberto}
+        editingId={discenteEditandoId !== null ? String(discenteEditandoId) : null}
+        fields={camposDiscente}
+        formData={formDiscente}
+        setFormData={setFormDiscente}
+        fieldOptions={{}}
+        onSubmit={handleSalvarDiscente}
+        submitting={salvandoDiscente}
+        entityName="Discente"
+        campoFocoInicial={campoFocoDiscente}
+      />
     </div>
   )
 }
