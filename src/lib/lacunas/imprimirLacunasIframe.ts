@@ -142,6 +142,7 @@ export function prepararLacunasParaImpressao(
   }
 
   // Apenas grupos que contêm itens (ou se o filtro for específico para um grupo)
+  // Ordenação das seções: primeiro grupo com mais lacunas críticas, depois os demais
   const gruposComItens = GRUPOS_VISUAIS.map((g) => {
     const list = gruposMap.get(g.id) || []
     const criticas = list.filter((i) => i.severidade === 'critica').length
@@ -154,7 +155,14 @@ export function prepararLacunasParaImpressao(
       criticas,
       atencao,
     }
-  }).filter((g) => g.itens.length > 0)
+  })
+    .filter((g) => g.itens.length > 0)
+    .sort((a, b) => {
+      if (b.criticas !== a.criticas) {
+        return b.criticas - a.criticas
+      }
+      return b.itens.length - a.itens.length
+    })
 
   return {
     itensFiltrados,
@@ -211,6 +219,7 @@ export function gerarHtmlRelatorioLacunas(
 
           return `
             <tr>
+              <td class="col-num">${idx + 1}</td>
               <td class="col-quem">
                 <span class="nome-quem font-bold">${escaparHtml(item.nome)}</span>
                 <span class="subtexto">(${escaparHtml(item.tabela)} #${item.idRegistro})</span>
@@ -242,9 +251,10 @@ export function gerarHtmlRelatorioLacunas(
           <table class="print-table">
             <thead>
               <tr>
-                <th style="width: 40%;">Quem</th>
+                <th style="width: 32px; text-align: right;">#</th>
+                <th style="width: 38%;">Quem</th>
                 <th style="width: 45%;">O que falta</th>
-                <th style="width: 15%; text-align: center;">Severidade</th>
+                <th style="width: 17%; text-align: center;">Severidade</th>
               </tr>
             </thead>
             <tbody>
@@ -313,24 +323,25 @@ export function gerarHtmlRelatorioLacunas(
     }
 
     .print-header-inst {
-      font-size: 8pt;
+      font-size: 8.5pt;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #334155;
+      letter-spacing: 0.06em;
+      color: #1e293b;
       margin: 0;
     }
 
     .print-header-title {
-      font-size: 15pt;
-      font-weight: 700;
+      font-size: 16pt;
+      font-weight: 800;
       color: #0f172a;
+      letter-spacing: -0.02em;
       margin: 4px 0 0 0;
     }
 
     .print-header-sub {
-      font-size: 8.5pt;
-      color: #475569;
+      font-size: 9pt;
+      color: #334155;
       margin: 3px 0 0 0;
     }
 
@@ -363,65 +374,68 @@ export function gerarHtmlRelatorioLacunas(
     }
 
     .metrica-card {
-      border: 1px solid #cbd5e1;
-      border-radius: 4px;
-      padding: 8px 12px;
+      border: 1.5px solid #94a3b8;
+      border-radius: 5px;
+      padding: 9px 12px;
       background: #f8fafc;
     }
 
     .metrica-card.critica {
-      border-color: #fca5a5;
+      border-color: #f87171;
       background: #fef2f2;
     }
 
     .metrica-card.atencao {
-      border-color: #fde68a;
+      border-color: #fbbf24;
       background: #fffbeb;
     }
 
     .metrica-titulo {
-      font-size: 7.5pt;
-      font-weight: 700;
+      font-size: 8pt;
+      font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: 0.03em;
-      color: #475569;
+      letter-spacing: 0.04em;
+      color: #1e293b;
       margin-bottom: 2px;
     }
 
     .metrica-card.critica .metrica-titulo {
-      color: #991b1b;
+      color: #7f1d1d;
     }
 
     .metrica-card.atencao .metrica-titulo {
-      color: #92400e;
+      color: #78350f;
     }
 
     .metrica-valor {
-      font-size: 16pt;
-      font-weight: 700;
+      font-size: 18pt;
+      font-weight: 800;
       color: #0f172a;
       line-height: 1.1;
+      font-variant-numeric: tabular-nums;
     }
 
     .metrica-card.critica .metrica-valor {
-      color: #dc2626;
+      color: #991b1b;
     }
 
     .metrica-card.atencao .metrica-valor {
-      color: #d97706;
+      color: #92400e;
     }
 
     .metrica-desc {
-      font-size: 7pt;
-      color: #64748b;
-      margin-top: 2px;
+      font-size: 7.5pt;
+      color: #334155;
+      margin-top: 3px;
+      font-weight: 500;
     }
 
     .filtros-aplicados-box {
-      font-size: 8pt;
-      color: #475569;
+      font-size: 8.5pt;
+      color: #1e293b;
       background: #f1f5f9;
-      padding: 6px 10px;
+      border: 1px solid #cbd5e1;
+      padding: 7px 12px;
       border-radius: 4px;
       margin-bottom: 18px;
       page-break-inside: avoid;
@@ -440,11 +454,11 @@ export function gerarHtmlRelatorioLacunas(
     }
 
     .print-section h2 {
-      font-size: 11pt;
-      font-weight: 700;
+      font-size: 12pt;
+      font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.04em;
-      border-bottom: 1px solid #94a3b8;
+      border-bottom: 2px solid #0f172a;
       padding-bottom: 4px;
       margin: 0 0 6px 0;
       color: #0f172a;
@@ -454,9 +468,10 @@ export function gerarHtmlRelatorioLacunas(
 
     .grupo-resumo-mini {
       display: flex;
-      gap: 16px;
-      font-size: 8pt;
-      color: #475569;
+      gap: 18px;
+      font-size: 8.5pt;
+      color: #334155;
+      font-variant-numeric: tabular-nums;
       margin-bottom: 8px;
     }
 
@@ -482,7 +497,7 @@ export function gerarHtmlRelatorioLacunas(
 
     table.print-table th,
     table.print-table td {
-      border: 1px solid #94a3b8;
+      border: 1px solid #64748b;
       padding: 6px 8px;
       text-align: left;
       font-size: 9pt;
@@ -493,16 +508,25 @@ export function gerarHtmlRelatorioLacunas(
     }
 
     table.print-table th {
-      background-color: #f1f5f9;
+      background-color: #e2e8f0;
       color: #0f172a;
-      font-weight: 700;
+      font-weight: 800;
       text-transform: uppercase;
       font-size: 8pt;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.04em;
+    }
+
+    .col-num {
+      width: 32px;
+      text-align: right;
+      color: #334155;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      padding-right: 8px;
     }
 
     .col-quem {
-      width: 40%;
+      width: 38%;
       word-break: break-word;
       overflow-wrap: break-word;
       white-space: normal;
@@ -516,7 +540,7 @@ export function gerarHtmlRelatorioLacunas(
     }
 
     .col-severidade {
-      width: 15%;
+      width: 17%;
       text-align: center;
     }
 
@@ -533,14 +557,14 @@ export function gerarHtmlRelatorioLacunas(
 
     .badge-critica {
       background-color: #fee2e2;
-      color: #991b1b;
-      border-color: #fca5a5;
+      color: #7f1d1d;
+      border-color: #f87171;
     }
 
     .badge-atencao {
       background-color: #fef3c7;
-      color: #92400e;
-      border-color: #fde68a;
+      color: #78350f;
+      border-color: #fbbf24;
     }
 
     .sem-registros {
@@ -553,7 +577,7 @@ export function gerarHtmlRelatorioLacunas(
     .font-bold { font-weight: 700; }
     .font-semibold { font-weight: 600; }
     .font-medium { font-weight: 500; }
-    .subtexto { font-size: 7.5pt; color: #64748b; margin-top: 2px; }
+    .subtexto { font-size: 7.8pt; color: #475569; margin-top: 2px; }
     .text-center { text-align: center; }
 
     .print-footer {

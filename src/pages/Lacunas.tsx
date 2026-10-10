@@ -31,6 +31,7 @@ import {
   Wrench,
   Loader2,
   Printer,
+  Download,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
@@ -666,6 +667,73 @@ export default function Lacunas({
     return Array.from(mapa.values())
   }, [todasLacunasIndividuais])
 
+  // Ação de Exportação CSV das Lacunas Filtradas
+  const handleExportarCsv = () => {
+    if (lacunasFiltradas.length === 0) {
+      toast.info('Não há lacunas a exportar com os filtros selecionados.')
+      return
+    }
+
+    try {
+      // Cabeçalho CSV
+      const colunas = [
+        'Quem',
+        'O que falta',
+        'Grupo',
+        'Severidade',
+        'Regra',
+        'Tabela',
+        'ID Registro',
+      ]
+
+      const escaparCsv = (valor: string | number | null | undefined): string => {
+        if (valor === null || valor === undefined) return '""'
+        const texto = String(valor).replace(/"/g, '""')
+        return `"${texto}"`
+      }
+
+      const linhas = lacunasFiltradas.map((item) => {
+        const severidadeRotulo = item.severidade === 'critica' ? 'Crítica' : 'Atenção'
+        const oQueFalta =
+          item.motivo && item.motivo !== item.regraDescricao
+            ? `${item.regraDescricao} — ${item.motivo}`
+            : item.regraDescricao
+
+        return [
+          escaparCsv(item.nome),
+          escaparCsv(oQueFalta),
+          escaparCsv(item.grupoVisualLabel),
+          escaparCsv(severidadeRotulo),
+          escaparCsv(item.regraId),
+          escaparCsv(item.tabela),
+          escaparCsv(item.idRegistro),
+        ].join(';')
+      })
+
+      // BOM UTF-8 (\uFEFF) para garantir correta acentuação no Excel
+      const csvConteudo = '\uFEFF' + [colunas.map(escaparCsv).join(';'), ...linhas].join('\r\n')
+      const blob = new Blob([csvConteudo], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+
+      // Nome do arquivo com padrão YYYY-MM-DD
+      const dataIso = new Date().toISOString().slice(0, 10)
+      const nomeArquivo = `lacunas-ppg-dcem-${dataIso}.csv`
+
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', nomeArquivo)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      toast.success(`Exportação CSV concluída (${lacunasFiltradas.length} lacunas).`)
+    } catch (err: any) {
+      console.error('Erro ao exportar CSV:', err)
+      toast.error('Não foi possível gerar a exportação CSV das lacunas.')
+    }
+  }
+
   // Aplicação dos filtros sobre as lacunas individuais
   const lacunasFiltradas = useMemo(() => {
     return todasLacunasIndividuais.filter((item) => {
@@ -734,6 +802,19 @@ export default function Lacunas({
               )}
             </span>
           )}
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleExportarCsv}
+            disabled={carregando || !relatorio || lacunasFiltradas.length === 0}
+            className="inline-flex items-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800"
+            title="Exportar lista de lacunas atualmente filtrada em formato CSV (compatível com Excel)"
+            data-testid="btn-exportar-csv-lacunas"
+          >
+            <Download className="h-4 w-4 text-slate-600" />
+            <span>Exportar CSV</span>
+          </Button>
 
           <Button
             type="button"

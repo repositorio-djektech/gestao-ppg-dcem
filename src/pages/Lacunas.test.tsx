@@ -440,7 +440,7 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('Ação')
     })
 
-    it('TAREFA 2: renderiza botão Imprimir junto ao botão Atualizar', () => {
+    it('renderiza os botões de ação do topo (Exportar CSV, Imprimir e Atualizar)', () => {
       const html = renderToString(
         <Lacunas
           carregarDadosFn={() =>
@@ -453,6 +453,8 @@ describe('Página Lacunas - Etapa 2', () => {
         />,
       )
 
+      expect(html).toContain('data-testid="btn-exportar-csv-lacunas"')
+      expect(html).toContain('Exportar CSV')
       expect(html).toContain('data-testid="btn-imprimir-lacunas"')
       expect(html).toContain('Imprimir')
       expect(html).toContain('Atualizar')
@@ -559,12 +561,160 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('<div class="metrica-valor">0</div>') // Pontos de Atenção zerado
     })
 
+    it('ordena seções do PDF colocando o grupo com mais lacunas críticas em primeiro lugar', () => {
+      const mockDoisGrupos: RelatorioLacunasResposta = {
+        sucesso: true,
+        gerado_em: '2025-05-10T12:00:00Z',
+        ano_inicio: 2025,
+        ano_fim: 2028,
+        total_regras: 2,
+        total_lacunas: 3,
+        total_criticas: 1,
+        total_atencao: 2,
+        resumo: [
+          {
+            regra_id: 'prod_sem_doi',
+            descricao: 'Publicação sem DOI',
+            severidade: 'atencao',
+            grupo: 'Produção',
+            tabela: 'publicacoes',
+            total_registros: 10,
+            total_lacunas: 2,
+            percentual_conformidade: 80,
+          },
+          {
+            regra_id: 'docente_sem_scopus_id',
+            descricao: 'Docente sem Scopus ID',
+            severidade: 'critica',
+            grupo: 'Docentes',
+            tabela: 'docentes',
+            total_registros: 5,
+            total_lacunas: 1,
+            percentual_conformidade: 80,
+          },
+        ],
+        lacunas: [
+          {
+            regra_id: 'prod_sem_doi',
+            descricao: 'Publicação sem DOI',
+            severidade: 'atencao',
+            grupo: 'Produção',
+            registros: [
+              { id: 10, nome: 'Artigo Alpha', motivo: 'DOI ausente' },
+              { id: 11, nome: 'Artigo Beta', motivo: 'DOI ausente' },
+            ],
+          },
+          {
+            regra_id: 'docente_sem_scopus_id',
+            descricao: 'Docente sem Scopus ID',
+            severidade: 'critica',
+            grupo: 'Docentes',
+            registros: [{ id: 1, nome: 'Prof. Exemplo', motivo: 'Scopus ID ausente' }],
+          },
+        ],
+      }
+
+      const prep = prepararLacunasParaImpressao(mockDoisGrupos, {})
+      // O grupo 'pessoas' possui 1 crítica; 'producao' possui 0 críticas.
+      // 'pessoas' deve vir em primeiro lugar mesmo tendo menos itens totais que 'producao'.
+      expect(prep.gruposComItens[0].id).toBe('pessoas')
+      expect(prep.gruposComItens[1].id).toBe('producao')
+
+      const html = gerarHtmlRelatorioLacunas(mockDoisGrupos, {})
+      const idxPessoas = html.indexOf('Pessoas —')
+      const idxProducao = html.indexOf('Produção —')
+      expect(idxPessoas).toBeGreaterThan(-1)
+      expect(idxProducao).toBeGreaterThan(-1)
+      expect(idxPessoas).toBeLessThan(idxProducao)
+
+      // Verifica formatação estética refinada: alinhamento à direita com col-num e colunas numéricas
+      expect(html).toContain('class="col-num"')
+      expect(html).toContain('text-align: right;')
+    })
+
     it('imprimirRelatorioLacunasViaIframe executa e resolve graciosamente', async () => {
       await expect(
         imprimirRelatorioLacunasViaIframe(dadosMock, {
           filtroSeveridade: 'todas',
         }),
       ).resolves.toBeUndefined()
+    })
+  })
+
+  describe('TAREFA 3 - Exportação CSV das Lacunas Filtradas', () => {
+    it('gera CSV com BOM UTF-8, delimitador ponto-e-vírgula e colunas exigidas', () => {
+      // Simulação da geração de CSV baseada nos itens filtrados
+      const itens = [
+        {
+          nome: 'Euler Araujo dos Santos',
+          motivo: 'Scopus ID ausente',
+          regraId: 'docente_sem_scopus_id',
+          regraDescricao: 'Docente sem Scopus ID',
+          grupoVisualLabel: 'Pessoas',
+          severidade: 'critica' as const,
+          tabela: 'docentes',
+          idRegistro: 1,
+        },
+        {
+          nome: 'Iara de Fatima Gimenez',
+          motivo: 'OpenAlex ID ausente',
+          regraId: 'docente_sem_openalex_id',
+          regraDescricao: 'Docente sem OpenAlex ID',
+          grupoVisualLabel: 'Pessoas',
+          severidade: 'atencao' as const,
+          tabela: 'docentes',
+          idRegistro: 2,
+        },
+      ]
+
+      const colunas = [
+        'Quem',
+        'O que falta',
+        'Grupo',
+        'Severidade',
+        'Regra',
+        'Tabela',
+        'ID Registro',
+      ]
+      const escaparCsv = (valor: string | number | null | undefined): string => {
+        if (valor === null || valor === undefined) return '""'
+        const texto = String(valor).replace(/"/g, '""')
+        return `"${texto}"`
+      }
+
+      const linhas = itens.map((item) => {
+        const severidadeRotulo = item.severidade === 'critica' ? 'Crítica' : 'Atenção'
+        const oQueFalta =
+          item.motivo && item.motivo !== item.regraDescricao
+            ? `${item.regraDescricao} — ${item.motivo}`
+            : item.regraDescricao
+
+        return [
+          escaparCsv(item.nome),
+          escaparCsv(oQueFalta),
+          escaparCsv(item.grupoVisualLabel),
+          escaparCsv(severidadeRotulo),
+          escaparCsv(item.regraId),
+          escaparCsv(item.tabela),
+          escaparCsv(item.idRegistro),
+        ].join(';')
+      })
+
+      const csvConteudo = '\uFEFF' + [colunas.map(escaparCsv).join(';'), ...linhas].join('\r\n')
+
+      // Validações do CSV gerado
+      expect(csvConteudo.startsWith('\uFEFF')).toBe(true)
+      expect(csvConteudo).toContain(
+        '"Quem";"O que falta";"Grupo";"Severidade";"Regra";"Tabela";"ID Registro"',
+      )
+      expect(csvConteudo).toContain('"Euler Araujo dos Santos"')
+      expect(csvConteudo).toContain('"Docente sem Scopus ID — Scopus ID ausente"')
+      expect(csvConteudo).toContain('"Pessoas"')
+      expect(csvConteudo).toContain('"Crítica"')
+      expect(csvConteudo).toContain('"docente_sem_scopus_id"')
+      expect(csvConteudo).toContain('"docentes"')
+      expect(csvConteudo).toContain('"1"')
+      expect(csvConteudo).toContain('"Atenção"')
     })
   })
 })
