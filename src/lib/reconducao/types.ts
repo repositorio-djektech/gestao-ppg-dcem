@@ -14,7 +14,9 @@ export interface CriterioEvidencia<T = any> {
 }
 
 export interface DetalhesPDQ {
-  np: number // Número de publicações JCR >= 1.0 no quadriênio
+  np: number // Número de publicações JCR >= 1.0 com coautoria confirmada no quadriênio
+  np_teto?: number // Todas as publicações JCR >= 1.0 do docente no quadriênio
+  np_pendente?: number // Publicações JCR >= 1.0 pendentes de confirmação de coautoria
   msc: number // Mestres formados no período (orientações mestrado concluídas)
   dsc: number // Doutores formados no período (orientações doutorado concluídas)
   titulacoes_total: number // msc + dsc
@@ -22,6 +24,17 @@ export interface DetalhesPDQ {
   pdq: number | null // np / (msc + dsc), null se precondição não atendida
   meta_atingida: boolean // pdq !== null && pdq >= 1.0
   observacao_simplificacao_coautoria: string
+}
+
+export interface PublicacaoComStatusCoautoria {
+  id: number
+  titulo: string
+  autores: string
+  periodico: string
+  ano: number
+  fator_impacto_jcr?: number | null
+  status_coautoria: 'confirmado' | 'pendente' | 'sem_coautoria'
+  coautores_programa_nomes?: string[]
 }
 
 export interface AvaliacaoDocenteReconducao {
@@ -39,6 +52,13 @@ export interface AvaliacaoDocenteReconducao {
 
   // Detalhamento do cálculo PDQ
   pdq_detalhes: DetalhesPDQ
+
+  // Métricas do NP
+  np_estrito?: number
+  np_teto?: number
+  publicacoes_confirmadas?: PublicacaoComStatusCoautoria[]
+  publicacoes_pendentes?: PublicacaoComStatusCoautoria[]
+  publicacoes_sem_coautoria?: PublicacaoComStatusCoautoria[]
 
   // Veredito e justificativas
   veredito: VereditoReconducao

@@ -175,6 +175,11 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
         },
       ]
 
+      const coautoresPrograma = [
+        { publicacao_id: 1, tipo: 'orientando', nome_citado: 'ALUNO, João' },
+        { publicacao_id: 2, tipo: 'egresso', nome_citado: 'COLEGA, Maria' },
+      ]
+
       const resultado = avaliarDocente({
         docente: docentePermanente,
         orientacoes,
@@ -182,6 +187,7 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
         projetos,
         participantesProjetos: [],
         publicacoes,
+        coautoresPrograma,
       })
 
       expect(resultado.criterio_i.atendido).toBe(true)
@@ -330,6 +336,11 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
         },
       ]
 
+      const coautoresPrograma = [
+        { publicacao_id: 1, tipo: 'orientando', nome_citado: 'Discente 1' },
+        { publicacao_id: 2, tipo: 'egresso', nome_citado: 'Egresso 1' },
+      ]
+
       const resultado = avaliarDocente({
         docente: docentePermanente,
         orientacoes,
@@ -337,6 +348,7 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
         projetos: [], // sem projetos
         participantesProjetos: [],
         publicacoes,
+        coautoresPrograma,
       })
 
       // Pré-condição do PDQ está atendida (MSc=1, DSc=1 -> 2 titulações, PDQ = 2/2 = 1.0)
@@ -371,7 +383,7 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
       expect(resultado.motivos[0]).toContain('exclusivamente a docentes da categoria permanente')
     })
 
-    it('filtra publicações pelo limiar de JCR >= 1.0 e pelo quadriênio 2025-2028', () => {
+    it('filtra publicações pelo limiar de JCR >= 1.0 e pelo quadriênio 2025-2028, expondo NP estrito e Teto', () => {
       const publicacoes: Publicacao[] = [
         {
           id: 1,
@@ -380,7 +392,7 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
           periodico: 'Journal',
           ano: 2025,
           doi: '',
-          fator_impacto_jcr: 0.85, // < 1.0 -> não conta
+          fator_impacto_jcr: 0.85, // < 1.0 -> não conta nem no teto
           justificativa: '',
           link_comprovacao: '',
           observacoes: '',
@@ -399,8 +411,8 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
         },
         {
           id: 3,
-          titulo: 'Artigo Válido',
-          autores: 'Silva, Exemplar',
+          titulo: 'Artigo Válido Confirmado',
+          autores: 'Silva, Exemplar; Fonseca, Jander',
           periodico: 'Journal',
           ano: 2027,
           doi: '',
@@ -408,6 +420,26 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
           justificativa: '',
           link_comprovacao: '',
           observacoes: '',
+        },
+        {
+          id: 4,
+          titulo: 'Artigo Válido Pendente de Confirmação',
+          autores: 'Silva, Exemplar; Outro, Autor',
+          periodico: 'Journal',
+          ano: 2026,
+          doi: '',
+          fator_impacto_jcr: 2.5,
+          justificativa: '',
+          link_comprovacao: '',
+          observacoes: '',
+        },
+      ]
+
+      const coautoresPrograma = [
+        {
+          publicacao_id: 3,
+          tipo: 'orientando',
+          nome_citado: 'JANDER LOPES FONSECA',
         },
       ]
 
@@ -418,11 +450,21 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
         projetos: [],
         participantesProjetos: [],
         publicacoes,
+        coautoresPrograma,
       })
 
+      // NP estrito = apenas publicação 3 confirmada (1)
       expect(resultado.pdq_detalhes.np).toBe(1)
-      expect(resultado.criterio_iv.itens).toHaveLength(1)
-      expect(resultado.criterio_iv.itens?.[0]?.id).toBe(3)
+      expect(resultado.np_estrito).toBe(1)
+      // NP Teto = publicações 3 e 4 (2)
+      expect(resultado.np_teto).toBe(2)
+      expect(resultado.pdq_detalhes.np_teto).toBe(2)
+      expect(resultado.pdq_detalhes.np_pendente).toBe(1)
+
+      expect(resultado.publicacoes_confirmadas).toHaveLength(1)
+      expect(resultado.publicacoes_confirmadas?.[0]?.id).toBe(3)
+      expect(resultado.publicacoes_pendentes).toHaveLength(1)
+      expect(resultado.publicacoes_pendentes?.[0]?.id).toBe(4)
     })
 
     it('aceita participante via projetos_participantes para o Critério III', () => {

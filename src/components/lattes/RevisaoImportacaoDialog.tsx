@@ -129,6 +129,30 @@ export function RevisaoImportacaoDialog({
   // Fator de Impacto JCR editável por publicação no diálogo de revisão
   const [jcrPorPublicacao, setJcrPorPublicacao] = useState<Record<string, number | null>>({})
 
+  // Discentes e Egressos para detecção de coautoria na revisão Lattes
+  const [discentesRevisao, setDiscentesRevisao] = useState<
+    Array<{ id: number; nome: string; status: any }>
+  >([])
+  const [egressosRevisao, setEgressosRevisao] = useState<Array<{ id: number; nome: string }>>([])
+
+  React.useEffect(() => {
+    // Carrega discentes e egressos cadastrados para badge de coautoria
+    const carregarPessoas = async () => {
+      try {
+        const client = supabaseClient || (await import('@/lib/supabase/client')).supabase
+        const [discRes, egRes] = await Promise.all([
+          client.from('discentes').select('id, nome, status'),
+          client.from('egressos').select('id, nome'),
+        ])
+        if (discRes.data) setDiscentesRevisao(discRes.data)
+        if (egRes.data) setEgressosRevisao(egRes.data)
+      } catch (e) {
+        console.error('Erro ao carregar discentes/egressos para revisão:', e)
+      }
+    }
+    carregarPessoas()
+  }, [supabaseClient])
+
   // Estados de gravação
   const [gravando, setGravando] = useState(false)
   const [relatorioGravacao, setRelatorioGravacao] = useState<RelatorioGravacaoLattes | null>(null)
@@ -627,6 +651,8 @@ export function RevisaoImportacaoDialog({
                                 jcrPorPublicacao,
                                 setJcrPorPublicacao,
                                 gravando,
+                                discentesRevisao,
+                                egressosRevisao,
                               })}
                             </TableBody>
                           </Table>
@@ -950,6 +976,8 @@ interface OpcoesLinhasTabela {
   jcrPorPublicacao?: Record<string, number | null>
   setJcrPorPublicacao?: React.Dispatch<React.SetStateAction<Record<string, number | null>>>
   gravando?: boolean
+  discentesRevisao?: Array<{ id: number; nome: string; status: any }>
+  egressosRevisao?: Array<{ id: number; nome: string }>
 }
 
 function renderLinhasTabela(tabelaId: TabelaAlvoId, itens: any[], opcoes: OpcoesLinhasTabela = {}) {
@@ -984,6 +1012,24 @@ function renderLinhasTabela(tabelaId: TabelaAlvoId, itens: any[], opcoes: Opcoes
         const doiStr = item.doi ? String(item.doi).trim() : ''
         const autoresStr = textoSeguro(item.autores)
         const valorJcrAtual = jcrPorPublicacao[key] ?? item.fator_impacto_jcr ?? ''
+        const temCoautorSugerido =
+          opcoes.discentesRevisao && opcoes.discentesRevisao.length > 0 && autoresStr !== '—'
+            ? (() => {
+                const normAutores = autoresStr
+                  .toLowerCase()
+                  .normalize('NFD')
+                  .replace(/[\u0300-\u036f]/g, '')
+                return opcoes.discentesRevisao.some((d) => {
+                  const priNome = d.nome
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .split(' ')[0]
+                  return priNome.length > 3 && normAutores.includes(priNome)
+                })
+              })()
+            : false
+
         return (
           <TableRow key={key}>
             <TableCell>
@@ -1013,7 +1059,12 @@ function renderLinhasTabela(tabelaId: TabelaAlvoId, itens: any[], opcoes: Opcoes
             </TableCell>
             <TableCell className="text-slate-600 text-xs">{textoSeguro(item.veiculo)}</TableCell>
             <TableCell className="text-slate-500 text-xs truncate max-w-xs" title={autoresStr}>
-              {autoresStr}
+              <span>{autoresStr}</span>
+              {temCoautorSugerido && (
+                <span className="inline-block ml-1.5 text-[10px] font-medium text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">
+                  Possível coautor P²CEM
+                </span>
+              )}
             </TableCell>
             <TableCell>
               <Input

@@ -17,7 +17,7 @@ import type {
 } from './types'
 
 export const NOTA_SIMPLIFICACAO_NP =
-  'O vínculo direto publicação↔orientando/egresso ainda não existe no modelo relacional do banco. Para a Etapa C, NP considera as publicações do docente no período com fator_impacto_jcr >= 1.0 (base para o NP). Estrutura preparada para refinamento futuro de coautoria com orientandos/egressos.'
+  'O NP estrito considera apenas publicações com fator de impacto JCR >= 1.0 com coautoria confirmada com orientandos ou egressos do P²CEM. Publicações ainda não confirmadas são apresentadas como potenciais no NP TETO para revisão pelo colegiado.'
 
 export const NOTA_DISCIPLINAS_TEMPORAIS =
   'Quando a disciplina vinculada ao docente possui campo de ano/período (ano_semestre), valida-se a pertinência ao período (2025–2028). Caso o campo não contenha ano identificável, a disciplina vinculada é aceita como evidência de docência no programa e informada no detalhe.'
@@ -185,13 +185,21 @@ export function projetoNoPeriodo(
  * PDQ = NP / (MSc + DSc)
  * Pré-condição: (MSc + DSc) >= 2
  */
-export function calcularPDQ(np: number, msc: number, dsc: number): DetalhesPDQ {
+export function calcularPDQ(
+  np: number,
+  msc: number,
+  dsc: number,
+  np_teto?: number,
+  np_pendente?: number,
+): DetalhesPDQ {
   const titulacoes_total = msc + dsc
   const precondicao_atendida = titulacoes_total >= 2
 
   if (!precondicao_atendida) {
     return {
       np,
+      np_teto: np_teto ?? np,
+      np_pendente: np_pendente ?? 0,
       msc,
       dsc,
       titulacoes_total,
@@ -207,6 +215,8 @@ export function calcularPDQ(np: number, msc: number, dsc: number): DetalhesPDQ {
 
   return {
     np,
+    np_teto: np_teto ?? np,
+    np_pendente: np_pendente ?? 0,
     msc,
     dsc,
     titulacoes_total,
@@ -224,6 +234,11 @@ export interface DadosParaAvaliacao {
   projetos: ProjetoPesquisa[]
   participantesProjetos: ProjetoParticipante[]
   publicacoes: Publicacao[]
+  coautoresPrograma?: Array<{
+    publicacao_id: number
+    tipo: string
+    nome_citado?: string
+  }>
   anoInicio?: number
   anoFim?: number
 }
@@ -347,7 +362,29 @@ export function avaliarDocente(params: DadosParaAvaliacao): AvaliacaoDocenteReco
   })
   const dsc = dscConcluidos.length
 
-  // NP: publicações do docente no período com fator_impacto_jcr >= 1.0
+  // Mapa de confirmações de coautoria por publicação
+  // Tipos: 'orientando' ou 'egresso' (confirmado com coautoria) | 'sem_coautoria' (marcado expressamente sem)
+  const coautores = params.coautoresPrograma || []
+  const mapaCoautoria = new Map<
+    number,
+    { temCoautoria: boolean; semCoautoria: boolean; nomes: string[] }
+  >()
+  for (const c of coautores) {
+    const entry = mapaCoautoria.get(c.publicacao_id) || {
+      temCoautoria: false,
+      semCoautoria: false,
+      nomes: [],
+    }
+    if (c.tipo === 'orientando' || c.tipo === 'egresso') {
+      entry.temCoautoria = true
+      if (c.nome_citado) entry.nomes.push(c.nome_citado)
+    } else if (c.tipo === 'sem_coautoria') {
+      entry.semCoautoria = true
+    }
+    mapaCoautoria.set(c.publicacao_id, entry)
+  }
+
+  // Todas as publicações JCR >= 1.0 do docente no período (NP TETO)
   const publicacoesDocenteNoPeriodo = publicacoes.filter((pub) => {
     const noPeriodo = anoNoPeriodo(pub.ano, anoInicio, anoFim)
     if (!noPeriodo) return false
@@ -363,25 +400,58 @@ export function avaliarDocente(params: DadosParaAvaliacao): AvaliacaoDocenteReco
         : null
     return jcr !== null && !isNaN(jcr) && jcr >= 1.0
   })
-  const np = publicacoesDocenteNoPeriodo.length
 
-  const pdq_detalhes = calcularPDQ(np, msc, dsc)
+  // Classifica as publicações segundo o status de coautoria:
+  // - confirmadas: possuem registro de coautoria do programa ('orientando' ou 'egresso')
+  // - sem_coautoria: expressamente marcadas como 'sem_coautoria'
+  // - pendentes: sem registro de confirmação ainda
+  const confirmadasList: any[] = []
+  const pendentesList: any[] = []
+  const semCoautoriaList: any[] = []
+
+  for (const pub of publicacoesDocenteNoPeriodo) {
+    const st = mapaCoautoria.get(pub.id)
+    if (st?.temCoautoria) {
+      confirmadasList.push({
+        ...pub,
+        status_coautoria: 'confirmado',
+        coautores_programa_nomes: st.nomes,
+      })
+    } else if (st?.semCoautoria) {
+      semCoautoriaList.push({
+        ...pub,
+        status_coautoria: 'sem_coautoria',
+      })
+    } else {
+      pendentesList.push({
+        ...pub,
+        status_coautoria: 'pendente',
+      })
+    }
+  }
+
+  // Regra estrita: conta apenas as confirmadas
+  const np = confirmadasList.length
+  const np_teto = publicacoesDocenteNoPeriodo.length
+  const np_pendente = pendentesList.length
+
+  const pdq_detalhes = calcularPDQ(np, msc, dsc, np_teto, np_pendente)
 
   const critIV_atendido = pdq_detalhes.meta_atingida
   let detalheCritIV = ''
   if (!pdq_detalhes.precondicao_atendida) {
     detalheCritIV = `Não atingiu o mínimo de 2 titulações concluídas no período (MSc + DSc = ${pdq_detalhes.titulacoes_total}). PDQ indefinido/insuficiente.`
   } else if (pdq_detalhes.meta_atingida) {
-    detalheCritIV = `PDQ ${pdq_detalhes.pdq} atinge a meta mínima (>= 1.0). NP=${np}, MSc=${msc}, DSc=${dsc}.`
+    detalheCritIV = `PDQ ${pdq_detalhes.pdq} atinge a meta mínima (>= 1.0). NP=${np} confirmada(s) (teto: ${np_teto}, pendentes: ${np_pendente}), MSc=${msc}, DSc=${dsc}.`
   } else {
-    detalheCritIV = `PDQ ${pdq_detalhes.pdq} abaixo da meta mínima (>= 1.0). NP=${np}, MSc=${msc}, DSc=${dsc}.`
+    detalheCritIV = `PDQ ${pdq_detalhes.pdq} abaixo da meta mínima (>= 1.0). NP=${np} confirmada(s) (teto: ${np_teto}, pendentes: ${np_pendente}), MSc=${msc}, DSc=${dsc}.`
   }
 
   const criterio_iv = {
     atendido: critIV_atendido,
     quantidade: np,
     detalhe: detalheCritIV,
-    itens: publicacoesDocenteNoPeriodo,
+    itens: confirmadasList,
   }
 
   // --------------------------------------------------------------------------
@@ -448,6 +518,11 @@ export function avaliarDocente(params: DadosParaAvaliacao): AvaliacaoDocenteReco
     criterio_iii,
     criterio_iv,
     pdq_detalhes,
+    np_estrito: np,
+    np_teto,
+    publicacoes_confirmadas: confirmadasList,
+    publicacoes_pendentes: pendentesList,
+    publicacoes_sem_coautoria: semCoautoriaList,
     veredito,
     motivos,
   }
@@ -463,6 +538,11 @@ export function consolidarAvaliacaoReconducao(params: {
   projetos: ProjetoPesquisa[]
   participantesProjetos: ProjetoParticipante[]
   publicacoes: Publicacao[]
+  coautoresPrograma?: Array<{
+    publicacao_id: number
+    tipo: string
+    nome_citado?: string
+  }>
   anoInicio?: number
   anoFim?: number
 }): RelatorioReconducaoResposta {
@@ -473,6 +553,7 @@ export function consolidarAvaliacaoReconducao(params: {
     projetos,
     participantesProjetos,
     publicacoes,
+    coautoresPrograma = [],
     anoInicio = ANO_INICIO,
     anoFim = ANO_FIM,
   } = params
@@ -485,6 +566,7 @@ export function consolidarAvaliacaoReconducao(params: {
       projetos,
       participantesProjetos,
       publicacoes,
+      coautoresPrograma,
       anoInicio,
       anoFim,
     }),

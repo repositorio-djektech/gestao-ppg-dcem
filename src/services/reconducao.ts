@@ -79,6 +79,7 @@ export async function obterAvaliacaoReconducao(
       projetosRes,
       participantesRes,
       publicacoesRes,
+      coautoresRes,
     ] = await Promise.all([
       supabase
         .from('docentes')
@@ -98,6 +99,9 @@ export async function obterAvaliacaoReconducao(
         .from('publicacoes')
         .select('id, titulo, autores, periodico, ano, fator_impacto_jcr')
         .order('ano', { ascending: false }),
+      (supabase.from as any)('publicacoes_coautores_programa').select(
+        'id, publicacao_id, discente_id, egresso_id, tipo, nome_citado, grau_confianca',
+      ),
     ])
 
     const erroEncontrado = [
@@ -107,6 +111,7 @@ export async function obterAvaliacaoReconducao(
       projetosRes.error,
       participantesRes.error,
       publicacoesRes.error,
+      coautoresRes.error,
     ].find(Boolean)
 
     if (erroEncontrado) {
@@ -123,6 +128,7 @@ export async function obterAvaliacaoReconducao(
       projetos: (projetosRes.data || []) as unknown as ProjetoPesquisa[],
       participantesProjetos: (participantesRes.data || []) as unknown as ProjetoParticipante[],
       publicacoes: (publicacoesRes.data || []) as unknown as Publicacao[],
+      coautoresPrograma: (coautoresRes.data || []) as any[],
       anoInicio,
       anoFim,
     })

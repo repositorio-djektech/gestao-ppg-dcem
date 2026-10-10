@@ -1,9 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCrudData } from '@/hooks/use-crud-data'
 import { publicacoesService } from '@/services/publicacoes'
-import type { Publicacao } from '@/types/database'
+import { discentesService } from '@/services/discentes'
+import { egressosService } from '@/services/egressos'
+import { coautoresProgramaService } from '@/services/coautores-programa'
+import { SeletorCoautoria } from '@/components/publicacoes/SeletorCoautoria'
+import type { Publicacao, Discente, Egresso, PublicacaoCoautorPrograma } from '@/types/database'
 import { useAuth } from '@/hooks/use-auth'
+import { Badge } from '@/components/ui/badge'
 import {
   Table,
   TableBody,
@@ -76,6 +81,30 @@ export default function Publicacoes() {
   const [formData, setFormData] = useState<Omit<Publicacao, 'id'>>(emptyForm)
   const [idParaExcluir, setIdParaExcluir] = useState<number | string | null>(null)
 
+  // Discentes e Egressos para coautoria
+  const [discentesLista, setDiscentesLista] = useState<Discente[]>([])
+  const [egressosLista, setEgressosLista] = useState<Egresso[]>([])
+  const [todosCoautores, setTodosCoautores] = useState<PublicacaoCoautorPrograma[]>([])
+
+  const carregarRelacionados = async () => {
+    try {
+      const [disc, eg, coaut] = await Promise.all([
+        discentesService.list(),
+        egressosService.list(),
+        coautoresProgramaService.listarTodos(),
+      ])
+      setDiscentesLista(disc)
+      setEgressosLista(eg)
+      setTodosCoautores(coaut)
+    } catch (err) {
+      console.error('Erro ao carregar dados para coautoria:', err)
+    }
+  }
+
+  useEffect(() => {
+    carregarRelacionados()
+  }, [])
+
   const canEdit = profile?.role === 'admin' || profile?.role === 'editor'
   const canDelete = profile?.role === 'admin'
   const PER_PAGE = 8
@@ -112,9 +141,13 @@ export default function Publicacoes() {
         await update(editingId, formData)
         toast.success('Publicação atualizada')
       } else {
-        await create(formData)
+        const criada = (await create(formData)) as any
         toast.success('Publicação registrada')
+        if (criada && criada.id) {
+          setEditingId(criada.id)
+        }
       }
+      await carregarRelacionados()
       setIsDialogOpen(false)
     } catch {
       toast.error('Erro ao salvar')
@@ -316,6 +349,20 @@ export default function Publicacoes() {
                       onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
                     />
                   </div>
+
+                  {/* Seção de Coautoria com Orientandos/Egressos do P²CEM */}
+                  <div className="pt-2">
+                    <SeletorCoautoria
+                      publicacaoId={editingId}
+                      autoresTexto={formData.autores}
+                      fatorImpactoJcr={formData.fator_impacto_jcr}
+                      discentes={discentesLista}
+                      egressos={egressosLista}
+                      usuarioNome={profile?.name || profile?.email || 'Colegiado'}
+                      canEdit={canEdit}
+                      onCoautoriaAtualizada={carregarRelacionados}
+                    />
+                  </div>
                   <div className="flex justify-end gap-3 pt-4">
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Cancelar
@@ -344,6 +391,7 @@ export default function Publicacoes() {
                 <TableHead className="font-semibold text-slate-700">
                   Fator de Impacto (JCR)
                 </TableHead>
+                <TableHead className="font-semibold text-slate-700">Coautoria P²CEM</TableHead>
                 <TableHead className="font-semibold text-slate-700">DOI</TableHead>
                 <TableHead className="w-[18%] font-semibold text-slate-700">Impacto</TableHead>
                 {canEdit && (
@@ -375,6 +423,45 @@ export default function Publicacoes() {
                       {p.fator_impacto_jcr !== null && p.fator_impacto_jcr !== undefined
                         ? Number(p.fator_impacto_jcr).toFixed(3)
                         : '—'}
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const coauts = todosCoautores.filter((c) => c.publicacao_id === p.id)
+                        const semCoaut = coauts.some((c) => c.tipo === 'sem_coautoria')
+                        const confirmados = coauts.filter((c) => c.tipo !== 'sem_coautoria')
+
+                        if (confirmados.length > 0) {
+                          return (
+                            <Badge className="bg-emerald-600 text-white text-[11px] hover:bg-emerald-700">
+                              Confirmada ({confirmados.length})
+                            </Badge>
+                          )
+                        }
+                        if (semCoaut) {
+                          return (
+                            <Badge
+                              variant="outline"
+                              className="text-slate-500 text-[11px] bg-slate-100"
+                            >
+                              Sem coautoria
+                            </Badge>
+                          )
+                        }
+                        const isJcr =
+                          p.fator_impacto_jcr !== null &&
+                          p.fator_impacto_jcr !== undefined &&
+                          Number(p.fator_impacto_jcr) >= 1.0
+                        return isJcr ? (
+                          <Badge
+                            variant="outline"
+                            className="text-amber-700 border-amber-300 bg-amber-50 text-[11px]"
+                          >
+                            Pendente
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )
+                      })()}
                     </TableCell>
                     <TableCell className="font-mono text-sm text-primary hover:underline cursor-pointer">
                       {p.doi}

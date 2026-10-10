@@ -183,3 +183,18 @@ export type Premicao = {
 }
 
 export type Premiacao = Premicao
+
+export type PublicacaoCoautorProgramaTipo = 'orientando' | 'egresso' | 'sem_coautoria'
+
+export type PublicacaoCoautorPrograma = {
+  id: number
+  publicacao_id: number
+  discente_id?: number | null
+  egresso_id?: number | null
+  tipo: PublicacaoCoautorProgramaTipo
+  nome_citado: string
+  grau_confianca?: number | null
+  confirmado_por?: string | null
+  confirmado_em: string
+  created_at: string
+}

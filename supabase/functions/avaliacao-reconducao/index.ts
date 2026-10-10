@@ -7,7 +7,7 @@ export const ANO_INICIO = 2025
 export const ANO_FIM = 2028
 
 export const NOTA_SIMPLIFICACAO_NP =
-  'O vínculo direto publicação↔orientando/egresso ainda não existe no modelo relacional do banco. Para a Etapa C, NP considera as publicações do docente no período com fator_impacto_jcr >= 1.0 (base para o NP). Estrutura preparada para refinamento futuro de coautoria com orientandos/egressos.'
+  'O NP estrito considera apenas publicações com fator de impacto JCR >= 1.0 com coautoria confirmada com orientandos ou egressos do P²CEM. Publicações ainda não confirmadas são apresentadas como potenciais no NP TETO para revisão pelo colegiado.'
 
 export const NOTA_DISCIPLINAS_TEMPORAIS =
   'Quando a disciplina vinculada ao docente possui campo de ano/período (ano_semestre), valida-se a pertinência ao período (2025–2028). Caso o campo não contenha ano identificável, a disciplina vinculada é aceita como evidência de docência no programa e informada no detalhe.'
@@ -100,13 +100,21 @@ export function projetoNoPeriodo(proj: any, inicio = ANO_INICIO, fim = ANO_FIM):
   return true
 }
 
-export function calcularPDQ(np: number, msc: number, dsc: number) {
+export function calcularPDQ(
+  np: number,
+  msc: number,
+  dsc: number,
+  np_teto?: number,
+  np_pendente?: number,
+) {
   const titulacoes_total = msc + dsc
   const precondicao_atendida = titulacoes_total >= 2
 
   if (!precondicao_atendida) {
     return {
       np,
+      np_teto: np_teto ?? np,
+      np_pendente: np_pendente ?? 0,
       msc,
       dsc,
       titulacoes_total,
@@ -122,6 +130,8 @@ export function calcularPDQ(np: number, msc: number, dsc: number) {
 
   return {
     np,
+    np_teto: np_teto ?? np,
+    np_pendente: np_pendente ?? 0,
     msc,
     dsc,
     titulacoes_total,
@@ -139,6 +149,7 @@ export function avaliarDocenteLogica(params: {
   projetos: any[]
   participantesProjetos: any[]
   publicacoes: any[]
+  coautoresPrograma?: any[]
   anoInicio?: number
   anoFim?: number
 }) {
@@ -149,6 +160,7 @@ export function avaliarDocenteLogica(params: {
     projetos,
     participantesProjetos,
     publicacoes,
+    coautoresPrograma = [],
     anoInicio = ANO_INICIO,
     anoFim = ANO_FIM,
   } = params
@@ -243,6 +255,25 @@ export function avaliarDocenteLogica(params: {
   })
   const dsc = dscConcluidos.length
 
+  const mapaCoautoria = new Map<
+    number,
+    { temCoautoria: boolean; semCoautoria: boolean; nomes: string[] }
+  >()
+  for (const c of coautoresPrograma) {
+    const entry = mapaCoautoria.get(c.publicacao_id) || {
+      temCoautoria: false,
+      semCoautoria: false,
+      nomes: [],
+    }
+    if (c.tipo === 'orientando' || c.tipo === 'egresso') {
+      entry.temCoautoria = true
+      if (c.nome_citado) entry.nomes.push(c.nome_citado)
+    } else if (c.tipo === 'sem_coautoria') {
+      entry.semCoautoria = true
+    }
+    mapaCoautoria.set(c.publicacao_id, entry)
+  }
+
   const publicacoesDocenteNoPeriodo = publicacoes.filter((pub) => {
     if (!anoNoPeriodo(pub.ano, anoInicio, anoFim)) return false
     if (!textoContemDocente(pub.autores, termosNome)) return false
@@ -252,24 +283,53 @@ export function avaliarDocenteLogica(params: {
         : null
     return jcr !== null && !isNaN(jcr) && jcr >= 1.0
   })
-  const np = publicacoesDocenteNoPeriodo.length
 
-  const pdq_detalhes = calcularPDQ(np, msc, dsc)
+  const confirmadasList: any[] = []
+  const pendentesList: any[] = []
+  const semCoautoriaList: any[] = []
+
+  for (const pub of publicacoesDocenteNoPeriodo) {
+    const st = mapaCoautoria.get(pub.id)
+    if (st?.temCoautoria) {
+      confirmadasList.push({
+        ...pub,
+        status_coautoria: 'confirmado',
+        coautores_programa_nomes: st.nomes,
+      })
+    } else if (st?.semCoautoria) {
+      semCoautoriaList.push({
+        ...pub,
+        status_coautoria: 'sem_coautoria',
+      })
+    } else {
+      pendentesList.push({
+        ...pub,
+        status_coautoria: 'pendente',
+      })
+    }
+  }
+
+  const np = confirmadasList.length
+  const np_teto = publicacoesDocenteNoPeriodo.length
+  const np_pendente = pendentesList.length
+
+  const pdq_detalhes = calcularPDQ(np, msc, dsc, np_teto, np_pendente)
   const critIV_atendido = pdq_detalhes.meta_atingida
 
   let detalheCritIV = ''
   if (!pdq_detalhes.precondicao_atendida) {
     detalheCritIV = `Não atingiu o mínimo de 2 titulações concluídas no período (MSc + DSc = ${pdq_detalhes.titulacoes_total}). PDQ indefinido/insuficiente.`
   } else if (pdq_detalhes.meta_atingida) {
-    detalheCritIV = `PDQ ${pdq_detalhes.pdq} atinge a meta mínima (>= 1.0). NP=${np}, MSc=${msc}, DSc=${dsc}.`
+    detalheCritIV = `PDQ ${pdq_detalhes.pdq} atinge a meta mínima (>= 1.0). NP=${np} confirmada(s) (teto: ${np_teto}, pendentes: ${np_pendente}), MSc=${msc}, DSc=${dsc}.`
   } else {
-    detalheCritIV = `PDQ ${pdq_detalhes.pdq} abaixo da meta mínima (>= 1.0). NP=${np}, MSc=${msc}, DSc=${dsc}.`
+    detalheCritIV = `PDQ ${pdq_detalhes.pdq} abaixo da meta mínima (>= 1.0). NP=${np} confirmada(s) (teto: ${np_teto}, pendentes: ${np_pendente}), MSc=${msc}, DSc=${dsc}.`
   }
 
   const criterio_iv = {
     atendido: critIV_atendido,
     quantidade: np,
     detalhe: detalheCritIV,
+    itens: confirmadasList,
   }
 
   // Motivos e Veredito
@@ -331,6 +391,11 @@ export function avaliarDocenteLogica(params: {
     criterio_iii,
     criterio_iv,
     pdq_detalhes,
+    np_estrito: np,
+    np_teto,
+    publicacoes_confirmadas: confirmadasList,
+    publicacoes_pendentes: pendentesList,
+    publicacoes_sem_coautoria: semCoautoriaList,
     veredito,
     motivos,
   }
@@ -376,6 +441,7 @@ Deno.serve(async (req: Request) => {
       projetosRes,
       participantesRes,
       publicacoesRes,
+      coautoresRes,
     ] = await Promise.all([
       supabase
         .from('docentes')
@@ -395,6 +461,9 @@ Deno.serve(async (req: Request) => {
         .from('publicacoes')
         .select('id, titulo, autores, periodico, ano, fator_impacto_jcr')
         .order('ano', { ascending: false }),
+      supabase
+        .from('publicacoes_coautores_programa')
+        .select('id, publicacao_id, discente_id, egresso_id, tipo, nome_citado, grau_confianca'),
     ])
 
     const erros = [
@@ -404,6 +473,7 @@ Deno.serve(async (req: Request) => {
       projetosRes.error,
       participantesRes.error,
       publicacoesRes.error,
+      coautoresRes.error,
     ].filter(Boolean)
 
     if (erros.length > 0) {
@@ -426,6 +496,7 @@ Deno.serve(async (req: Request) => {
     const projetos = projetosRes.data || []
     const participantesProjetos = participantesRes.data || []
     const publicacoes = publicacoesRes.data || []
+    const coautoresPrograma = coautoresRes.data || []
 
     const avaliacoes = docentes.map((docente: any) =>
       avaliarDocenteLogica({
@@ -435,6 +506,7 @@ Deno.serve(async (req: Request) => {
         projetos,
         participantesProjetos,
         publicacoes,
+        coautoresPrograma,
         anoInicio: ANO_INICIO,
         anoFim: ANO_FIM,
       }),
