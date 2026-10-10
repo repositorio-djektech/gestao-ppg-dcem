@@ -14,18 +14,11 @@ vi.mock('@/lib/supabase/client', () => ({
 }))
 
 describe('Dashboard — Card de Status Lacunas de Dados', () => {
-  it('renderiza o card de Lacunas apontando para /lacunas com estado crítico em destaque vermelho', () => {
+  it('renderiza o card no Dashboard APENAS quando há pendências críticas (severidade crítica > 0)', () => {
     const mockLacunasCriticas: ResultadoRelatorioLacunas = {
       sucesso: true,
       dados: {
-        sucesso: true,
         gerado_em: '2025-05-10T12:00:00Z',
-        ano_inicio: 2025,
-        ano_fim: 2028,
-        total_regras: 3,
-        total_lacunas: 4,
-        total_criticas: 3,
-        total_atencao: 1,
         resumo: [
           {
             regra_id: 'docente_sem_scopus_id',
@@ -35,7 +28,6 @@ describe('Dashboard — Card de Status Lacunas de Dados', () => {
             tabela: 'docentes',
             total_registros: 10,
             total_lacunas: 3,
-            percentual_conformidade: 70,
           },
           {
             regra_id: 'docente_sem_openalex_id',
@@ -45,7 +37,6 @@ describe('Dashboard — Card de Status Lacunas de Dados', () => {
             tabela: 'docentes',
             total_registros: 10,
             total_lacunas: 1,
-            percentual_conformidade: 90,
           },
         ],
         lacunas: [],
@@ -60,36 +51,28 @@ describe('Dashboard — Card de Status Lacunas de Dados', () => {
     )
 
     expect(html).toContain('data-testid="card-status-lacunas"')
-    expect(html).toContain('href="/lacunas"')
-    expect(html).toContain('Lacunas de Dados')
+    expect(html).toContain('Pendências de Dados')
     expect(html).toContain('border-red-300')
-    expect(html).toContain('4 pendências')
     expect(html).toContain('3 críticas')
-    expect(html).toContain('exigem atenção prioritária')
+    expect(html).toContain('3 pendências críticas de dados')
+    expect(html).toContain('Revise e preencha os dados prioritários')
+    expect(html).toContain('Clique para revisar no Relatório de Lacunas')
   })
 
-  it('renderiza o card em destaque verde/positivo quando não houver lacunas críticas', () => {
+  it('NÃO renderiza o card quando não houver pendências críticas (críticas zeradas)', () => {
     const mockLacunasZeradas: ResultadoRelatorioLacunas = {
       sucesso: true,
       dados: {
-        sucesso: true,
         gerado_em: '2025-05-10T12:00:00Z',
-        ano_inicio: 2025,
-        ano_fim: 2028,
-        total_regras: 1,
-        total_lacunas: 0,
-        total_criticas: 0,
-        total_atencao: 0,
         resumo: [
           {
-            regra_id: 'docente_sem_scopus_id',
-            descricao: 'Docente sem Scopus ID',
-            severidade: 'critica',
+            regra_id: 'docente_sem_openalex_id',
+            descricao: 'Docente sem OpenAlex ID',
+            severidade: 'atencao',
             grupo: 'Docentes',
             tabela: 'docentes',
             total_registros: 10,
-            total_lacunas: 0,
-            percentual_conformidade: 100,
+            total_lacunas: 2,
           },
         ],
         lacunas: [],
@@ -103,15 +86,12 @@ describe('Dashboard — Card de Status Lacunas de Dados', () => {
       </MemoryRouter>,
     )
 
-    expect(html).toContain('data-testid="card-status-lacunas"')
-    expect(html).toContain('href="/lacunas"')
-    expect(html).toContain('border-emerald-200')
-    expect(html).toContain('0 críticas')
-    expect(html).toContain('Regular')
-    expect(html).toContain('Todos os campos essenciais preenchidos')
+    // Quando não houver pendências críticas, o card não aparece no Dashboard
+    expect(html).not.toContain('data-testid="card-status-lacunas"')
+    expect(html).not.toContain('Pendências de Dados')
   })
 
-  it('mostra estado de erro discreto sem quebrar o Dashboard quando a consulta falhar', () => {
+  it('não bloqueia nem quebra o Dashboard quando a consulta de lacunas falhar (card não aparece)', () => {
     const mockFalha: ResultadoRelatorioLacunas = {
       sucesso: false,
       dados: null,
@@ -124,11 +104,9 @@ describe('Dashboard — Card de Status Lacunas de Dados', () => {
       </MemoryRouter>,
     )
 
-    expect(html).toContain('data-testid="card-status-lacunas"')
-    expect(html).toContain('href="/lacunas"')
-    expect(html).toContain('border-amber-200')
-    expect(html).toContain('Indisponível')
-    expect(html).toContain('Verificação pendente')
-    expect(html).toContain('Falha temporária de rede no serviço de lacunas')
+    // O Dashboard continua normal com seus módulos principais sem exibir o card de lacunas críticas
+    expect(html).toContain('Total de Registros')
+    expect(html).toContain('Docentes')
+    expect(html).not.toContain('data-testid="card-status-lacunas"')
   })
 })

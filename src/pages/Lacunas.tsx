@@ -32,6 +32,8 @@ import {
   Loader2,
   Printer,
   Download,
+  History,
+  Trash2,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
@@ -213,12 +215,31 @@ export interface ItemLacunaIndividual {
 export type FiltroGrupo = 'todos' | GrupoVisualId
 export type FiltroSeveridade = 'todas' | SeveridadeLacuna
 
+export interface ItemHistoricoExportacao {
+  id: string
+  timestamp: string // ISO string
+  tipo: 'csv' | 'consulta'
+  filtros: {
+    grupo: string
+    severidade: string
+    regra: string
+    busca: string
+  }
+  total: number
+  criticas: number
+  atencao: number
+  nomeArquivo?: string
+}
+
+const STORAGE_KEY_HISTORICO_LACUNAS = 'ppg_dcem_historico_lacunas_v1'
+
 interface LacunasProps {
   /** Injeção de loader para testes unitários */
   carregarDadosFn?: () => ReturnType<typeof obterRelatorioLacunas>
   filtroGrupoInicial?: FiltroGrupo
   filtroSeveridadeInicial?: FiltroSeveridade
   filtroRegraInicial?: string
+  historicoInicial?: ItemHistoricoExportacao[]
 }
 
 const camposDiscente: FieldDef[] = [
@@ -275,6 +296,7 @@ export default function Lacunas({
   filtroGrupoInicial = 'todos',
   filtroSeveridadeInicial = 'todas',
   filtroRegraInicial = 'todas',
+  historicoInicial,
 }: LacunasProps = {}) {
   const [relatorio, setRelatorio] = useState<RelatorioLacunasResposta | null>(null)
   const [carregando, setCarregando] = useState(true)
@@ -287,6 +309,22 @@ export default function Lacunas({
     useState<FiltroSeveridade>(filtroSeveridadeInicial)
   const [filtroRegra, setFiltroRegra] = useState<string>(filtroRegraInicial)
   const [termoBusca, setTermoBusca] = useState<string>('')
+
+  // Histórico de acompanhamento persistido em localStorage
+  const [historico, setHistorico] = useState<ItemHistoricoExportacao[]>(() => {
+    if (historicoInicial) return historicoInicial
+    if (typeof window === 'undefined') return []
+    try {
+      const salvo = localStorage.getItem(STORAGE_KEY_HISTORICO_LACUNAS)
+      if (salvo) {
+        const parsed = JSON.parse(salvo)
+        return Array.isArray(parsed) ? parsed : []
+      }
+    } catch (e) {
+      console.warn('Erro ao ler histórico de lacunas do localStorage:', e)
+    }
+    return []
+  })
 
   // Estados de Correção e Impressão
   const [carregandoCorrecaoId, setCarregandoCorrecaoId] = useState<number | null>(null)
@@ -675,13 +713,24 @@ export default function Lacunas({
     }
 
     try {
-      // Cabeçalho CSV
+      // Data da geração
+      const dataGeracaoFormatada = new Date().toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+
+      // Colunas: Quem;Grupo;Regra/Pendência;O que falta;Severidade;Data da geração
+      // + colunas adicionais úteis (Tabela, ID Registro)
       const colunas = [
         'Quem',
-        'O que falta',
         'Grupo',
+        'Regra/Pendência',
+        'O que falta',
         'Severidade',
-        'Regra',
+        'Data da geração',
         'Tabela',
         'ID Registro',
       ]
@@ -695,27 +744,26 @@ export default function Lacunas({
       const linhas = lacunasFiltradas.map((item) => {
         const severidadeRotulo = item.severidade === 'critica' ? 'Crítica' : 'Atenção'
         const oQueFalta =
-          item.motivo && item.motivo !== item.regraDescricao
-            ? `${item.regraDescricao} — ${item.motivo}`
-            : item.regraDescricao
+          item.motivo && item.motivo !== item.regraDescricao ? item.motivo : item.regraDescricao
 
         return [
           escaparCsv(item.nome),
-          escaparCsv(oQueFalta),
           escaparCsv(item.grupoVisualLabel),
+          escaparCsv(item.regraDescricao),
+          escaparCsv(oQueFalta),
           escaparCsv(severidadeRotulo),
-          escaparCsv(item.regraId),
+          escaparCsv(dataGeracaoFormatada),
           escaparCsv(item.tabela),
           escaparCsv(item.idRegistro),
         ].join(';')
       })
 
-      // BOM UTF-8 (\uFEFF) para garantir correta acentuação no Excel
+      // BOM UTF-8 (\uFEFF) para garantir correta acentuação no Excel, delimitador ';'
       const csvConteudo = '\uFEFF' + [colunas.map(escaparCsv).join(';'), ...linhas].join('\r\n')
       const blob = new Blob([csvConteudo], { type: 'text/csv;charset=utf-8;' })
       const url = URL.createObjectURL(blob)
 
-      // Nome do arquivo com padrão YYYY-MM-DD
+      // Nome do arquivo com padrão tipo lacunas-ppg-dcem-2026-10-09.csv
       const dataIso = new Date().toISOString().slice(0, 10)
       const nomeArquivo = `lacunas-ppg-dcem-${dataIso}.csv`
 
@@ -727,10 +775,66 @@ export default function Lacunas({
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
 
+      // Registra entrada no Histórico de acompanhamento (persistido em localStorage)
+      const criticasContagem = lacunasFiltradas.filter((i) => i.severidade === 'critica').length
+      const atencaoContagem = lacunasFiltradas.filter((i) => i.severidade === 'atencao').length
+
+      const novaEntradaHistorico: ItemHistoricoExportacao = {
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        timestamp: new Date().toISOString(),
+        tipo: 'csv',
+        filtros: {
+          grupo:
+            filtroGrupo === 'todos'
+              ? 'Todos os Grupos'
+              : GRUPOS_VISUAIS.find((g) => g.id === filtroGrupo)?.label || filtroGrupo,
+          severidade:
+            filtroSeveridade === 'todas'
+              ? 'Todas'
+              : filtroSeveridade === 'critica'
+                ? 'Críticas'
+                : 'Atenção',
+          regra:
+            filtroRegra === 'todas'
+              ? 'Todas'
+              : regrasDisponiveis.find((r) => r.id === filtroRegra)?.descricao || filtroRegra,
+          busca: termoBusca.trim() || '—',
+        },
+        total: lacunasFiltradas.length,
+        criticas: criticasContagem,
+        atencao: atencaoContagem,
+        nomeArquivo,
+      }
+
+      setHistorico((prev) => {
+        const atualizado = [novaEntradaHistorico, ...prev].slice(0, 20) // mantemos as 20 últimas
+        try {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(STORAGE_KEY_HISTORICO_LACUNAS, JSON.stringify(atualizado))
+          }
+        } catch (e) {
+          console.warn('Erro ao gravar histórico no localStorage:', e)
+        }
+        return atualizado
+      })
+
       toast.success(`Exportação CSV concluída (${lacunasFiltradas.length} lacunas).`)
     } catch (err: any) {
       console.error('Erro ao exportar CSV:', err)
       toast.error('Não foi possível gerar a exportação CSV das lacunas.')
+    }
+  }
+
+  // Limpeza de histórico do localStorage
+  const handleLimparHistorico = () => {
+    setHistorico([])
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(STORAGE_KEY_HISTORICO_LACUNAS)
+      }
+      toast.success('Histórico de acompanhamento limpo com sucesso.')
+    } catch (e) {
+      console.warn('Erro ao limpar histórico no localStorage:', e)
     }
   }
 
@@ -1460,6 +1564,131 @@ export default function Lacunas({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Seção discreta: Histórico de Acompanhamento (persistido em localStorage) */}
+      <div className="pt-6 border-t border-slate-200" data-testid="secao-historico-lacunas">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <History className="h-4 w-4 text-slate-500" />
+            <h3 className="text-sm font-semibold text-slate-800">
+              Histórico de Acompanhamento das Lacunas
+            </h3>
+            <span className="text-xs text-slate-400 font-normal">
+              (registro local de exportações para o colegiado)
+            </span>
+          </div>
+
+          {historico.length > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleLimparHistorico}
+              className="h-7 text-xs text-slate-500 hover:text-red-600 hover:bg-red-50"
+              title="Limpar histórico de exportações deste navegador"
+              data-testid="btn-limpar-historico-lacunas"
+            >
+              <Trash2 className="h-3 w-3 mr-1" />
+              Limpar histórico
+            </Button>
+          )}
+        </div>
+
+        {historico.length === 0 ? (
+          <div
+            className="rounded-lg border border-dashed border-slate-200 bg-slate-50/50 p-4 text-center text-xs text-slate-500"
+            data-testid="historico-lacunas-vazio"
+          >
+            Nenhuma exportação registrada ainda. Ao clicar em &quot;Exportar CSV&quot;, um registro
+            com data, filtros ativos e contagens de lacunas será guardado aqui para acompanhamento
+            do colegiado.
+          </div>
+        ) : (
+          <div
+            className="rounded-lg border border-slate-200 bg-white overflow-hidden shadow-xs"
+            data-testid="tabela-historico-lacunas"
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-semibold text-[11px]">
+                    <th scope="col" className="py-2 px-3">
+                      Data/Hora
+                    </th>
+                    <th scope="col" className="py-2 px-3">
+                      Operação
+                    </th>
+                    <th scope="col" className="py-2 px-3">
+                      Filtros Aplicados
+                    </th>
+                    <th scope="col" className="py-2 px-3 text-right">
+                      Críticas
+                    </th>
+                    <th scope="col" className="py-2 px-3 text-right">
+                      Atenção
+                    </th>
+                    <th scope="col" className="py-2 px-3 text-right">
+                      Total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {historico.map((item) => {
+                    let dataTexto = item.timestamp
+                    try {
+                      dataTexto = new Date(item.timestamp).toLocaleString('pt-BR', {
+                        dateStyle: 'short',
+                        timeStyle: 'short',
+                      })
+                    } catch {
+                      // noop
+                    }
+
+                    const filtrosResumo = [
+                      item.filtros.grupo !== 'Todos os Grupos' && `Grupo: ${item.filtros.grupo}`,
+                      item.filtros.severidade !== 'Todas' && `Sev: ${item.filtros.severidade}`,
+                      item.filtros.regra !== 'Todas' && `Regra: ${item.filtros.regra}`,
+                      item.filtros.busca !== '—' && `Busca: "${item.filtros.busca}"`,
+                    ]
+                      .filter(Boolean)
+                      .join(' | ')
+
+                    return (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50/60"
+                        data-testid={`linha-historico-${item.id}`}
+                      >
+                        <td className="py-2 px-3 font-medium text-slate-800 whitespace-nowrap">
+                          {dataTexto}
+                        </td>
+                        <td className="py-2 px-3 text-slate-600 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1 font-medium text-slate-700">
+                            <Download className="h-3 w-3 text-slate-500" />
+                            {item.nomeArquivo || 'Exportação CSV'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-slate-600 text-[11px] max-w-[280px] truncate">
+                          {filtrosResumo || 'Todos os registros (sem filtros)'}
+                        </td>
+                        <td className="py-2 px-3 text-right font-semibold text-red-600">
+                          {item.criticas}
+                        </td>
+                        <td className="py-2 px-3 text-right font-medium text-amber-600">
+                          {item.atencao}
+                        </td>
+                        <td className="py-2 px-3 text-right font-bold text-slate-900">
+                          {item.total}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Diálogo de Vinculação Scopus / OpenAlex (Docentes) */}

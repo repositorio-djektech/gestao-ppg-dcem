@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import React from 'react'
 import { renderToString } from 'react-dom/server'
 import Lacunas, { mapearGrupoParaVisual, GRUPOS_VISUAIS } from './Lacunas'
@@ -314,7 +314,6 @@ describe('Página Lacunas - Etapa 2', () => {
     })
 
     it('critério do cliente: Ledjane Silva Barreto (com scopus_id gravado) NÃO deve constar na regra Docentes sem Scopus ID; demais sem scopus_id devem aparecer', () => {
-      // Simula avaliação com Ledjane Silva Barreto (scopus_id = '7005598575') e dois sem scopus_id
       const relatorioComDocentes: RelatorioLacunasResposta = {
         gerado_em: '2026-10-10T14:30:00.000Z',
         resumo: [
@@ -344,7 +343,6 @@ describe('Página Lacunas - Etapa 2', () => {
                 nome: 'Iara de Fatima Gimenez',
                 motivo: 'Scopus ID não informado',
               },
-              // Ledjane Silva Barreto NÃO está presente aqui porque possui scopus_id = 7005598575
             ],
           },
         ],
@@ -363,10 +361,7 @@ describe('Página Lacunas - Etapa 2', () => {
         />,
       )
 
-      // Ledjane não pode aparecer nesta lista
       expect(html).not.toContain('Ledjane Silva Barreto')
-
-      // Os demais docentes sem scopus_id devem aparecer
       expect(html).toContain('Euler Araujo dos Santos')
       expect(html).toContain('Iara de Fatima Gimenez')
       expect(html).toContain('Docente sem Scopus ID')
@@ -387,7 +382,6 @@ describe('Página Lacunas - Etapa 2', () => {
         />,
       )
 
-      // Críticas: docente_sem_scopus_id (2) e discente_sem_cpf (1) = 3 lacunas
       expect(html).toContain('3 lacunas encontradas')
       expect(html).toContain('Euler Araujo dos Santos')
       expect(html).toContain('Lucas Silva')
@@ -407,7 +401,6 @@ describe('Página Lacunas - Etapa 2', () => {
         />,
       )
 
-      // Grupo Produção não tem lacunas no dadosMock
       expect(html).toContain('0 lacunas encontradas')
       expect(html).toContain('Nenhuma lacuna corresponde aos filtros selecionados')
     })
@@ -425,15 +418,10 @@ describe('Página Lacunas - Etapa 2', () => {
         />,
       )
 
-      // Cabeçalho da coluna Quem tem largura limitada
       expect(html).toContain('max-w-[320px]')
       expect(html).toContain('w-[280px]')
-
-      // Células da coluna Quem têm largura máxima e quebra de linha
       expect(html).toContain('break-words')
       expect(html).toContain('whitespace-normal')
-
-      // As outras colunas mantêm largura e visibilidade
       expect(html).toContain('O que falta')
       expect(html).toContain('Grupo')
       expect(html).toContain('Severidade')
@@ -473,7 +461,6 @@ describe('Página Lacunas - Etapa 2', () => {
         />,
       )
 
-      // Verifica os três selects e suas classes de respiro (pr-10) e posicionamento do chevron (right-3)
       expect(html).toContain('data-testid="filtro-grupo"')
       expect(html).toContain('data-testid="filtro-severidade"')
       expect(html).toContain('data-testid="filtro-regra"')
@@ -488,7 +475,6 @@ describe('Página Lacunas - Etapa 2', () => {
         filtroSeveridade: 'critica',
       })
 
-      // Apenas críticas: Euler Araujo, Iara de Fatima e Lucas Silva (total 3)
       expect(resultado.totalGeral).toBe(3)
       expect(resultado.totalCriticas).toBe(3)
       expect(resultado.totalAtencao).toBe(0)
@@ -510,34 +496,23 @@ describe('Página Lacunas - Etapa 2', () => {
         filtroSeveridade: 'todas',
       })
 
-      // Cabeçalho institucional e título ABNT
       expect(html).toContain('Relatório de Lacunas de Dados — PPG-DCEM')
       expect(html).toContain(
         'Programa de Pós-Graduação em Ciência e Engenharia de Materiais — PPG DCEM',
       )
       expect(html).toContain('Data de emissão:')
       expect(html).toContain('4 lacuna(s) encontrada(s)')
-
-      // Resumo de métricas
       expect(html).toContain('Total de Lacunas')
       expect(html).toContain('Lacunas Críticas')
       expect(html).toContain('Pontos de Atenção')
-
-      // Filtros aplicados
       expect(html).toContain('Filtros aplicados:')
-
-      // Seções por grupo e tabelas ABNT
       expect(html).toContain('Pessoas — Docentes, Discentes e Egressos (4)')
       expect(html).toContain('Quem')
       expect(html).toContain('O que falta')
       expect(html).toContain('Severidade')
-
-      // Registros reais
       expect(html).toContain('Euler Araujo dos Santos')
       expect(html).toContain('Iara de Fatima Gimenez')
       expect(html).toContain('Lucas Silva')
-
-      // Estilos de impressão ABNT (margens 25mm e 20mm, @page A4)
       expect(html).toContain('@page')
       expect(html).toContain('margin-top: 25mm')
       expect(html).toContain('margin-left: 25mm')
@@ -554,23 +529,14 @@ describe('Página Lacunas - Etapa 2', () => {
 
       expect(html).toContain('Severidade: Crítica')
       expect(html).toContain('3 lacuna(s) encontrada(s)')
-      // Deve conter os críticos
       expect(html).toContain('Euler Araujo dos Santos')
       expect(html).toContain('Lucas Silva')
-      // Mas o registro que era apenas atencao (openalex) não pode estar como atencao no resumo
-      expect(html).toContain('<div class="metrica-valor">0</div>') // Pontos de Atenção zerado
+      expect(html).toContain('<div class="metrica-valor">0</div>')
     })
 
-    it('ordena seções do PDF colocando o grupo com mais lacunas críticas em primeiro lugar', () => {
+    it('ordena seções do PDF colocando o grupo com mais lacunas críticas em primeiro lugar e críticas antes das de atenção dentro do grupo', () => {
       const mockDoisGrupos: RelatorioLacunasResposta = {
-        sucesso: true,
         gerado_em: '2025-05-10T12:00:00Z',
-        ano_inicio: 2025,
-        ano_fim: 2028,
-        total_regras: 2,
-        total_lacunas: 3,
-        total_criticas: 1,
-        total_atencao: 2,
         resumo: [
           {
             regra_id: 'prod_sem_doi',
@@ -580,7 +546,6 @@ describe('Página Lacunas - Etapa 2', () => {
             tabela: 'publicacoes',
             total_registros: 10,
             total_lacunas: 2,
-            percentual_conformidade: 80,
           },
           {
             regra_id: 'docente_sem_scopus_id',
@@ -590,13 +555,20 @@ describe('Página Lacunas - Etapa 2', () => {
             tabela: 'docentes',
             total_registros: 5,
             total_lacunas: 1,
-            percentual_conformidade: 80,
+          },
+          {
+            regra_id: 'docente_sem_openalex_id',
+            descricao: 'Docente sem OpenAlex ID',
+            severidade: 'atencao',
+            grupo: 'Docentes',
+            tabela: 'docentes',
+            total_registros: 5,
+            total_lacunas: 1,
           },
         ],
         lacunas: [
           {
             regra_id: 'prod_sem_doi',
-            descricao: 'Publicação sem DOI',
             severidade: 'atencao',
             grupo: 'Produção',
             registros: [
@@ -605,8 +577,13 @@ describe('Página Lacunas - Etapa 2', () => {
             ],
           },
           {
+            regra_id: 'docente_sem_openalex_id',
+            severidade: 'atencao',
+            grupo: 'Docentes',
+            registros: [{ id: 2, nome: 'Prof. Secundario', motivo: 'OpenAlex ausente' }],
+          },
+          {
             regra_id: 'docente_sem_scopus_id',
-            descricao: 'Docente sem Scopus ID',
             severidade: 'critica',
             grupo: 'Docentes',
             registros: [{ id: 1, nome: 'Prof. Exemplo', motivo: 'Scopus ID ausente' }],
@@ -615,10 +592,13 @@ describe('Página Lacunas - Etapa 2', () => {
       }
 
       const prep = prepararLacunasParaImpressao(mockDoisGrupos, {})
-      // O grupo 'pessoas' possui 1 crítica; 'producao' possui 0 críticas.
-      // 'pessoas' deve vir em primeiro lugar mesmo tendo menos itens totais que 'producao'.
       expect(prep.gruposComItens[0].id).toBe('pessoas')
       expect(prep.gruposComItens[1].id).toBe('producao')
+
+      expect(prep.gruposComItens[0].itens[0].severidade).toBe('critica')
+      expect(prep.gruposComItens[0].itens[0].regraId).toBe('docente_sem_scopus_id')
+      expect(prep.gruposComItens[0].itens[1].severidade).toBe('atencao')
+      expect(prep.gruposComItens[0].itens[1].regraId).toBe('docente_sem_openalex_id')
 
       const html = gerarHtmlRelatorioLacunas(mockDoisGrupos, {})
       const idxPessoas = html.indexOf('Pessoas —')
@@ -627,9 +607,22 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(idxProducao).toBeGreaterThan(-1)
       expect(idxPessoas).toBeLessThan(idxProducao)
 
-      // Verifica formatação estética refinada: alinhamento à direita com col-num e colunas numéricas
-      expect(html).toContain('class="col-num"')
-      expect(html).toContain('text-align: right;')
+      // Tipografia ABNT
+      expect(html).toContain("font-family: 'Times New Roman'")
+      expect(html).toContain('font-size: 12pt')
+      expect(html).toContain('table.print-table')
+      expect(html).toContain('font-size: 10.5pt')
+      expect(html).toContain('text-align: justify;')
+
+      const idxCabecalho = html.indexOf('Relatório de Lacunas de Dados — PPG-DCEM')
+      const idxResumoGeral = html.indexOf('resumo-geral-section')
+      const idxSecaoGrupo = html.indexOf('print-section')
+      const idxRodape = html.indexOf('footer-consolidado')
+
+      expect(idxCabecalho).toBeLessThan(idxResumoGeral)
+      expect(idxResumoGeral).toBeLessThan(idxSecaoGrupo)
+      expect(idxSecaoGrupo).toBeLessThan(idxRodape)
+      expect(html).toContain('Contagem consolidada: 4 lacuna(s) no total')
     })
 
     it('imprimirRelatorioLacunasViaIframe executa e resolve graciosamente', async () => {
@@ -641,9 +634,8 @@ describe('Página Lacunas - Etapa 2', () => {
     })
   })
 
-  describe('TAREFA 3 - Exportação CSV das Lacunas Filtradas', () => {
-    it('gera CSV com BOM UTF-8, delimitador ponto-e-vírgula e colunas exigidas', () => {
-      // Simulação da geração de CSV baseada nos itens filtrados
+  describe('TAREFA 3 - Exportação CSV das Lacunas Filtradas e Histórico Local', () => {
+    it('gera CSV com BOM UTF-8, delimitador ponto-e-vírgula e colunas exigidas (Quem;Grupo;Regra/Pendência;O que falta;Severidade;Data da geração)', () => {
       const itens = [
         {
           nome: 'Euler Araujo dos Santos',
@@ -667,12 +659,14 @@ describe('Página Lacunas - Etapa 2', () => {
         },
       ]
 
+      const dataGeracao = '10/10/2026, 14:30'
       const colunas = [
         'Quem',
-        'O que falta',
         'Grupo',
+        'Regra/Pendência',
+        'O que falta',
         'Severidade',
-        'Regra',
+        'Data da geração',
         'Tabela',
         'ID Registro',
       ]
@@ -685,16 +679,15 @@ describe('Página Lacunas - Etapa 2', () => {
       const linhas = itens.map((item) => {
         const severidadeRotulo = item.severidade === 'critica' ? 'Crítica' : 'Atenção'
         const oQueFalta =
-          item.motivo && item.motivo !== item.regraDescricao
-            ? `${item.regraDescricao} — ${item.motivo}`
-            : item.regraDescricao
+          item.motivo && item.motivo !== item.regraDescricao ? item.motivo : item.regraDescricao
 
         return [
           escaparCsv(item.nome),
-          escaparCsv(oQueFalta),
           escaparCsv(item.grupoVisualLabel),
+          escaparCsv(item.regraDescricao),
+          escaparCsv(oQueFalta),
           escaparCsv(severidadeRotulo),
-          escaparCsv(item.regraId),
+          escaparCsv(dataGeracao),
           escaparCsv(item.tabela),
           escaparCsv(item.idRegistro),
         ].join(';')
@@ -702,19 +695,58 @@ describe('Página Lacunas - Etapa 2', () => {
 
       const csvConteudo = '\uFEFF' + [colunas.map(escaparCsv).join(';'), ...linhas].join('\r\n')
 
-      // Validações do CSV gerado
       expect(csvConteudo.startsWith('\uFEFF')).toBe(true)
       expect(csvConteudo).toContain(
-        '"Quem";"O que falta";"Grupo";"Severidade";"Regra";"Tabela";"ID Registro"',
+        '"Quem";"Grupo";"Regra/Pendência";"O que falta";"Severidade";"Data da geração";"Tabela";"ID Registro"',
       )
       expect(csvConteudo).toContain('"Euler Araujo dos Santos"')
-      expect(csvConteudo).toContain('"Docente sem Scopus ID — Scopus ID ausente"')
       expect(csvConteudo).toContain('"Pessoas"')
+      expect(csvConteudo).toContain('"Docente sem Scopus ID"')
+      expect(csvConteudo).toContain('"Scopus ID ausente"')
       expect(csvConteudo).toContain('"Crítica"')
-      expect(csvConteudo).toContain('"docente_sem_scopus_id"')
+      expect(csvConteudo).toContain('"10/10/2026, 14:30"')
       expect(csvConteudo).toContain('"docentes"')
       expect(csvConteudo).toContain('"1"')
       expect(csvConteudo).toContain('"Atenção"')
+    })
+
+    it('renderiza a seção discreta de histórico de acompanhamento com registros persistidos', () => {
+      const historicoExemplo = [
+        {
+          id: 'hist-1',
+          timestamp: '2026-10-10T15:00:00.000Z',
+          tipo: 'csv' as const,
+          filtros: {
+            grupo: 'Pessoas',
+            severidade: 'Críticas',
+            regra: 'Docente sem Scopus ID',
+            busca: '—',
+          },
+          total: 2,
+          criticas: 2,
+          atencao: 0,
+          nomeArquivo: 'lacunas-ppg-dcem-2026-10-10.csv',
+        },
+      ]
+
+      const html = renderToString(
+        <Lacunas
+          carregarDadosFn={() =>
+            Promise.resolve({
+              sucesso: true,
+              dados: dadosMock,
+              origem: 'edge_function',
+            })
+          }
+          historicoInicial={historicoExemplo}
+        />,
+      )
+
+      expect(html).toContain('Histórico de Acompanhamento das Lacunas')
+      expect(html).toContain('registro local de exportações para o colegiado')
+      expect(html).toContain('lacunas-ppg-dcem-2026-10-10.csv')
+      expect(html).toContain('data-testid="linha-historico-hist-1"')
+      expect(html).toContain('Limpar histórico')
     })
   })
 })

@@ -142,16 +142,29 @@ export function prepararLacunasParaImpressao(
   }
 
   // Apenas grupos que contêm itens (ou se o filtro for específico para um grupo)
-  // Ordenação das seções: primeiro grupo com mais lacunas críticas, depois os demais
+  // Ordenação das seções: grupo com mais lacunas CRÍTICAS primeiro, depois atenção;
+  // Dentro de cada grupo, regras críticas antes das de atenção.
   const gruposComItens = GRUPOS_VISUAIS.map((g) => {
     const list = gruposMap.get(g.id) || []
     const criticas = list.filter((i) => i.severidade === 'critica').length
     const atencao = list.filter((i) => i.severidade === 'atencao').length
+
+    // Ordena os itens do grupo: severidade crítica antes de atenção; em empate, por regra e nome
+    const itensOrdenados = [...list].sort((a, b) => {
+      if (a.severidade !== b.severidade) {
+        return a.severidade === 'critica' ? -1 : 1
+      }
+      if (a.regraDescricao !== b.regraDescricao) {
+        return a.regraDescricao.localeCompare(b.regraDescricao, 'pt-BR')
+      }
+      return a.nome.localeCompare(b.nome, 'pt-BR')
+    })
+
     return {
       id: g.id,
       label: g.label,
       subtitulo: g.subtitulo,
-      itens: list,
+      itens: itensOrdenados,
       criticas,
       atencao,
     }
@@ -160,6 +173,9 @@ export function prepararLacunasParaImpressao(
     .sort((a, b) => {
       if (b.criticas !== a.criticas) {
         return b.criticas - a.criticas
+      }
+      if (b.atencao !== a.atencao) {
+        return b.atencao - a.atencao
       }
       return b.itens.length - a.itens.length
     })
@@ -212,7 +228,7 @@ export function gerarHtmlRelatorioLacunas(
   const secoesGruposHtml = dados.gruposComItens
     .map((grupo) => {
       const linhasTabela = grupo.itens
-        .map((item) => {
+        .map((item, idx) => {
           const isCritica = item.severidade === 'critica'
           const badgeClass = isCritica ? 'badge-critica' : 'badge-atencao'
           const labelSeveridade = isCritica ? 'Crítica' : 'Atenção'
@@ -221,14 +237,14 @@ export function gerarHtmlRelatorioLacunas(
             <tr>
               <td class="col-num">${idx + 1}</td>
               <td class="col-quem">
-                <span class="nome-quem font-bold">${escaparHtml(item.nome)}</span>
-                <span class="subtexto">(${escaparHtml(item.tabela)} #${item.idRegistro})</span>
+                <div class="nome-quem font-bold">${escaparHtml(item.nome)}</div>
+                <div class="subtexto">${escaparHtml(item.tabela)} #${item.idRegistro}</div>
               </td>
               <td class="col-falta">
-                <div class="font-semibold">${escaparHtml(item.regraDescricao)}</div>
+                <div class="regra-titulo font-bold">${escaparHtml(item.regraDescricao)}</div>
                 ${
                   item.motivo && item.motivo !== item.regraDescricao
-                    ? `<div class="subtexto">${escaparHtml(item.motivo)}</div>`
+                    ? `<div class="subtexto motivo-texto">${escaparHtml(item.motivo)}</div>`
                     : ''
                 }
               </td>
@@ -242,7 +258,7 @@ export function gerarHtmlRelatorioLacunas(
 
       return `
         <section class="print-section">
-          <h2>${escaparHtml(grupo.label)} — ${escaparHtml(grupo.subtitulo)} (${grupo.itens.length})</h2>
+          <h2 class="secao-grupo-titulo">${escaparHtml(grupo.label)} — ${escaparHtml(grupo.subtitulo)} (${grupo.itens.length})</h2>
           <div class="grupo-resumo-mini">
             <span><strong>Total no grupo:</strong> ${grupo.itens.length}</span>
             <span><strong>Críticas:</strong> ${grupo.criticas}</span>
@@ -251,9 +267,9 @@ export function gerarHtmlRelatorioLacunas(
           <table class="print-table">
             <thead>
               <tr>
-                <th style="width: 32px; text-align: right;">#</th>
-                <th style="width: 38%;">Quem</th>
-                <th style="width: 45%;">O que falta</th>
+                <th style="width: 34px; text-align: right;">#</th>
+                <th style="width: 37%;">Quem</th>
+                <th style="width: 46%;">O que falta</th>
                 <th style="width: 17%; text-align: center;">Severidade</th>
               </tr>
             </thead>
@@ -299,14 +315,20 @@ export function gerarHtmlRelatorioLacunas(
       margin: 0;
       padding: 0;
       background: #ffffff;
-      color: #0f172a;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      font-size: 10pt;
-      line-height: 1.35;
+      color: #111827;
+      font-family: 'Times New Roman', Times, Georgia, serif;
+      font-size: 12pt;
+      line-height: 1.5;
+    }
+
+    /* Textos explicativos e parágrafos com alinhamento justificado ABNT */
+    p, .texto-justificado, .print-header-sub {
+      text-align: justify;
+      text-justify: inter-word;
     }
 
     .print-header {
-      border-bottom: 2px solid #0f172a;
+      border-bottom: 2px solid #111827;
       padding-bottom: 12px;
       margin-bottom: 18px;
       page-break-inside: avoid;
@@ -323,127 +345,137 @@ export function gerarHtmlRelatorioLacunas(
     }
 
     .print-header-inst {
-      font-size: 8.5pt;
+      font-family: 'Times New Roman', Times, Georgia, serif;
+      font-size: 10pt;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #1e293b;
+      letter-spacing: 0.04em;
+      color: #1f2937;
       margin: 0;
+      text-align: left;
     }
 
+    /* Título do relatório em negrito */
     .print-header-title {
-      font-size: 16pt;
-      font-weight: 800;
-      color: #0f172a;
-      letter-spacing: -0.02em;
+      font-family: 'Times New Roman', Times, Georgia, serif;
+      font-size: 15pt;
+      font-weight: 700;
+      color: #111827;
       margin: 4px 0 0 0;
+      text-align: left;
     }
 
     .print-header-sub {
-      font-size: 9pt;
-      color: #334155;
-      margin: 3px 0 0 0;
+      font-size: 10.5pt;
+      color: #374151;
+      margin: 4px 0 0 0;
+      line-height: 1.4;
     }
 
     .print-header-meta {
       text-align: right;
-      font-size: 8pt;
-      color: #64748b;
+      font-size: 9.5pt;
+      color: #4b5563;
       white-space: nowrap;
     }
 
     .print-header-meta .data-emissao {
-      font-weight: 600;
-      color: #334155;
+      font-weight: 700;
+      color: #1f2937;
     }
 
     .print-header-meta .total-registros {
       margin-top: 4px;
-      font-family: monospace;
-      font-weight: 600;
-      color: #0f172a;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    /* 2) Resumo Geral com métricas e filtros aplicados */
+    .resumo-geral-section {
+      margin-bottom: 20px;
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
 
     .metricas-resumo-container {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
-      margin-bottom: 20px;
-      page-break-inside: avoid;
-      break-inside: avoid;
+      margin-bottom: 12px;
     }
 
     .metrica-card {
-      border: 1.5px solid #94a3b8;
-      border-radius: 5px;
-      padding: 9px 12px;
+      border: 1.5px solid #64748b;
+      border-radius: 4px;
+      padding: 8px 12px;
       background: #f8fafc;
     }
 
     .metrica-card.critica {
-      border-color: #f87171;
+      border-color: #dc2626;
       background: #fef2f2;
     }
 
     .metrica-card.atencao {
-      border-color: #fbbf24;
+      border-color: #d97706;
       background: #fffbeb;
     }
 
     .metrica-titulo {
-      font-size: 8pt;
-      font-weight: 800;
+      font-size: 9pt;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.04em;
-      color: #1e293b;
+      color: #1f2937;
       margin-bottom: 2px;
     }
 
     .metrica-card.critica .metrica-titulo {
-      color: #7f1d1d;
+      color: #991b1b;
     }
 
     .metrica-card.atencao .metrica-titulo {
-      color: #78350f;
+      color: #92400e;
     }
 
     .metrica-valor {
       font-size: 18pt;
-      font-weight: 800;
-      color: #0f172a;
+      font-weight: 700;
+      color: #111827;
       line-height: 1.1;
       font-variant-numeric: tabular-nums;
     }
 
     .metrica-card.critica .metrica-valor {
-      color: #991b1b;
+      color: #b91c1c;
     }
 
     .metrica-card.atencao .metrica-valor {
-      color: #92400e;
+      color: #b45309;
     }
 
     .metrica-desc {
-      font-size: 7.5pt;
-      color: #334155;
-      margin-top: 3px;
-      font-weight: 500;
+      font-size: 8.5pt;
+      color: #4b5563;
+      margin-top: 2px;
+      font-weight: 400;
     }
 
     .filtros-aplicados-box {
-      font-size: 8.5pt;
-      color: #1e293b;
-      background: #f1f5f9;
+      font-size: 10pt;
+      color: #1f2937;
+      background: #f8fafc;
       border: 1px solid #cbd5e1;
       padding: 7px 12px;
       border-radius: 4px;
       margin-bottom: 18px;
-      page-break-inside: avoid;
-      break-inside: avoid;
+      text-align: justify;
+      line-height: 1.4;
     }
 
+    /* 3) Seções por grupo na ordem de severidade dominante com quebra de página */
     .print-section {
-      margin-bottom: 22px;
+      margin-bottom: 24px;
       page-break-inside: auto;
       break-inside: auto;
     }
@@ -453,15 +485,17 @@ export function gerarHtmlRelatorioLacunas(
       break-before: page;
     }
 
-    .print-section h2 {
+    /* Seções de grupo em negrito 12pt */
+    .secao-grupo-titulo {
+      font-family: 'Times New Roman', Times, Georgia, serif;
       font-size: 12pt;
-      font-weight: 800;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
-      border-bottom: 2px solid #0f172a;
+      letter-spacing: 0.03em;
+      border-bottom: 1.5px solid #111827;
       padding-bottom: 4px;
-      margin: 0 0 6px 0;
-      color: #0f172a;
+      margin: 0 0 8px 0;
+      color: #111827;
       page-break-after: avoid;
       break-after: avoid;
     }
@@ -469,19 +503,22 @@ export function gerarHtmlRelatorioLacunas(
     .grupo-resumo-mini {
       display: flex;
       gap: 18px;
-      font-size: 8.5pt;
-      color: #334155;
+      font-size: 9.5pt;
+      color: #374151;
       font-variant-numeric: tabular-nums;
       margin-bottom: 8px;
     }
 
+    /* Texto de tabelas em 10-11pt */
     table.print-table {
       width: 100%;
       border-collapse: collapse;
       page-break-inside: auto;
       break-inside: auto;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
       table-layout: fixed;
+      font-size: 10.5pt;
+      line-height: 1.35;
     }
 
     table.print-table thead {
@@ -497,10 +534,10 @@ export function gerarHtmlRelatorioLacunas(
 
     table.print-table th,
     table.print-table td {
-      border: 1px solid #64748b;
+      border: 1px solid #4b5563;
       padding: 6px 8px;
       text-align: left;
-      font-size: 9pt;
+      font-size: 10.5pt;
       vertical-align: top;
       word-break: break-word;
       overflow-wrap: break-word;
@@ -508,32 +545,32 @@ export function gerarHtmlRelatorioLacunas(
     }
 
     table.print-table th {
-      background-color: #e2e8f0;
-      color: #0f172a;
-      font-weight: 800;
+      background-color: #f1f5f9;
+      color: #111827;
+      font-weight: 700;
       text-transform: uppercase;
-      font-size: 8pt;
-      letter-spacing: 0.04em;
+      font-size: 9.5pt;
+      letter-spacing: 0.03em;
     }
 
     .col-num {
-      width: 32px;
+      width: 34px;
       text-align: right;
-      color: #334155;
-      font-weight: 600;
+      color: #374151;
+      font-weight: 700;
       font-variant-numeric: tabular-nums;
-      padding-right: 8px;
+      padding-right: 6px;
     }
 
     .col-quem {
-      width: 38%;
+      width: 37%;
       word-break: break-word;
       overflow-wrap: break-word;
       white-space: normal;
     }
 
     .col-falta {
-      width: 45%;
+      width: 46%;
       word-break: break-word;
       overflow-wrap: break-word;
       white-space: normal;
@@ -544,53 +581,77 @@ export function gerarHtmlRelatorioLacunas(
       text-align: center;
     }
 
+    .nome-quem {
+      font-size: 10.5pt;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .regra-titulo {
+      font-size: 10.5pt;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .motivo-texto {
+      text-align: justify;
+      text-justify: inter-word;
+    }
+
     .badge {
       display: inline-block;
       padding: 2px 6px;
       border-radius: 3px;
-      font-size: 7.5pt;
+      font-size: 8.5pt;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.03em;
       border: 1px solid transparent;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
     .badge-critica {
       background-color: #fee2e2;
-      color: #7f1d1d;
-      border-color: #f87171;
+      color: #991b1b;
+      border-color: #ef4444;
     }
 
     .badge-atencao {
       background-color: #fef3c7;
-      color: #78350f;
-      border-color: #fbbf24;
+      color: #92400e;
+      border-color: #f59e0b;
     }
 
     .sem-registros {
-      font-size: 8.5pt;
+      font-size: 10.5pt;
       font-style: italic;
-      color: #64748b;
+      color: #4b5563;
       margin: 8px 0;
+      text-align: justify;
     }
 
     .font-bold { font-weight: 700; }
     .font-semibold { font-weight: 600; }
-    .font-medium { font-weight: 500; }
-    .subtexto { font-size: 7.8pt; color: #475569; margin-top: 2px; }
+    .subtexto { font-size: 9pt; color: #4b5563; margin-top: 2px; }
     .text-center { text-align: center; }
 
+    /* 4) Rodapé com contagem consolidada */
     .print-footer {
       margin-top: 24px;
-      padding-top: 8px;
-      border-top: 1px solid #cbd5e1;
+      padding-top: 10px;
+      border-top: 1.5px solid #111827;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 7.5pt;
-      color: #64748b;
+      font-size: 9pt;
+      color: #374151;
       page-break-inside: avoid;
       break-inside: avoid;
+    }
+
+    .footer-consolidado {
+      font-weight: 700;
+      color: #111827;
     }
   </style>
 </head>
@@ -615,35 +676,40 @@ export function gerarHtmlRelatorioLacunas(
     </div>
   </header>
 
-  <div class="metricas-resumo-container">
-    <div class="metrica-card">
-      <div class="metrica-titulo">Total de Lacunas</div>
-      <div class="metrica-valor">${dados.totalGeral}</div>
-      <div class="metrica-desc">Pendências listadas no relatório</div>
+  <section class="resumo-geral-section">
+    <div class="metricas-resumo-container">
+      <div class="metrica-card">
+        <div class="metrica-titulo">Total de Lacunas</div>
+        <div class="metrica-valor">${dados.totalGeral}</div>
+        <div class="metrica-desc">Pendências listadas no relatório</div>
+      </div>
+      <div class="metrica-card critica">
+        <div class="metrica-titulo">Lacunas Críticas</div>
+        <div class="metrica-valor">${dados.totalCriticas}</div>
+        <div class="metrica-desc">Exigem preenchimento prioritário</div>
+      </div>
+      <div class="metrica-card atencao">
+        <div class="metrica-titulo">Pontos de Atenção</div>
+        <div class="metrica-valor">${dados.totalAtencao}</div>
+        <div class="metrica-desc">Recomendados para enriquecimento</div>
+      </div>
     </div>
-    <div class="metrica-card critica">
-      <div class="metrica-titulo">Lacunas Críticas</div>
-      <div class="metrica-valor">${dados.totalCriticas}</div>
-      <div class="metrica-desc">Exigem preenchimento prioritário</div>
-    </div>
-    <div class="metrica-card atencao">
-      <div class="metrica-titulo">Pontos de Atenção</div>
-      <div class="metrica-valor">${dados.totalAtencao}</div>
-      <div class="metrica-desc">Recomendados para enriquecimento</div>
-    </div>
-  </div>
 
-  <div class="filtros-aplicados-box">
-    <strong>Filtros aplicados:</strong> ${escaparHtml(descricaoFiltros)}
-  </div>
+    <div class="filtros-aplicados-box">
+      <strong>Filtros aplicados:</strong> ${escaparHtml(descricaoFiltros)}
+    </div>
+  </section>
 
   <main>
     ${conteudoPrincipal}
   </main>
 
   <footer class="print-footer">
-    <div>PPG-DCEM — Programa de Pós-Graduação em Ciência e Engenharia de Materiais / UFS</div>
-    <div>Documento gerado automaticamente pelo Sistema Gestão PPG-DCEM</div>
+    <div>
+      <div>PPG-DCEM — Programa de Pós-Graduação em Ciência e Engenharia de Materiais / UFS</div>
+      <div class="footer-consolidado">Contagem consolidada: ${dados.totalGeral} lacuna(s) no total (${dados.totalCriticas} crítica(s), ${dados.totalAtencao} ponto(s) de atenção)</div>
+    </div>
+    <div style="text-align: right;">Documento gerado automaticamente pelo Sistema Gestão PPG-DCEM</div>
   </footer>
 </body>
 </html>`

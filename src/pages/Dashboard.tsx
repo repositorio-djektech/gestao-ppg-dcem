@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -28,9 +28,7 @@ import {
   TrendingUp,
   FileUp,
   AlertTriangle,
-  CheckCircle2,
   ChevronRight,
-  AlertCircle,
 } from 'lucide-react'
 import { obterRelatorioLacunas } from '@/services/lacunas'
 import type { LucideIcon } from 'lucide-react'
@@ -191,58 +189,64 @@ export interface DashboardProps {
 
 export default function Dashboard({ obterLacunasFn = obterRelatorioLacunas }: DashboardProps = {}) {
   const { toast } = useToast()
+  const navigate = useNavigate()
   const [counts, setCounts] = useState<CountMap>({})
   const [loading, setLoading] = useState(true)
   const [lattesDialogOpen, setLattesDialogOpen] = useState(false)
   const [_dadosLattesProcessados, setDadosLattesProcessados] =
     useState<ResultadoProcessamentoLattes | null>(null)
 
-  // Estado do Card de Lacunas
+  // Estado do Card de Lacunas (apenas renderizado quando houver pendências críticas > 0)
   const [lacunasTotal, setLacunasTotal] = useState<number | null>(null)
   const [lacunasCriticas, setLacunasCriticas] = useState<number | null>(null)
-  const [lacunasCarregando, setLacunasCarregando] = useState(true)
-  const [lacunasErro, setLacunasErro] = useState<string | null>(null)
 
   const fetchCounts = useCallback(async () => {
     setLoading(true)
-    const results = await Promise.all(
-      allModules.map((m) =>
-        (supabase.from as any)(m.table).select('*', { count: 'exact', head: true }),
-      ),
-    )
-    const map: CountMap = {}
-    results.forEach((res, i) => {
-      map[allModules[i].table] = res.count ?? 0
-    })
-    setCounts(map)
-    setLoading(false)
+    try {
+      const results = await Promise.all(
+        allModules.map((m) =>
+          (supabase.from as any)(m.table).select('*', { count: 'exact', head: true }),
+        ),
+      )
+      const map: CountMap = {}
+      results.forEach((res, i) => {
+        map[allModules[i].table] = res.count ?? 0
+      })
+      setCounts(map)
+    } catch (err) {
+      console.error('Erro ao carregar contagens do Dashboard:', err)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
+  // Carregamento não-blocante do relatório de lacunas: se falhar, Dashboard continua normal sem o card
   const fetchLacunas = useCallback(async () => {
-    setLacunasCarregando(true)
-    setLacunasErro(null)
     try {
       const res = await obterLacunasFn()
-      if (res.sucesso && res.dados) {
+      if (res && res.sucesso && res.dados) {
         let total = 0
         let criticas = 0
-        for (const item of res.dados.resumo) {
-          total += item.total_lacunas
-          if (item.severidade === 'critica') {
-            criticas += item.total_lacunas
+        if (Array.isArray(res.dados.resumo)) {
+          for (const item of res.dados.resumo) {
+            total += item.total_lacunas ?? 0
+            if (item.severidade === 'critica') {
+              criticas += item.total_lacunas ?? 0
+            }
           }
         }
         setLacunasTotal(total)
         setLacunasCriticas(criticas)
-        setLacunasErro(null)
       } else {
-        setLacunasErro(res.mensagemErro || 'Não foi possível carregar as lacunas')
+        // Se a resposta falhar, zera para não exibir o card
+        setLacunasCriticas(0)
+        setLacunasTotal(0)
       }
     } catch (err) {
-      console.error('Erro ao buscar lacunas no Dashboard:', err)
-      setLacunasErro(err instanceof Error ? err.message : 'Falha na consulta de lacunas')
-    } finally {
-      setLacunasCarregando(false)
+      // Falha não-blocante silenciosa
+      console.warn('Consulta de lacunas no Dashboard ignorada (não-blocante):', err)
+      setLacunasCriticas(0)
+      setLacunasTotal(0)
     }
   }, [obterLacunasFn])
 
@@ -350,60 +354,27 @@ export default function Dashboard({ obterLacunasFn = obterRelatorioLacunas }: Da
           </CardContent>
         </Card>
 
-        {/* Card de Status: Lacunas de Dados (Navega para /lacunas) */}
-        <Link
-          to="/lacunas"
-          className="block group lg:col-span-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
-          aria-label="Ver diagnóstico detalhado na página de Lacunas de Dados"
-          data-testid="card-status-lacunas"
-        >
-          {lacunasCarregando ? (
-            <Card className="border border-slate-200 shadow-md h-full bg-white">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-700">
-                  Lacunas de Dados
-                </CardTitle>
-                <Skeleton className="h-5 w-16" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-20" />
-                <Skeleton className="h-3 w-40 mt-2" />
-                <Skeleton className="h-2 w-full mt-3" />
-              </CardContent>
-            </Card>
-          ) : lacunasErro ? (
-            /* Estado de erro discreto — não quebra o Dashboard */
-            <Card className="border border-amber-200 hover:border-amber-400 shadow-md hover:shadow-lg transition-all duration-200 h-full bg-white group-hover:bg-amber-50/20">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
-                  <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
-                  Lacunas de Dados
-                </CardTitle>
-                <Badge
-                  variant="outline"
-                  className="text-xs font-semibold bg-amber-50 text-amber-700 border-amber-200"
-                >
-                  Indisponível
-                </Badge>
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm font-medium text-slate-600">Verificação pendente</div>
-                <p className="text-xs text-slate-500 mt-1 flex items-center justify-between">
-                  <span>Clique para abrir o módulo de diagnóstico</span>
-                  <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-                </p>
-                <div className="mt-3 text-[11px] text-amber-700 bg-amber-50/80 px-2 py-1 rounded border border-amber-200/60 truncate">
-                  {lacunasErro}
-                </div>
-              </CardContent>
-            </Card>
-          ) : lacunasCriticas !== null && lacunasCriticas > 0 ? (
-            /* Destaque vermelho quando houver lacunas críticas */
-            <Card className="border border-red-300 hover:border-red-400 shadow-md hover:shadow-lg transition-all duration-200 h-full bg-white group-hover:bg-red-50/30">
+        {/* Card de Alerta: Lacunas Críticas de Dados (APENAS quando houver pendências críticas > 0) */}
+        {lacunasCriticas !== null && lacunasCriticas > 0 && (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate('/lacunas')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                navigate('/lacunas')
+              }
+            }}
+            className="block group lg:col-span-1 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-red-500 rounded-lg cursor-pointer"
+            aria-label={`Ver relatório de lacunas: ${lacunasCriticas} pendências críticas de dados`}
+            data-testid="card-status-lacunas"
+          >
+            <Card className="border border-red-300 hover:border-red-400 shadow-md hover:shadow-lg transition-all duration-200 h-full bg-white group-hover:bg-red-50/20">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-slate-800 flex items-center gap-1.5">
                   <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
-                  Lacunas de Dados
+                  Pendências de Dados
                 </CardTitle>
                 <Badge
                   variant="outline"
@@ -414,52 +385,27 @@ export default function Dashboard({ obterLacunasFn = obterRelatorioLacunas }: Da
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">
-                  {lacunasTotal} {lacunasTotal === 1 ? 'pendência' : 'pendências'}
+                  {lacunasCriticas}{' '}
+                  {lacunasCriticas === 1
+                    ? 'pendência crítica de dados'
+                    : 'pendências críticas de dados'}
                 </div>
                 <p className="text-xs text-slate-600 mt-1 flex items-center justify-between">
-                  <span>
-                    <strong className="text-red-700 font-semibold">{lacunasCriticas}</strong> exigem
-                    atenção prioritária
-                  </span>
+                  <span>Revise e preencha os dados prioritários</span>
                   <ChevronRight className="h-3.5 w-3.5 text-red-500 group-hover:translate-x-0.5 transition-transform" />
                 </p>
-                <div className="mt-3 flex items-center gap-1 text-[11px] font-medium text-red-700 bg-red-50 px-2 py-1 rounded border border-red-100">
-                  <span>Ir para /lacunas para corrigir</span>
+                <div className="mt-3 flex items-center justify-between text-[11px] font-medium text-red-700 bg-red-50 px-2.5 py-1.5 rounded-md border border-red-100">
+                  <span>Clique para revisar no Relatório de Lacunas</span>
+                  {lacunasTotal !== null && lacunasTotal > lacunasCriticas && (
+                    <span className="text-red-600/80 font-normal">
+                      +{lacunasTotal - lacunasCriticas} atenção
+                    </span>
+                  )}
                 </div>
               </CardContent>
             </Card>
-          ) : (
-            /* Destaque verde/positivo quando zerado */
-            <Card className="border border-emerald-200 hover:border-emerald-400 shadow-md hover:shadow-lg transition-all duration-200 h-full bg-white group-hover:bg-emerald-50/30">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-800 flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  Lacunas de Dados
-                </CardTitle>
-                <Badge
-                  variant="outline"
-                  className="text-xs font-semibold bg-emerald-100 text-emerald-800 border-emerald-200"
-                >
-                  Regular
-                </Badge>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-emerald-600">0 críticas</div>
-                <p className="text-xs text-slate-600 mt-1 flex items-center justify-between">
-                  <span>
-                    {lacunasTotal && lacunasTotal > 0
-                      ? `${lacunasTotal} pontos de atenção secundários`
-                      : 'Todos os campos essenciais preenchidos'}
-                  </span>
-                  <ChevronRight className="h-3.5 w-3.5 text-emerald-600 group-hover:translate-x-0.5 transition-transform" />
-                </p>
-                <div className="mt-3 flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-100">
-                  <span>Módulo atualizado sem pendências críticas</span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </Link>
+          </div>
+        )}
 
         {categoryStats.map((cat) => (
           <Card
