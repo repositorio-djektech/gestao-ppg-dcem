@@ -3,6 +3,11 @@ import React from 'react'
 import { renderToString } from 'react-dom/server'
 import Lacunas, { mapearGrupoParaVisual, GRUPOS_VISUAIS } from './Lacunas'
 import type { RelatorioLacunasResposta } from '@/lib/lacunas/types'
+import {
+  gerarHtmlRelatorioLacunas,
+  prepararLacunasParaImpressao,
+  imprimirRelatorioLacunasViaIframe,
+} from '@/lib/lacunas/imprimirLacunasIframe'
 
 describe('Página Lacunas - Etapa 2', () => {
   const dadosMock: RelatorioLacunasResposta = {
@@ -405,6 +410,140 @@ describe('Página Lacunas - Etapa 2', () => {
       // Grupo Produção não tem lacunas no dadosMock
       expect(html).toContain('0 lacunas encontradas')
       expect(html).toContain('Nenhuma lacuna corresponde aos filtros selecionados')
+    })
+
+    it('TAREFA 1: coluna QUEM possui largura máxima limitada e quebra de linhas (break-words whitespace-normal)', () => {
+      const html = renderToString(
+        <Lacunas
+          carregarDadosFn={() =>
+            Promise.resolve({
+              sucesso: true,
+              dados: dadosMock,
+              origem: 'edge_function',
+            })
+          }
+        />,
+      )
+
+      // Cabeçalho da coluna Quem tem largura limitada
+      expect(html).toContain('max-w-[320px]')
+      expect(html).toContain('w-[280px]')
+
+      // Células da coluna Quem têm largura máxima e quebra de linha
+      expect(html).toContain('break-words')
+      expect(html).toContain('whitespace-normal')
+
+      // As outras colunas mantêm largura e visibilidade
+      expect(html).toContain('O que falta')
+      expect(html).toContain('Grupo')
+      expect(html).toContain('Severidade')
+      expect(html).toContain('Ação')
+    })
+
+    it('TAREFA 2: renderiza botão Imprimir junto ao botão Atualizar', () => {
+      const html = renderToString(
+        <Lacunas
+          carregarDadosFn={() =>
+            Promise.resolve({
+              sucesso: true,
+              dados: dadosMock,
+              origem: 'edge_function',
+            })
+          }
+        />,
+      )
+
+      expect(html).toContain('data-testid="btn-imprimir-lacunas"')
+      expect(html).toContain('Imprimir')
+      expect(html).toContain('Atualizar')
+    })
+  })
+
+  describe('TAREFA 2 - Gerador de Impressão e Exportação em PDF de Lacunas', () => {
+    it('prepararLacunasParaImpressao filtra corretamente por severidade ativa', () => {
+      const resultado = prepararLacunasParaImpressao(dadosMock, {
+        filtroSeveridade: 'critica',
+      })
+
+      // Apenas críticas: Euler Araujo, Iara de Fatima e Lucas Silva (total 3)
+      expect(resultado.totalGeral).toBe(3)
+      expect(resultado.totalCriticas).toBe(3)
+      expect(resultado.totalAtencao).toBe(0)
+      expect(resultado.itensFiltrados.every((i) => i.severidade === 'critica')).toBe(true)
+    })
+
+    it('prepararLacunasParaImpressao filtra por grupo visual ativo', () => {
+      const resultado = prepararLacunasParaImpressao(dadosMock, {
+        filtroGrupo: 'pessoas',
+      })
+
+      expect(resultado.totalGeral).toBe(4)
+      expect(resultado.gruposComItens.length).toBe(1)
+      expect(resultado.gruposComItens[0].id).toBe('pessoas')
+    })
+
+    it('gerarHtmlRelatorioLacunas gera documento ABNT completo com cabeçalho, resumo de métricas e tabelas com quebra', () => {
+      const html = gerarHtmlRelatorioLacunas(dadosMock, {
+        filtroSeveridade: 'todas',
+      })
+
+      // Cabeçalho institucional e título ABNT
+      expect(html).toContain('Relatório de Lacunas de Dados — PPG-DCEM')
+      expect(html).toContain(
+        'Programa de Pós-Graduação em Ciência e Engenharia de Materiais — PPG DCEM',
+      )
+      expect(html).toContain('Data de emissão:')
+      expect(html).toContain('4 lacuna(s) encontrada(s)')
+
+      // Resumo de métricas
+      expect(html).toContain('Total de Lacunas')
+      expect(html).toContain('Lacunas Críticas')
+      expect(html).toContain('Pontos de Atenção')
+
+      // Filtros aplicados
+      expect(html).toContain('Filtros aplicados:')
+
+      // Seções por grupo e tabelas ABNT
+      expect(html).toContain('Pessoas — Docentes, Discentes e Egressos (4)')
+      expect(html).toContain('Quem')
+      expect(html).toContain('O que falta')
+      expect(html).toContain('Severidade')
+
+      // Registros reais
+      expect(html).toContain('Euler Araujo dos Santos')
+      expect(html).toContain('Iara de Fatima Gimenez')
+      expect(html).toContain('Lucas Silva')
+
+      // Estilos de impressão ABNT (margens 25mm e 20mm, @page A4)
+      expect(html).toContain('@page')
+      expect(html).toContain('margin-top: 25mm')
+      expect(html).toContain('margin-left: 25mm')
+      expect(html).toContain('margin-right: 20mm')
+      expect(html).toContain('margin-bottom: 20mm')
+      expect(html).toContain('table.print-table')
+      expect(html).toContain('word-break: break-word')
+    })
+
+    it('gerarHtmlRelatorioLacunas respeita filtros ativos (ex: apenas críticas)', () => {
+      const html = gerarHtmlRelatorioLacunas(dadosMock, {
+        filtroSeveridade: 'critica',
+      })
+
+      expect(html).toContain('Severidade: Crítica')
+      expect(html).toContain('3 lacuna(s) encontrada(s)')
+      // Deve conter os críticos
+      expect(html).toContain('Euler Araujo dos Santos')
+      expect(html).toContain('Lucas Silva')
+      // Mas o registro que era apenas atencao (openalex) não pode estar como atencao no resumo
+      expect(html).toContain('<div class="metrica-valor">0</div>') // Pontos de Atenção zerado
+    })
+
+    it('imprimirRelatorioLacunasViaIframe executa e resolve graciosamente', async () => {
+      await expect(
+        imprimirRelatorioLacunasViaIframe(dadosMock, {
+          filtroSeveridade: 'todas',
+        }),
+      ).resolves.toBeUndefined()
     })
   })
 })

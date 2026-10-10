@@ -30,10 +30,12 @@ import {
   Search,
   Wrench,
   Loader2,
+  Printer,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { obterRelatorioLacunas } from '@/services/lacunas'
+import { imprimirRelatorioLacunasViaIframe } from '@/lib/lacunas/imprimirLacunasIframe'
 import { supabase } from '@/lib/supabase/client'
 import { docentesService } from '@/services/docentes'
 import { discentesService } from '@/services/discentes'
@@ -285,8 +287,9 @@ export default function Lacunas({
   const [filtroRegra, setFiltroRegra] = useState<string>(filtroRegraInicial)
   const [termoBusca, setTermoBusca] = useState<string>('')
 
-  // Estados de Correção (Tarefa B)
+  // Estados de Correção e Impressão
   const [carregandoCorrecaoId, setCarregandoCorrecaoId] = useState<number | null>(null)
+  const [imprimindo, setImprimindo] = useState(false)
 
   // Diálogo de Vinculação (Scopus / OpenAlex) para Docentes
   const [dialogoVinculoAberto, setDialogoVinculoAberto] = useState(false)
@@ -509,6 +512,29 @@ export default function Lacunas({
     }
   }
 
+  // Handler de Impressão / Exportação em PDF do Relatório de Lacunas
+  const handleImprimir = async () => {
+    if (!relatorio) {
+      toast.warning('Aguarde o carregamento do relatório para imprimir.')
+      return
+    }
+
+    setImprimindo(true)
+    try {
+      await imprimirRelatorioLacunasViaIframe(relatorio, {
+        filtroGrupo,
+        filtroSeveridade,
+        filtroRegra,
+        termoBusca,
+      })
+    } catch (err: any) {
+      console.error('Falha ao imprimir relatório de lacunas:', err)
+      toast.error('Não foi possível acionar a impressão do relatório.')
+    } finally {
+      setImprimindo(false)
+    }
+  }
+
   const { dadosPorGrupo, totalGeralCriticas, totalGeralAtencao, totalGeralLacunas } =
     useMemo(() => {
       const mapa = new Map<GrupoVisualId, ResumoRegraLacuna[]>()
@@ -708,6 +734,19 @@ export default function Lacunas({
               )}
             </span>
           )}
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleImprimir}
+            disabled={carregando || imprimindo || !relatorio}
+            className="inline-flex items-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800"
+            title="Imprimir relatório de lacunas (PDF / ABNT) conforme filtros ativos"
+            data-testid="btn-imprimir-lacunas"
+          >
+            <Printer className="h-4 w-4 text-slate-600" />
+            <span>{imprimindo ? 'Gerando...' : 'Imprimir'}</span>
+          </Button>
 
           <Button
             type="button"
@@ -1177,19 +1216,19 @@ export default function Lacunas({
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
-                    <th scope="col" className="py-3 px-4 min-w-[200px]">
+                    <th scope="col" className="py-3 px-4 w-[280px] max-w-[320px]">
                       Quem
                     </th>
-                    <th scope="col" className="py-3 px-4 min-w-[240px]">
+                    <th scope="col" className="py-3 px-4 min-w-[220px]">
                       O que falta
                     </th>
-                    <th scope="col" className="py-3 px-4 w-[140px]">
+                    <th scope="col" className="py-3 px-4 w-[130px]">
                       Grupo
                     </th>
-                    <th scope="col" className="py-3 px-4 w-[130px] text-left">
+                    <th scope="col" className="py-3 px-4 w-[120px] text-left">
                       Severidade
                     </th>
-                    <th scope="col" className="py-3 px-4 w-[120px] text-right">
+                    <th scope="col" className="py-3 px-4 w-[100px] text-right">
                       Ação
                     </th>
                   </tr>
@@ -1207,34 +1246,33 @@ export default function Lacunas({
                         className="hover:bg-slate-50/70 transition-colors"
                         data-testid={`linha-lacuna-${item.regraId}-${item.idRegistro}`}
                       >
-                        {/* Coluna Quem */}
-                        <td className="py-3 px-4 font-medium text-slate-900">
-                          <div className="flex items-center gap-2">
+                        {/* Coluna Quem: largura máxima limitada com quebra de linha normal */}
+                        <td className="py-3 px-4 font-medium text-slate-900 w-[280px] max-w-[320px] break-words whitespace-normal align-top">
+                          <div className="flex items-start gap-2">
                             <span
-                              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                              className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${
                                 isCritica ? 'bg-red-500' : 'bg-amber-500'
                               }`}
                             />
-                            <span
-                              className="truncate max-w-[260px] sm:max-w-none"
-                              title={item.nome}
-                            >
-                              {item.nome}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-normal">
-                              ({item.tabela} #{item.idRegistro})
-                            </span>
+                            <div className="min-w-0 flex-1 break-words whitespace-normal">
+                              <span className="font-semibold text-slate-900 block break-words whitespace-normal">
+                                {item.nome}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-normal block break-all">
+                                ({item.tabela} #{item.idRegistro})
+                              </span>
+                            </div>
                           </div>
                         </td>
 
                         {/* Coluna O que falta */}
-                        <td className="py-3 px-4 text-slate-700">
+                        <td className="py-3 px-4 text-slate-700 align-top break-words whitespace-normal">
                           <div className="flex flex-col">
-                            <span className="font-semibold text-slate-800">
+                            <span className="font-semibold text-slate-800 break-words whitespace-normal">
                               {item.regraDescricao}
                             </span>
                             {item.motivo && item.motivo !== item.regraDescricao && (
-                              <span className="text-[11px] text-slate-500 mt-0.5">
+                              <span className="text-[11px] text-slate-500 mt-0.5 break-words whitespace-normal">
                                 {item.motivo}
                               </span>
                             )}
