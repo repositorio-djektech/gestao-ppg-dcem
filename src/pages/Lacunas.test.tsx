@@ -300,8 +300,9 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('Iara de Fatima Gimenez')
       expect(html).toContain('Lucas Silva')
 
-      // Botão de Corrigir presente nas linhas
-      expect(html).toContain('Corrigir')
+      // Botão-ícone de Corrigir presente nas linhas (identificável por aria-label, title e testid)
+      expect(html).toContain('aria-label="Corrigir pendência de Euler Araujo dos Santos"')
+      expect(html).toContain('title="Corrigir pendência de Euler Araujo dos Santos"')
       expect(html).toContain('btn-corrigir-docente_sem_scopus_id-5')
       expect(html).toContain('btn-corrigir-discente_sem_cpf-101')
     })

@@ -1265,20 +1265,20 @@ export default function Lacunas({
                         <td className="py-3 px-4 text-right">
                           <Button
                             type="button"
-                            variant="outline"
-                            size="sm"
+                            variant="ghost"
+                            size="icon"
                             disabled={carregandoCorrecaoId === item.idRegistro}
                             onClick={() => handleCorrigirLacuna(item)}
-                            className="h-7 px-2.5 text-xs gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary font-medium"
+                            className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
                             title={`Corrigir pendência de ${item.nome}`}
+                            aria-label={`Corrigir pendência de ${item.nome}`}
                             data-testid={`btn-corrigir-${item.regraId}-${item.idRegistro}`}
                           >
                             {carregandoCorrecaoId === item.idRegistro ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              <Loader2 className="h-4 w-4 animate-spin text-primary" />
                             ) : (
-                              <Wrench className="h-3.5 w-3.5" />
+                              <Wrench className="h-4 w-4 text-primary" />
                             )}
-                            <span>Corrigir</span>
                           </Button>
                         </td>
                       </tr>
