@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
   AlertTriangle,
+  Award,
   Users,
   GraduationCap,
   UserCheck,
@@ -32,7 +33,6 @@ import {
   Calendar,
   Plane,
   HeartHandshake,
-  Award,
   LogOut,
 } from 'lucide-react'
 
@@ -88,6 +88,11 @@ const navSections: NavSection[] = [
         label: 'Lacunas',
         href: '/lacunas',
         icon: <AlertTriangle className="h-5 w-5 shrink-0" />,
+      },
+      {
+        label: 'Recondução',
+        href: '/reconducao',
+        icon: <Award className="h-5 w-5 shrink-0" />,
       },
     ],
   },

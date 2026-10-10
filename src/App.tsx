@@ -23,6 +23,7 @@ import Mobilidade from '@/pages/Mobilidade'
 import ImpactoSocial from '@/pages/ImpactoSocial'
 import Premiacoes from '@/pages/Premiacoes'
 import Lacunas from '@/pages/Lacunas'
+import Reconducao from '@/pages/Reconducao'
 import PrintView from '@/pages/PrintView'
 import NotFound from '@/pages/NotFound'
 
@@ -39,6 +40,7 @@ const App = () => {
             <Route element={<Layout />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/lacunas" element={<Lacunas />} />
+              <Route path="/reconducao" element={<Reconducao />} />
               <Route path="/docentes" element={<Docentes />} />
               <Route path="/discentes" element={<Discentes />} />
               <Route path="/egressos" element={<Egressos />} />
