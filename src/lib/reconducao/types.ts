@@ -2,7 +2,7 @@ import { ANO_INICIO, ANO_FIM } from '../lattes/quadrienio'
 
 export { ANO_INICIO, ANO_FIM }
 
-export type CategoriaDocente = 'permanente' | 'colaborador' | null
+export type CategoriaDocente = 'permanente' | 'colaborador' | 'visitante' | 'jdp' | null
 
 export type VereditoReconducao = 'RECONDUZIDO' | 'NAO_ATENDE' | 'PDQ_INSUFICIENTE' | 'NAO_APLICAVEL'
 

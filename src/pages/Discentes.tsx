@@ -4,6 +4,7 @@ import { discentesService } from '@/services/discentes'
 import { Badge } from '@/components/ui/badge'
 import type { Discente } from '@/types/database'
 import { formatarCpf } from '@/lib/utils'
+import { normalizarNomePessoa } from '@/lib/normalizacao'
 
 const emptyForm = {
   nome: '',
@@ -22,7 +23,12 @@ const statusColors: Record<string, string> = {
 }
 
 const columns: ColumnDef<Discente>[] = [
-  { key: 'nome', label: 'Nome', className: 'font-medium text-slate-900' },
+  {
+    key: 'nome',
+    label: 'Nome',
+    className: 'font-medium text-slate-900',
+    render: (d) => normalizarNomePessoa(d.nome),
+  },
   {
     key: 'cpf',
     label: 'CPF',

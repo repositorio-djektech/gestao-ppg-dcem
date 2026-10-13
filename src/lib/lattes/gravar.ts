@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/client'
 import { normalizarTitulo } from './dedupe'
+import { normalizarNomePessoa, normalizarTituloAcademico } from '@/lib/normalizacao'
 import type {
   LattesDocente,
   LattesPublicacao,
@@ -44,7 +45,7 @@ export interface DocenteParaGravar {
   bolsa_cnpq?: string | null
   jdp?: boolean | null
   licenca?: string | null
-  categoria?: 'permanente' | 'colaborador' | null
+  categoria?: 'permanente' | 'colaborador' | 'visitante' | 'jdp' | null
 }
 
 export interface PublicacaoParaGravar {
@@ -142,7 +143,7 @@ interface DocenteExistenteBanco {
   id: number
   nome: string
   id_lattes: string | null
-  categoria?: 'permanente' | 'colaborador' | null
+  categoria?: 'permanente' | 'colaborador' | 'visitante' | 'jdp' | null
 }
 
 interface PublicacaoExistenteBanco {
@@ -161,7 +162,7 @@ export type SupabaseClientLike = typeof supabase
 export function converterLattesDocente(d: LattesDocente): DocenteParaGravar {
   return {
     id_lattes: d.id_lattes && d.id_lattes.trim() !== '' ? d.id_lattes.trim() : null,
-    nome: d.nome_completo ? d.nome_completo.trim() : '',
+    nome: d.nome_completo ? normalizarNomePessoa(d.nome_completo) : '',
   }
 }
 
@@ -172,7 +173,7 @@ export function converterLattesDocente(d: LattesDocente): DocenteParaGravar {
  */
 export function converterLattesPublicacao(p: LattesPublicacao): PublicacaoParaGravar {
   return {
-    titulo: p.titulo ? p.titulo.trim() : '',
+    titulo: p.titulo ? normalizarTituloAcademico(p.titulo) : '',
     autores: p.autores ? p.autores.trim() : '',
     periodico: p.veiculo ? p.veiculo.trim() : '',
     ano: typeof p.ano === 'number' ? p.ano : parseInt(String(p.ano), 10) || 0,
@@ -321,9 +322,9 @@ export function converterLattesPremiacao(
 ): PremiacaoParaGravar {
   const anoNum = typeof pr.ano === 'number' ? pr.ano : parseInt(String(pr.ano), 10) || null
   return {
-    titulo: pr.nome ? pr.nome.trim() : '',
+    titulo: pr.nome ? normalizarTituloAcademico(pr.nome) : '',
     ano: anoNum,
-    nome_premiado: docenteContexto?.nome ? docenteContexto.nome.trim() : '',
+    nome_premiado: docenteContexto?.nome ? normalizarNomePessoa(docenteContexto.nome) : '',
     instituicao: pr.entidade ? pr.entidade.trim() : '',
     link_comprovacao: '',
     observacoes: '',
@@ -406,7 +407,7 @@ export function converterLattesEvento(
   docenteContexto?: { nome?: string | null },
 ): EventoParaGravar {
   const anoNum = typeof e.ano === 'number' ? e.ano : parseInt(String(e.ano), 10) || null
-  const docenteNome = docenteContexto?.nome ? docenteContexto.nome.trim() : ''
+  const docenteNome = docenteContexto?.nome ? normalizarNomePessoa(docenteContexto.nome) : ''
 
   let papelDb = 'Participante'
   if (e.tipo === 'TRABALHO') {
@@ -431,7 +432,7 @@ export function converterLattesEvento(
 
   return {
     docente: docenteNome,
-    evento: e.nome ? e.nome.trim() : '',
+    evento: e.nome ? normalizarTituloAcademico(e.nome) : '',
     local_data: localDataStr,
     papel: papelDb,
     ano_referencia: anoNum,

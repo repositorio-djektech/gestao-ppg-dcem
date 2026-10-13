@@ -18,7 +18,7 @@ export type Docente = {
   licenca: string
   id_lattes?: string | null
   openalex_id?: string | null
-  categoria?: 'permanente' | 'colaborador' | null
+  categoria?: 'permanente' | 'colaborador' | 'visitante' | 'jdp' | null
 }
 
 export type Publicacao = {

@@ -8,6 +8,7 @@ import { coautoresProgramaService } from '@/services/coautores-programa'
 import { SeletorCoautoria } from '@/components/publicacoes/SeletorCoautoria'
 import type { Publicacao, Discente, Egresso, PublicacaoCoautorPrograma } from '@/types/database'
 import { useAuth } from '@/hooks/use-auth'
+import { normalizarTituloAcademico } from '@/lib/normalizacao'
 import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -107,7 +108,7 @@ export default function Publicacoes() {
 
   const canEdit = profile?.role === 'admin' || profile?.role === 'editor'
   const canDelete = profile?.role === 'admin'
-  const PER_PAGE = 8
+  const PER_PAGE = 20
 
   const filtered = publicacoes.filter((p) => {
     const s =
@@ -136,12 +137,16 @@ export default function Publicacoes() {
         return
       }
     }
+    const payload = {
+      ...formData,
+      titulo: normalizarTituloAcademico(formData.titulo),
+    }
     try {
       if (editingId) {
-        await update(editingId, formData)
+        await update(editingId, payload)
         toast.success('Publicação atualizada')
       } else {
-        const criada = (await create(formData)) as any
+        const criada = (await create(payload)) as any
         toast.success('Publicação registrada')
         if (criada && criada.id) {
           setEditingId(criada.id)
@@ -414,7 +419,9 @@ export default function Publicacoes() {
                 paginated.map((p) => (
                   <TableRow key={p.id} className="hover:bg-slate-50/50">
                     <TableCell>
-                      <div className="font-medium text-slate-900 mb-1">{p.titulo}</div>
+                      <div className="font-medium text-slate-900 mb-1">
+                        {normalizarTituloAcademico(p.titulo)}
+                      </div>
                       <div className="text-xs text-slate-500">{p.autores}</div>
                     </TableCell>
                     <TableCell className="text-slate-700">{p.periodico}</TableCell>

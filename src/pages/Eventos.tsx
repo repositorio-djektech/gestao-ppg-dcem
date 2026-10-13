@@ -3,6 +3,7 @@ import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { eventosService } from '@/services/eventos'
 import { Badge } from '@/components/ui/badge'
 import type { Evento } from '@/types/database'
+import { normalizarTituloAcademico } from '@/lib/normalizacao'
 
 const emptyForm = {
   docente: '',
@@ -14,7 +15,12 @@ const emptyForm = {
 }
 
 const columns: ColumnDef<Evento>[] = [
-  { key: 'evento', label: 'Evento', className: 'font-medium text-slate-900' },
+  {
+    key: 'evento',
+    label: 'Evento',
+    className: 'font-medium text-slate-900',
+    render: (e) => normalizarTituloAcademico(e.evento),
+  },
   { key: 'docente', label: 'Docente' },
   { key: 'local_data', label: 'Local/Data' },
   {

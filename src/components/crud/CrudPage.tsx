@@ -76,7 +76,7 @@ export function CrudPage<T extends { id: number | string }>({
 
   const canEdit = profile?.role === 'admin' || profile?.role === 'editor'
   const canDelete = profile?.role === 'admin'
-  const PER_PAGE = 10
+  const PER_PAGE = 20
 
   useEffect(() => {
     fields.forEach((field) => {

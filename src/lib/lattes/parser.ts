@@ -11,6 +11,7 @@ import type {
   LattesArquivoResultado,
 } from './types'
 import { ANO_INICIO, ANO_FIM } from './quadrienio'
+import { normalizarNomePessoa, normalizarTituloAcademico } from '@/lib/normalizacao'
 
 /**
  * Normaliza valores de atributos de XML do Lattes:
@@ -173,7 +174,9 @@ export function parseLattesXml(
 
   // 1. DADOS GERAIS DO DOCENTE
   const dadosGeraisEl = raiz.querySelector('DADOS-GERAIS')
-  const nomeDocente = dadosGeraisEl?.getAttribute('NOME-COMPLETO') || 'Docente sem nome'
+  const nomeDocente = normalizarNomePessoa(
+    dadosGeraisEl?.getAttribute('NOME-COMPLETO') || 'Docente sem nome',
+  )
   const citacoes = dadosGeraisEl?.getAttribute('NOME-EM-CITACOES-BIBLIOGRAFICAS')
   const orcid = dadosGeraisEl?.getAttribute('ORCID-ID')
   const resumoCv = dadosGeraisEl?.querySelector('RESUMO-CV')?.getAttribute('TEXTO-RESUMO-CV-RH')
@@ -252,7 +255,8 @@ export function parseLattesXml(
   raiz.querySelectorAll('ARTIGO-PUBLICADO').forEach((artEl) => {
     const dadosBasicos = artEl.querySelector('DADOS-BASICOS-DO-ARTIGO')
     const detalhamento = artEl.querySelector('DETALHAMENTO-DO-ARTIGO')
-    const titulo = limparTexto(dadosBasicos?.getAttribute('TITULO-DO-ARTIGO'))
+    const tituloBruto = limparTexto(dadosBasicos?.getAttribute('TITULO-DO-ARTIGO'))
+    const titulo = tituloBruto ? normalizarTituloAcademico(tituloBruto) : null
     const ano = parseInt(dadosBasicos?.getAttribute('ANO-DO-ARTIGO') || '', 10)
     const doi = limparTexto(dadosBasicos?.getAttribute('DOI'))
     const veiculo = limparTexto(detalhamento?.getAttribute('TITULO-DO-PERIODICO-OU-REVISTA'))

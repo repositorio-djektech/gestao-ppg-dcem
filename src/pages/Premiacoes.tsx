@@ -3,6 +3,7 @@ import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { premiacoesService } from '@/services/premiacoes'
 import { Badge } from '@/components/ui/badge'
 import type { Premicao } from '@/types/database'
+import { normalizarTituloAcademico } from '@/lib/normalizacao'
 
 const emptyForm = {
   titulo: '',
@@ -14,7 +15,12 @@ const emptyForm = {
 }
 
 const columns: ColumnDef<Premicao>[] = [
-  { key: 'titulo', label: 'Prêmio', className: 'font-medium text-slate-900' },
+  {
+    key: 'titulo',
+    label: 'Prêmio',
+    className: 'font-medium text-slate-900',
+    render: (p) => normalizarTituloAcademico(p.titulo),
+  },
   { key: 'nome_premiado', label: 'Premiado' },
   { key: 'instituicao', label: 'Instituição' },
   {

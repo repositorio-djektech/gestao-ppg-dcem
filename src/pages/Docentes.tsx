@@ -69,6 +69,7 @@ import type { OpenAlexAutorCandidato } from '@/lib/openalex/buscar'
 import type { ScopusAutorCandidato } from '@/services/scopus'
 import { Database } from 'lucide-react'
 import { Label } from '@/components/ui/label'
+import { normalizarNomePessoa } from '@/lib/normalizacao'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import {
@@ -129,7 +130,7 @@ export default function Docentes() {
 
   const canEdit = profile?.role === 'admin' || profile?.role === 'editor'
   const canDelete = profile?.role === 'admin'
-  const PER_PAGE = 10
+  const PER_PAGE = 20
 
   const filtered = docentes.filter((d) => d.nome.toLowerCase().includes(searchTerm.toLowerCase()))
   const totalPages = Math.ceil(filtered.length / PER_PAGE)
@@ -152,12 +153,16 @@ export default function Docentes() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
+    const payload = {
+      ...formData,
+      nome: normalizarNomePessoa(formData.nome),
+    }
     try {
       if (editingId) {
-        await update(editingId, formData)
+        await update(editingId, payload)
         toast.success('Docente atualizado')
       } else {
-        await create(formData)
+        await create(payload)
         toast.success('Docente adicionado')
       }
       setIsDialogOpen(false)
@@ -495,21 +500,6 @@ export default function Docentes() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex items-center justify-between border border-slate-200 rounded-lg p-3 bg-slate-50/50">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="jdp" className="cursor-pointer">
-                        Indicado como JDP?
-                      </Label>
-                      <p className="text-xs text-slate-500">
-                        Jovem Doutor Pesquisador (até 5 anos pós-doc)
-                      </p>
-                    </div>
-                    <Switch
-                      id="jdp"
-                      checked={formData.jdp}
-                      onCheckedChange={(c) => setFormData({ ...formData, jdp: c })}
-                    />
-                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="categoria">Categoria no PPG-DCEM</Label>
                     <Select
@@ -517,7 +507,10 @@ export default function Docentes() {
                       onValueChange={(v) =>
                         setFormData({
                           ...formData,
-                          categoria: v === '__none__' ? null : (v as 'permanente' | 'colaborador'),
+                          categoria:
+                            v === '__none__'
+                              ? null
+                              : (v as 'permanente' | 'colaborador' | 'visitante' | 'jdp'),
                         })
                       }
                     >
@@ -528,6 +521,8 @@ export default function Docentes() {
                         <SelectItem value="__none__">Sem categoria (Não informado)</SelectItem>
                         <SelectItem value="permanente">Permanente</SelectItem>
                         <SelectItem value="colaborador">Colaborador</SelectItem>
+                        <SelectItem value="visitante">Visitante</SelectItem>
+                        <SelectItem value="jdp">JDP</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -567,7 +562,6 @@ export default function Docentes() {
                 <TableHead className="font-semibold text-slate-700">Scopus ID</TableHead>
                 <TableHead className="text-center font-semibold text-slate-700">Índice-H</TableHead>
                 <TableHead className="font-semibold text-slate-700">Bolsa CNPq</TableHead>
-                <TableHead className="text-center font-semibold text-slate-700">JDP</TableHead>
                 <TableHead className="font-semibold text-slate-700">Licença</TableHead>
                 <TableHead className="font-semibold text-slate-700">OpenAlex</TableHead>
                 <TableHead className="text-right font-semibold text-slate-700">Ações</TableHead>
@@ -577,7 +571,7 @@ export default function Docentes() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 8 }).map((_, j) => (
+                    {Array.from({ length: 7 }).map((_, j) => (
                       <TableCell key={j}>
                         <Skeleton className="h-6 w-full" />
                       </TableCell>
@@ -588,12 +582,12 @@ export default function Docentes() {
                 paginated.map((d) => (
                   <TableRow key={d.id} className="hover:bg-slate-50/50">
                     <TableCell className="font-medium text-slate-900">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span>{d.nome}</span>
+                      <div className="flex flex-col items-start gap-1">
+                        <span>{normalizarNomePessoa(d.nome)}</span>
                         {d.categoria === 'permanente' && (
                           <Badge
                             variant="secondary"
-                            className="bg-blue-100 text-blue-800 border-blue-200 text-[10px] font-semibold"
+                            className="bg-blue-100 text-blue-800 border-blue-200 text-[10px] font-semibold w-fit"
                           >
                             Permanente
                           </Badge>
@@ -601,9 +595,25 @@ export default function Docentes() {
                         {d.categoria === 'colaborador' && (
                           <Badge
                             variant="outline"
-                            className="bg-amber-50 text-amber-800 border-amber-300 text-[10px] font-semibold"
+                            className="bg-amber-50 text-amber-800 border-amber-300 text-[10px] font-semibold w-fit"
                           >
                             Colaborador
+                          </Badge>
+                        )}
+                        {d.categoria === 'visitante' && (
+                          <Badge
+                            variant="outline"
+                            className="bg-purple-50 text-purple-800 border-purple-300 text-[10px] font-semibold w-fit"
+                          >
+                            Visitante
+                          </Badge>
+                        )}
+                        {d.categoria === 'jdp' && (
+                          <Badge
+                            variant="secondary"
+                            className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px] font-semibold w-fit"
+                          >
+                            JDP
                           </Badge>
                         )}
                       </div>
@@ -664,15 +674,6 @@ export default function Docentes() {
                           className="bg-blue-50 text-blue-700 hover:bg-blue-100"
                         >
                           {d.bolsa_cnpq}
-                        </Badge>
-                      ) : (
-                        <span className="text-slate-400">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {d.jdp ? (
-                        <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-0">
-                          Sim
                         </Badge>
                       ) : (
                         <span className="text-slate-400">-</span>
@@ -768,7 +769,7 @@ export default function Docentes() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-32 text-center text-slate-500">
+                  <TableCell colSpan={7} className="h-32 text-center text-slate-500">
                     Nenhum docente encontrado.
                   </TableCell>
                 </TableRow>

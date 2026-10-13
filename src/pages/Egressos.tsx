@@ -2,6 +2,7 @@ import { CrudPage } from '@/components/crud/CrudPage'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { egressosService } from '@/services/egressos'
 import type { Egresso } from '@/types/database'
+import { normalizarNomePessoa } from '@/lib/normalizacao'
 
 const emptyForm = {
   nome: '',
@@ -13,7 +14,12 @@ const emptyForm = {
 }
 
 const columns: ColumnDef<Egresso>[] = [
-  { key: 'nome', label: 'Nome', className: 'font-medium text-slate-900' },
+  {
+    key: 'nome',
+    label: 'Nome',
+    className: 'font-medium text-slate-900',
+    render: (e) => normalizarNomePessoa(e.nome),
+  },
   { key: 'ano_titulacao', label: 'Ano Titulação' },
   {
     key: 'atuacao_profissional',
