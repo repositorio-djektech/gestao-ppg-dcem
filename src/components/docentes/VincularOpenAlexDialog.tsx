@@ -22,6 +22,7 @@ import {
   Building2,
   Sparkles,
   Database,
+  Link2,
 } from 'lucide-react'
 import type { Docente } from '@/types/database'
 import { buscarAutoresOpenAlex, type OpenAlexAutorCandidato } from '@/lib/openalex/buscar'

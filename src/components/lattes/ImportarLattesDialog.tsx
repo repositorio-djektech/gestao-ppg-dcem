@@ -59,6 +59,18 @@ export function ImportarLattesDialog({
   const [revisaoOpen, setRevisaoOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const handleFecharComLimpeza = () => {
+    if (processando) return
+    setArquivos([])
+    setResultado(null)
+    setIsDragging(false)
+    setRevisaoOpen(false)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+    onOpenChange(false)
+  }
+
   // Reseta seleção ao fechar
   const handleOpenChange = (proximoOpen: boolean) => {
     if (!proximoOpen && !processando) {
