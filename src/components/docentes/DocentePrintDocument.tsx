@@ -133,10 +133,24 @@ export function DocentePrintDocument({
                 <td>{doc.bolsa_cnpq || '—'}</td>
               </tr>
               <tr>
-                <td className="font-bold bg-slate-100">Jovem Doutor Pesquisador (JDP)</td>
-                <td>{doc.jdp ? 'Sim' : 'Não'}</td>
+                <td className="font-bold bg-slate-100">Categoria no PPG-DCEM</td>
+                <td>
+                  {doc.categoria === 'permanente'
+                    ? 'Permanente'
+                    : doc.categoria === 'colaborador'
+                      ? 'Colaborador'
+                      : doc.categoria === 'visitante'
+                        ? 'Visitante'
+                        : doc.categoria === 'jdp'
+                          ? 'JDP'
+                          : 'Sem categoria'}
+                </td>
+                <td className="font-bold bg-slate-100">ORCID</td>
+                <td className="font-mono">{doc.orc_id || '—'}</td>
+              </tr>
+              <tr>
                 <td className="font-bold bg-slate-100">Licença</td>
-                <td>{doc.licenca || '—'}</td>
+                <td colSpan={3}>{doc.licenca || '—'}</td>
               </tr>
             </tbody>
           </table>

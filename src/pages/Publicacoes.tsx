@@ -293,7 +293,9 @@ export default function Publicacoes() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>{editingId ? 'Editar' : 'Registrar'} Publicação</DialogTitle>
+                  <DialogTitle className="text-primary font-bold">
+                    {editingId ? 'Editar' : 'Registrar'} Publicação
+                  </DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4 mt-2">
                   <div className="space-y-2">
@@ -306,6 +308,7 @@ export default function Publicacoes() {
                       value={formData.titulo}
                       onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
                       required
+                      className="bg-white"
                     />
                   </div>
                   <div className="space-y-2">
@@ -318,6 +321,7 @@ export default function Publicacoes() {
                       value={formData.autores}
                       onChange={(e) => setFormData({ ...formData, autores: e.target.value })}
                       required
+                      className="bg-white"
                     />
                     <p className="text-xs text-slate-500">
                       Identifique claramente os docentes e discentes do programa
@@ -334,6 +338,7 @@ export default function Publicacoes() {
                         value={formData.periodico}
                         onChange={(e) => setFormData({ ...formData, periodico: e.target.value })}
                         required
+                        className="bg-white"
                       />
                     </div>
                     <div className="space-y-2">
@@ -348,6 +353,7 @@ export default function Publicacoes() {
                         value={formData.ano}
                         onChange={(e) => setFormData({ ...formData, ano: Number(e.target.value) })}
                         required
+                        className="bg-white"
                       />
                     </div>
                   </div>
@@ -359,6 +365,7 @@ export default function Publicacoes() {
                         placeholder="10.1016/j.jmatchem.2025.01.001"
                         value={formData.doi}
                         onChange={(e) => setFormData({ ...formData, doi: e.target.value })}
+                        className="bg-white"
                       />
                     </div>
                     <div className="space-y-2">
@@ -383,6 +390,7 @@ export default function Publicacoes() {
                             fator_impacto_jcr: val !== null && !isNaN(val) ? val : null,
                           })
                         }}
+                        className="bg-white"
                       />
                     </div>
                   </div>
@@ -394,6 +402,7 @@ export default function Publicacoes() {
                       placeholder="Contribuição para o quadriênio CAPES, aderência às linhas de pesquisa, colaboração internacional..."
                       value={formData.justificativa}
                       onChange={(e) => setFormData({ ...formData, justificativa: e.target.value })}
+                      className="bg-white"
                     />
                   </div>
                   <div className="space-y-2">
@@ -406,6 +415,7 @@ export default function Publicacoes() {
                       onChange={(e) =>
                         setFormData({ ...formData, link_comprovacao: e.target.value })
                       }
+                      className="bg-white"
                     />
                   </div>
                   <div className="space-y-2">
@@ -416,6 +426,7 @@ export default function Publicacoes() {
                       placeholder="Quartis Qualis, número de citações, projetos associados..."
                       value={formData.observacoes}
                       onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                      className="bg-white"
                     />
                   </div>
 
@@ -444,7 +455,12 @@ export default function Publicacoes() {
                     />
                   </div>
                   <div className="flex justify-end gap-3 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsDialogOpen(false)}
+                      className="bg-white hover:bg-slate-50"
+                    >
                       Cancelar
                     </Button>
                     <Button type="submit" disabled={submitting}>

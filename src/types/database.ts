@@ -22,6 +22,7 @@ export type Docente = {
   cpf?: string
   siape?: string
   email?: string
+  orc_id?: string | null
 }
 
 export type Publicacao = {

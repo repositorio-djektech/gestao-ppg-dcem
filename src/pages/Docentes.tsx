@@ -93,6 +93,7 @@ const emptyForm: Omit<Docente, 'id'> = {
   cpf: '',
   siape: '',
   email: '',
+  orc_id: '',
 }
 
 export default function Docentes() {
@@ -509,7 +510,9 @@ export default function Docentes() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[480px]">
                 <DialogHeader>
-                  <DialogTitle>{editingId ? 'Editar Docente' : 'Adicionar Docente'}</DialogTitle>
+                  <DialogTitle className="text-primary font-bold">
+                    {editingId ? 'Editar Docente' : 'Adicionar Docente'}
+                  </DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4 mt-2">
                   <div className="space-y-2">
@@ -522,6 +525,7 @@ export default function Docentes() {
                       value={formData.nome}
                       onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                       required
+                      className="bg-white"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -532,6 +536,7 @@ export default function Docentes() {
                         placeholder="Ex: 57201234567"
                         value={formData.scopus_id}
                         onChange={(e) => setFormData({ ...formData, scopus_id: e.target.value })}
+                        className="bg-white"
                       />
                     </div>
                     <div className="space-y-2">
@@ -545,6 +550,7 @@ export default function Docentes() {
                         onChange={(e) =>
                           setFormData({ ...formData, indice_h: Number(e.target.value) })
                         }
+                        className="bg-white"
                       />
                     </div>
                   </div>
@@ -556,7 +562,7 @@ export default function Docentes() {
                         setFormData({ ...formData, bolsa_cnpq: v === '__none__' ? '' : v })
                       }
                     >
-                      <SelectTrigger id="bolsaCnpq">
+                      <SelectTrigger id="bolsaCnpq" className="bg-white">
                         <SelectValue placeholder="Selecione..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -586,7 +592,7 @@ export default function Docentes() {
                         })
                       }
                     >
-                      <SelectTrigger id="categoria">
+                      <SelectTrigger id="categoria" className="bg-white">
                         <SelectValue placeholder="Selecione a categoria..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -611,6 +617,7 @@ export default function Docentes() {
                             cpf: e.target.value.replace(/\D/g, '').slice(0, 11),
                           })
                         }
+                        className="bg-white"
                       />
                       <p className="text-[11px] text-slate-500">Apenas números (salvo limpo)</p>
                     </div>
@@ -626,6 +633,7 @@ export default function Docentes() {
                             siape: e.target.value.replace(/\D/g, ''),
                           })
                         }
+                        className="bg-white"
                       />
                       <p className="text-[11px] text-slate-500">Apenas números (salvo limpo)</p>
                     </div>
@@ -638,6 +646,17 @@ export default function Docentes() {
                       placeholder="docente@ufs.br"
                       value={formData.email || ''}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="bg-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="orcId">ORCID</Label>
+                    <Input
+                      id="orcId"
+                      placeholder="0000-0002-1825-0097"
+                      value={formData.orc_id || ''}
+                      onChange={(e) => setFormData({ ...formData, orc_id: e.target.value })}
+                      className="bg-white font-mono text-sm"
                     />
                   </div>
                   <div className="space-y-2">
@@ -647,6 +666,7 @@ export default function Docentes() {
                       placeholder="Ex: Licença Maternidade (6 meses em 2024)"
                       value={formData.licenca}
                       onChange={(e) => setFormData({ ...formData, licenca: e.target.value })}
+                      className="bg-white"
                     />
                     <p className="text-xs text-slate-500">
                       Impacta na flexibilização dos critérios de produtividade CAPES
@@ -713,7 +733,12 @@ export default function Docentes() {
                     )}
                   </div>
                   <div className="flex justify-end gap-3 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsDialogOpen(false)}
+                      className="bg-white hover:bg-slate-50"
+                    >
                       Cancelar
                     </Button>
                     <Button type="submit" disabled={submitting}>
@@ -730,227 +755,255 @@ export default function Docentes() {
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto">
           <Table>
-            <TableHeader className="bg-slate-50/80 sticky top-0 z-10">
-              <TableRow>
-                <TableHead className="font-semibold text-slate-700">Nome do Docente</TableHead>
-                <TableHead className="font-semibold text-slate-700">Scopus ID</TableHead>
+            <TableHeader className="bg-[#e9effc] sticky top-0 z-10">
+              <TableRow className="bg-[#e9effc] hover:bg-[#e9effc]">
+                <TableHead className="text-center font-semibold text-slate-700">Nome</TableHead>
+                <TableHead className="text-center font-semibold text-slate-700">
+                  Scopus ID
+                </TableHead>
                 <TableHead className="text-center font-semibold text-slate-700">Índice-H</TableHead>
-                <TableHead className="font-semibold text-slate-700">Bolsa CNPq</TableHead>
-                <TableHead className="font-semibold text-slate-700">Licença</TableHead>
-                <TableHead className="font-semibold text-slate-700">OpenAlex</TableHead>
-                <TableHead className="text-right font-semibold text-slate-700">Ações</TableHead>
+                <TableHead className="text-center font-semibold text-slate-700">
+                  Bolsa CNPq
+                </TableHead>
+                <TableHead className="text-center font-semibold text-slate-700">OpenAlex</TableHead>
+                <TableHead className="text-center font-semibold text-slate-700">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 7 }).map((_, j) => (
-                      <TableCell key={j}>
+                    {Array.from({ length: 6 }).map((_, j) => (
+                      <TableCell key={j} className="text-center">
                         <Skeleton className="h-6 w-full" />
                       </TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : paginated.length > 0 ? (
-                paginated.map((d) => (
-                  <TableRow key={d.id} className="hover:bg-slate-50/50">
-                    <TableCell className="font-medium text-slate-900">
-                      <div className="flex flex-col items-start gap-1">
-                        <span>{normalizarNomePessoa(d.nome)}</span>
-                        {(d.email || d.cpf || d.siape) && (
-                          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 font-normal">
-                            {d.email && <span className="text-slate-600">{d.email}</span>}
-                            {d.cpf && <span>• CPF: {d.cpf}</span>}
-                            {d.siape && <span>• SIAPE: {d.siape}</span>}
-                          </div>
-                        )}
-                        {d.categoria === 'permanente' && (
-                          <Badge
-                            variant="secondary"
-                            className="bg-blue-100 text-blue-800 border-blue-200 text-[10px] font-semibold w-fit"
-                          >
-                            Permanente
-                          </Badge>
-                        )}
-                        {d.categoria === 'colaborador' && (
-                          <Badge
-                            variant="outline"
-                            className="bg-amber-50 text-amber-800 border-amber-300 text-[10px] font-semibold w-fit"
-                          >
-                            Colaborador
-                          </Badge>
-                        )}
-                        {d.categoria === 'visitante' && (
-                          <Badge
-                            variant="outline"
-                            className="bg-purple-50 text-purple-800 border-purple-300 text-[10px] font-semibold w-fit"
-                          >
-                            Visitante
-                          </Badge>
-                        )}
-                        {d.categoria === 'jdp' && (
-                          <Badge
-                            variant="secondary"
-                            className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px] font-semibold w-fit"
-                          >
-                            JDP
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {d.scopus_id ? (
-                        canEdit ? (
-                          <button
-                            type="button"
-                            onClick={() => handleAbrirVinculo(d, 'scopus')}
-                            className="inline-flex items-center gap-1.5 group cursor-pointer focus:outline-none"
-                            title="Clique para gerenciar a vinculação Scopus"
-                          >
+                paginated.map((d) => {
+                  const licencaTrim = (d.licenca ?? '').trim()
+                  const temLicenca = licencaTrim !== '' && licencaTrim !== '-'
+                  const dAny = d as any
+                  const statusVal = String(dAny.status ?? '')
+                    .trim()
+                    .toLowerCase()
+                  const isInativo =
+                    statusVal === 'inativo' || statusVal === 'desligado' || statusVal === 'inativa'
+                  const destacarOlhoLaranja = temLicenca || isInativo
+
+                  return (
+                    <TableRow key={d.id} className="hover:bg-slate-50/50">
+                      <TableCell className="text-left font-medium text-slate-900">
+                        <div className="flex flex-col items-start gap-1">
+                          <span>{normalizarNomePessoa(d.nome)}</span>
+                          {(d.email || d.cpf || d.siape) && (
+                            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 font-normal">
+                              {d.email && <span className="text-slate-600">{d.email}</span>}
+                              {d.cpf && <span>• CPF: {d.cpf}</span>}
+                              {d.siape && <span>• SIAPE: {d.siape}</span>}
+                            </div>
+                          )}
+                          {d.categoria === 'permanente' && (
+                            <Badge
+                              variant="secondary"
+                              className="bg-blue-100 text-blue-800 border-blue-200 text-[10px] font-semibold w-fit"
+                            >
+                              Permanente
+                            </Badge>
+                          )}
+                          {d.categoria === 'colaborador' && (
                             <Badge
                               variant="outline"
-                              className="font-mono text-xs text-emerald-800 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 transition-colors"
+                              className="bg-amber-50 text-amber-800 border-amber-300 text-[10px] font-semibold w-fit"
                             >
-                              <Database className="h-3 w-3 text-emerald-600 mr-1" />
-                              {d.scopus_id}
+                              Colaborador
                             </Badge>
-                          </button>
-                        ) : (
-                          <Badge
-                            variant="outline"
-                            className="font-mono text-xs text-emerald-800 border-emerald-300 bg-emerald-50"
-                          >
-                            <Database className="h-3 w-3 text-emerald-600 mr-1" />
-                            {d.scopus_id}
-                          </Badge>
-                        )
-                      ) : canEdit ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleAbrirVinculo(d, 'scopus')}
-                          className="h-7 px-2 text-xs gap-1 text-orange-700 hover:text-orange-800 border-orange-300 hover:border-orange-400 bg-orange-50 hover:bg-orange-100 transition-colors"
-                          title="Buscar autor no Scopus"
-                        >
-                          <Database className="h-3 w-3 text-orange-600" />
-                          <span className="font-medium">Buscar Scopus</span>
-                        </Button>
-                      ) : (
-                        <Badge
-                          variant="outline"
-                          className="font-mono text-xs text-orange-700 border-orange-300 bg-orange-50"
-                        >
-                          Buscar Scopus
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center font-medium text-slate-700">
-                      {d.indice_h}
-                    </TableCell>
-                    <TableCell>
-                      {d.bolsa_cnpq ? (
-                        <Badge
-                          variant="secondary"
-                          className="bg-blue-50 text-blue-700 hover:bg-blue-100"
-                        >
-                          {d.bolsa_cnpq}
-                        </Badge>
-                      ) : (
-                        <span className="text-slate-400">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {d.licenca ? (
-                        <span className="text-sm text-amber-600 font-medium">{d.licenca}</span>
-                      ) : (
-                        <span className="text-slate-400">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {d.openalex_id ? (
-                        canEdit ? (
-                          <button
-                            type="button"
-                            onClick={() => handleAbrirVinculo(d, 'openalex')}
-                            className="inline-flex items-center gap-1.5 group cursor-pointer focus:outline-none"
-                            title="Clique para alterar a vinculação OpenAlex"
-                          >
+                          )}
+                          {d.categoria === 'visitante' && (
                             <Badge
                               variant="outline"
-                              className="font-mono text-xs text-indigo-700 border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 transition-colors"
+                              className="bg-purple-50 text-purple-800 border-purple-300 text-[10px] font-semibold w-fit"
                             >
-                              {d.openalex_id}
+                              Visitante
                             </Badge>
-                          </button>
-                        ) : (
-                          <Badge
-                            variant="outline"
-                            className="font-mono text-xs text-indigo-700 border-indigo-200 bg-indigo-50/70"
-                          >
-                            {d.openalex_id}
-                          </Badge>
-                        )
-                      ) : canEdit ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleAbrirVinculo(d, 'openalex')}
-                          className="h-7 px-2.5 text-xs gap-1.5 text-orange-700 hover:text-orange-800 border-orange-300 hover:border-orange-400 bg-orange-50 hover:bg-orange-100 transition-colors"
-                          title="Buscar autor no OpenAlex"
-                        >
-                          <span className="font-medium">Buscar OpenAlex</span>
-                        </Button>
-                      ) : (
-                        <Badge
-                          variant="outline"
-                          className="font-mono text-xs text-orange-700 border-orange-300 bg-orange-50"
-                        >
-                          Buscar OpenAlex
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleVisualizarDocente(d)}
-                          className="h-8 w-8 text-slate-600 hover:text-primary hover:bg-primary/10"
-                          title="Visualizar"
-                          aria-label="Visualizar Docente"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {canEdit && (
+                          )}
+                          {d.categoria === 'jdp' && (
+                            <Badge
+                              variant="secondary"
+                              className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px] font-semibold w-fit"
+                            >
+                              JDP
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex justify-center items-center">
+                          {d.scopus_id ? (
+                            canEdit ? (
+                              <button
+                                type="button"
+                                onClick={() => handleAbrirVinculo(d, 'scopus')}
+                                className="inline-flex items-center gap-1.5 group cursor-pointer focus:outline-none"
+                                title="Clique para gerenciar a vinculação Scopus"
+                              >
+                                <Badge
+                                  variant="outline"
+                                  className="font-mono text-xs text-emerald-800 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 transition-colors"
+                                >
+                                  <Database className="h-3 w-3 text-emerald-600 mr-1" />
+                                  {d.scopus_id}
+                                </Badge>
+                              </button>
+                            ) : (
+                              <Badge
+                                variant="outline"
+                                className="font-mono text-xs text-emerald-800 border-emerald-300 bg-emerald-50"
+                              >
+                                <Database className="h-3 w-3 text-emerald-600 mr-1" />
+                                {d.scopus_id}
+                              </Badge>
+                            )
+                          ) : canEdit ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAbrirVinculo(d, 'scopus')}
+                              className="h-7 px-2 text-xs gap-1 text-orange-700 hover:text-orange-800 border-orange-300 hover:border-orange-400 bg-orange-50 hover:bg-orange-100 transition-colors"
+                              title="Buscar autor no Scopus"
+                            >
+                              <Database className="h-3 w-3 text-orange-600" />
+                              <span className="font-medium">Buscar Scopus</span>
+                            </Button>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="font-mono text-xs text-orange-700 border-orange-300 bg-orange-50"
+                            >
+                              Buscar Scopus
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center font-medium text-slate-700">
+                        {d.indice_h}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex justify-center items-center">
+                          {d.bolsa_cnpq ? (
+                            <Badge
+                              variant="secondary"
+                              className="bg-blue-50 text-blue-700 hover:bg-blue-100"
+                            >
+                              {d.bolsa_cnpq}
+                            </Badge>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex justify-center items-center">
+                          {d.openalex_id ? (
+                            canEdit ? (
+                              <button
+                                type="button"
+                                onClick={() => handleAbrirVinculo(d, 'openalex')}
+                                className="inline-flex items-center gap-1.5 group cursor-pointer focus:outline-none"
+                                title="Clique para alterar a vinculação OpenAlex"
+                              >
+                                <Badge
+                                  variant="outline"
+                                  className="font-mono text-xs text-indigo-700 border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 transition-colors"
+                                >
+                                  {d.openalex_id}
+                                </Badge>
+                              </button>
+                            ) : (
+                              <Badge
+                                variant="outline"
+                                className="font-mono text-xs text-indigo-700 border-indigo-200 bg-indigo-50/70"
+                              >
+                                {d.openalex_id}
+                              </Badge>
+                            )
+                          ) : canEdit ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAbrirVinculo(d, 'openalex')}
+                              className="h-7 px-2.5 text-xs gap-1.5 text-orange-700 hover:text-orange-800 border-orange-300 hover:border-orange-400 bg-orange-50 hover:bg-orange-100 transition-colors"
+                              title="Buscar autor no OpenAlex"
+                            >
+                              <span className="font-medium">Buscar OpenAlex</span>
+                            </Button>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="font-mono text-xs text-orange-700 border-orange-300 bg-orange-50"
+                            >
+                              Buscar OpenAlex
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleOpen(d)}
-                            className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                            title="Editar Docente"
+                            onClick={() => handleVisualizarDocente(d)}
+                            className={
+                              destacarOlhoLaranja
+                                ? 'h-8 w-8 text-orange-500 hover:text-orange-600 hover:bg-orange-50'
+                                : 'h-8 w-8 text-slate-600 hover:text-primary hover:bg-primary/10'
+                            }
+                            title={
+                              destacarOlhoLaranja
+                                ? `Visualizar (Docente ${isInativo ? 'inativo' : ''}${temLicenca ? ' em gozo de licença: ' + d.licenca : ''})`
+                                : 'Visualizar Docente'
+                            }
+                            aria-label="Visualizar Docente"
                           >
-                            <Edit className="h-4 w-4 text-primary" />
+                            <Eye
+                              className={
+                                destacarOlhoLaranja
+                                  ? 'h-4 w-4 text-orange-500 stroke-[2.2]'
+                                  : 'h-4 w-4'
+                              }
+                            />
                           </Button>
-                        )}
-                        {canDelete && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => setIdParaExcluir(d.id)}
-                            title="Excluir Docente"
-                          >
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                          {canEdit && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpen(d)}
+                              className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                              title="Editar Docente"
+                            >
+                              <Edit className="h-4 w-4 text-primary" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => setIdParaExcluir(d.id)}
+                              title="Excluir Docente"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                  <TableCell colSpan={6} className="h-32 text-center text-slate-500">
                     Nenhum docente encontrado.
                   </TableCell>
                 </TableRow>

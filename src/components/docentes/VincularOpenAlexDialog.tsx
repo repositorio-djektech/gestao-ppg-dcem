@@ -292,10 +292,10 @@ export function VincularOpenAlexDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[660px] max-h-[88vh] flex flex-col p-6">
         <DialogHeader className="space-y-1">
-          <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-            <Sparkles className="h-5 w-5 text-indigo-600" />
-            Vincular Perfil Acadêmico (OpenAlex / Scopus)
-          </DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-lg font-bold text-primary">
+            <Link2 className="h-5 w-5 text-primary" />
+            Vincular Identificadores Acadêmicos
+          </DialogTitle>{' '}
           <DialogDescription className="text-slate-500 text-xs">
             Associe os identificadores públicos aos docentes para sincronização e enriquecimento de
             métricas. As bases são independentes.

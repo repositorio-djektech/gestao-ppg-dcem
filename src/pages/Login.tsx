@@ -268,7 +268,7 @@ export default function Login() {
       <Dialog open={resetOpen} onOpenChange={setResetOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Recuperar Senha</DialogTitle>
+            <DialogTitle className="text-primary font-bold">Recuperar Senha</DialogTitle>
             <DialogDescription>
               Informe seu email para receber as instruções de recuperação.
             </DialogDescription>
@@ -278,10 +278,14 @@ export default function Login() {
             placeholder="Digite o e-mail cadastrado no sistema..."
             value={resetEmail}
             onChange={(e) => setResetEmail(e.target.value)}
-            className="border-slate-300/80 shadow-xs placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all"
+            className="bg-white border-slate-300/80 shadow-xs placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all"
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setResetOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setResetOpen(false)}
+              className="bg-white hover:bg-slate-50"
+            >
               Cancelar
             </Button>
             <Button onClick={handleReset}>Enviar</Button>

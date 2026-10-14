@@ -144,10 +144,10 @@ export function ImportarLattesDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
+          <DialogTitle className="flex items-center gap-2 text-xl text-primary font-bold">
             <Upload className="h-5 w-5 text-primary" />
-            Importar currículos Lattes
-          </DialogTitle>
+            Importar Currículos Lattes (XML)
+          </DialogTitle>{' '}
           <DialogDescription className="text-slate-600">
             Selecione arquivos XML ou ZIP exportados da Plataforma Lattes (CNPq). O sistema extrairá
             as produções, orientações e bancas referentes ao recorte do quadriênio CAPES (
@@ -374,12 +374,12 @@ export function ImportarLattesDialog({
           <Button
             type="button"
             variant="outline"
-            onClick={() => handleOpenChange(false)}
+            onClick={handleFecharComLimpeza}
             disabled={processando}
+            className="bg-white hover:bg-slate-50"
           >
-            {resultado ? 'Fechar' : 'Cancelar'}
+            Cancelar
           </Button>
-
           {resultado ? (
             <Button
               type="button"

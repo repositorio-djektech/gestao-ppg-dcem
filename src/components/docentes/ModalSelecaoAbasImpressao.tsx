@@ -50,10 +50,10 @@ export function ModalSelecaoAbasImpressao({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md w-[92vw] p-5 gap-4">
         <DialogHeader className="text-left space-y-1">
-          <DialogTitle className="flex items-center gap-2 text-base text-slate-900 dark:text-neutral-100">
-            <Printer className="h-4 w-4 text-primary" />
-            <span>Imprimir Dados do Docente</span>
-          </DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-base text-primary font-bold">
+            <Printer className="h-5 w-5 text-primary shrink-0" />
+            <span>Selecionar Seções para Impressão</span>
+          </DialogTitle>{' '}
           <DialogDescription className="text-xs text-slate-500 dark:text-neutral-400">
             Selecione as abas que deseja incluir no relatório de impressão formatado.
           </DialogDescription>
@@ -119,7 +119,13 @@ export function ModalSelecaoAbasImpressao({
         </div>
 
         <DialogFooter className="pt-2 flex flex-row items-center justify-between gap-2 border-t border-slate-200 dark:border-neutral-800">
-          <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            className="bg-white hover:bg-slate-50"
+          >
             Cancelar
           </Button>
           <Button

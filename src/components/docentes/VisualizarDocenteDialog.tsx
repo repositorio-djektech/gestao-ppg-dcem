@@ -35,7 +35,19 @@ import {
   ExternalLink,
   ChevronDown,
   Printer,
+  Pencil,
+  Check,
+  X,
 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { supabase } from '@/lib/supabase/client'
 import type {
   Docente,
@@ -109,6 +121,22 @@ export function VisualizarDocenteDialog({
 }: VisualizarDocenteDialogProps) {
   const [loading, setLoading] = useState(false)
   const [abaAtiva, setAbaAtiva] = useState<TabKey>(abaInicial)
+  const [editandoIdentificacao, setEditandoIdentificacao] = useState(false)
+  const [salvandoIdentificacao, setSalvandoIdentificacao] = useState(false)
+  const [formIdentificacao, setFormIdentificacao] = useState({
+    nome: '',
+    id_lattes: '',
+    scopus_id: '',
+    openalex_id: '',
+    orc_id: '',
+    indice_h: 0,
+    bolsa_cnpq: '',
+    categoria: '' as string,
+    email: '',
+    cpf: '',
+    siape: '',
+    licenca: '',
+  })
   const [dados, setDados] = useState<DadosDocenteCompleto>({
     docente: null,
     publicacoes: [],
@@ -149,6 +177,8 @@ export function VisualizarDocenteDialog({
     if (!open || !docente) return
 
     setAbaAtiva(abaInicial || 'geral')
+    setEditandoIdentificacao(false)
+    setSalvandoIdentificacao(false)
     setLimitesPaginacao({
       geral: ITENS_POR_PAGINA,
       publicacoes: ITENS_POR_PAGINA,
@@ -312,8 +342,9 @@ export function VisualizarDocenteDialog({
             docenteCorresponde(imp.titulo, termosNome),
         )
 
+        const docFinal = (resDocente.data as Docente) || docente
         setDados({
-          docente: (resDocente.data as Docente) || docente,
+          docente: docFinal,
           publicacoes: publicacoesFiltradas,
           orientacoes: orientacoesFormatadas,
           bancas: bancasFiltradas,
@@ -324,6 +355,20 @@ export function VisualizarDocenteDialog({
           eventos: eventosFiltrados,
           mobilidade: mobilidadeFiltrada,
           impactoSocial: impactoSocialFiltrado,
+        })
+        setFormIdentificacao({
+          nome: docFinal.nome || '',
+          id_lattes: docFinal.id_lattes || '',
+          scopus_id: docFinal.scopus_id || '',
+          openalex_id: docFinal.openalex_id || '',
+          orc_id: docFinal.orc_id || '',
+          indice_h: docFinal.indice_h ?? 0,
+          bolsa_cnpq: docFinal.bolsa_cnpq || '',
+          categoria: docFinal.categoria || '',
+          email: docFinal.email || '',
+          cpf: docFinal.cpf || '',
+          siape: docFinal.siape || '',
+          licenca: docFinal.licenca || '',
         })
       } catch (err) {
         console.error('Erro ao carregar dados completos do docente:', err)
@@ -398,6 +443,103 @@ export function VisualizarDocenteDialog({
     }))
   }
 
+  const iniciarEdicaoIdentificacao = () => {
+    const doc = dados.docente || docente
+    if (!doc) return
+    setFormIdentificacao({
+      nome: doc.nome || '',
+      id_lattes: doc.id_lattes || '',
+      scopus_id: doc.scopus_id || '',
+      openalex_id: doc.openalex_id || '',
+      orc_id: doc.orc_id || '',
+      indice_h: doc.indice_h ?? 0,
+      bolsa_cnpq: doc.bolsa_cnpq || '',
+      categoria: doc.categoria || '',
+      email: doc.email || '',
+      cpf: doc.cpf || '',
+      siape: doc.siape || '',
+      licenca: doc.licenca || '',
+    })
+    setEditandoIdentificacao(true)
+  }
+
+  const cancelarEdicaoIdentificacao = () => {
+    const doc = dados.docente || docente
+    if (doc) {
+      setFormIdentificacao({
+        nome: doc.nome || '',
+        id_lattes: doc.id_lattes || '',
+        scopus_id: doc.scopus_id || '',
+        openalex_id: doc.openalex_id || '',
+        orc_id: doc.orc_id || '',
+        indice_h: doc.indice_h ?? 0,
+        bolsa_cnpq: doc.bolsa_cnpq || '',
+        categoria: doc.categoria || '',
+        email: doc.email || '',
+        cpf: doc.cpf || '',
+        siape: doc.siape || '',
+        licenca: doc.licenca || '',
+      })
+    }
+    setEditandoIdentificacao(false)
+  }
+
+  const salvarEdicaoIdentificacao = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    const doc = dados.docente || docente
+    if (!doc) return
+
+    setSalvandoIdentificacao(true)
+    try {
+      const payload: Partial<Docente> = {
+        nome: formIdentificacao.nome.trim(),
+        id_lattes: formIdentificacao.id_lattes.trim() || null,
+        scopus_id: formIdentificacao.scopus_id.trim() || '',
+        openalex_id: formIdentificacao.openalex_id.trim() || null,
+        orc_id: formIdentificacao.orc_id.trim() || null,
+        indice_h: Number(formIdentificacao.indice_h) || 0,
+        bolsa_cnpq: formIdentificacao.bolsa_cnpq.trim() || '',
+        categoria: (formIdentificacao.categoria || null) as any,
+        email: formIdentificacao.email.trim() || '',
+        cpf: formIdentificacao.cpf.replace(/\D/g, '').slice(0, 11) || '',
+        siape: formIdentificacao.siape.replace(/\D/g, '') || '',
+        licenca: formIdentificacao.licenca.trim() || '',
+      }
+
+      const { data, error } = await supabase
+        .from('docentes')
+        .update(payload)
+        .eq('id', doc.id)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      const docAtualizado = (data as Docente) || { ...doc, ...payload }
+      setDados((prev) => ({
+        ...prev,
+        docente: docAtualizado,
+      }))
+      setEditandoIdentificacao(false)
+    } catch (err) {
+      console.error('Erro ao salvar identificação do docente:', err)
+      alert('Erro ao salvar dados no banco de dados. Tente novamente.')
+    } finally {
+      setSalvandoIdentificacao(false)
+    }
+  }
+
+  const formatarRotuloCategoria = (cat: string | null | undefined): string => {
+    if (!cat) return 'Sem categoria'
+    const mapa: Record<string, string> = {
+      permanente: 'Permanente',
+      colaborador: 'Colaborador',
+      visitante: 'Visitante',
+      jdp: 'JDP',
+    }
+    return mapa[cat.toLowerCase()] || cat
+  }
+
   const renderAbaGeral = () => {
     const doc = dados.docente || docente
     if (!doc) return null
@@ -405,151 +547,470 @@ export function VisualizarDocenteDialog({
     return (
       <div className="space-y-4 p-4 overflow-y-auto max-h-full">
         <div className="bg-slate-50 dark:bg-neutral-800/60 rounded-lg p-4 border border-slate-200 dark:border-neutral-700">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-neutral-100 mb-3 flex items-center gap-2">
-            <User className="h-4 w-4 text-primary" />
-            Identificação e Índices Bibliométricos
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-            <div>
-              <span className="text-slate-500 dark:text-neutral-400 font-medium block">
-                Nome Completo:
-              </span>
-              <span className="text-slate-900 dark:text-neutral-100 font-semibold text-sm">
-                {textoSeguro(doc.nome)}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-500 dark:text-neutral-400 font-medium block">
-                ID Lattes (CNPq):
-              </span>
-              {doc.id_lattes ? (
-                <a
-                  href={`http://lattes.cnpq.br/${doc.id_lattes}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-primary hover:underline inline-flex items-center gap-1 font-semibold"
-                >
-                  {doc.id_lattes}
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              ) : (
-                <span className="text-slate-400">—</span>
-              )}
-            </div>
-            <div>
-              <span className="text-slate-500 dark:text-neutral-400 font-medium block">
-                Scopus Author ID:
-              </span>
-              {doc.scopus_id ? (
-                <a
-                  href={`https://www.scopus.com/authid/detail.uri?authorId=${doc.scopus_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-emerald-700 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 font-semibold"
-                >
-                  {doc.scopus_id}
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              ) : (
-                <span className="text-slate-400">—</span>
-              )}
-            </div>
-            <div>
-              <span className="text-slate-500 dark:text-neutral-400 font-medium block">
-                OpenAlex ID:
-              </span>
-              {doc.openalex_id ? (
-                <a
-                  href={`https://openalex.org/${doc.openalex_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-indigo-700 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 font-semibold"
-                >
-                  {doc.openalex_id}
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              ) : (
-                <span className="text-slate-400">—</span>
-              )}
-            </div>
-            <div>
-              <span className="text-slate-500 dark:text-neutral-400 font-medium block">
-                Índice-H:
-              </span>
-              <Badge
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-neutral-100 flex items-center gap-2">
+              <User className="h-4 w-4 text-primary" />
+              Identificação e Índices Bibliométricos
+            </h3>
+            {!editandoIdentificacao ? (
+              <Button
+                type="button"
                 variant="outline"
-                className="font-mono font-bold text-slate-800 dark:text-neutral-200 mt-0.5"
+                size="sm"
+                onClick={iniciarEdicaoIdentificacao}
+                className="h-7 px-2.5 text-xs gap-1.5 bg-white hover:bg-slate-50 text-primary border-primary/30 hover:border-primary"
               >
-                {doc.indice_h ?? 0}
-              </Badge>
-            </div>
-            <div>
-              <span className="text-slate-500 dark:text-neutral-400 font-medium block">
-                Bolsa Produtividade CNPq:
-              </span>
-              {doc.bolsa_cnpq ? (
-                <Badge
-                  variant="secondary"
-                  className="bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-medium mt-0.5"
+                <Pencil className="h-3.5 w-3.5 text-primary" />
+                <span>Editar Identificação</span>
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={cancelarEdicaoIdentificacao}
+                  disabled={salvandoIdentificacao}
+                  className="h-7 px-2 text-xs gap-1 bg-white hover:bg-slate-50"
                 >
-                  {doc.bolsa_cnpq}
-                </Badge>
-              ) : (
-                <span className="text-slate-400">—</span>
-              )}
-            </div>
-            <div>
-              <span className="text-slate-500 dark:text-neutral-400 font-medium block">
-                Jovem Doutor Pesquisador (JDP):
-              </span>
-              {doc.jdp ? (
-                <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-0 mt-0.5">
-                  Sim
-                </Badge>
-              ) : (
-                <span className="text-slate-400">Não</span>
-              )}
-            </div>
-            <div>
-              <span className="text-slate-500 dark:text-neutral-400 font-medium block">
-                E-mail:
-              </span>
-              {doc.email ? (
-                <a
-                  href={`mailto:${doc.email}`}
-                  className="text-primary hover:underline font-medium"
+                  <X className="h-3.5 w-3.5" />
+                  <span>Cancelar</span>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => salvarEdicaoIdentificacao()}
+                  disabled={salvandoIdentificacao}
+                  className="h-7 px-2.5 text-xs gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
-                  {doc.email}
-                </a>
-              ) : (
-                <span className="text-slate-400">—</span>
-              )}
-            </div>
-            <div>
-              <span className="text-slate-500 dark:text-neutral-400 font-medium block">CPF:</span>
-              <span className="text-slate-800 dark:text-neutral-200 font-mono">
-                {textoSeguro(doc.cpf)}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-500 dark:text-neutral-400 font-medium block">SIAPE:</span>
-              <span className="text-slate-800 dark:text-neutral-200 font-mono">
-                {textoSeguro(doc.siape)}
-              </span>
-            </div>
-            <div className="md:col-span-2">
-              <span className="text-slate-500 dark:text-neutral-400 font-medium block">
-                Licença Saúde / Parental:
-              </span>
-              {doc.licenca ? (
-                <span className="text-amber-700 dark:text-amber-400 font-medium">
-                  {doc.licenca}
-                </span>
-              ) : (
-                <span className="text-slate-400">—</span>
-              )}
-            </div>
+                  {salvandoIdentificacao ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Check className="h-3.5 w-3.5" />
+                  )}
+                  <span>{salvandoIdentificacao ? 'Salvando...' : 'Salvar'}</span>
+                </Button>
+              </div>
+            )}
           </div>
+
+          {editandoIdentificacao ? (
+            <form onSubmit={salvarEdicaoIdentificacao} className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+                <div className="space-y-1">
+                  <Label htmlFor="inline-nome" className="text-xs font-medium">
+                    Nome Completo <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="inline-nome"
+                    value={formIdentificacao.nome}
+                    onChange={(e) =>
+                      setFormIdentificacao({ ...formIdentificacao, nome: e.target.value })
+                    }
+                    required
+                    className="h-8 text-xs bg-white"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="inline-lattes" className="text-xs font-medium">
+                    ID Lattes (CNPq)
+                  </Label>
+                  <Input
+                    id="inline-lattes"
+                    placeholder="16 dígitos"
+                    maxLength={16}
+                    value={formIdentificacao.id_lattes}
+                    onChange={(e) =>
+                      setFormIdentificacao({ ...formIdentificacao, id_lattes: e.target.value })
+                    }
+                    className="h-8 text-xs bg-white font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="inline-scopus" className="text-xs font-medium">
+                    Scopus Author ID
+                  </Label>
+                  <Input
+                    id="inline-scopus"
+                    placeholder="Ex: 57201234567"
+                    value={formIdentificacao.scopus_id}
+                    onChange={(e) =>
+                      setFormIdentificacao({ ...formIdentificacao, scopus_id: e.target.value })
+                    }
+                    className="h-8 text-xs bg-white font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="inline-openalex" className="text-xs font-medium">
+                    OpenAlex ID
+                  </Label>
+                  <Input
+                    id="inline-openalex"
+                    placeholder="Ex: A5023849123"
+                    value={formIdentificacao.openalex_id}
+                    onChange={(e) =>
+                      setFormIdentificacao({ ...formIdentificacao, openalex_id: e.target.value })
+                    }
+                    className="h-8 text-xs bg-white font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="inline-orcid" className="text-xs font-medium">
+                    ORCID (orc_id)
+                  </Label>
+                  <Input
+                    id="inline-orcid"
+                    placeholder="0000-0002-1825-0097"
+                    value={formIdentificacao.orc_id}
+                    onChange={(e) =>
+                      setFormIdentificacao({ ...formIdentificacao, orc_id: e.target.value })
+                    }
+                    className="h-8 text-xs bg-white font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="inline-indiceh" className="text-xs font-medium">
+                    Índice-H
+                  </Label>
+                  <Input
+                    id="inline-indiceh"
+                    type="number"
+                    min="0"
+                    value={formIdentificacao.indice_h}
+                    onChange={(e) =>
+                      setFormIdentificacao({
+                        ...formIdentificacao,
+                        indice_h: Number(e.target.value),
+                      })
+                    }
+                    className="h-8 text-xs bg-white font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="inline-bolsa" className="text-xs font-medium">
+                    Bolsa Produtividade CNPq
+                  </Label>
+                  <Select
+                    value={formIdentificacao.bolsa_cnpq || '__none__'}
+                    onValueChange={(v) =>
+                      setFormIdentificacao({
+                        ...formIdentificacao,
+                        bolsa_cnpq: v === '__none__' ? '' : v,
+                      })
+                    }
+                  >
+                    <SelectTrigger id="inline-bolsa" className="h-8 text-xs bg-white">
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— Nenhuma Bolsa —</SelectItem>
+                      <SelectItem value="PQ-1A">PQ 1A</SelectItem>
+                      <SelectItem value="PQ-1B">PQ 1B</SelectItem>
+                      <SelectItem value="PQ-1C">PQ 1C</SelectItem>
+                      <SelectItem value="PQ-1D">PQ 1D</SelectItem>
+                      <SelectItem value="PQ-2">PQ 2</SelectItem>
+                      <SelectItem value="DT-1A">DT 1A</SelectItem>
+                      <SelectItem value="DT-1B">DT 1B</SelectItem>
+                      <SelectItem value="DT-2">DT 2</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="inline-categoria" className="text-xs font-medium">
+                    Categoria no PPG-DCEM
+                  </Label>
+                  <Select
+                    value={formIdentificacao.categoria || '__none__'}
+                    onValueChange={(v) =>
+                      setFormIdentificacao({
+                        ...formIdentificacao,
+                        categoria: v === '__none__' ? '' : v,
+                      })
+                    }
+                  >
+                    <SelectTrigger id="inline-categoria" className="h-8 text-xs bg-white">
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Sem categoria</SelectItem>
+                      <SelectItem value="permanente">Permanente</SelectItem>
+                      <SelectItem value="colaborador">Colaborador</SelectItem>
+                      <SelectItem value="visitante">Visitante</SelectItem>
+                      <SelectItem value="jdp">JDP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="inline-email" className="text-xs font-medium">
+                    E-mail
+                  </Label>
+                  <Input
+                    id="inline-email"
+                    type="email"
+                    placeholder="docente@ufs.br"
+                    value={formIdentificacao.email}
+                    onChange={(e) =>
+                      setFormIdentificacao({ ...formIdentificacao, email: e.target.value })
+                    }
+                    className="h-8 text-xs bg-white"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="inline-cpf" className="text-xs font-medium">
+                    CPF
+                  </Label>
+                  <Input
+                    id="inline-cpf"
+                    placeholder="000.000.000-00"
+                    value={formIdentificacao.cpf}
+                    onChange={(e) =>
+                      setFormIdentificacao({
+                        ...formIdentificacao,
+                        cpf: e.target.value.replace(/\D/g, '').slice(0, 11),
+                      })
+                    }
+                    className="h-8 text-xs bg-white font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="inline-siape" className="text-xs font-medium">
+                    SIAPE
+                  </Label>
+                  <Input
+                    id="inline-siape"
+                    placeholder="Ex: 1234567"
+                    value={formIdentificacao.siape}
+                    onChange={(e) =>
+                      setFormIdentificacao({
+                        ...formIdentificacao,
+                        siape: e.target.value.replace(/\D/g, ''),
+                      })
+                    }
+                    className="h-8 text-xs bg-white font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1 md:col-span-2 lg:col-span-3">
+                  <Label htmlFor="inline-licenca" className="text-xs font-medium">
+                    Licença Saúde / Parental
+                  </Label>
+                  <Input
+                    id="inline-licenca"
+                    placeholder="Ex: Licença Maternidade (6 meses em 2024)"
+                    value={formIdentificacao.licenca}
+                    onChange={(e) =>
+                      setFormIdentificacao({ ...formIdentificacao, licenca: e.target.value })
+                    }
+                    className="h-8 text-xs bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={cancelarEdicaoIdentificacao}
+                  disabled={salvandoIdentificacao}
+                  className="bg-white hover:bg-slate-50"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={salvandoIdentificacao}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {salvandoIdentificacao ? 'Salvando...' : 'Salvar Alterações'}
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+              <div>
+                <span className="text-slate-500 dark:text-neutral-400 font-medium block">
+                  Nome Completo:
+                </span>
+                <span className="text-slate-900 dark:text-neutral-100 font-semibold text-sm">
+                  {textoSeguro(doc.nome)}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500 dark:text-neutral-400 font-medium block">
+                  ID Lattes (CNPq):
+                </span>
+                {doc.id_lattes ? (
+                  <a
+                    href={`http://lattes.cnpq.br/${doc.id_lattes}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-primary hover:underline inline-flex items-center gap-1 font-semibold"
+                  >
+                    {doc.id_lattes}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : (
+                  <span className="text-slate-400">—</span>
+                )}
+              </div>
+              <div>
+                <span className="text-slate-500 dark:text-neutral-400 font-medium block">
+                  Scopus Author ID:
+                </span>
+                {doc.scopus_id ? (
+                  <a
+                    href={`https://www.scopus.com/authid/detail.uri?authorId=${doc.scopus_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-emerald-700 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 font-semibold"
+                  >
+                    {doc.scopus_id}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : (
+                  <span className="text-slate-400">—</span>
+                )}
+              </div>
+              <div>
+                <span className="text-slate-500 dark:text-neutral-400 font-medium block">
+                  OpenAlex ID:
+                </span>
+                {doc.openalex_id ? (
+                  <a
+                    href={`https://openalex.org/${doc.openalex_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-indigo-700 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 font-semibold"
+                  >
+                    {doc.openalex_id}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : (
+                  <span className="text-slate-400">—</span>
+                )}
+              </div>
+              <div>
+                <span className="text-slate-500 dark:text-neutral-400 font-medium block">
+                  ORCID:
+                </span>
+                {doc.orc_id ? (
+                  <a
+                    href={
+                      doc.orc_id.startsWith('http') ? doc.orc_id : `https://orcid.org/${doc.orc_id}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-emerald-700 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 font-semibold"
+                  >
+                    {doc.orc_id}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : (
+                  <span className="text-slate-400">—</span>
+                )}
+              </div>
+              <div>
+                <span className="text-slate-500 dark:text-neutral-400 font-medium block">
+                  Índice-H:
+                </span>
+                <Badge
+                  variant="outline"
+                  className="font-mono font-bold text-slate-800 dark:text-neutral-200 mt-0.5"
+                >
+                  {doc.indice_h ?? 0}
+                </Badge>
+              </div>
+              <div>
+                <span className="text-slate-500 dark:text-neutral-400 font-medium block">
+                  Bolsa Produtividade CNPq:
+                </span>
+                {doc.bolsa_cnpq ? (
+                  <Badge
+                    variant="secondary"
+                    className="bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-medium mt-0.5"
+                  >
+                    {doc.bolsa_cnpq}
+                  </Badge>
+                ) : (
+                  <span className="text-slate-400">—</span>
+                )}
+              </div>
+              <div>
+                <span className="text-slate-500 dark:text-neutral-400 font-medium block">
+                  Categoria no PPG-DCEM:
+                </span>
+                <Badge
+                  variant={doc.categoria ? 'secondary' : 'outline'}
+                  className={
+                    doc.categoria === 'permanente'
+                      ? 'bg-blue-100 text-blue-800 border-blue-200 mt-0.5'
+                      : doc.categoria === 'colaborador'
+                        ? 'bg-amber-100 text-amber-800 border-amber-300 mt-0.5'
+                        : doc.categoria === 'visitante'
+                          ? 'bg-purple-100 text-purple-800 border-purple-300 mt-0.5'
+                          : doc.categoria === 'jdp'
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300 mt-0.5'
+                            : 'text-slate-500 mt-0.5'
+                  }
+                >
+                  {formatarRotuloCategoria(doc.categoria)}
+                </Badge>
+              </div>
+              <div>
+                <span className="text-slate-500 dark:text-neutral-400 font-medium block">
+                  E-mail:
+                </span>
+                {doc.email ? (
+                  <a
+                    href={`mailto:${doc.email}`}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    {doc.email}
+                  </a>
+                ) : (
+                  <span className="text-slate-400">—</span>
+                )}
+              </div>
+              <div>
+                <span className="text-slate-500 dark:text-neutral-400 font-medium block">CPF:</span>
+                <span className="text-slate-800 dark:text-neutral-200 font-mono">
+                  {textoSeguro(doc.cpf)}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500 dark:text-neutral-400 font-medium block">
+                  SIAPE:
+                </span>
+                <span className="text-slate-800 dark:text-neutral-200 font-mono">
+                  {textoSeguro(doc.siape)}
+                </span>
+              </div>
+              <div className="md:col-span-2">
+                <span className="text-slate-500 dark:text-neutral-400 font-medium block">
+                  Licença Saúde / Parental:
+                </span>
+                {doc.licenca ? (
+                  <span className="text-amber-700 dark:text-amber-400 font-medium">
+                    {doc.licenca}
+                  </span>
+                ) : (
+                  <span className="text-slate-400">—</span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="bg-slate-50 dark:bg-neutral-800/60 rounded-lg p-4 border border-slate-200 dark:border-neutral-700">
@@ -1141,7 +1602,7 @@ export function VisualizarDocenteDialog({
         <DialogHeader className="p-5 pb-3 border-b bg-slate-50/80 dark:bg-neutral-900/80 shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-6">
             <div className="min-w-0">
-              <DialogTitle className="flex items-center gap-2 text-xl text-slate-900 dark:text-neutral-100 truncate">
+              <DialogTitle className="flex items-center gap-2 text-xl text-primary font-bold truncate">
                 <User className="h-5 w-5 text-primary shrink-0" />
                 <span className="truncate">{docente?.nome ?? 'Visualização do Docente'}</span>
               </DialogTitle>
@@ -1307,7 +1768,13 @@ export function VisualizarDocenteDialog({
           </div>
 
           <div className="flex items-center gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="bg-white hover:bg-slate-50"
+            >
               Fechar
             </Button>
             <Button

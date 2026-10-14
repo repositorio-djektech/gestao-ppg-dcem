@@ -1743,7 +1743,9 @@ export default function Lacunas({
       <Dialog open={dialogoDocenteAberto} onOpenChange={setDialogoDocenteAberto}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>Corrigir Cadastro do Docente</DialogTitle>
+            <DialogTitle className="text-primary font-bold">
+              Corrigir Cadastro do Docente
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSalvarDocente} className="space-y-4 mt-2">
             <div className="space-y-2">
@@ -1756,6 +1758,7 @@ export default function Lacunas({
                 value={formDocente.nome}
                 onChange={(e) => setFormDocente({ ...formDocente, nome: e.target.value })}
                 required
+                className="bg-white"
               />
             </div>
             <div className="space-y-2">
@@ -1766,6 +1769,7 @@ export default function Lacunas({
                 value={formDocente.id_lattes ?? ''}
                 maxLength={16}
                 onChange={(e) => setFormDocente({ ...formDocente, id_lattes: e.target.value })}
+                className="bg-white"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -1776,6 +1780,7 @@ export default function Lacunas({
                   placeholder="Ex: 57201234567"
                   value={formDocente.scopus_id ?? ''}
                   onChange={(e) => setFormDocente({ ...formDocente, scopus_id: e.target.value })}
+                  className="bg-white"
                 />
               </div>
               <div className="space-y-2">
@@ -1789,6 +1794,7 @@ export default function Lacunas({
                   onChange={(e) =>
                     setFormDocente({ ...formDocente, indice_h: Number(e.target.value) })
                   }
+                  className="bg-white"
                 />
               </div>
             </div>
@@ -1800,7 +1806,7 @@ export default function Lacunas({
                   setFormDocente({ ...formDocente, bolsa_cnpq: v === '__none__' ? '' : v })
                 }
               >
-                <SelectTrigger id="bolsaCnpq">
+                <SelectTrigger id="bolsaCnpq" className="bg-white">
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -1816,7 +1822,7 @@ export default function Lacunas({
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center justify-between border border-slate-200 rounded-lg p-3 bg-slate-50/50">
+            <div className="flex items-center justify-between border border-slate-200 rounded-lg p-3 bg-white">
               <div className="space-y-0.5">
                 <Label htmlFor="jdp" className="cursor-pointer">
                   Indicado como JDP?
@@ -1838,6 +1844,7 @@ export default function Lacunas({
                 placeholder="Ex: Licença Maternidade (6 meses em 2024)"
                 value={formDocente.licenca ?? ''}
                 onChange={(e) => setFormDocente({ ...formDocente, licenca: e.target.value })}
+                className="bg-white"
               />
             </div>
             <div className="flex justify-end gap-3 pt-4">
@@ -1845,6 +1852,7 @@ export default function Lacunas({
                 type="button"
                 variant="outline"
                 onClick={() => setDialogoDocenteAberto(false)}
+                className="bg-white hover:bg-slate-50"
               >
                 Cancelar
               </Button>

@@ -680,7 +680,7 @@ export function RevisaoImportacaoDialog({
           <DialogHeader className="p-5 pb-3 border-b bg-slate-50/70 shrink-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-6">
               <div>
-                <DialogTitle className="flex items-center gap-2 text-xl text-slate-900">
+                <DialogTitle className="flex items-center gap-2 text-xl text-primary font-bold">
                   <Database className="h-5 w-5 text-primary" />
                   Revisão de Importação Lattes
                 </DialogTitle>

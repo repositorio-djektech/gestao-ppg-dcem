@@ -70,12 +70,25 @@ export function gerarHtmlDocenteRelatorio(
               <td>${escaparHtml(doc.bolsa_cnpq)}</td>
             </tr>
             <tr>
-              <td class="rotulo">Jovem Doutor Pesquisador (JDP)</td>
-              <td>${doc.jdp ? 'Sim' : 'Não'}</td>
-              <td class="rotulo">Licença</td>
-              <td>${escaparHtml(doc.licenca)}</td>
-            </tr>
-          </tbody>
+  <td class="rotulo">Categoria no PPG-DCEM</td>
+  <td>${escaparHtml(
+    doc.categoria === 'permanente'
+      ? 'Permanente'
+      : doc.categoria === 'colaborador'
+        ? 'Colaborador'
+        : doc.categoria === 'visitante'
+          ? 'Visitante'
+          : doc.categoria === 'jdp'
+            ? 'JDP'
+            : 'Sem categoria',
+  )}</td>
+  <td class="rotulo">ORCID</td>
+  <td class="mono">${escaparHtml(doc.orc_id || '—')}</td>
+</tr>
+<tr>
+  <td class="rotulo">Licença</td>
+  <td colspan="3">${escaparHtml(doc.licenca || '—')}</td>
+</tr>          </tbody>
         </table>
       </section>
     `)

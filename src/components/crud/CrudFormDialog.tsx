@@ -58,7 +58,7 @@ export function CrudFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-primary font-bold">
             {editingId ? `Editar ${entityName}` : `Adicionar ${entityName}`}
           </DialogTitle>
         </DialogHeader>
@@ -79,6 +79,7 @@ export function CrudFormDialog({
                   placeholder={field.placeholder}
                   required={field.required}
                   onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
+                  className="bg-white"
                 />
               ) : field.type === 'select' ? (
                 <Select
@@ -97,7 +98,7 @@ export function CrudFormDialog({
                     }
                   }}
                 >
-                  <SelectTrigger id={field.key}>
+                  <SelectTrigger id={field.key} className="bg-white">
                     <SelectValue placeholder={field.placeholder ?? 'Selecione...'} />
                   </SelectTrigger>
                   <SelectContent>
@@ -110,7 +111,7 @@ export function CrudFormDialog({
                   </SelectContent>
                 </Select>
               ) : field.type === 'switch' ? (
-                <div className="flex items-center justify-between border border-slate-200 rounded-lg p-3 bg-slate-50/50">
+                <div className="flex items-center justify-between border border-slate-200 rounded-lg p-3 bg-white">
                   <div>
                     <Label htmlFor={field.key} className="cursor-pointer">
                       {field.label}
@@ -162,13 +163,19 @@ export function CrudFormDialog({
                             : e.target.value,
                     })
                   }
+                  className="bg-white"
                 />
               )}
               {field.helperText && <p className="text-xs text-slate-500">{field.helperText}</p>}
             </div>
           ))}
           <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="bg-white hover:bg-slate-50"
+            >
               Cancelar
             </Button>
             <Button type="submit" disabled={submitting}>

@@ -1026,7 +1026,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
             <DialogHeader>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <DialogTitle className="flex items-center gap-2 text-lg">
+                  <DialogTitle className="flex items-center gap-2 text-lg text-primary font-bold">
                     <Award className="h-5 w-5 text-primary" />
                     Dossiê e Evidências de Recondução Docente
                   </DialogTitle>
