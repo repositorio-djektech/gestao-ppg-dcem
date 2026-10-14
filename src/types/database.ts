@@ -81,6 +81,8 @@ export type Discente = {
   orientador?: string
   ano_conclusao?: string
   tipo_curso?: string
+  projeto_id?: number | null
+  docente_orientador_id?: number | null
 }
 
 export type Egresso = {
@@ -118,6 +120,8 @@ export type Orientacao = {
   flag_orientador_principal?: boolean
 }
 
+export type ProjetoPesquisaClassificacao = 'institucional' | 'individual'
+
 export type ProjetoPesquisa = {
   id: number
   titulo: string
@@ -129,6 +133,7 @@ export type ProjetoPesquisa = {
   orgao_fomento: string
   link_comprovacao: string
   observacoes: string
+  classificacao?: ProjetoPesquisaClassificacao | null
 }
 
 export type Disciplina = {
@@ -189,6 +194,27 @@ export type Premicao = {
 }
 
 export type Premiacao = Premicao
+
+export type LinhaPesquisa = {
+  id: number
+  nome: string
+  area?: string | null
+  created_at?: string
+}
+
+export type DocenteLinha = {
+  id: number
+  docente_id: number
+  linha_id: number
+  created_at?: string
+}
+
+export type PublicacaoDocente = {
+  id: number
+  publicacao_id: number
+  docente_id: number
+  created_at?: string
+}
 
 export type PublicacaoCoautorProgramaTipo = 'orientando' | 'egresso' | 'sem_coautoria'
 
