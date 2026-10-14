@@ -14,6 +14,7 @@ import Egressos from '@/pages/Egressos'
 import Bancas from '@/pages/Bancas'
 import Orientacoes from '@/pages/Orientacoes'
 import Disciplinas from '@/pages/Disciplinas'
+import LinhasPesquisa from '@/pages/LinhasPesquisa'
 import ProjetosPesquisa from '@/pages/ProjetosPesquisa'
 import Publicacoes from '@/pages/Publicacoes'
 import ProducaoTecnica from '@/pages/ProducaoTecnica'
@@ -47,6 +48,7 @@ const App = () => {
               <Route path="/bancas" element={<Bancas />} />
               <Route path="/orientacoes" element={<Orientacoes />} />
               <Route path="/disciplinas" element={<Disciplinas />} />
+              <Route path="/linhas-pesquisa" element={<LinhasPesquisa />} />
               <Route path="/projetos-pesquisa" element={<ProjetosPesquisa />} />
               <Route path="/publicacoes" element={<Publicacoes />} />
               <Route path="/producao-tecnica" element={<ProducaoTecnica />} />

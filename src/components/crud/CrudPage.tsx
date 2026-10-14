@@ -118,6 +118,18 @@ export function CrudPage<T extends { id: number | string }>({
     }
     const submitData = { ...formData }
     delete (submitData as any).id
+    // Converter campos com ID vazio em null para respeitar foreign keys no Supabase
+    for (const key of Object.keys(submitData)) {
+      if (
+        (key.endsWith('_id') || key === 'ano_titulacao') &&
+        (submitData[key] === '' || submitData[key] === undefined)
+      ) {
+        submitData[key] = null
+      } else if (key.endsWith('_id') && submitData[key] !== null) {
+        const parsed = Number(submitData[key])
+        if (!isNaN(parsed)) submitData[key] = parsed
+      }
+    }
     if (typeof submitData.cpf === 'string') {
       submitData.cpf = submitData.cpf.replace(/\D/g, '')
     }

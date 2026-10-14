@@ -19,4 +19,8 @@ export interface FieldDef {
   min?: number | string
   max?: number | string
   rows?: number
+  onValueChangeWithFormData?: (
+    value: any,
+    currentFormData: Record<string, any>,
+  ) => Record<string, any>
 }

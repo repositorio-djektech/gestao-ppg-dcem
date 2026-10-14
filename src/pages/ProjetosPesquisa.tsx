@@ -16,6 +16,7 @@ const emptyForm = {
   orgao_fomento: '',
   link_comprovacao: '',
   observacoes: '',
+  classificacao: '',
 }
 
 export default function ProjetosPesquisa() {
@@ -42,6 +43,33 @@ export default function ProjetosPesquisa() {
       key: 'coordenador_id',
       label: 'Coordenador',
       render: (p) => docenteMap[p.coordenador_id ?? ''] ?? '-',
+    },
+    {
+      key: 'classificacao',
+      label: 'Classificação',
+      render: (p) => {
+        if (p.classificacao === 'institucional') {
+          return (
+            <Badge
+              variant="secondary"
+              className="bg-blue-50 text-blue-700 border-blue-200 text-xs font-medium"
+            >
+              Institucional
+            </Badge>
+          )
+        }
+        if (p.classificacao === 'individual') {
+          return (
+            <Badge
+              variant="outline"
+              className="bg-amber-50 text-amber-800 border-amber-300 text-xs font-medium"
+            >
+              Individual
+            </Badge>
+          )
+        }
+        return <span className="text-slate-400">—</span>
+      },
     },
     { key: 'inicio', label: 'Início' },
     {
@@ -72,6 +100,17 @@ export default function ProjetosPesquisa() {
       required: true,
       optionsLoader: docenteOptionsLoader,
       helperText: 'Docente permanente responsável pela coordenação',
+    },
+    {
+      key: 'classificacao',
+      label: 'Classificação do Projeto',
+      type: 'select',
+      options: [
+        { value: 'institucional', label: 'Institucional' },
+        { value: 'individual', label: 'Individual' },
+      ],
+      placeholder: 'Selecione a classificação...',
+      helperText: 'Projeto institucional (vinculado a edital/programa) ou individual',
     },
     {
       key: 'descricao',

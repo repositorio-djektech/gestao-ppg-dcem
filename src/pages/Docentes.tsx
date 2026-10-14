@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCrudData } from '@/hooks/use-crud-data'
 import { docentesService } from '@/services/docentes'
-import type { Docente } from '@/types/database'
+import { linhasPesquisaService } from '@/services/linhas-pesquisa'
+import type { Docente, LinhaPesquisa } from '@/types/database'
 import { useAuth } from '@/hooks/use-auth'
 import {
   Table,
@@ -132,6 +133,15 @@ export default function Docentes() {
   const [formData, setFormData] = useState<Omit<Docente, 'id'>>(emptyForm)
   const [idParaExcluir, setIdParaExcluir] = useState<number | string | null>(null)
 
+  // Linhas de Pesquisa
+  const [todasLinhas, setTodasLinhas] = useState<LinhaPesquisa[]>([])
+  const [linhasDocenteSelecionadas, setLinhasDocenteSelecionadas] = useState<number[]>([])
+  const [carregandoLinhas, setCarregandoLinhas] = useState(false)
+
+  useEffect(() => {
+    linhasPesquisaService.list().then(setTodasLinhas).catch(console.error)
+  }, [])
+
   const canEdit = profile?.role === 'admin' || profile?.role === 'editor'
   const canDelete = profile?.role === 'admin'
   const PER_PAGE = 20
@@ -140,10 +150,26 @@ export default function Docentes() {
   const totalPages = Math.ceil(filtered.length / PER_PAGE)
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
-  const handleOpen = (docente?: Docente, campoFoco?: keyof Docente) => {
+  const handleOpen = async (docente?: Docente, campoFoco?: keyof Docente) => {
     setEditingId(docente?.id ?? null)
     setFormData(docente ?? emptyForm)
     setIsDialogOpen(true)
+
+    if (docente?.id) {
+      setCarregandoLinhas(true)
+      try {
+        const vinculadas = await linhasPesquisaService.listarLinhasDoDocente(docente.id)
+        setLinhasDocenteSelecionadas(vinculadas.map((l) => l.id))
+      } catch (err) {
+        console.error('Erro ao buscar linhas do docente:', err)
+        setLinhasDocenteSelecionadas([])
+      } finally {
+        setCarregandoLinhas(false)
+      }
+    } else {
+      setLinhasDocenteSelecionadas([])
+    }
+
     if (campoFoco) {
       setTimeout(() => {
         const el = document.getElementById(String(campoFoco))
@@ -165,6 +191,7 @@ export default function Docentes() {
       email: formData.email ? formData.email.trim() : '',
     }
     try {
+      let savedDocenteId = editingId
       if (editingId) {
         await update(editingId, payload)
         toast.success('Docente atualizado')
@@ -180,7 +207,8 @@ export default function Docentes() {
           },
         })
       } else {
-        await create(payload)
+        const criado = (await create(payload)) as any
+        savedDocenteId = criado?.id
         toast.success('Docente adicionado')
         registrarLog({
           acao: 'criar',
@@ -193,6 +221,14 @@ export default function Docentes() {
           },
         })
       }
+
+      if (savedDocenteId) {
+        await linhasPesquisaService.sincronizarLinhasDocente(
+          savedDocenteId,
+          linhasDocenteSelecionadas,
+        )
+      }
+
       setIsDialogOpen(false)
     } catch {
       toast.error('Erro ao salvar')
@@ -615,6 +651,66 @@ export default function Docentes() {
                     <p className="text-xs text-slate-500">
                       Impacta na flexibilização dos critérios de produtividade CAPES
                     </p>
+                  </div>
+
+                  {/* Multiseleção de Linhas de Pesquisa */}
+                  <div className="space-y-2 pt-2 border-t border-slate-200">
+                    <Label className="text-sm font-semibold text-slate-800">
+                      Linhas de Pesquisa
+                    </Label>
+                    <p className="text-xs text-slate-500">
+                      Selecione uma ou mais linhas de pesquisa em que o docente atua:
+                    </p>
+                    {carregandoLinhas ? (
+                      <div className="text-xs text-slate-400 py-2">Carregando linhas...</div>
+                    ) : todasLinhas.length === 0 ? (
+                      <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                        Nenhuma linha de pesquisa cadastrada no sistema. Cadastre primeiro em
+                        "Linhas de Pesquisa".
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border border-slate-200 rounded-md bg-slate-50/50">
+                        {todasLinhas.map((lp) => {
+                          const isChecked = linhasDocenteSelecionadas.includes(lp.id)
+                          return (
+                            <label
+                              key={lp.id}
+                              className="flex items-start gap-2.5 p-1.5 rounded hover:bg-white cursor-pointer transition-colors text-xs"
+                            >
+                              <input
+                                type="checkbox"
+                                className="mt-0.5 rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setLinhasDocenteSelecionadas((prev) => [...prev, lp.id])
+                                  } else {
+                                    setLinhasDocenteSelecionadas((prev) =>
+                                      prev.filter((id) => id !== lp.id),
+                                    )
+                                  }
+                                }}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <span className="font-medium text-slate-900 block leading-tight">
+                                  {lp.nome}
+                                </span>
+                                {lp.area && (
+                                  <span className="text-[11px] text-slate-500 block">
+                                    Área: {lp.area}
+                                  </span>
+                                )}
+                              </div>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    )}
+                    {linhasDocenteSelecionadas.length > 0 && (
+                      <div className="text-[11px] text-emerald-700 font-medium">
+                        {linhasDocenteSelecionadas.length} linha(s) selecionada(s)
+                      </div>
+                    )}
                   </div>
                   <div className="flex justify-end gap-3 pt-4">
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>

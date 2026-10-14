@@ -26,6 +26,7 @@ import {
   ClipboardList,
   Users2,
   Library,
+  GitFork,
   FlaskConical,
   FileText,
   Wrench,
@@ -133,6 +134,11 @@ const navSections: NavSection[] = [
         label: 'Disciplinas',
         href: '/disciplinas',
         icon: <Library className="h-5 w-5 shrink-0" />,
+      },
+      {
+        label: 'Linhas de Pesquisa',
+        href: '/linhas-pesquisa',
+        icon: <GitFork className="h-5 w-5 shrink-0" />,
       },
       {
         label: 'Projetos de Pesquisa',

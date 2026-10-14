@@ -4,9 +4,19 @@ import { useCrudData } from '@/hooks/use-crud-data'
 import { publicacoesService } from '@/services/publicacoes'
 import { discentesService } from '@/services/discentes'
 import { egressosService } from '@/services/egressos'
+import { docentesService } from '@/services/docentes'
 import { coautoresProgramaService } from '@/services/coautores-programa'
+import { publicacoesDocentesService } from '@/services/publicacoes-docentes'
 import { SeletorCoautoria } from '@/components/publicacoes/SeletorCoautoria'
-import type { Publicacao, Discente, Egresso, PublicacaoCoautorPrograma } from '@/types/database'
+import { SeletorDocentesAutores } from '@/components/publicacoes/SeletorDocentesAutores'
+import type {
+  Publicacao,
+  Discente,
+  Egresso,
+  Docente,
+  PublicacaoDocente,
+  PublicacaoCoautorPrograma,
+} from '@/types/database'
 import { useAuth } from '@/hooks/use-auth'
 import { normalizarTituloAcademico } from '@/lib/normalizacao'
 import { Badge } from '@/components/ui/badge'
@@ -86,20 +96,29 @@ export default function Publicacoes() {
   // Discentes e Egressos para coautoria
   const [discentesLista, setDiscentesLista] = useState<Discente[]>([])
   const [egressosLista, setEgressosLista] = useState<Egresso[]>([])
+  const [docentesLista, setDocentesLista] = useState<Docente[]>([])
   const [todosCoautores, setTodosCoautores] = useState<PublicacaoCoautorPrograma[]>([])
+  const [todasPubsDocentes, setTodasPubsDocentes] = useState<PublicacaoDocente[]>([])
+
+  // Estado dos docentes vinculados na edição atual da publicação
+  const [docentesAutoresSelecionados, setDocentesAutoresSelecionados] = useState<number[]>([])
 
   const carregarRelacionados = async () => {
     try {
-      const [disc, eg, coaut] = await Promise.all([
+      const [disc, eg, docs, coaut, pubsDocs] = await Promise.all([
         discentesService.list(),
         egressosService.list(),
+        docentesService.list(),
         coautoresProgramaService.listarTodos(),
+        publicacoesDocentesService.listarTodos(),
       ])
       setDiscentesLista(disc)
       setEgressosLista(eg)
+      setDocentesLista(docs)
       setTodosCoautores(coaut)
+      setTodasPubsDocentes(pubsDocs)
     } catch (err) {
-      console.error('Erro ao carregar dados para coautoria:', err)
+      console.error('Erro ao carregar dados para coautoria e docentes:', err)
     }
   }
 
@@ -120,9 +139,17 @@ export default function Publicacoes() {
   const totalPages = Math.ceil(filtered.length / PER_PAGE)
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
-  const handleOpen = (pub?: Publicacao) => {
+  const handleOpen = async (pub?: Publicacao) => {
     setEditingId(pub?.id ?? null)
     setFormData(pub ?? emptyForm)
+    if (pub?.id) {
+      const vinculados = todasPubsDocentes
+        .filter((pd) => pd.publicacao_id === pub.id)
+        .map((pd) => pd.docente_id)
+      setDocentesAutoresSelecionados(vinculados)
+    } else {
+      setDocentesAutoresSelecionados([])
+    }
     setIsDialogOpen(true)
   }
 
@@ -143,6 +170,7 @@ export default function Publicacoes() {
       titulo: normalizarTituloAcademico(formData.titulo),
     }
     try {
+      let savedPubId = editingId
       if (editingId) {
         await update(editingId, payload)
         toast.success('Publicação atualizada')
@@ -157,6 +185,7 @@ export default function Publicacoes() {
         })
       } else {
         const criada = (await create(payload)) as any
+        savedPubId = criada?.id
         toast.success('Publicação registrada')
         if (criada && criada.id) {
           setEditingId(criada.id)
@@ -170,6 +199,15 @@ export default function Publicacoes() {
           },
         })
       }
+
+      // Sincroniza docentes autores vinculados (idempotente)
+      if (savedPubId) {
+        await publicacoesDocentesService.sincronizarDocentes(
+          savedPubId,
+          docentesAutoresSelecionados,
+        )
+      }
+
       await carregarRelacionados()
       setIsDialogOpen(false)
     } catch {
@@ -381,6 +419,17 @@ export default function Publicacoes() {
                     />
                   </div>
 
+                  {/* Seção de Docentes Autores do P²CEM */}
+                  <div className="pt-2">
+                    <SeletorDocentesAutores
+                      autoresTexto={formData.autores}
+                      docentes={docentesLista}
+                      docentesSelecionadosIds={docentesAutoresSelecionados}
+                      onChangeDocentesIds={setDocentesAutoresSelecionados}
+                      canEdit={canEdit}
+                    />
+                  </div>
+
                   {/* Seção de Coautoria com Orientandos/Egressos do P²CEM */}
                   <div className="pt-2">
                     <SeletorCoautoria
@@ -414,9 +463,10 @@ export default function Publicacoes() {
           <Table>
             <TableHeader className="bg-slate-50/80 sticky top-0">
               <TableRow>
-                <TableHead className="w-[30%] font-semibold text-slate-700">
+                <TableHead className="w-[28%] font-semibold text-slate-700">
                   Título & Autores
                 </TableHead>
+                <TableHead className="font-semibold text-slate-700">Docentes Autores</TableHead>
                 <TableHead className="font-semibold text-slate-700">Periódico</TableHead>
                 <TableHead className="font-semibold text-slate-700">Ano</TableHead>
                 <TableHead className="font-semibold text-slate-700">
@@ -424,7 +474,7 @@ export default function Publicacoes() {
                 </TableHead>
                 <TableHead className="font-semibold text-slate-700">Coautoria P²CEM</TableHead>
                 <TableHead className="font-semibold text-slate-700">DOI</TableHead>
-                <TableHead className="w-[18%] font-semibold text-slate-700">Impacto</TableHead>
+                <TableHead className="w-[14%] font-semibold text-slate-700">Impacto</TableHead>
                 {canEdit && (
                   <TableHead className="text-right font-semibold text-slate-700">Ações</TableHead>
                 )}{' '}
@@ -434,7 +484,7 @@ export default function Publicacoes() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: canEdit ? 7 : 6 }).map((_, j) => (
+                    {Array.from({ length: canEdit ? 8 : 7 }).map((_, j) => (
                       <TableCell key={j}>
                         <Skeleton className="h-6 w-full" />
                       </TableCell>
@@ -442,97 +492,128 @@ export default function Publicacoes() {
                   </TableRow>
                 ))
               ) : paginated.length > 0 ? (
-                paginated.map((p) => (
-                  <TableRow key={p.id} className="hover:bg-slate-50/50">
-                    <TableCell>
-                      <div className="font-medium text-slate-900 mb-1">
-                        {normalizarTituloAcademico(p.titulo)}
-                      </div>
-                      <div className="text-xs text-slate-500">{p.autores}</div>
-                    </TableCell>
-                    <TableCell className="text-slate-700">{p.periodico}</TableCell>
-                    <TableCell className="font-medium">{p.ano}</TableCell>
-                    <TableCell className="font-mono text-xs font-semibold text-slate-800">
-                      {p.fator_impacto_jcr !== null && p.fator_impacto_jcr !== undefined
-                        ? Number(p.fator_impacto_jcr).toFixed(3)
-                        : '—'}
-                    </TableCell>
-                    <TableCell>
-                      {(() => {
-                        const coauts = todosCoautores.filter((c) => c.publicacao_id === p.id)
-                        const semCoaut = coauts.some((c) => c.tipo === 'sem_coautoria')
-                        const confirmados = coauts.filter((c) => c.tipo !== 'sem_coautoria')
+                paginated.map((p) => {
+                  const docentesVinculados = todasPubsDocentes
+                    .filter((pd) => pd.publicacao_id === p.id)
+                    .map((pd) => docentesLista.find((d) => d.id === pd.docente_id))
+                    .filter(Boolean) as Docente[]
 
-                        if (confirmados.length > 0) {
-                          return (
-                            <Badge className="bg-emerald-600 text-white text-[11px] hover:bg-emerald-700">
-                              Confirmada ({confirmados.length})
-                            </Badge>
-                          )
-                        }
-                        if (semCoaut) {
-                          return (
-                            <Badge
-                              variant="outline"
-                              className="text-slate-500 text-[11px] bg-slate-100"
-                            >
-                              Sem coautoria
-                            </Badge>
-                          )
-                        }
-                        const isJcr =
-                          p.fator_impacto_jcr !== null &&
-                          p.fator_impacto_jcr !== undefined &&
-                          Number(p.fator_impacto_jcr) >= 1.0
-                        return isJcr ? (
-                          <Badge
-                            variant="outline"
-                            className="text-amber-700 border-amber-300 bg-amber-50 text-[11px]"
-                          >
-                            Pendente
-                          </Badge>
+                  return (
+                    <TableRow key={p.id} className="hover:bg-slate-50/50">
+                      <TableCell>
+                        <div className="font-medium text-slate-900 mb-1">
+                          {normalizarTituloAcademico(p.titulo)}
+                        </div>
+                        <div className="text-xs text-slate-500">{p.autores}</div>
+                      </TableCell>
+                      <TableCell>
+                        {docentesVinculados.length > 0 ? (
+                          <div className="flex flex-wrap gap-1 max-w-[160px]">
+                            {docentesVinculados.map((doc) => {
+                              const nomes = doc.nome.trim().split(' ')
+                              const primeiro = nomes[0]
+                              const ultimo = nomes.length > 1 ? nomes[nomes.length - 1] : ''
+                              const exibicao = ultimo ? `${primeiro[0]}. ${ultimo}` : primeiro
+                              return (
+                                <Badge
+                                  key={doc.id}
+                                  variant="secondary"
+                                  className="text-[10px] px-1.5 py-0 bg-slate-100 text-slate-700 font-normal hover:bg-slate-200"
+                                  title={doc.nome}
+                                >
+                                  {exibicao}
+                                </Badge>
+                              )
+                            })}
+                          </div>
                         ) : (
                           <span className="text-xs text-slate-400">—</span>
-                        )
-                      })()}
-                    </TableCell>
-                    <TableCell className="font-mono text-sm text-primary hover:underline cursor-pointer">
-                      {p.doi}
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-600 line-clamp-2">
-                      {p.justificativa}
-                    </TableCell>{' '}
-                    {canEdit && (
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpen(p)}
-                          className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4 text-primary" />
-                        </Button>
-                        {canDelete && (
+                        )}
+                      </TableCell>
+                      <TableCell className="text-slate-700">{p.periodico}</TableCell>
+                      <TableCell className="font-medium">{p.ano}</TableCell>
+                      <TableCell className="font-mono text-xs font-semibold text-slate-800">
+                        {p.fator_impacto_jcr !== null && p.fator_impacto_jcr !== undefined
+                          ? Number(p.fator_impacto_jcr).toFixed(3)
+                          : '—'}
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const coauts = todosCoautores.filter((c) => c.publicacao_id === p.id)
+                          const semCoaut = coauts.some((c) => c.tipo === 'sem_coautoria')
+                          const confirmados = coauts.filter((c) => c.tipo !== 'sem_coautoria')
+
+                          if (confirmados.length > 0) {
+                            return (
+                              <Badge className="bg-emerald-600 text-white text-[11px] hover:bg-emerald-700">
+                                Confirmada ({confirmados.length})
+                              </Badge>
+                            )
+                          }
+                          if (semCoaut) {
+                            return (
+                              <Badge
+                                variant="outline"
+                                className="text-slate-500 text-[11px] bg-slate-100"
+                              >
+                                Sem coautoria
+                              </Badge>
+                            )
+                          }
+                          const isJcr =
+                            p.fator_impacto_jcr !== null &&
+                            p.fator_impacto_jcr !== undefined &&
+                            Number(p.fator_impacto_jcr) >= 1.0
+                          return isJcr ? (
+                            <Badge
+                              variant="outline"
+                              className="text-amber-700 border-amber-300 bg-amber-50 text-[11px]"
+                            >
+                              Pendente
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-slate-400">—</span>
+                          )
+                        })()}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm text-primary hover:underline cursor-pointer">
+                        {p.doi}
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-600 line-clamp-2">
+                        {p.justificativa}
+                      </TableCell>
+                      {canEdit && (
+                        <TableCell className="text-right">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => setIdParaExcluir(p.id)}
-                            title="Excluir"
+                            onClick={() => handleOpen(p)}
+                            className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                            title="Editar"
                           >
-                            <Trash2 className="h-4 w-4 text-red-600" />
+                            <Edit className="h-4 w-4 text-primary" />
                           </Button>
-                        )}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => setIdParaExcluir(p.id)}
+                              title="Excluir"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  )
+                })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={canEdit ? 7 : 6} className="h-32 text-center text-slate-500">
+                  <TableCell colSpan={canEdit ? 8 : 7} className="h-32 text-center text-slate-500">
                     Nenhuma publicação encontrada.
-                  </TableCell>{' '}
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>

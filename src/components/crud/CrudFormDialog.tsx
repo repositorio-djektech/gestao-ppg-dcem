@@ -87,9 +87,15 @@ export function CrudFormDialog({
                       ? String(formData[field.key])
                       : ''
                   }
-                  onValueChange={(v) =>
-                    setFormData({ ...formData, [field.key]: v === '__none__' ? '' : v })
-                  }
+                  onValueChange={(v) => {
+                    const finalVal = v === '__none__' ? '' : v
+                    if (field.onValueChangeWithFormData) {
+                      const updated = field.onValueChangeWithFormData(finalVal, formData)
+                      setFormData(updated)
+                    } else {
+                      setFormData({ ...formData, [field.key]: finalVal })
+                    }
+                  }}
                 >
                   <SelectTrigger id={field.key}>
                     <SelectValue placeholder={field.placeholder ?? 'Selecione...'} />
