@@ -177,9 +177,108 @@ describe('Regras de Lacunas - Etapa 1', () => {
     })
   })
 
-  describe('Regras das 9 tabelas restantes (Etapa 5)', () => {
-    it('totaliza 26 regras no sistema (5 doc + 4 disc + 3 pub + 3 ori + 3 proj + 2 banc + 2 ev + 2 mob + 2 pat + 2 prem + 1 pt)', () => {
-      expect(TODAS_AS_REGRAS).toHaveLength(26)
+  describe('Regras das 9 tabelas restantes (Etapa 5) e R4', () => {
+    it('totaliza 31 regras no sistema (7 doc + 6 disc + 4 pub + 3 ori + 3 proj + 2 banc + 2 ev + 2 mob + 2 pat + 2 prem + 1 pt)', () => {
+      expect(TODAS_AS_REGRAS).toHaveLength(31)
+    })
+
+    it('R4: docente permanente sem linha de pesquisa gera lacuna crítica', () => {
+      const regra = REGRAS_DOCENTES.find((r) => r.id === 'docente_permanente_sem_linha_pesquisa')!
+      expect(regra).toBeDefined()
+      expect(regra.severidade).toBe('critica')
+
+      const d1 = { id: 1, nome: 'Prof A', categoria: 'Permanente', total_linhas: 0 } as any
+      expect(regra.avaliar(d1).temLacuna).toBe(true)
+
+      const d2 = { id: 2, nome: 'Prof B', categoria: 'Permanente', total_linhas: 2 } as any
+      expect(regra.avaliar(d2).temLacuna).toBe(false)
+
+      const d3 = { id: 3, nome: 'Prof C', categoria: 'Colaborador', total_linhas: 0 } as any
+      expect(regra.avaliar(d3).temLacuna).toBe(false)
+    })
+
+    it('R4: docente sem participação nem coordenação em projeto gera lacuna atenção', () => {
+      const regra = REGRAS_DOCENTES.find((r) => r.id === 'docente_sem_projeto_pesquisa')!
+      expect(regra).toBeDefined()
+      expect(regra.severidade).toBe('atencao')
+
+      const d1 = {
+        id: 1,
+        nome: 'Prof A',
+        total_participacoes_projetos: 0,
+        total_projetos_coordenados: 0,
+      } as any
+      expect(regra.avaliar(d1).temLacuna).toBe(true)
+
+      const d2 = {
+        id: 2,
+        nome: 'Prof B',
+        total_participacoes_projetos: 1,
+        total_projetos_coordenados: 0,
+      } as any
+      expect(regra.avaliar(d2).temLacuna).toBe(false)
+
+      const d3 = {
+        id: 3,
+        nome: 'Prof C',
+        total_participacoes_projetos: 0,
+        total_projetos_coordenados: 1,
+      } as any
+      expect(regra.avaliar(d3).temLacuna).toBe(false)
+    })
+
+    it('R4: discente sem docente_orientador_id gera lacuna crítica', () => {
+      const regra = REGRAS_DISCENTES.find((r) => r.id === 'discente_sem_docente_orientador')!
+      expect(regra).toBeDefined()
+      expect(regra.severidade).toBe('critica')
+
+      const disc1 = { id: 1, nome: 'Aluno A', docente_orientador_id: null } as any
+      expect(regra.avaliar(disc1).temLacuna).toBe(true)
+
+      const disc2 = { id: 2, nome: 'Aluno B', docente_orientador_id: 10 } as any
+      expect(regra.avaliar(disc2).temLacuna).toBe(false)
+    })
+
+    it('R4: discente sem projeto_id gera lacuna atenção', () => {
+      const regra = REGRAS_DISCENTES.find((r) => r.id === 'discente_sem_projeto_pesquisa')!
+      expect(regra).toBeDefined()
+      expect(regra.severidade).toBe('atencao')
+
+      const disc1 = { id: 1, nome: 'Aluno A', projeto_id: null } as any
+      expect(regra.avaliar(disc1).temLacuna).toBe(true)
+
+      const disc2 = { id: 2, nome: 'Aluno B', projeto_id: 5 } as any
+      expect(regra.avaliar(disc2).temLacuna).toBe(false)
+    })
+
+    it('R4: publicação JCR >= 1.0 sem nenhum docente autor vinculado gera lacuna atenção', () => {
+      const regra = REGRAS_PUBLICACOES.find((r) => r.id === 'publicacao_jcr_sem_docente_vinculado')!
+      expect(regra).toBeDefined()
+      expect(regra.severidade).toBe('atencao')
+
+      const p1 = {
+        id: 1,
+        titulo: 'Artigo X',
+        fator_impacto_jcr: 2.5,
+        total_docentes_vinculados: 0,
+      } as any
+      expect(regra.avaliar(p1).temLacuna).toBe(true)
+
+      const p2 = {
+        id: 2,
+        titulo: 'Artigo Y',
+        fator_impacto_jcr: 1.8,
+        total_docentes_vinculados: 1,
+      } as any
+      expect(regra.avaliar(p2).temLacuna).toBe(false)
+
+      const p3 = {
+        id: 3,
+        titulo: 'Artigo Z',
+        fator_impacto_jcr: 0.8,
+        total_docentes_vinculados: 0,
+      } as any
+      expect(regra.avaliar(p3).temLacuna).toBe(false)
     })
 
     it('avalia regras de publicações (ano crítica, doi e periódico atenção)', () => {
@@ -431,8 +530,8 @@ describe('Regras de Lacunas - Etapa 1', () => {
       })
 
       expect(relatorio.gerado_em).toBe('2026-10-10T12:00:00.000Z')
-      expect(relatorio.resumo).toHaveLength(26) // Todas as 26 regras consolidadas
-      expect(relatorio.lacunas).toHaveLength(26)
+      expect(relatorio.resumo).toHaveLength(31) // Todas as 31 regras consolidadas
+      expect(relatorio.lacunas).toHaveLength(31)
 
       // Verificar que Ledjane NÃO aparece na lacuna de Scopus, mas Euler aparece
       const lacunaScopus = relatorio.lacunas.find((l) => l.regra_id === 'docente_sem_scopus_id')!

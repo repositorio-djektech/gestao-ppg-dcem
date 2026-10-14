@@ -509,6 +509,136 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
     })
   })
 
+  describe('Etapa R4: Vínculos estruturados em publicacoes_docentes e fallback', () => {
+    it('usa publicacoes_docentes preferencialmente para identificar as publicações do docente', () => {
+      const docente: Docente = {
+        id: 77,
+        nome: 'Docente Teste Vinculo Estruturado',
+        categoria: 'permanente',
+        scopus_id: '',
+        indice_h: 0,
+        bolsa_cnpq: '',
+        jdp: false,
+        licenca: '',
+      }
+
+      // Publicação onde o texto de autores NÃO contém o nome do docente,
+      // mas existe o vínculo estruturado em publicacoes_docentes
+      const pubEstruturada: Publicacao = {
+        id: 901,
+        titulo: 'Artigo Vinculado Estruturalmente',
+        autores: 'X, Y, Z',
+        periodico: 'Revista Materiais',
+        ano: 2025,
+        fator_impacto_jcr: 2.5,
+        doi: '',
+        justificativa: '',
+        link_comprovacao: '',
+        observacoes: '',
+      }
+
+      const resultado = avaliarDocente({
+        docente,
+        orientacoes: [
+          {
+            id: 1,
+            docente_id: 77,
+            discente_id: 1,
+            tipo: 'Mestrado',
+            inicio: '2025',
+            fim: '2026',
+            status: 'concluido',
+            data_defesa: '2025-06-01',
+            flag_orientador_principal: true,
+            link_comprovacao: '',
+            observacoes: '',
+          },
+        ],
+        disciplinas: [
+          {
+            id: 1,
+            docente_id: 77,
+            nome: 'Disciplina Teste',
+            codigo: 'DISC01',
+            creditos: 4,
+            ano_semestre: '2025.1',
+            link_comprovacao: '',
+            observacoes: '',
+          },
+        ],
+        projetos: [
+          {
+            id: 1,
+            titulo: 'Projeto Teste',
+            coordenador_id: 77,
+            financiamento: true,
+            orgao_fomento: 'CNPq',
+            inicio: '2025',
+            fim: '2028',
+            descricao: '',
+            link_comprovacao: '',
+            observacoes: '',
+          },
+        ],
+        participantesProjetos: [],
+        publicacoes: [pubEstruturada],
+        publicacoesDocentes: [{ publicacao_id: 901, docente_id: 77 }],
+        coautoresPrograma: [{ publicacao_id: 901, tipo: 'discente', nome_citado: 'Aluno Teste' }],
+      })
+
+      // Identificou via publicacoes_docentes e coautores confirmados
+      expect(resultado.pdq_detalhes.np).toBe(1)
+      expect(resultado.pdq_detalhes.np_teto).toBe(1)
+      expect(resultado.np_estrito).toBe(1)
+      expect(resultado.np_teto).toBe(1)
+      expect(resultado.criterio_iv.atendido).toBe(false) // MSc + DSc é 1, precisa de >= 2 para criterio_iv atendido
+    })
+
+    it('quando não há registros estruturados em publicacoes_docentes para o docente, mantém fallback de texto de autores', () => {
+      const docente: Docente = {
+        id: 88,
+        nome: 'Carlos Santos Silva',
+        categoria: 'permanente',
+        scopus_id: '',
+        indice_h: 0,
+        bolsa_cnpq: '',
+        jdp: false,
+        licenca: '',
+      }
+
+      const pubFallback: Publicacao = {
+        id: 902,
+        titulo: 'Artigo Fallback Textual',
+        autores: 'Silva, Carlos Santos; Outro, A.',
+        periodico: 'Revista Materiais',
+        ano: 2025,
+        fator_impacto_jcr: 1.5,
+        doi: '',
+        justificativa: '',
+        link_comprovacao: '',
+        observacoes: '',
+      }
+
+      const resultado = avaliarDocente({
+        docente,
+        orientacoes: [],
+        disciplinas: [],
+        projetos: [],
+        participantesProjetos: [],
+        publicacoes: [pubFallback],
+        publicacoesDocentes: [],
+        coautoresPrograma: [
+          { publicacao_id: 902, tipo: 'discente', nome_citado: 'Aluno Fallback' },
+        ],
+      })
+
+      expect(resultado.pdq_detalhes.np).toBe(1)
+      expect(resultado.pdq_detalhes.np_teto).toBe(1)
+      expect(resultado.np_estrito).toBe(1)
+      expect(resultado.np_teto).toBe(1)
+    })
+  })
+
   describe('Consolidação geral do relatório', () => {
     it('gera resumo completo com totais por categoria e por veredito', () => {
       const docentes: Docente[] = [

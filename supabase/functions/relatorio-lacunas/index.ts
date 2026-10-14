@@ -132,6 +132,60 @@ export const REGRAS_DOCENTES_EDGE: RegraLacunaDef[] = [
       }
     },
   },
+  {
+    id: 'docente_permanente_sem_linha_pesquisa',
+    tabela: 'docentes',
+    campos: ['linhas_pesquisa'],
+    descricao: 'Docente permanente sem linha de pesquisa',
+    severidade: 'critica',
+    grupo: 'Acadêmico',
+    avaliar: (docente) => {
+      const isPermanente =
+        String(docente.categoria || '')
+          .toLowerCase()
+          .trim() === 'permanente'
+      if (!isPermanente) return { temLacuna: false }
+      const qtdLinhas = Array.isArray(docente.docentes_linhas)
+        ? docente.docentes_linhas.length
+        : typeof docente.total_linhas === 'number'
+          ? docente.total_linhas
+          : 0
+      const tem = qtdLinhas === 0
+      return {
+        temLacuna: tem,
+        motivo: tem
+          ? 'Docente da categoria permanente sem nenhuma linha de pesquisa vinculada'
+          : undefined,
+      }
+    },
+  },
+  {
+    id: 'docente_sem_projeto_pesquisa',
+    tabela: 'docentes',
+    campos: ['projetos_participantes', 'coordenador_id'],
+    descricao: 'Docente sem participação estruturada em projeto',
+    severidade: 'atencao',
+    grupo: 'Acadêmico',
+    avaliar: (docente) => {
+      const qtdParticipacoes = Array.isArray(docente.projetos_participantes)
+        ? docente.projetos_participantes.length
+        : typeof docente.total_participacoes_projetos === 'number'
+          ? docente.total_participacoes_projetos
+          : 0
+      const qtdCoordenacoes = Array.isArray(docente.projetos_coordenados)
+        ? docente.projetos_coordenados.length
+        : typeof docente.total_projetos_coordenados === 'number'
+          ? docente.total_projetos_coordenados
+          : 0
+      const tem = qtdParticipacoes === 0 && qtdCoordenacoes === 0
+      return {
+        temLacuna: tem,
+        motivo: tem
+          ? 'Docente sem nenhuma participação estruturada ou coordenação em projeto de pesquisa'
+          : undefined,
+      }
+    },
+  },
 ]
 
 // 2. DISCENTES (4 regras)
@@ -196,6 +250,42 @@ export const REGRAS_DISCENTES_EDGE: RegraLacunaDef[] = [
       }
     },
   },
+  {
+    id: 'discente_sem_docente_orientador',
+    tabela: 'discentes',
+    campos: ['docente_orientador_id'],
+    descricao: 'Discente sem orientador vinculado',
+    severidade: 'critica',
+    grupo: 'Acadêmico',
+    avaliar: (discente) => {
+      const tem =
+        discente.docente_orientador_id === null ||
+        discente.docente_orientador_id === undefined ||
+        Number(discente.docente_orientador_id) <= 0
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Docente orientador estruturado não vinculado ao discente' : undefined,
+      }
+    },
+  },
+  {
+    id: 'discente_sem_projeto_pesquisa',
+    tabela: 'discentes',
+    campos: ['projeto_id'],
+    descricao: 'Discente sem projeto de pesquisa vinculado',
+    severidade: 'atencao',
+    grupo: 'Acadêmico',
+    avaliar: (discente) => {
+      const tem =
+        discente.projeto_id === null ||
+        discente.projeto_id === undefined ||
+        Number(discente.projeto_id) <= 0
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Projeto de pesquisa estruturado não vinculado ao discente' : undefined,
+      }
+    },
+  },
 ]
 
 // 3. PUBLICAÇÕES (3 regras)
@@ -242,6 +332,35 @@ export const REGRAS_PUBLICACOES_EDGE: RegraLacunaDef[] = [
       return {
         temLacuna: tem,
         motivo: tem ? 'Nome do periódico/revista não informado' : undefined,
+      }
+    },
+  },
+  {
+    id: 'publicacao_jcr_sem_docente_vinculado',
+    tabela: 'publicacoes',
+    campos: ['fator_impacto_jcr', 'publicacoes_docentes'],
+    descricao: 'Publicação JCR ≥ 1,0 sem docente vinculado',
+    severidade: 'atencao',
+    grupo: 'Produção',
+    avaliar: (pub) => {
+      const jcrNum =
+        pub.fator_impacto_jcr !== null && pub.fator_impacto_jcr !== undefined
+          ? Number(pub.fator_impacto_jcr)
+          : null
+      if (jcrNum === null || isNaN(jcrNum) || jcrNum < 1.0) {
+        return { temLacuna: false }
+      }
+      const qtdDocentes = Array.isArray(pub.publicacoes_docentes)
+        ? pub.publicacoes_docentes.length
+        : typeof pub.total_docentes_vinculados === 'number'
+          ? pub.total_docentes_vinculados
+          : 0
+      const tem = qtdDocentes === 0
+      return {
+        temLacuna: tem,
+        motivo: tem
+          ? `Publicação com JCR ${jcrNum} sem nenhum docente autor vinculado em publicações-docentes`
+          : undefined,
       }
     },
   },
@@ -616,7 +735,7 @@ Deno.serve(async (req: Request) => {
       },
     })
 
-    // Consultas eficientes em paralelo sobre as 11 tabelas
+    // Consultas eficientes em paralelo sobre as tabelas base + tabelas de vínculos estruturados (R4)
     const [
       docentesRes,
       discentesRes,
@@ -629,18 +748,23 @@ Deno.serve(async (req: Request) => {
       patentesRes,
       premiacoesRes,
       producaoTecnicaRes,
+      docentesLinhasRes,
+      projetosParticipantesRes,
+      publicacoesDocentesRes,
     ] = await Promise.all([
       supabase
         .from('docentes')
-        .select('id, nome, scopus_id, openalex_id, id_lattes, indice_h, bolsa_cnpq')
+        .select('id, nome, categoria, scopus_id, openalex_id, id_lattes, indice_h, bolsa_cnpq')
         .order('nome', { ascending: true }),
       supabase
         .from('discentes')
-        .select('id, nome, cpf, data_ingresso, status, link_lattes')
+        .select(
+          'id, nome, cpf, data_ingresso, status, link_lattes, docente_orientador_id, projeto_id',
+        )
         .order('nome', { ascending: true }),
       supabase
         .from('publicacoes')
-        .select('id, titulo, autores, periodico, ano, doi')
+        .select('id, titulo, autores, periodico, ano, doi, fator_impacto_jcr')
         .order('ano', { ascending: false }),
       supabase.from('orientacoes').select('id, tipo, inicio, fim, status, docente_id, discente_id'),
       supabase
@@ -660,6 +784,9 @@ Deno.serve(async (req: Request) => {
         .from('producao_tecnica')
         .select('id, titulo, ano, autores, tipo')
         .order('ano', { ascending: false }),
+      supabase.from('docentes_linhas').select('docente_id, linha_id'),
+      supabase.from('projetos_participantes').select('projeto_id, docente_id'),
+      supabase.from('publicacoes_docentes').select('publicacao_id, docente_id'),
     ])
 
     // Verificar se houve erro crítico de leitura em alguma tabela essencial
@@ -675,6 +802,9 @@ Deno.serve(async (req: Request) => {
       patentesRes.error,
       premiacoesRes.error,
       producaoTecnicaRes.error,
+      docentesLinhasRes.error,
+      projetosParticipantesRes.error,
+      publicacoesDocentesRes.error,
     ].filter(Boolean)
 
     if (erros.length > 0) {
@@ -691,9 +821,50 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    const avalDocentes = avaliarColecaoEdge(docentesRes.data || [], REGRAS_DOCENTES_EDGE)
+    // Enriquecimento com contagens estruturadas (R4)
+    const mapaDocentesLinhas = new Map<number, number>()
+    for (const dl of docentesLinhasRes.data || []) {
+      mapaDocentesLinhas.set(dl.docente_id, (mapaDocentesLinhas.get(dl.docente_id) || 0) + 1)
+    }
+
+    const mapaDocentesParticipacoes = new Map<number, number>()
+    for (const pp of projetosParticipantesRes.data || []) {
+      mapaDocentesParticipacoes.set(
+        pp.docente_id,
+        (mapaDocentesParticipacoes.get(pp.docente_id) || 0) + 1,
+      )
+    }
+
+    const mapaDocentesCoordenacoes = new Map<number, number>()
+    for (const pr of projetosRes.data || []) {
+      if (pr.coordenador_id) {
+        mapaDocentesCoordenacoes.set(
+          pr.coordenador_id,
+          (mapaDocentesCoordenacoes.get(pr.coordenador_id) || 0) + 1,
+        )
+      }
+    }
+
+    const mapaPubsDocentes = new Map<number, number>()
+    for (const pd of publicacoesDocentesRes.data || []) {
+      mapaPubsDocentes.set(pd.publicacao_id, (mapaPubsDocentes.get(pd.publicacao_id) || 0) + 1)
+    }
+
+    const docentesEnriquecidos = (docentesRes.data || []).map((d: any) => ({
+      ...d,
+      total_linhas: mapaDocentesLinhas.get(d.id) || 0,
+      total_participacoes_projetos: mapaDocentesParticipacoes.get(d.id) || 0,
+      total_projetos_coordenados: mapaDocentesCoordenacoes.get(d.id) || 0,
+    }))
+
+    const publicacoesEnriquecidas = (publicacoesRes.data || []).map((p: any) => ({
+      ...p,
+      total_docentes_vinculados: mapaPubsDocentes.get(p.id) || 0,
+    }))
+
+    const avalDocentes = avaliarColecaoEdge(docentesEnriquecidos, REGRAS_DOCENTES_EDGE)
     const avalDiscentes = avaliarColecaoEdge(discentesRes.data || [], REGRAS_DISCENTES_EDGE)
-    const avalPublicacoes = avaliarColecaoEdge(publicacoesRes.data || [], REGRAS_PUBLICACOES_EDGE)
+    const avalPublicacoes = avaliarColecaoEdge(publicacoesEnriquecidas, REGRAS_PUBLICACOES_EDGE)
     const avalOrientacoes = avaliarColecaoEdge(orientacoesRes.data || [], REGRAS_ORIENTACOES_EDGE)
     const avalProjetos = avaliarColecaoEdge(projetosRes.data || [], REGRAS_PROJETOS_PESQUISA_EDGE)
     const avalBancas = avaliarColecaoEdge(bancasRes.data || [], REGRAS_BANCAS_EDGE)

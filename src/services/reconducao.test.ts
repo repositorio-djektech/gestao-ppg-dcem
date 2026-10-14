@@ -213,6 +213,33 @@ describe('Service obterAvaliacaoReconducao (Etapa C)', () => {
       )
     })
 
+    it('avalia Ledjane integrando vínculos estruturados sem erro e mantendo consistência', () => {
+      // Mock de vínculos estruturados R4
+      const publicacoesDocentesLedjane = [
+        { publicacao_id: 1, docente_id: docenteLedjane.id },
+        { publicacao_id: 2, docente_id: docenteLedjane.id },
+      ]
+      const participantesProjetosLedjane = [
+        { projeto_id: 1, docente_id: docenteLedjane.id, papel: 'coordenador' },
+      ]
+
+      const resultado = avaliarDocente({
+        docente: docenteLedjane,
+        orientacoes: orientacoesLedjane,
+        disciplinas: [],
+        projetos: projetosLedjane,
+        participantesProjetos: participantesProjetosLedjane,
+        publicacoes: publicacoesLedjane,
+        publicacoesDocentes: publicacoesDocentesLedjane,
+      })
+
+      expect(resultado.nome).toBe('Ledjane Silva Barreto')
+      expect(resultado.scopus_id).toBe('7005598575')
+      expect(resultado.categoria).toBe('permanente')
+      // Ledjane não quebra e mantém consistência com os vínculos
+      expect(resultado.criterio_iii.atendido).toBe(true)
+    })
+
     it('quando Ledjane tem titulações concluídas e projeto financiado, atinge RECONDUZIDO', () => {
       const orientacoesCompletas: Orientacao[] = [
         ...orientacoesLedjane,

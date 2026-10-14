@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -298,6 +299,7 @@ export default function Lacunas({
   filtroRegraInicial = 'todas',
   historicoInicial,
 }: LacunasProps = {}) {
+  const navigate = useNavigate()
   const [relatorio, setRelatorio] = useState<RelatorioLacunasResposta | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
@@ -398,6 +400,12 @@ export default function Lacunas({
 
         const docenteData = doc as Docente
 
+        // Se a lacuna for de linhas de pesquisa (R4), direciona para Docentes
+        if (item.regraId === 'docente_permanente_sem_linha_pesquisa') {
+          navigate('/docentes')
+          return
+        }
+
         // Se a lacuna for de Scopus ID ou OpenAlex / índice-h:
         if (item.regraId === 'docente_sem_scopus_id') {
           setDocenteParaVinculo(docenteData)
@@ -410,6 +418,9 @@ export default function Lacunas({
           setDocenteParaVinculo(docenteData)
           setAbaInicialVinculo('openalex')
           setDialogoVinculoAberto(true)
+        } else if (item.regraId === 'docente_sem_projeto_pesquisa') {
+          navigate('/projetos-pesquisa')
+          return
         } else {
           // Demais regras cadastrais de docente: ID Lattes, Bolsa CNPq, etc.
           setDocenteEditando(docenteData)
@@ -466,13 +477,39 @@ export default function Lacunas({
         else if (item.regraId === 'discente_sem_status') focoCampo = 'status'
         else if (item.regraId === 'discente_sem_link_lattes') focoCampo = 'link_lattes'
 
+        // R4: Para discente sem orientador ou sem projeto, direciona para a página de Discentes se desejar gerenciar vínculos
+        if (
+          item.regraId === 'discente_sem_docente_orientador' ||
+          item.regraId === 'discente_sem_projeto_pesquisa'
+        ) {
+          navigate('/discentes')
+          return
+        }
+
         setCampoFocoDiscente(focoCampo)
         setDialogoDiscenteAberto(true)
+      } else if (item.tabela === 'publicacoes') {
+        navigate('/publicacoes')
       } else {
-        // Demais tabelas (Publicações, Orientações, Projetos, etc.): ação documentada para a próxima etapa (sem diálogo novo)
-        toast.info(
-          `Correção contextual para "${item.tabela}": disponível na página correspondente do menu lateral (ou na próxima etapa do plano).`,
-        )
+        // Demais tabelas: navega para a página correspondente
+        const rotas: Record<string, string> = {
+          orientacoes: '/orientacoes',
+          projetos_pesquisa: '/projetos-pesquisa',
+          bancas: '/bancas',
+          eventos: '/eventos',
+          mobilidade_docente: '/mobilidade',
+          patentes: '/patentes',
+          premiacoes: '/premiacoes',
+          producao_tecnica: '/producao-tecnica',
+          disciplinas: '/disciplinas',
+        }
+        if (rotas[item.tabela]) {
+          navigate(rotas[item.tabela])
+        } else {
+          toast.info(
+            `Correção contextual para "${item.tabela}": disponível na página correspondente do menu lateral.`,
+          )
+        }
       }
     } catch (err: any) {
       toast.error(`Falha ao preparar correção: ${err?.message || 'Erro inesperado'}`)

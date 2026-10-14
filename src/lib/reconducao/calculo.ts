@@ -234,6 +234,10 @@ export interface DadosParaAvaliacao {
   projetos: ProjetoPesquisa[]
   participantesProjetos: ProjetoParticipante[]
   publicacoes: Publicacao[]
+  publicacoesDocentes?: Array<{
+    publicacao_id: number
+    docente_id: number
+  }>
   coautoresPrograma?: Array<{
     publicacao_id: number
     tipo: string
@@ -384,13 +388,25 @@ export function avaliarDocente(params: DadosParaAvaliacao): AvaliacaoDocenteReco
     mapaCoautoria.set(c.publicacao_id, entry)
   }
 
+  // R4: Identificação estruturada das publicações do docente via publicacoes_docentes
+  // Se existirem vínculos estruturados para o docente, usa-os preferencialmente;
+  // Fallback: se não houver registros estruturados em publicacoes_docentes para o docente,
+  // usa a correspondência textual anterior em pub.autores.
+  const pubsDocentesVinc = (params.publicacoesDocentes || []).filter(
+    (pd) => pd.docente_id === docente.id,
+  )
+  const temVinculosEstruturadosDocente = pubsDocentesVinc.length > 0
+  const idsPubsEstruturadas = new Set(pubsDocentesVinc.map((pd) => pd.publicacao_id))
+
   // Todas as publicações JCR >= 1.0 do docente no período (NP TETO)
   const publicacoesDocenteNoPeriodo = publicacoes.filter((pub) => {
     const noPeriodo = anoNoPeriodo(pub.ano, anoInicio, anoFim)
     if (!noPeriodo) return false
 
-    // Autor corresponde ao docente
-    const pertenceAoDocente = textoContemDocente(pub.autores, termosNome)
+    // Vínculo estruturado preferencial com fallback textual consistente
+    const pertenceAoDocente = temVinculosEstruturadosDocente
+      ? idsPubsEstruturadas.has(pub.id)
+      : textoContemDocente(pub.autores, termosNome)
     if (!pertenceAoDocente) return false
 
     // JCR >= 1.0
@@ -538,6 +554,10 @@ export function consolidarAvaliacaoReconducao(params: {
   projetos: ProjetoPesquisa[]
   participantesProjetos: ProjetoParticipante[]
   publicacoes: Publicacao[]
+  publicacoesDocentes?: Array<{
+    publicacao_id: number
+    docente_id: number
+  }>
   coautoresPrograma?: Array<{
     publicacao_id: number
     tipo: string
@@ -553,6 +573,7 @@ export function consolidarAvaliacaoReconducao(params: {
     projetos,
     participantesProjetos,
     publicacoes,
+    publicacoesDocentes = [],
     coautoresPrograma = [],
     anoInicio = ANO_INICIO,
     anoFim = ANO_FIM,
@@ -566,6 +587,7 @@ export function consolidarAvaliacaoReconducao(params: {
       projetos,
       participantesProjetos,
       publicacoes,
+      publicacoesDocentes,
       coautoresPrograma,
       anoInicio,
       anoFim,

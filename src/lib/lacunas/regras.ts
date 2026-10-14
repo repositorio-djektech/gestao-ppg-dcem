@@ -107,6 +107,62 @@ export const REGRAS_DOCENTES: RegraLacuna<Docente>[] = [
       }
     },
   },
+  {
+    id: 'docente_permanente_sem_linha_pesquisa',
+    tabela: 'docentes',
+    campos: ['linhas_pesquisa'],
+    descricao: 'Docente permanente sem linha de pesquisa',
+    severidade: 'critica',
+    grupo: 'Acadêmico',
+    avaliar: (docente) => {
+      const doc = docente as any
+      const isPermanente =
+        String(doc.categoria || '')
+          .toLowerCase()
+          .trim() === 'permanente'
+      if (!isPermanente) return { temLacuna: false }
+      const qtdLinhas = Array.isArray(doc.docentes_linhas)
+        ? doc.docentes_linhas.length
+        : typeof doc.total_linhas === 'number'
+          ? doc.total_linhas
+          : 0
+      const tem = qtdLinhas === 0
+      return {
+        temLacuna: tem,
+        motivo: tem
+          ? 'Docente da categoria permanente sem nenhuma linha de pesquisa vinculada'
+          : undefined,
+      }
+    },
+  },
+  {
+    id: 'docente_sem_projeto_pesquisa',
+    tabela: 'docentes',
+    campos: ['projetos_participantes', 'coordenador_id'],
+    descricao: 'Docente sem participação estruturada em projeto',
+    severidade: 'atencao',
+    grupo: 'Acadêmico',
+    avaliar: (docente) => {
+      const doc = docente as any
+      const qtdParticipacoes = Array.isArray(doc.projetos_participantes)
+        ? doc.projetos_participantes.length
+        : typeof doc.total_participacoes_projetos === 'number'
+          ? doc.total_participacoes_projetos
+          : 0
+      const qtdCoordenacoes = Array.isArray(doc.projetos_coordenados)
+        ? doc.projetos_coordenados.length
+        : typeof doc.total_projetos_coordenados === 'number'
+          ? doc.total_projetos_coordenados
+          : 0
+      const tem = qtdParticipacoes === 0 && qtdCoordenacoes === 0
+      return {
+        temLacuna: tem,
+        motivo: tem
+          ? 'Docente sem nenhuma participação estruturada ou coordenação em projeto de pesquisa'
+          : undefined,
+      }
+    },
+  },
 ]
 
 export const REGRAS_DISCENTES: RegraLacuna<Discente>[] = [
@@ -170,6 +226,42 @@ export const REGRAS_DISCENTES: RegraLacuna<Discente>[] = [
       }
     },
   },
+  {
+    id: 'discente_sem_docente_orientador',
+    tabela: 'discentes',
+    campos: ['docente_orientador_id'],
+    descricao: 'Discente sem orientador vinculado',
+    severidade: 'critica',
+    grupo: 'Acadêmico',
+    avaliar: (discente) => {
+      const tem =
+        discente.docente_orientador_id === null ||
+        discente.docente_orientador_id === undefined ||
+        Number(discente.docente_orientador_id) <= 0
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Docente orientador estruturado não vinculado ao discente' : undefined,
+      }
+    },
+  },
+  {
+    id: 'discente_sem_projeto_pesquisa',
+    tabela: 'discentes',
+    campos: ['projeto_id'],
+    descricao: 'Discente sem projeto de pesquisa vinculado',
+    severidade: 'atencao',
+    grupo: 'Acadêmico',
+    avaliar: (discente) => {
+      const tem =
+        discente.projeto_id === null ||
+        discente.projeto_id === undefined ||
+        Number(discente.projeto_id) <= 0
+      return {
+        temLacuna: tem,
+        motivo: tem ? 'Projeto de pesquisa estruturado não vinculado ao discente' : undefined,
+      }
+    },
+  },
 ]
 
 // 1. PUBLICAÇÕES
@@ -216,6 +308,36 @@ export const REGRAS_PUBLICACOES: RegraLacuna<Publicacao>[] = [
       return {
         temLacuna: tem,
         motivo: tem ? 'Nome do periódico/revista não informado' : undefined,
+      }
+    },
+  },
+  {
+    id: 'publicacao_jcr_sem_docente_vinculado',
+    tabela: 'publicacoes',
+    campos: ['fator_impacto_jcr', 'publicacoes_docentes'],
+    descricao: 'Publicação JCR ≥ 1,0 sem docente vinculado',
+    severidade: 'atencao',
+    grupo: 'Produção',
+    avaliar: (pub) => {
+      const p = pub as any
+      const jcrNum =
+        p.fator_impacto_jcr !== null && p.fator_impacto_jcr !== undefined
+          ? Number(p.fator_impacto_jcr)
+          : null
+      if (jcrNum === null || isNaN(jcrNum) || jcrNum < 1.0) {
+        return { temLacuna: false }
+      }
+      const qtdDocentes = Array.isArray(p.publicacoes_docentes)
+        ? p.publicacoes_docentes.length
+        : typeof p.total_docentes_vinculados === 'number'
+          ? p.total_docentes_vinculados
+          : 0
+      const tem = qtdDocentes === 0
+      return {
+        temLacuna: tem,
+        motivo: tem
+          ? `Publicação com JCR ${jcrNum} sem nenhum docente autor vinculado em publicações-docentes`
+          : undefined,
       }
     },
   },
@@ -596,6 +718,9 @@ export interface DadosConsolidacaoLacunas {
   patentes?: Patente[]
   premiacoes?: Premiacao[]
   producao_tecnica?: ProducaoTecnica[]
+  docentes_linhas?: Array<{ docente_id: number; linha_id: number }>
+  projetos_participantes?: Array<{ projeto_id: number; docente_id: number }>
+  publicacoes_docentes?: Array<{ publicacao_id: number; docente_id: number }>
   dataGeracao?: string
 }
 
@@ -614,12 +739,69 @@ export function consolidarRelatorioLacunas(
     patentes = [],
     premiacoes = [],
     producao_tecnica = [],
+    docentes_linhas = [],
+    projetos_participantes = [],
+    publicacoes_docentes = [],
     dataGeracao,
   } = params
 
-  const resDocentes = avaliarColecao(docentes, REGRAS_DOCENTES)
+  // Enriquecer docentes com contagens estruturadas se fornecidas
+  const mapaDocLinhas = new Map<number, number>()
+  for (const dl of docentes_linhas) {
+    mapaDocLinhas.set(dl.docente_id, (mapaDocLinhas.get(dl.docente_id) || 0) + 1)
+  }
+
+  const mapaDocParticipacoes = new Map<number, number>()
+  for (const pp of projetos_participantes) {
+    mapaDocParticipacoes.set(pp.docente_id, (mapaDocParticipacoes.get(pp.docente_id) || 0) + 1)
+  }
+
+  const mapaDocCoordenacoes = new Map<number, number>()
+  for (const pr of projetos_pesquisa) {
+    if (pr.coordenador_id) {
+      mapaDocCoordenacoes.set(
+        pr.coordenador_id,
+        (mapaDocCoordenacoes.get(pr.coordenador_id) || 0) + 1,
+      )
+    }
+  }
+
+  const mapaPubDocentes = new Map<number, number>()
+  for (const pd of publicacoes_docentes) {
+    mapaPubDocentes.set(pd.publicacao_id, (mapaPubDocentes.get(pd.publicacao_id) || 0) + 1)
+  }
+
+  const docentesAvaliados = docentes.map((d: any) => ({
+    ...d,
+    total_linhas:
+      typeof d.total_linhas === 'number'
+        ? d.total_linhas
+        : (mapaDocLinhas.get(d.id) ??
+          (Array.isArray(d.docentes_linhas) ? d.docentes_linhas.length : 0)),
+    total_participacoes_projetos:
+      typeof d.total_participacoes_projetos === 'number'
+        ? d.total_participacoes_projetos
+        : (mapaDocParticipacoes.get(d.id) ??
+          (Array.isArray(d.projetos_participantes) ? d.projetos_participantes.length : 0)),
+    total_projetos_coordenados:
+      typeof d.total_projetos_coordenados === 'number'
+        ? d.total_projetos_coordenados
+        : (mapaDocCoordenacoes.get(d.id) ??
+          (Array.isArray(d.projetos_coordenados) ? d.projetos_coordenados.length : 0)),
+  }))
+
+  const publicacoesAvaliadas = publicacoes.map((p: any) => ({
+    ...p,
+    total_docentes_vinculados:
+      typeof p.total_docentes_vinculados === 'number'
+        ? p.total_docentes_vinculados
+        : (mapaPubDocentes.get(p.id) ??
+          (Array.isArray(p.publicacoes_docentes) ? p.publicacoes_docentes.length : 0)),
+  }))
+
+  const resDocentes = avaliarColecao(docentesAvaliados, REGRAS_DOCENTES)
   const resDiscentes = avaliarColecao(discentes, REGRAS_DISCENTES)
-  const resPublicacoes = avaliarColecao(publicacoes, REGRAS_PUBLICACOES)
+  const resPublicacoes = avaliarColecao(publicacoesAvaliadas, REGRAS_PUBLICACOES)
   const resOrientacoes = avaliarColecao(orientacoes, REGRAS_ORIENTACOES)
   const resProjetos = avaliarColecao(projetos_pesquisa, REGRAS_PROJETOS_PESQUISA)
   const resBancas = avaliarColecao(bancas, REGRAS_BANCAS)

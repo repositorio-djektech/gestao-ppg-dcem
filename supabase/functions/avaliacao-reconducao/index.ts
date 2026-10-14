@@ -149,6 +149,7 @@ export function avaliarDocenteLogica(params: {
   projetos: any[]
   participantesProjetos: any[]
   publicacoes: any[]
+  publicacoesDocentes?: any[]
   coautoresPrograma?: any[]
   anoInicio?: number
   anoFim?: number
@@ -160,6 +161,7 @@ export function avaliarDocenteLogica(params: {
     projetos,
     participantesProjetos,
     publicacoes,
+    publicacoesDocentes = [],
     coautoresPrograma = [],
     anoInicio = ANO_INICIO,
     anoFim = ANO_FIM,
@@ -206,6 +208,7 @@ export function avaliarDocenteLogica(params: {
   }
 
   // 3. Critério III: Projetos com financiamento no quadriênio
+  // Usa preferencialmente projetos_participantes + coordenador_id
   const idsProjetosParticipante = new Set<number>()
   for (const part of participantesProjetos) {
     if (part.docente_id === docente.id) {
@@ -274,9 +277,23 @@ export function avaliarDocenteLogica(params: {
     mapaCoautoria.set(c.publicacao_id, entry)
   }
 
+  // R4: Identificação estruturada das publicações do docente via publicacoes_docentes
+  // Usa vínculos estruturados se existirem; se não houver registros em publicacoes_docentes
+  // para o docente, mantém fallback consistente via pub.autores.
+  const pubsDocentesVinc = (publicacoesDocentes || []).filter(
+    (pd: any) => pd.docente_id === docente.id,
+  )
+  const temVinculosEstruturadosDocente = pubsDocentesVinc.length > 0
+  const idsPubsEstruturadas = new Set(pubsDocentesVinc.map((pd: any) => pd.publicacao_id))
+
   const publicacoesDocenteNoPeriodo = publicacoes.filter((pub) => {
     if (!anoNoPeriodo(pub.ano, anoInicio, anoFim)) return false
-    if (!textoContemDocente(pub.autores, termosNome)) return false
+
+    const pertenceAoDocente = temVinculosEstruturadosDocente
+      ? idsPubsEstruturadas.has(pub.id)
+      : textoContemDocente(pub.autores, termosNome)
+    if (!pertenceAoDocente) return false
+
     const jcr =
       pub.fator_impacto_jcr !== null && pub.fator_impacto_jcr !== undefined
         ? Number(pub.fator_impacto_jcr)
@@ -441,6 +458,7 @@ Deno.serve(async (req: Request) => {
       projetosRes,
       participantesRes,
       publicacoesRes,
+      publicacoesDocentesRes,
       coautoresRes,
     ] = await Promise.all([
       supabase
@@ -461,6 +479,7 @@ Deno.serve(async (req: Request) => {
         .from('publicacoes')
         .select('id, titulo, autores, periodico, ano, fator_impacto_jcr')
         .order('ano', { ascending: false }),
+      supabase.from('publicacoes_docentes').select('id, publicacao_id, docente_id'),
       supabase
         .from('publicacoes_coautores_programa')
         .select('id, publicacao_id, discente_id, egresso_id, tipo, nome_citado, grau_confianca'),
@@ -473,6 +492,7 @@ Deno.serve(async (req: Request) => {
       projetosRes.error,
       participantesRes.error,
       publicacoesRes.error,
+      publicacoesDocentesRes.error,
       coautoresRes.error,
     ].filter(Boolean)
 
@@ -496,6 +516,7 @@ Deno.serve(async (req: Request) => {
     const projetos = projetosRes.data || []
     const participantesProjetos = participantesRes.data || []
     const publicacoes = publicacoesRes.data || []
+    const publicacoesDocentes = publicacoesDocentesRes.data || []
     const coautoresPrograma = coautoresRes.data || []
 
     const avaliacoes = docentes.map((docente: any) =>
@@ -506,6 +527,7 @@ Deno.serve(async (req: Request) => {
         projetos,
         participantesProjetos,
         publicacoes,
+        publicacoesDocentes,
         coautoresPrograma,
         anoInicio: ANO_INICIO,
         anoFim: ANO_FIM,

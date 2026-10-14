@@ -83,19 +83,26 @@ export async function obterRelatorioLacunas(
       patentesRes,
       premiacoesRes,
       producaoTecnicaRes,
+      docentesLinhasRes,
+      projetosParticipantesRes,
+      publicacoesDocentesRes,
     ] = await Promise.all([
       supabase
         .from('docentes')
-        .select('id, nome, scopus_id, openalex_id, id_lattes, indice_h, bolsa_cnpq, jdp, licenca')
+        .select(
+          'id, nome, categoria, scopus_id, openalex_id, id_lattes, indice_h, bolsa_cnpq, jdp, licenca',
+        )
         .order('nome', { ascending: true }),
       supabase
         .from('discentes')
-        .select('id, nome, cpf, data_ingresso, status, link_lattes, link_comprovacao, observacoes')
+        .select(
+          'id, nome, cpf, data_ingresso, status, link_lattes, link_comprovacao, observacoes, docente_orientador_id, projeto_id',
+        )
         .order('nome', { ascending: true }),
       supabase
         .from('publicacoes')
         .select(
-          'id, titulo, autores, periodico, ano, doi, justificativa, link_comprovacao, observacoes',
+          'id, titulo, autores, periodico, ano, doi, fator_impacto_jcr, justificativa, link_comprovacao, observacoes',
         )
         .order('ano', { ascending: false }),
       supabase
@@ -130,6 +137,9 @@ export async function obterRelatorioLacunas(
       supabase
         .from('producao_tecnica')
         .select('id, titulo, ano, autores, tipo, link_comprovacao, observacoes'),
+      (supabase.from as any)('docentes_linhas').select('docente_id, linha_id'),
+      (supabase.from as any)('projetos_participantes').select('projeto_id, docente_id'),
+      (supabase.from as any)('publicacoes_docentes').select('publicacao_id, docente_id'),
     ])
 
     const erroEncontrado = [
@@ -144,6 +154,9 @@ export async function obterRelatorioLacunas(
       patentesRes.error,
       premiacoesRes.error,
       producaoTecnicaRes.error,
+      docentesLinhasRes.error,
+      projetosParticipantesRes.error,
+      publicacoesDocentesRes.error,
     ].find(Boolean)
 
     if (erroEncontrado) {
@@ -165,6 +178,9 @@ export async function obterRelatorioLacunas(
       patentes: (patentesRes.data || []) as unknown as Patente[],
       premiacoes: (premiacoesRes.data || []) as unknown as Premiacao[],
       producao_tecnica: (producaoTecnicaRes.data || []) as unknown as ProducaoTecnica[],
+      docentes_linhas: (docentesLinhasRes.data || []) as any[],
+      projetos_participantes: (projetosParticipantesRes.data || []) as any[],
+      publicacoes_docentes: (publicacoesDocentesRes.data || []) as any[],
     })
 
     return {
