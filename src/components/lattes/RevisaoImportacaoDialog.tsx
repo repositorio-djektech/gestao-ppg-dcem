@@ -42,6 +42,8 @@ import {
   Loader2,
   Check,
   AlertOctagon,
+  X,
+  UserCheck,
 } from 'lucide-react'
 import type { ResultadoProcessamentoLattes } from '@/lib/lattes/processor'
 import type { TabelaAlvoId } from '@/lib/lattes/types'
@@ -74,6 +76,15 @@ import {
   type RelatorioGravacaoLattes,
   type SupabaseClientLike,
 } from '@/lib/lattes/gravar'
+import {
+  sugerirDocentesAutoresParaTexto,
+  sugerirCoautoresParaTexto,
+  resolverDocenteOrientador,
+  type SugestaoVinculoDocenteAutor,
+  type SugestaoVinculoCoautor,
+} from '@/lib/lattes/resolucao-vinculos'
+import { sugestoesRejeitadasService } from '@/services/sugestoes-rejeitadas'
+import { normalizarTitulo } from '@/lib/lattes/dedupe'
 
 import { RevisaoBoundary, RevisaoErrorBoundary } from './RevisaoBoundary'
 export { RevisaoBoundary, RevisaoErrorBoundary }
@@ -129,28 +140,149 @@ export function RevisaoImportacaoDialog({
   // Fator de Impacto JCR editável por publicação no diálogo de revisão
   const [jcrPorPublicacao, setJcrPorPublicacao] = useState<Record<string, number | null>>({})
 
-  // Discentes e Egressos para detecção de coautoria na revisão Lattes
+  // Handlers para ações rápidas de confirmar / rejeitar sugestões de vínculos
+  const handleToggleDocenteAutor = (pubId: string, docenteId: number, aceitar: boolean) => {
+    setDecisoesDocentesAutores((prev) => {
+      const atual = prev[pubId] || { aceitos: new Set(), rejeitados: new Set() }
+      const novosAceitos = new Set(atual.aceitos)
+      const novosRejeitados = new Set(atual.rejeitados)
+
+      if (aceitar) {
+        novosAceitos.add(docenteId)
+        novosRejeitados.delete(docenteId)
+      } else {
+        novosAceitos.delete(docenteId)
+        novosRejeitados.add(docenteId)
+      }
+
+      return {
+        ...prev,
+        [pubId]: { aceitos: novosAceitos, rejeitados: novosRejeitados },
+      }
+    })
+  }
+
+  const handlePersistirRejeicaoDocente = async (pubChave: string, docenteId: number) => {
+    try {
+      const client = supabaseClient || (await import('@/lib/supabase/client')).supabase
+      await sugestoesRejeitadasService.rejeitarSugestao(
+        {
+          tipoVinculo: 'publicacao_docente',
+          origemIdentificador: pubChave,
+          alvoIdentificador: String(docenteId),
+          motivo: 'Rejeitado pelo usuário na revisão Lattes',
+        },
+        client,
+      )
+      setRejeicoesSalvas((prev) => [
+        ...prev,
+        {
+          tipo_vinculo: 'publicacao_docente',
+          origem_identificador: pubChave,
+          alvo_identificador: String(docenteId),
+        },
+      ])
+    } catch (e) {
+      console.error('Erro ao persistir rejeição de docente:', e)
+    }
+  }
+
+  const handleToggleCoautor = (pubId: string, alvoKey: string, aceitar: boolean) => {
+    setDecisoesCoautores((prev) => {
+      const atual = prev[pubId] || { aceitos: new Set(), rejeitados: new Set() }
+      const novosAceitos = new Set(atual.aceitos)
+      const novosRejeitados = new Set(atual.rejeitados)
+
+      if (aceitar) {
+        novosAceitos.add(alvoKey)
+        novosRejeitados.delete(alvoKey)
+      } else {
+        novosAceitos.delete(alvoKey)
+        novosRejeitados.add(alvoKey)
+      }
+
+      return {
+        ...prev,
+        [pubId]: { aceitos: novosAceitos, rejeitados: novosRejeitados },
+      }
+    })
+  }
+
+  const handlePersistirRejeicaoCoautor = async (pubChave: string, alvoKey: string) => {
+    try {
+      const client = supabaseClient || (await import('@/lib/supabase/client')).supabase
+      await sugestoesRejeitadasService.rejeitarSugestao(
+        {
+          tipoVinculo: 'publicacao_coautor',
+          origemIdentificador: pubChave,
+          alvoIdentificador: alvoKey,
+          motivo: 'Rejeitado pelo usuário na revisão Lattes',
+        },
+        client,
+      )
+      setRejeicoesSalvas((prev) => [
+        ...prev,
+        {
+          tipo_vinculo: 'publicacao_coautor',
+          origem_identificador: pubChave,
+          alvo_identificador: alvoKey,
+        },
+      ])
+    } catch (e) {
+      console.error('Erro ao persistir rejeição de coautor:', e)
+    }
+  }
+
+  // Dados de referência para Etapa R3: Docentes, Discentes, Egressos e Rejeições
+  const [docentesRevisao, setDocentesRevisao] = useState<
+    Array<{ id: number; nome: string; categoria: any; id_lattes: string | null }>
+  >([])
   const [discentesRevisao, setDiscentesRevisao] = useState<
-    Array<{ id: number; nome: string; status: any }>
+    Array<{
+      id: number
+      nome: string
+      status: any
+      docente_orientador_id?: number | null
+      orientador?: string | null
+    }>
   >([])
   const [egressosRevisao, setEgressosRevisao] = useState<Array<{ id: number; nome: string }>>([])
+  const [rejeicoesSalvas, setRejeicoesSalvas] = useState<
+    Array<{ tipo_vinculo: string; origem_identificador: string; alvo_identificador: string }>
+  >([])
+
+  // Estados locais das decisões de vínculos do usuário na tela de revisão:
+  // Chave: pubId ou oriId. Valor: Map/Set de aceitos ou rejeitados.
+  const [decisoesDocentesAutores, setDecisoesDocentesAutores] = useState<
+    Record<string, { aceitos: Set<number>; rejeitados: Set<number> }>
+  >({})
+  const [decisoesCoautores, setDecisoesCoautores] = useState<
+    Record<string, { aceitos: Set<string>; rejeitados: Set<string> }>
+  >({})
+  const [decisoesOrientadores, setDecisoesOrientadores] = useState<
+    Record<string, { aceitoDocenteId: number | null; rejeitadoDocenteIds: Set<number> }>
+  >({})
 
   React.useEffect(() => {
-    // Carrega discentes e egressos cadastrados para badge de coautoria
-    const carregarPessoas = async () => {
+    // Carrega docentes, discentes, egressos e rejeições salvas para matching R3
+    const carregarReferencias = async () => {
       try {
         const client = supabaseClient || (await import('@/lib/supabase/client')).supabase
-        const [discRes, egRes] = await Promise.all([
-          client.from('discentes').select('id, nome, status'),
+        const [docRes, discRes, egRes, rejList] = await Promise.all([
+          client.from('docentes').select('id, nome, categoria, id_lattes'),
+          client.from('discentes').select('id, nome, status, docente_orientador_id, orientador'),
           client.from('egressos').select('id, nome'),
+          sugestoesRejeitadasService.listarTodas(client),
         ])
+        if (docRes.data) setDocentesRevisao(docRes.data)
         if (discRes.data) setDiscentesRevisao(discRes.data)
         if (egRes.data) setEgressosRevisao(egRes.data)
+        if (rejList) setRejeicoesSalvas(rejList)
       } catch (e) {
-        console.error('Erro ao carregar discentes/egressos para revisão:', e)
+        console.error('Erro ao carregar referências para revisão R3:', e)
       }
     }
-    carregarPessoas()
+    carregarReferencias()
   }, [supabaseClient])
 
   // Estados de gravação
@@ -259,7 +391,7 @@ export function RevisaoImportacaoDialog({
           .map(converterLattesDocente)
       : []
 
-    // 2. Publicações se marcadas
+    // 2. Publicações se marcadas (inclui vínculos estruturados de docentes autores e coautores)
     const listaPublicacoes = tabelasSelecionadas.publicacoes
       ? resList.flatMap((r) =>
           (Array.isArray(r.publicacoes) ? r.publicacoes : []).map((pub, idx) => {
@@ -269,6 +401,90 @@ export function RevisaoImportacaoDialog({
             if (jcrInformado !== undefined) {
               pubConv.fator_impacto_jcr = jcrInformado
             }
+
+            // Etapa R3: Docentes autores aceitos
+            const chavePubOrigem = `${normalizarTitulo(pub.titulo)}_${pub.ano || ''}`
+            const rejDocPub = new Set<string | number>(
+              rejeicoesSalvas
+                .filter(
+                  (rej) =>
+                    rej.tipo_vinculo === 'publicacao_docente' &&
+                    (rej.origem_identificador === chavePubOrigem ||
+                      rej.origem_identificador === pubId),
+                )
+                .map((rej) => rej.alvo_identificador),
+            )
+            const decisaoDoc = decisoesDocentesAutores[pubId]
+            if (decisaoDoc) {
+              decisaoDoc.rejeitados.forEach((id) => rejDocPub.add(id))
+            }
+
+            const sugestoesDoc = sugerirDocentesAutoresParaTexto({
+              autoresTexto: pub.autores,
+              docentes: docentesRevisao,
+              chaveOrigem: chavePubOrigem,
+              idsRejeitados: rejDocPub,
+            })
+
+            const docentesAceitos = sugestoesDoc
+              .filter((s) => {
+                if (decisaoDoc?.rejeitados.has(s.docenteId)) return false
+                if (decisaoDoc?.aceitos.has(s.docenteId)) return true
+                return s.aceita
+              })
+              .map((s) => s.docenteId)
+
+            // Inclui o próprio docente dono do currículo se cadastrado
+            const docDono = docentesRevisao.find((d) => d.id_lattes === r.id_lattes)
+            if (docDono && !docentesAceitos.includes(docDono.id)) {
+              if (!decisaoDoc?.rejeitados.has(docDono.id) && !rejDocPub.has(docDono.id)) {
+                docentesAceitos.push(docDono.id)
+              }
+            }
+
+            pubConv.docentes_autores_ids = docentesAceitos
+
+            // Etapa R3: Coautores discentes/egressos aceitos
+            const rejCoautPub = new Set<string>(
+              rejeicoesSalvas
+                .filter(
+                  (rej) =>
+                    rej.tipo_vinculo === 'publicacao_coautor' &&
+                    (rej.origem_identificador === chavePubOrigem ||
+                      rej.origem_identificador === pubId),
+                )
+                .map((rej) => rej.alvo_identificador),
+            )
+            const decisaoCoaut = decisoesCoautores[pubId]
+            if (decisaoCoaut) {
+              decisaoCoaut.rejeitados.forEach((k) => rejCoautPub.add(k))
+            }
+
+            const sugestoesCoaut = sugerirCoautoresParaTexto({
+              autoresTexto: pub.autores,
+              discentes: discentesRevisao,
+              egressos: egressosRevisao,
+              chaveOrigem: chavePubOrigem,
+              alvosRejeitados: rejCoautPub,
+            })
+
+            const coautoresAceitos = sugestoesCoaut
+              .filter((s) => {
+                const key = s.discenteId ? `discente:${s.discenteId}` : `egresso:${s.egressoId}`
+                if (decisaoCoaut?.rejeitados.has(key)) return false
+                if (decisaoCoaut?.aceitos.has(key)) return true
+                return s.aceita
+              })
+              .map((s) => ({
+                tipo: s.tipo,
+                discente_id: s.discenteId ?? null,
+                egresso_id: s.egressoId ?? null,
+                nome: s.nome,
+                grau_confianca: s.grauConfianca,
+              }))
+
+            pubConv.coautores_programa = coautoresAceitos
+
             return pubConv
           }),
         )
@@ -277,12 +493,20 @@ export function RevisaoImportacaoDialog({
     // 3. Orientações se marcadas
     const listaOrientacoes = tabelasSelecionadas.orientacoes
       ? resList.flatMap((r) =>
-          (Array.isArray(r.orientacoes) ? r.orientacoes : []).map((ori) =>
-            converterLattesOrientacao(ori, {
+          (Array.isArray(r.orientacoes) ? r.orientacoes : []).map((ori, idx) => {
+            const oriConv = converterLattesOrientacao(ori, {
               id_lattes: r.id_lattes,
               nome: r.nome_docente,
-            }),
-          ),
+            })
+
+            const oriId = `ori-${r.id_lattes}-${idx}`
+            const decisaoOri = decisoesOrientadores[oriId]
+            if (decisaoOri?.aceitoDocenteId) {
+              oriConv.docente_id = decisaoOri.aceitoDocenteId
+            }
+
+            return oriConv
+          }),
         )
       : []
 
@@ -350,7 +574,18 @@ export function RevisaoImportacaoDialog({
       patentes: listaPatentes,
       eventos: listaEventos,
     }
-  }, [resultado, tabelasSelecionadas])
+  }, [
+    resultado,
+    tabelasSelecionadas,
+    jcrPorPublicacao,
+    docentesRevisao,
+    discentesRevisao,
+    egressosRevisao,
+    rejeicoesSalvas,
+    decisoesDocentesAutores,
+    decisoesCoautores,
+    decisoesOrientadores,
+  ])
 
   // Contagem de registros a serem processados pelo gravarDadosLattes
   const totalRegistrosAptosGravacao =
@@ -651,8 +886,17 @@ export function RevisaoImportacaoDialog({
                                 jcrPorPublicacao,
                                 setJcrPorPublicacao,
                                 gravando,
+                                docentesRevisao,
                                 discentesRevisao,
                                 egressosRevisao,
+                                rejeicoesSalvas,
+                                decisoesDocentesAutores,
+                                decisoesCoautores,
+                                decisoesOrientadores,
+                                onToggleDocenteAutor: handleToggleDocenteAutor,
+                                onPersistirRejeicaoDocente: handlePersistirRejeicaoDocente,
+                                onToggleCoautor: handleToggleCoautor,
+                                onPersistirRejeicaoCoautor: handlePersistirRejeicaoCoautor,
                               })}
                             </TableBody>
                           </Table>
@@ -881,22 +1125,22 @@ function renderCabecalhoTabela(tabelaId: TabelaAlvoId) {
     case 'publicacoes':
       return (
         <TableRow>
-          <TableHead className="w-[10%]">Tipo</TableHead>
-          <TableHead className="w-[35%]">Título</TableHead>
-          <TableHead className="w-[8%]">Ano</TableHead>
-          <TableHead className="w-[18%]">Periódico / Livro / Editora</TableHead>
-          <TableHead className="w-[17%]">Autores</TableHead>
-          <TableHead className="w-[12%]">Fator de Impacto (JCR)</TableHead>
+          <TableHead className="w-[8%]">Tipo</TableHead>
+          <TableHead className="w-[30%]">Título</TableHead>
+          <TableHead className="w-[6%]">Ano</TableHead>
+          <TableHead className="w-[14%]">Periódico / Livro</TableHead>
+          <TableHead className="w-[28%]">Autores & Vínculos Sugeridos (R3)</TableHead>
+          <TableHead className="w-[14%]">Fator JCR</TableHead>
         </TableRow>
       )
     case 'orientacoes':
       return (
         <TableRow>
-          <TableHead className="w-[15%]">Nível / Tipo</TableHead>
-          <TableHead className="w-[30%]">Título do Trabalho</TableHead>
-          <TableHead className="w-[18%]">Orientando</TableHead>
-          <TableHead className="w-[15%]">Instituição</TableHead>
-          <TableHead className="w-[10%]">Ano</TableHead>
+          <TableHead className="w-[14%]">Nível / Tipo</TableHead>
+          <TableHead className="w-[26%]">Título do Trabalho</TableHead>
+          <TableHead className="w-[26%]">Orientando & Vínculo Orientador (R3)</TableHead>
+          <TableHead className="w-[14%]">Instituição</TableHead>
+          <TableHead className="w-[8%]">Ano</TableHead>
           <TableHead className="w-[12%]">Situação</TableHead>
         </TableRow>
       )
@@ -976,8 +1220,30 @@ interface OpcoesLinhasTabela {
   jcrPorPublicacao?: Record<string, number | null>
   setJcrPorPublicacao?: React.Dispatch<React.SetStateAction<Record<string, number | null>>>
   gravando?: boolean
-  discentesRevisao?: Array<{ id: number; nome: string; status: any }>
+  docentesRevisao?: Array<{ id: number; nome: string; categoria: any; id_lattes: string | null }>
+  discentesRevisao?: Array<{
+    id: number
+    nome: string
+    status: any
+    docente_orientador_id?: number | null
+    orientador?: string | null
+  }>
   egressosRevisao?: Array<{ id: number; nome: string }>
+  rejeicoesSalvas?: Array<{
+    tipo_vinculo: string
+    origem_identificador: string
+    alvo_identificador: string
+  }>
+  decisoesDocentesAutores?: Record<string, { aceitos: Set<number>; rejeitados: Set<number> }>
+  decisoesCoautores?: Record<string, { aceitos: Set<string>; rejeitados: Set<string> }>
+  decisoesOrientadores?: Record<
+    string,
+    { aceitoDocenteId: number | null; rejeitadoDocenteIds: Set<number> }
+  >
+  onToggleDocenteAutor?: (pubId: string, docenteId: number, aceitar: boolean) => void
+  onPersistirRejeicaoDocente?: (pubChave: string, docenteId: number) => void
+  onToggleCoautor?: (pubId: string, alvoKey: string, aceitar: boolean) => void
+  onPersistirRejeicaoCoautor?: (pubChave: string, alvoKey: string) => void
 }
 
 function renderLinhasTabela(tabelaId: TabelaAlvoId, itens: any[], opcoes: OpcoesLinhasTabela = {}) {
@@ -1012,23 +1278,52 @@ function renderLinhasTabela(tabelaId: TabelaAlvoId, itens: any[], opcoes: Opcoes
         const doiStr = item.doi ? String(item.doi).trim() : ''
         const autoresStr = textoSeguro(item.autores)
         const valorJcrAtual = jcrPorPublicacao[key] ?? item.fator_impacto_jcr ?? ''
-        const temCoautorSugerido =
-          opcoes.discentesRevisao && opcoes.discentesRevisao.length > 0 && autoresStr !== '—'
-            ? (() => {
-                const normAutores = autoresStr
-                  .toLowerCase()
-                  .normalize('NFD')
-                  .replace(/[\u0300-\u036f]/g, '')
-                return opcoes.discentesRevisao.some((d) => {
-                  const priNome = d.nome
-                    .toLowerCase()
-                    .normalize('NFD')
-                    .replace(/[\u0300-\u036f]/g, '')
-                    .split(' ')[0]
-                  return priNome.length > 3 && normAutores.includes(priNome)
-                })
-              })()
-            : false
+
+        // Resolução de Docentes Autores para esta publicação
+        const chavePubOrigem = `${normalizarTitulo(item.titulo || '')}_${item.ano || ''}`
+        const decisaoDoc = opcoes.decisoesDocentesAutores?.[key]
+        const rejDocPub = new Set<string | number>(
+          (opcoes.rejeicoesSalvas || [])
+            .filter(
+              (r) =>
+                r.tipo_vinculo === 'publicacao_docente' &&
+                (r.origem_identificador === chavePubOrigem || r.origem_identificador === key),
+            )
+            .map((r) => r.alvo_identificador),
+        )
+
+        const sugestoesDoc =
+          opcoes.docentesRevisao && autoresStr !== '—'
+            ? sugerirDocentesAutoresParaTexto({
+                autoresTexto: autoresStr,
+                docentes: opcoes.docentesRevisao,
+                chaveOrigem: chavePubOrigem,
+                idsRejeitados: rejDocPub,
+              })
+            : []
+
+        // Resolução de Coautores Discentes / Egressos
+        const decisaoCoaut = opcoes.decisoesCoautores?.[key]
+        const rejCoautPub = new Set<string>(
+          (opcoes.rejeicoesSalvas || [])
+            .filter(
+              (r) =>
+                r.tipo_vinculo === 'publicacao_coautor' &&
+                (r.origem_identificador === chavePubOrigem || r.origem_identificador === key),
+            )
+            .map((r) => r.alvo_identificador),
+        )
+
+        const sugestoesCoaut =
+          opcoes.discentesRevisao && autoresStr !== '—'
+            ? sugerirCoautoresParaTexto({
+                autoresTexto: autoresStr,
+                discentes: opcoes.discentesRevisao,
+                egressos: opcoes.egressosRevisao || [],
+                chaveOrigem: chavePubOrigem,
+                alvosRejeitados: rejCoautPub,
+              })
+            : []
 
         return (
           <TableRow key={key}>
@@ -1058,12 +1353,145 @@ function renderLinhasTabela(tabelaId: TabelaAlvoId, itens: any[], opcoes: Opcoes
               {textoSeguro(item.ano)}
             </TableCell>
             <TableCell className="text-slate-600 text-xs">{textoSeguro(item.veiculo)}</TableCell>
-            <TableCell className="text-slate-500 text-xs truncate max-w-xs" title={autoresStr}>
-              <span>{autoresStr}</span>
-              {temCoautorSugerido && (
-                <span className="inline-block ml-1.5 text-[10px] font-medium text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">
-                  Possível coautor P²CEM
-                </span>
+            <TableCell className="text-slate-700 text-xs max-w-sm space-y-2">
+              <div className="text-slate-500 line-clamp-2" title={autoresStr}>
+                {autoresStr}
+              </div>
+
+              {/* Vínculos estruturados de Docentes Autores */}
+              {sugestoesDoc.length > 0 && (
+                <div className="bg-slate-50 border border-slate-200 rounded p-1.5 space-y-1">
+                  <span className="text-[10px] font-semibold text-slate-700 block">
+                    Docentes Autores identificados:
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {sugestoesDoc.map((sug) => {
+                      const aceito = decisaoDoc
+                        ? decisaoDoc.aceitos.has(sug.docenteId)
+                        : sug.aceita && !decisaoDoc?.rejeitados.has(sug.docenteId)
+                      const rejeitado = decisaoDoc
+                        ? decisaoDoc.rejeitados.has(sug.docenteId)
+                        : sug.rejeitada
+
+                      return (
+                        <div
+                          key={sug.docenteId}
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border ${
+                            aceito
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-medium'
+                              : rejeitado
+                                ? 'bg-slate-100 text-slate-400 border-slate-200 line-through'
+                                : 'bg-amber-50 text-amber-800 border-amber-300'
+                          }`}
+                          title={`${sug.motivoMatch} (Confiança: ${Math.round(sug.grauConfianca * 100)}%)`}
+                        >
+                          <span>{sug.nome}</span>
+                          <span className="text-[9px] opacity-75 font-mono">
+                            {Math.round(sug.grauConfianca * 100)}%
+                          </span>
+                          {!gravando && (
+                            <div className="flex items-center ml-0.5">
+                              {aceito ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    opcoes.onToggleDocenteAutor?.(key, sug.docenteId, false)
+                                    opcoes.onPersistirRejeicaoDocente?.(
+                                      chavePubOrigem,
+                                      sug.docenteId,
+                                    )
+                                  }}
+                                  className="hover:text-rose-600 ml-0.5"
+                                  title="Rejeitar sugestão e não vincular"
+                                >
+                                  <X className="h-2.5 w-2.5" />
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    opcoes.onToggleDocenteAutor?.(key, sug.docenteId, true)
+                                  }
+                                  className="hover:text-emerald-700 ml-0.5 text-slate-600"
+                                  title="Aceitar e vincular docente à publicação"
+                                >
+                                  <Check className="h-2.5 w-2.5 text-emerald-600" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Vínculos de Coautores Programa (Discentes/Egressos) */}
+              {sugestoesCoaut.length > 0 && (
+                <div className="bg-sky-50/70 border border-sky-200 rounded p-1.5 space-y-1">
+                  <span className="text-[10px] font-semibold text-sky-900 block">
+                    Coautores Discentes / Egressos:
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {sugestoesCoaut.map((sug) => {
+                      const alvoKey = sug.discenteId
+                        ? `discente:${sug.discenteId}`
+                        : `egresso:${sug.egressoId}`
+                      const aceito = decisaoCoaut
+                        ? decisaoCoaut.aceitos.has(alvoKey)
+                        : sug.aceita && !decisaoCoaut?.rejeitados.has(alvoKey)
+                      const rejeitado = decisaoCoaut
+                        ? decisaoCoaut.rejeitados.has(alvoKey)
+                        : sug.rejeitada
+
+                      return (
+                        <div
+                          key={alvoKey}
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border ${
+                            aceito
+                              ? 'bg-sky-100 text-sky-900 border-sky-300 font-medium'
+                              : rejeitado
+                                ? 'bg-slate-100 text-slate-400 border-slate-200 line-through'
+                                : 'bg-amber-50 text-amber-800 border-amber-300'
+                          }`}
+                          title={`${sug.motivoMatch} (Confiança: ${Math.round(sug.grauConfianca * 100)}%)`}
+                        >
+                          <span>{sug.nome}</span>
+                          <span className="text-[9px] opacity-75 font-mono">
+                            {Math.round(sug.grauConfianca * 100)}%
+                          </span>
+                          {!gravando && (
+                            <div className="flex items-center ml-0.5">
+                              {aceito ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    opcoes.onToggleCoautor?.(key, alvoKey, false)
+                                    opcoes.onPersistirRejeicaoCoautor?.(chavePubOrigem, alvoKey)
+                                  }}
+                                  className="hover:text-rose-600 ml-0.5"
+                                  title="Rejeitar coautoria"
+                                >
+                                  <X className="h-2.5 w-2.5" />
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => opcoes.onToggleCoautor?.(key, alvoKey, true)}
+                                  className="hover:text-emerald-700 ml-0.5 text-slate-600"
+                                  title="Confirmar coautoria"
+                                >
+                                  <Check className="h-2.5 w-2.5 text-emerald-600" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
               )}
             </TableCell>
             <TableCell>
@@ -1073,7 +1501,7 @@ function renderLinhasTabela(tabelaId: TabelaAlvoId, itens: any[], opcoes: Opcoes
                 min="0"
                 max="999.999"
                 placeholder="Ex: 3.850"
-                className="h-8 text-xs font-mono w-28 bg-white"
+                className="h-8 text-xs font-mono w-24 bg-white"
                 value={valorJcrAtual ?? ''}
                 onChange={(e) => {
                   const val = e.target.value === '' ? null : parseFloat(e.target.value)
@@ -1097,6 +1525,18 @@ function renderLinhasTabela(tabelaId: TabelaAlvoId, itens: any[], opcoes: Opcoes
         const key = item.id ?? `ori-${idx}`
         const statusStr = String(item.status ?? '').trim()
         const tipoOri = item.tipo_orientacao ? String(item.tipo_orientacao).trim() : ''
+
+        // Identifica discente correspondente na base para orientador resolvido
+        const discenteNome = textoSeguro(item.orientando)
+        const discenteCadastrado =
+          opcoes.discentesRevisao && discenteNome !== '—'
+            ? opcoes.discentesRevisao.find(
+                (d) =>
+                  d.nome.trim().toLowerCase() === discenteNome.trim().toLowerCase() ||
+                  (d.nome.length > 5 && discenteNome.toLowerCase().includes(d.nome.toLowerCase())),
+              )
+            : null
+
         return (
           <TableRow key={key}>
             <TableCell>
@@ -1108,8 +1548,23 @@ function renderLinhasTabela(tabelaId: TabelaAlvoId, itens: any[], opcoes: Opcoes
               )}
             </TableCell>
             <TableCell className="font-medium text-slate-900">{textoSeguro(item.titulo)}</TableCell>
-            <TableCell className="text-slate-700 font-medium text-xs">
-              {textoSeguro(item.orientando)}
+            <TableCell className="text-slate-700 text-xs space-y-1">
+              <span className="font-medium block">{discenteNome}</span>
+              {discenteCadastrado ? (
+                <div className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded">
+                  <UserCheck className="h-3 w-3 text-emerald-600 shrink-0" />
+                  <span>
+                    Discente cadastrado{' '}
+                    {discenteCadastrado.docente_orientador_id
+                      ? '(Orientador já vinculado)'
+                      : '(Vinculará orientador docente)'}
+                  </span>
+                </div>
+              ) : (
+                <span className="text-[10px] text-slate-400 block">
+                  Novo discente a ser cadastrado
+                </span>
+              )}
             </TableCell>
             <TableCell className="text-slate-600 text-xs">
               {textoSeguro(item.instituicao)}

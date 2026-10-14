@@ -30,8 +30,13 @@ export interface RelatorioGravacaoLattes {
   producao_tecnica: RelatorioContagemTabela
   patentes: RelatorioContagemTabela
   eventos: RelatorioContagemTabela
+  vinculos?: {
+    publicacoes_docentes: number
+    publicacoes_coautores: number
+    orientadores_discentes: number
+  }
   erros: Array<{
-    tabela: TabelaAlvoId | 'discentes'
+    tabela: TabelaAlvoId | 'discentes' | 'publicacoes_docentes' | 'publicacoes_coautores_programa'
     item: string
     mensagem: string
   }>
@@ -57,6 +62,14 @@ export interface PublicacaoParaGravar {
   link_comprovacao?: string | null
   observacoes?: string | null
   fator_impacto_jcr?: number | null
+  docentes_autores_ids?: number[]
+  coautores_programa?: Array<{
+    tipo: 'orientando' | 'egresso'
+    discente_id?: number | null
+    egresso_id?: number | null
+    nome: string
+    grau_confianca?: number
+  }>
 }
 
 export interface OrientacaoParaGravar {
@@ -723,6 +736,8 @@ export async function gravarPublicacoes(
         contagem.ignorados++
       } else {
         contagem.atualizados++
+        // Grava vínculos estruturados (docentes autores e coautores) para publicação atualizada
+        await gravarVinculosPublicacao(encontrado.id, pub, client, erros)
       }
     } else {
       // INSERT
@@ -756,12 +771,112 @@ export async function gravarPublicacoes(
         if (rec) {
           const novaChave = `${normalizarTitulo(rec.titulo)}_${rec.ano}`
           mapaPorChave.set(novaChave, rec)
+          // Grava vínculos estruturados (docentes autores e coautores) para nova publicação
+          await gravarVinculosPublicacao(rec.id, pub, client, erros)
         }
       }
     }
   }
 
   return { contagem, erros }
+}
+
+/**
+ * Grava vínculos de docentes autores e coautores do programa de forma idempotente,
+ * preservando vínculos já existentes e rejeições gravadas.
+ */
+async function gravarVinculosPublicacao(
+  publicacaoId: number,
+  pub: PublicacaoParaGravar,
+  client: SupabaseClientLike,
+  erros: RelatorioGravacaoLattes['erros'],
+): Promise<void> {
+  // 1. Docentes autores em publicacoes_docentes
+  if (Array.isArray(pub.docentes_autores_ids) && pub.docentes_autores_ids.length > 0) {
+    try {
+      // Carrega vínculos atuais para não duplicar nem apagar vínculos manuais
+      const { data: atuaisDoc } = await (client as any)
+        .from('publicacoes_docentes')
+        .select('docente_id')
+        .eq('publicacao_id', publicacaoId)
+
+      const jaVinculados = new Set<number>((atuaisDoc || []).map((r: any) => Number(r.docente_id)))
+      const paraInserir = pub.docentes_autores_ids.filter((id) => !jaVinculados.has(Number(id)))
+
+      if (paraInserir.length > 0) {
+        const rows = paraInserir.map((docente_id) => ({
+          publicacao_id: publicacaoId,
+          docente_id: Number(docente_id),
+        }))
+        const { error: insDocErr } = await (client as any).from('publicacoes_docentes').insert(rows)
+
+        if (insDocErr && insDocErr.code !== '23505') {
+          erros.push({
+            tabela: 'publicacoes_docentes',
+            item: `pub_${publicacaoId}`,
+            mensagem: insDocErr.message || 'Erro ao vincular docente autor.',
+          })
+        }
+      }
+    } catch (e: any) {
+      erros.push({
+        tabela: 'publicacoes_docentes',
+        item: `pub_${publicacaoId}`,
+        mensagem: e?.message || 'Falha ao processar publicacoes_docentes.',
+      })
+    }
+  }
+
+  // 2. Coautores do programa em publicacoes_coautores_programa
+  if (Array.isArray(pub.coautores_programa) && pub.coautores_programa.length > 0) {
+    try {
+      const { data: atuaisCoaut } = await (client as any)
+        .from('publicacoes_coautores_programa')
+        .select('id, discente_id, egresso_id, tipo')
+        .eq('publicacao_id', publicacaoId)
+
+      // Se já está marcado como "sem_coautoria" manualmente, não sobrescreve
+      const temSemCoautoria = (atuaisCoaut || []).some((c: any) => c.tipo === 'sem_coautoria')
+      if (!temSemCoautoria) {
+        for (const coaut of pub.coautores_programa) {
+          const jaExiste = (atuaisCoaut || []).some((c: any) => {
+            if (coaut.discente_id && c.discente_id === coaut.discente_id) return true
+            if (coaut.egresso_id && c.egresso_id === coaut.egresso_id) return true
+            return false
+          })
+
+          if (!jaExiste) {
+            const { error: insCoautErr } = await (client as any)
+              .from('publicacoes_coautores_programa')
+              .insert({
+                publicacao_id: publicacaoId,
+                discente_id: coaut.discente_id || null,
+                egresso_id: coaut.egresso_id || null,
+                tipo: coaut.tipo,
+                nome_citado: coaut.nome,
+                grau_confianca: coaut.grau_confianca ?? 1.0,
+                confirmado_por: 'Auto-importação Lattes (confiança verificada)',
+                confirmado_em: new Date().toISOString(),
+              })
+
+            if (insCoautErr) {
+              erros.push({
+                tabela: 'publicacoes_coautores_programa',
+                item: `pub_${publicacaoId}_${coaut.nome}`,
+                mensagem: insCoautErr.message || 'Erro ao gravar coautoria.',
+              })
+            }
+          }
+        }
+      }
+    } catch (e: any) {
+      erros.push({
+        tabela: 'publicacoes_coautores_programa',
+        item: `pub_${publicacaoId}`,
+        mensagem: e?.message || 'Falha ao processar coautores do programa.',
+      })
+    }
+  }
 }
 
 interface DiscenteExistenteBanco {
@@ -801,6 +916,7 @@ export async function resolverOuCriarDiscente(
     status: 'ativo',
     link_lattes: '',
     link_comprovacao: '',
+    orientador: '',
     observacoes: 'Cadastrado automaticamente via importação Lattes',
   }
 
@@ -932,8 +1048,37 @@ export async function gravarOrientacoes(
       try {
         const resDisc = await resolverOuCriarDiscente(ori.discente_nome, cacheDiscentes, client)
         if (resDisc) discenteId = resDisc.id
-      } catch (err) {
+      } catch {
         // Ignora falha silenciosa para não quebrar fluxo todo
+      }
+    }
+
+    // Etapa R3: se temos docenteId e discenteId, atualizar discentes.docente_orientador_id
+    // preservando texto livre de discentes.orientador e preservando orientação já confirmada
+    if (docenteId && discenteId) {
+      try {
+        // Busca discente atual para não sobrescrever caso já possua orientador confirmado
+        const { data: discAtual } = await (client as any)
+          .from('discentes')
+          .select('id, orientador, docente_orientador_id')
+          .eq('id', discenteId)
+          .maybeSingle()
+
+        if (discAtual && !discAtual.docente_orientador_id) {
+          const nomeDocente =
+            ori.docente_identificador ||
+            docMapas.porIdLattes.get(ori.docente_identificador || '')?.nome ||
+            ''
+          await (client as any)
+            .from('discentes')
+            .update({
+              docente_orientador_id: docenteId,
+              orientador: discAtual.orientador || nomeDocente || '',
+            })
+            .eq('id', discenteId)
+        }
+      } catch {
+        // Ignora erro pontual para prosseguir
       }
     }
 
