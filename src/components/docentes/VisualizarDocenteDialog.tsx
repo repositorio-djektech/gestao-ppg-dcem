@@ -510,6 +510,33 @@ export function VisualizarDocenteDialog({
                 <span className="text-slate-400">Não</span>
               )}
             </div>
+            <div>
+              <span className="text-slate-500 dark:text-neutral-400 font-medium block">
+                E-mail:
+              </span>
+              {doc.email ? (
+                <a
+                  href={`mailto:${doc.email}`}
+                  className="text-primary hover:underline font-medium"
+                >
+                  {doc.email}
+                </a>
+              ) : (
+                <span className="text-slate-400">—</span>
+              )}
+            </div>
+            <div>
+              <span className="text-slate-500 dark:text-neutral-400 font-medium block">CPF:</span>
+              <span className="text-slate-800 dark:text-neutral-200 font-mono">
+                {textoSeguro(doc.cpf)}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-500 dark:text-neutral-400 font-medium block">SIAPE:</span>
+              <span className="text-slate-800 dark:text-neutral-200 font-mono">
+                {textoSeguro(doc.siape)}
+              </span>
+            </div>
             <div className="md:col-span-2">
               <span className="text-slate-500 dark:text-neutral-400 font-medium block">
                 Licença Saúde / Parental:

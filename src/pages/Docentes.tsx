@@ -72,6 +72,7 @@ import { Label } from '@/components/ui/label'
 import { normalizarNomePessoa } from '@/lib/normalizacao'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
+import { registrarLog } from '@/services/logs'
 import {
   Pagination,
   PaginationContent,
@@ -88,6 +89,9 @@ const emptyForm: Omit<Docente, 'id'> = {
   jdp: false,
   licenca: '',
   categoria: null,
+  cpf: '',
+  siape: '',
+  email: '',
 }
 
 export default function Docentes() {
@@ -156,14 +160,38 @@ export default function Docentes() {
     const payload = {
       ...formData,
       nome: normalizarNomePessoa(formData.nome),
+      cpf: formData.cpf ? formData.cpf.replace(/\D/g, '') : '',
+      siape: formData.siape ? formData.siape.replace(/\D/g, '') : '',
+      email: formData.email ? formData.email.trim() : '',
     }
     try {
       if (editingId) {
         await update(editingId, payload)
         toast.success('Docente atualizado')
+        registrarLog({
+          acao: 'editar',
+          entidade: 'docentes',
+          entidade_id: editingId,
+          detalhes: {
+            nome: payload.nome,
+            cpf: payload.cpf,
+            siape: payload.siape,
+            email: payload.email,
+          },
+        })
       } else {
         await create(payload)
         toast.success('Docente adicionado')
+        registrarLog({
+          acao: 'criar',
+          entidade: 'docentes',
+          detalhes: {
+            nome: payload.nome,
+            cpf: payload.cpf,
+            siape: payload.siape,
+            email: payload.email,
+          },
+        })
       }
       setIsDialogOpen(false)
     } catch {
@@ -177,6 +205,14 @@ export default function Docentes() {
     try {
       await remove(id)
       toast.success('Docente removido com sucesso')
+      registrarLog({
+        acao: 'excluir',
+        entidade: 'docentes',
+        entidade_id: id,
+        detalhes: {
+          resumo: `Exclusão de docente ID ${id}`,
+        },
+      })
     } catch {
       toast.error('Erro ao remover')
     } finally {
@@ -526,6 +562,48 @@ export default function Docentes() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="cpf">CPF</Label>
+                      <Input
+                        id="cpf"
+                        placeholder="000.000.000-00"
+                        value={formData.cpf || ''}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            cpf: e.target.value.replace(/\D/g, '').slice(0, 11),
+                          })
+                        }
+                      />
+                      <p className="text-[11px] text-slate-500">Apenas números (salvo limpo)</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="siape">SIAPE</Label>
+                      <Input
+                        id="siape"
+                        placeholder="Ex: 1234567"
+                        value={formData.siape || ''}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            siape: e.target.value.replace(/\D/g, ''),
+                          })
+                        }
+                      />
+                      <p className="text-[11px] text-slate-500">Apenas números (salvo limpo)</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">E-mail Institucional / Contato</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="docente@ufs.br"
+                      value={formData.email || ''}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="licenca">Licença Saúde / Parental</Label>
                     <Input
@@ -584,6 +662,13 @@ export default function Docentes() {
                     <TableCell className="font-medium text-slate-900">
                       <div className="flex flex-col items-start gap-1">
                         <span>{normalizarNomePessoa(d.nome)}</span>
+                        {(d.email || d.cpf || d.siape) && (
+                          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 font-normal">
+                            {d.email && <span className="text-slate-600">{d.email}</span>}
+                            {d.cpf && <span>• CPF: {d.cpf}</span>}
+                            {d.siape && <span>• SIAPE: {d.siape}</span>}
+                          </div>
+                        )}
                         {d.categoria === 'permanente' && (
                           <Badge
                             variant="secondary"

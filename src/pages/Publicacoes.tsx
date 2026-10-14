@@ -10,6 +10,7 @@ import type { Publicacao, Discente, Egresso, PublicacaoCoautorPrograma } from '@
 import { useAuth } from '@/hooks/use-auth'
 import { normalizarTituloAcademico } from '@/lib/normalizacao'
 import { Badge } from '@/components/ui/badge'
+import { registrarLog } from '@/services/logs'
 import {
   Table,
   TableBody,
@@ -145,12 +146,29 @@ export default function Publicacoes() {
       if (editingId) {
         await update(editingId, payload)
         toast.success('Publicação atualizada')
+        registrarLog({
+          acao: 'editar',
+          entidade: 'publicacoes',
+          entidade_id: editingId,
+          detalhes: {
+            titulo: payload.titulo,
+            ano: payload.ano,
+          },
+        })
       } else {
         const criada = (await create(payload)) as any
         toast.success('Publicação registrada')
         if (criada && criada.id) {
           setEditingId(criada.id)
         }
+        registrarLog({
+          acao: 'criar',
+          entidade: 'publicacoes',
+          detalhes: {
+            titulo: payload.titulo,
+            ano: payload.ano,
+          },
+        })
       }
       await carregarRelacionados()
       setIsDialogOpen(false)
@@ -165,6 +183,14 @@ export default function Publicacoes() {
     try {
       await remove(id)
       toast.success('Publicação removida com sucesso')
+      registrarLog({
+        acao: 'excluir',
+        entidade: 'publicacoes',
+        entidade_id: id,
+        detalhes: {
+          resumo: `Exclusão de publicação ID ${id}`,
+        },
+      })
     } catch {
       toast.error('Erro ao remover')
     } finally {

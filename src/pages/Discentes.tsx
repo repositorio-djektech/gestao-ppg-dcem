@@ -14,6 +14,9 @@ const emptyForm = {
   link_lattes: '',
   link_comprovacao: '',
   observacoes: '',
+  orientador: '',
+  ano_conclusao: '',
+  tipo_curso: 'Mestrado',
 }
 
 const statusColors: Record<string, string> = {
@@ -25,9 +28,24 @@ const statusColors: Record<string, string> = {
 const columns: ColumnDef<Discente>[] = [
   {
     key: 'nome',
-    label: 'Nome',
+    label: 'Nome & Informações',
     className: 'font-medium text-slate-900',
-    render: (d) => normalizarNomePessoa(d.nome),
+    render: (d) => (
+      <div className="flex flex-col items-start gap-0.5">
+        <span>{normalizarNomePessoa(d.nome)}</span>
+        {(d.tipo_curso || d.orientador || d.ano_conclusao) && (
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 font-normal">
+            {d.tipo_curso && (
+              <span className="font-medium text-primary bg-primary/10 px-1.5 py-0.2 rounded">
+                {d.tipo_curso}
+              </span>
+            )}
+            {d.orientador && <span>• Orientador: {d.orientador}</span>}
+            {d.ano_conclusao && <span>• Conclusão: {d.ano_conclusao}</span>}
+          </div>
+        )}
+      </div>
+    ),
   },
   {
     key: 'cpf',
@@ -39,9 +57,17 @@ const columns: ColumnDef<Discente>[] = [
     key: 'status',
     label: 'Status',
     render: (d) => (
-      <Badge variant="secondary" className={`border-0 capitalize ${statusColors[d.status] ?? ''}`}>
-        {d.status}
-      </Badge>
+      <div className="flex flex-col gap-1 items-start">
+        <Badge
+          variant="secondary"
+          className={`border-0 capitalize ${statusColors[d.status] ?? ''}`}
+        >
+          {d.status}
+        </Badge>
+        {d.ano_conclusao && d.status === 'titulado' && (
+          <span className="text-[10px] text-slate-400">Ano: {d.ano_conclusao}</span>
+        )}
+      </div>
     ),
   },
 ]
@@ -78,6 +104,30 @@ const fields: FieldDef[] = [
       { value: 'titulado', label: 'Titulado' },
       { value: 'desligado', label: 'Desligado' },
     ],
+  },
+  {
+    key: 'tipo_curso',
+    label: 'Tipo do Curso',
+    type: 'select',
+    options: [
+      { value: 'Mestrado', label: 'Mestrado' },
+      { value: 'Doutorado', label: 'Doutorado' },
+      { value: 'Pós-Doutorado', label: 'Pós-Doutorado' },
+    ],
+    placeholder: 'Selecione o nível...',
+  },
+  {
+    key: 'orientador',
+    label: 'Orientador',
+    type: 'text',
+    placeholder: 'Nome do orientador do discente',
+  },
+  {
+    key: 'ano_conclusao',
+    label: 'Ano de Conclusão',
+    type: 'text',
+    placeholder: 'Ex: 2026',
+    helperText: 'Ano de defesa ou previsão de conclusão',
   },
   {
     key: 'link_lattes',

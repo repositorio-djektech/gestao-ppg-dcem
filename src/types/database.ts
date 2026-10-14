@@ -19,6 +19,9 @@ export type Docente = {
   id_lattes?: string | null
   openalex_id?: string | null
   categoria?: 'permanente' | 'colaborador' | 'visitante' | 'jdp' | null
+  cpf?: string
+  siape?: string
+  email?: string
 }
 
 export type Publicacao = {
@@ -75,6 +78,9 @@ export type Discente = {
   link_lattes: string
   link_comprovacao: string
   observacoes: string
+  orientador?: string
+  ano_conclusao?: string
+  tipo_curso?: string
 }
 
 export type Egresso = {
@@ -197,4 +203,18 @@ export type PublicacaoCoautorPrograma = {
   confirmado_por?: string | null
   confirmado_em: string
   created_at: string
+}
+
+export type LogAcao = 'criar' | 'editar' | 'excluir' | string
+
+export type LogRegistro = {
+  id: number
+  user_id?: string | null
+  user_email?: string | null
+  user_nome?: string | null
+  acao: LogAcao
+  entidade: string
+  entidade_id?: string | null
+  detalhes?: Record<string, any> | null
+  created_at?: string
 }

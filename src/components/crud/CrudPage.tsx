@@ -36,6 +36,7 @@ import {
 import { formatarCpf } from '@/lib/utils'
 import { CrudFormDialog } from './CrudFormDialog'
 import type { ColumnDef, FieldDef } from './types'
+import { registrarLog } from '@/services/logs'
 
 interface CrudPageProps<T extends { id: number | string }> {
   title: string
@@ -117,13 +118,36 @@ export function CrudPage<T extends { id: number | string }>({
     }
     const submitData = { ...formData }
     delete (submitData as any).id
+    if (typeof submitData.cpf === 'string') {
+      submitData.cpf = submitData.cpf.replace(/\D/g, '')
+    }
+    if (typeof submitData.siape === 'string') {
+      submitData.siape = submitData.siape.replace(/\D/g, '')
+    }
     try {
       if (editingId) {
         await update(editingId, submitData as any)
         toast.success(`${entityName} atualizado`)
+        registrarLog({
+          acao: 'editar',
+          entidade: entityName.toLowerCase(),
+          entidade_id: editingId,
+          detalhes: {
+            nome: submitData.nome || submitData.titulo || '',
+            resumo: `Edição em ${entityName}`,
+          },
+        })
       } else {
         await create(submitData as any)
         toast.success(`${entityName} adicionado`)
+        registrarLog({
+          acao: 'criar',
+          entidade: entityName.toLowerCase(),
+          detalhes: {
+            nome: submitData.nome || submitData.titulo || '',
+            resumo: `Criação em ${entityName}`,
+          },
+        })
       }
       setIsDialogOpen(false)
     } catch {
@@ -137,6 +161,14 @@ export function CrudPage<T extends { id: number | string }>({
     try {
       await remove(id)
       toast.success(`${entityName} removido com sucesso`)
+      registrarLog({
+        acao: 'excluir',
+        entidade: entityName.toLowerCase(),
+        entidade_id: id,
+        detalhes: {
+          resumo: `Exclusão de ${entityName} ID ${id}`,
+        },
+      })
     } catch {
       toast.error('Erro ao remover')
     } finally {
