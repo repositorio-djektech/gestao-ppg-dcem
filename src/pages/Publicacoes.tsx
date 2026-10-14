@@ -9,6 +9,7 @@ import { coautoresProgramaService } from '@/services/coautores-programa'
 import { publicacoesDocentesService } from '@/services/publicacoes-docentes'
 import { SeletorCoautoria } from '@/components/publicacoes/SeletorCoautoria'
 import { SeletorDocentesAutores } from '@/components/publicacoes/SeletorDocentesAutores'
+import { DocenteNome } from '@/components/docentes/DocenteNome'
 import type {
   Publicacao,
   Discente,
@@ -533,11 +534,23 @@ export default function Publicacoes() {
                               return (
                                 <Badge
                                   key={doc.id}
-                                  variant="secondary"
-                                  className="text-[10px] px-1.5 py-0 bg-slate-100 text-slate-700 font-normal hover:bg-slate-200"
-                                  title={doc.nome}
+                                  variant={doc.status === false ? 'outline' : 'secondary'}
+                                  className={`text-[10px] px-1.5 py-0 font-normal ${
+                                    doc.status === false
+                                      ? 'border-orange-300 bg-orange-50 text-orange-600 hover:bg-orange-100 font-medium'
+                                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                  }`}
+                                  title={
+                                    doc.status === false
+                                      ? `${doc.nome} (Inativo no programa)`
+                                      : doc.nome
+                                  }
                                 >
-                                  {exibicao}
+                                  <DocenteNome
+                                    nome={exibicao}
+                                    status={doc.status}
+                                    normalizar={false}
+                                  />
                                 </Badge>
                               )
                             })}

@@ -12,6 +12,7 @@ import {
 import { CheckCircle2, UserPlus, Trash2, Sparkles, GraduationCap } from 'lucide-react'
 import type { Docente } from '@/types/database'
 import { dividirAutoresTexto, calcularSimilaridadeNome } from '@/lib/reconducao/matching-coautoria'
+import { DocenteNome } from '@/components/docentes/DocenteNome'
 
 export interface SugestaoDocenteAutor {
   docenteId: number
@@ -126,10 +127,22 @@ export function SeletorDocentesAutores({
                 className="flex items-center justify-between bg-white border border-slate-200 rounded px-2.5 py-1 text-xs"
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-slate-800">{d.nome}</span>
+                  <DocenteNome
+                    nome={d.nome}
+                    status={d.status}
+                    className="font-medium text-slate-800"
+                  />
                   {d.categoria && (
                     <Badge variant="secondary" className="text-[10px] py-0 px-1.5 capitalize">
                       {d.categoria}
+                    </Badge>
+                  )}
+                  {d.status === false && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] py-0 px-1.5 bg-orange-50 text-orange-700 border-orange-300"
+                    >
+                      Inativo
                     </Badge>
                   )}
                 </div>
@@ -222,7 +235,10 @@ export function SeletorDocentesAutores({
               <SelectContent className="max-h-56">
                 {docentes.map((d) => (
                   <SelectItem key={d.id} value={String(d.id)} className="text-xs">
-                    {d.nome} {d.categoria ? `(${d.categoria})` : ''}
+                    <span className={d.status === false ? 'text-orange-600 font-medium' : ''}>
+                      {d.nome} {d.categoria ? `(${d.categoria})` : ''}{' '}
+                      {d.status === false ? '(Inativo)' : ''}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>

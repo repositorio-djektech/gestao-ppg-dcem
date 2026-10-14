@@ -5,9 +5,13 @@ import { discentesService } from '@/services/discentes'
 import { docentesService } from '@/services/docentes'
 import { projetosPesquisaService } from '@/services/projetos-pesquisa'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Eye, Edit, Trash2 } from 'lucide-react'
 import type { Discente, Docente, ProjetoPesquisa } from '@/types/database'
 import { formatarCpf } from '@/lib/utils'
 import { normalizarNomePessoa } from '@/lib/normalizacao'
+import { DocenteNome } from '@/components/docentes/DocenteNome'
+import { VisualizarDiscenteDialog } from '@/components/discentes/VisualizarDiscenteDialog'
 
 const emptyForm = {
   nome: '',
@@ -33,6 +37,8 @@ const statusColors: Record<string, string> = {
 export default function Discentes() {
   const [docentes, setDocentes] = useState<Docente[]>([])
   const [projetos, setProjetos] = useState<ProjetoPesquisa[]>([])
+  const [discenteParaVisualizar, setDiscenteParaVisualizar] = useState<Discente | null>(null)
+  const [dialogoVisualizarAberto, setDialogoVisualizarAberto] = useState(false)
 
   useEffect(() => {
     Promise.all([docentesService.list(), projetosPesquisaService.list()])
@@ -43,9 +49,9 @@ export default function Discentes() {
       .catch(console.error)
   }, [])
 
-  const docenteMap = useMemo(() => {
-    const m = new Map<number, string>()
-    docentes.forEach((d) => m.set(d.id, d.nome))
+  const docenteObjMap = useMemo(() => {
+    const m = new Map<number, Docente>()
+    docentes.forEach((d) => m.set(d.id, d))
     return m
   }, [docentes])
 
@@ -55,38 +61,35 @@ export default function Discentes() {
     return m
   }, [projetos])
 
+  const handleVisualizarDiscente = (d: Discente) => {
+    setDiscenteParaVisualizar(d)
+    setDialogoVisualizarAberto(true)
+  }
+
+  // Definição de colunas conforme os Pedidos 2 e 4:
+  // - Coluna Nome: rótulo "Nome", alinhamento à esquerda (cabeçalho e dados)
+  // - Demais colunas: centralizadas (cabeçalho e dados)
+  // - Coluna "Orientador": mostra docente vinculado (com suporte à cor laranja se status=false) ou fallback texto livre
+  // - Coluna "Conclusão": ano de conclusão (vazio se nulo)
   const columns: ColumnDef<Discente>[] = useMemo(
     () => [
       {
         key: 'nome',
-        label: 'Nome & Informações',
-        className: 'font-medium text-slate-900',
+        label: 'Nome',
+        className: 'text-left font-medium text-slate-900',
+        headerClassName: 'text-left font-semibold text-slate-700',
         render: (d) => {
-          const nomeOrientador =
-            d.docente_orientador_id && docenteMap.has(d.docente_orientador_id)
-              ? docenteMap.get(d.docente_orientador_id)
-              : d.orientador
           const tituloProjeto =
             d.projeto_id && projetoMap.has(d.projeto_id) ? projetoMap.get(d.projeto_id) : null
 
           return (
             <div className="flex flex-col items-start gap-0.5">
               <span>{normalizarNomePessoa(d.nome)}</span>
-              {(d.tipo_curso || nomeOrientador || d.ano_conclusao || tituloProjeto) && (
+              {(d.tipo_curso || tituloProjeto) && (
                 <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 font-normal">
                   {d.tipo_curso && (
                     <span className="font-medium text-primary bg-primary/10 px-1.5 py-0.2 rounded">
                       {d.tipo_curso}
-                    </span>
-                  )}
-                  {nomeOrientador && (
-                    <span className="text-slate-700">
-                      • Orientador: <strong className="font-medium">{nomeOrientador}</strong>
-                      {d.docente_orientador_id && (
-                        <span className="text-emerald-600 ml-1 text-[10px] font-medium">
-                          (vinculado)
-                        </span>
-                      )}
                     </span>
                   )}
                   {tituloProjeto && (
@@ -95,7 +98,6 @@ export default function Discentes() {
                       {tituloProjeto.length > 40 ? `${tituloProjeto.slice(0, 40)}…` : tituloProjeto}
                     </span>
                   )}
-                  {d.ano_conclusao && <span>• Conclusão: {d.ano_conclusao}</span>}
                 </div>
               )}
             </div>
@@ -105,28 +107,97 @@ export default function Discentes() {
       {
         key: 'cpf',
         label: 'CPF',
-        render: (d) => (d.cpf ? formatarCpf(d.cpf) : '—'),
+        className: 'text-center',
+        headerClassName: 'text-center font-semibold text-slate-700',
+        render: (d) =>
+          d.cpf ? (
+            <span className="font-mono text-xs">{formatarCpf(d.cpf)}</span>
+          ) : (
+            <span className="text-slate-400">—</span>
+          ),
       },
-      { key: 'data_ingresso', label: 'Ingresso' },
+      {
+        key: 'data_ingresso',
+        label: 'Ingresso',
+        className: 'text-center',
+        headerClassName: 'text-center font-semibold text-slate-700',
+        render: (d) =>
+          d.data_ingresso ? (
+            <span className="font-mono text-xs">{d.data_ingresso}</span>
+          ) : (
+            <span className="text-slate-400">—</span>
+          ),
+      },
       {
         key: 'status',
         label: 'Status',
+        className: 'text-center',
+        headerClassName: 'text-center font-semibold text-slate-700',
         render: (d) => (
-          <div className="flex flex-col gap-1 items-start">
+          <div className="flex justify-center items-center">
             <Badge
               variant="secondary"
               className={`border-0 capitalize ${statusColors[d.status] ?? ''}`}
             >
               {d.status}
             </Badge>
-            {d.ano_conclusao && d.status === 'titulado' && (
-              <span className="text-[10px] text-slate-400">Ano: {d.ano_conclusao}</span>
-            )}
           </div>
         ),
       },
+      {
+        key: 'orientador' as any,
+        label: 'Orientador',
+        className: 'text-center',
+        headerClassName: 'text-center font-semibold text-slate-700',
+        render: (d) => {
+          const docenteVinculado =
+            d.docente_orientador_id && docenteObjMap.has(d.docente_orientador_id)
+              ? docenteObjMap.get(d.docente_orientador_id)
+              : null
+
+          if (docenteVinculado) {
+            return (
+              <div className="flex justify-center items-center gap-1.5 flex-wrap">
+                <DocenteNome
+                  nome={docenteVinculado.nome}
+                  status={docenteVinculado.status}
+                  className="font-medium text-xs"
+                />
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-1 py-0 bg-emerald-50 text-emerald-700 border-emerald-300 font-normal"
+                >
+                  vinculado
+                </Badge>
+              </div>
+            )
+          }
+
+          if (d.orientador && d.orientador.trim()) {
+            return (
+              <span className="text-xs text-slate-700 font-medium">
+                {normalizarNomePessoa(d.orientador)}
+              </span>
+            )
+          }
+
+          return <span className="text-slate-400 text-xs">—</span>
+        },
+      },
+      {
+        key: 'ano_conclusao' as any,
+        label: 'Conclusão',
+        className: 'text-center',
+        headerClassName: 'text-center font-semibold text-slate-700',
+        render: (d) => {
+          if (d.ano_conclusao && String(d.ano_conclusao).trim()) {
+            return <span className="font-semibold text-slate-800 text-xs">{d.ano_conclusao}</span>
+          }
+          return <span className="text-slate-400 text-xs">—</span>
+        },
+      },
     ],
-    [docenteMap, projetoMap],
+    [docenteObjMap, projetoMap],
   )
 
   const fields: FieldDef[] = useMemo(
@@ -254,16 +325,61 @@ export default function Discentes() {
   )
 
   return (
-    <CrudPage
-      title="Discentes"
-      description="Gerencie os discentes do programa de pós-graduação."
-      service={discentesService}
-      columns={columns}
-      fields={fields}
-      emptyForm={emptyForm}
-      searchKey="nome"
-      entityName="Discente"
-      printModule="discentes"
-    />
+    <>
+      <CrudPage
+        title="Discentes"
+        description="Gerencie os discentes do programa de pós-graduação."
+        service={discentesService}
+        columns={columns}
+        fields={fields}
+        emptyForm={emptyForm}
+        searchKey="nome"
+        entityName="Discente"
+        printModule="discentes"
+        tableHeaderClassName="bg-[#e9effc] sticky top-0 z-10"
+        tableHeaderRowClassName="bg-[#e9effc] hover:bg-[#e9effc]"
+        actionsHeaderClassName="text-center font-semibold text-slate-700"
+        renderCustomActions={(item, { openEdit, openDelete }) => (
+          <div className="flex items-center justify-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleVisualizarDiscente(item)}
+              className="h-8 w-8 text-slate-600 hover:text-primary hover:bg-primary/10"
+              title="Visualizar Discente"
+              aria-label="Visualizar Discente"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={openEdit}
+              className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+              title="Editar Discente"
+            >
+              <Edit className="h-4 w-4 text-primary" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+              onClick={openDelete}
+              title="Excluir Discente"
+            >
+              <Trash2 className="h-4 w-4 text-red-600" />
+            </Button>
+          </div>
+        )}
+      />
+
+      <VisualizarDiscenteDialog
+        open={dialogoVisualizarAberto}
+        onOpenChange={setDialogoVisualizarAberto}
+        discente={discenteParaVisualizar}
+        docentes={docentes}
+        projetos={projetos}
+      />
+    </>
   )
 }

@@ -527,6 +527,7 @@ export function avaliarDocente(params: DadosParaAvaliacao): AvaliacaoDocenteReco
     docente_id: docente.id,
     nome: docente.nome,
     categoria,
+    status: docente.status !== false,
     scopus_id: docente.scopus_id || null,
     id_lattes: docente.id_lattes || null,
     criterio_i,

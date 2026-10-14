@@ -90,7 +90,10 @@ export function DocentePrintDocument({
               Programa de Pós-Graduação em Ciência e Engenharia de Materiais — PPG DCEM
             </p>
             <h1 className="text-xl font-bold text-slate-900 mt-1">
-              Relatório Curricular Individual — {doc.nome}
+              Relatório Curricular Individual —{' '}
+              <span className={doc.status === false ? 'text-orange-600 font-bold' : ''}>
+                {doc.nome}
+              </span>
             </h1>
             <p className="text-xs text-slate-600 mt-0.5">
               Dados cadastrais e produção acadêmica registrada no sistema de avaliação
@@ -116,7 +119,16 @@ export function DocentePrintDocument({
             <tbody>
               <tr>
                 <td className="w-1/4 font-bold bg-slate-100">Nome Completo</td>
-                <td className="w-1/4">{textoSeguro(doc.nome)}</td>
+                <td className="w-1/4">
+                  <span className={doc.status === false ? 'text-orange-600 font-bold' : ''}>
+                    {textoSeguro(doc.nome)}
+                  </span>
+                  {doc.status === false && (
+                    <span className="text-[10px] text-orange-600 font-semibold ml-1">
+                      (Inativo no programa)
+                    </span>
+                  )}
+                </td>
                 <td className="w-1/4 font-bold bg-slate-100">ID Lattes (CNPq)</td>
                 <td className="w-1/4 font-mono">{doc.id_lattes || '—'}</td>
               </tr>

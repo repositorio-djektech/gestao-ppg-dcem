@@ -41,6 +41,8 @@ import {
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { DocenteNome } from './DocenteNome'
 import {
   Select,
   SelectContent,
@@ -136,6 +138,7 @@ export function VisualizarDocenteDialog({
     cpf: '',
     siape: '',
     licenca: '',
+    status: true,
   })
   const [dados, setDados] = useState<DadosDocenteCompleto>({
     docente: null,
@@ -369,6 +372,7 @@ export function VisualizarDocenteDialog({
           cpf: docFinal.cpf || '',
           siape: docFinal.siape || '',
           licenca: docFinal.licenca || '',
+          status: docFinal.status !== false,
         })
       } catch (err) {
         console.error('Erro ao carregar dados completos do docente:', err)
@@ -459,6 +463,7 @@ export function VisualizarDocenteDialog({
       cpf: doc.cpf || '',
       siape: doc.siape || '',
       licenca: doc.licenca || '',
+      status: doc.status !== false,
     })
     setEditandoIdentificacao(true)
   }
@@ -479,6 +484,7 @@ export function VisualizarDocenteDialog({
         cpf: doc.cpf || '',
         siape: doc.siape || '',
         licenca: doc.licenca || '',
+        status: doc.status !== false,
       })
     }
     setEditandoIdentificacao(false)
@@ -504,6 +510,7 @@ export function VisualizarDocenteDialog({
         cpf: formIdentificacao.cpf.replace(/\D/g, '').slice(0, 11) || '',
         siape: formIdentificacao.siape.replace(/\D/g, '') || '',
         licenca: formIdentificacao.licenca.trim() || '',
+        status: formIdentificacao.status !== false,
       }
 
       const { data, error } = await supabase
@@ -814,6 +821,24 @@ export function VisualizarDocenteDialog({
                     className="h-8 text-xs bg-white"
                   />
                 </div>
+
+                <div className="flex items-center justify-between p-2 rounded-md border border-slate-200 bg-slate-50 md:col-span-2 lg:col-span-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="inline-status" className="text-xs font-medium cursor-pointer">
+                      Ativo no programa
+                    </Label>
+                    <p className="text-[11px] text-slate-500">
+                      Docentes inativos são destacados com o nome em cor laranja.
+                    </p>
+                  </div>
+                  <Switch
+                    id="inline-status"
+                    checked={formIdentificacao.status !== false}
+                    onCheckedChange={(checked) =>
+                      setFormIdentificacao({ ...formIdentificacao, status: checked })
+                    }
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
@@ -844,8 +869,28 @@ export function VisualizarDocenteDialog({
                   Nome Completo:
                 </span>
                 <span className="text-slate-900 dark:text-neutral-100 font-semibold text-sm">
-                  {textoSeguro(doc.nome)}
+                  <DocenteNome nome={doc.nome || '—'} status={doc.status} />
                 </span>
+              </div>
+              <div>
+                <span className="text-slate-500 dark:text-neutral-400 font-medium block">
+                  Status no Programa:
+                </span>
+                {doc.status === false ? (
+                  <Badge
+                    variant="outline"
+                    className="bg-orange-50 text-orange-700 border-orange-300 font-medium mt-0.5"
+                  >
+                    Inativo no programa
+                  </Badge>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    className="bg-emerald-50 text-emerald-700 border-emerald-300 font-medium mt-0.5"
+                  >
+                    Ativo no programa
+                  </Badge>
+                )}
               </div>
               <div>
                 <span className="text-slate-500 dark:text-neutral-400 font-medium block">
@@ -1604,7 +1649,16 @@ export function VisualizarDocenteDialog({
             <div className="min-w-0">
               <DialogTitle className="flex items-center gap-2 text-xl text-primary font-bold truncate">
                 <User className="h-5 w-5 text-primary shrink-0" />
-                <span className="truncate">{docente?.nome ?? 'Visualização do Docente'}</span>
+                <span className="truncate">
+                  {docente ? (
+                    <DocenteNome
+                      nome={dados.docente?.nome || docente.nome}
+                      status={dados.docente?.status ?? docente.status}
+                    />
+                  ) : (
+                    'Visualização do Docente'
+                  )}
+                </span>
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-600 dark:text-neutral-400 mt-1">
                 Visualização somente-leitura dos dados curriculares e registros acadêmicos

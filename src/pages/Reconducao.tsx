@@ -36,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { DocenteNome } from '@/components/docentes/DocenteNome'
 import {
   Award,
   RefreshCw,
@@ -314,7 +315,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
                 Docente Avaliado
               </span>
               <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                {doc.nome}
+                <DocenteNome nome={doc.nome} status={doc.status} />
                 {renderBadgeCategoria(doc.categoria)}
               </h3>
             </div>
@@ -920,7 +921,11 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
                       {/* Nome e Categoria */}
                       <TableCell className="font-medium text-slate-900">
                         <div className="flex flex-col gap-1 items-start">
-                          <span className="font-semibold">{doc.nome}</span>
+                          <DocenteNome
+                            nome={doc.nome}
+                            status={doc.status}
+                            className="font-semibold"
+                          />
                           <div>{renderBadgeCategoria(doc.categoria)}</div>
                         </div>
                       </TableCell>

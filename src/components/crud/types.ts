@@ -4,6 +4,7 @@ export interface ColumnDef<T> {
   key: keyof T
   label: string
   className?: string
+  headerClassName?: string
   render?: (item: T) => ReactNode
 }
 

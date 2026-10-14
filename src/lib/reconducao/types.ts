@@ -41,6 +41,7 @@ export interface AvaliacaoDocenteReconducao {
   docente_id: number
   nome: string
   categoria: CategoriaDocente
+  status?: boolean
   scopus_id?: string | null
   id_lattes?: string | null
 

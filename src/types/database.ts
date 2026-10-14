@@ -16,6 +16,7 @@ export type Docente = {
   bolsa_cnpq: string
   jdp: boolean
   licenca: string
+  status?: boolean
   id_lattes?: string | null
   openalex_id?: string | null
   categoria?: 'permanente' | 'colaborador' | 'visitante' | 'jdp' | null

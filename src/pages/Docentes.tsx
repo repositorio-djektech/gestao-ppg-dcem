@@ -73,6 +73,7 @@ import { Label } from '@/components/ui/label'
 import { normalizarNomePessoa } from '@/lib/normalizacao'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
+import { DocenteNome } from '@/components/docentes/DocenteNome'
 import { registrarLog } from '@/services/logs'
 import {
   Pagination,
@@ -94,6 +95,7 @@ const emptyForm: Omit<Docente, 'id'> = {
   siape: '',
   email: '',
   orc_id: '',
+  status: true,
 }
 
 export default function Docentes() {
@@ -153,7 +155,14 @@ export default function Docentes() {
 
   const handleOpen = async (docente?: Docente, campoFoco?: keyof Docente) => {
     setEditingId(docente?.id ?? null)
-    setFormData(docente ?? emptyForm)
+    setFormData(
+      docente
+        ? {
+            ...docente,
+            status: docente.status !== false,
+          }
+        : emptyForm,
+    )
     setIsDialogOpen(true)
 
     if (docente?.id) {
@@ -190,6 +199,7 @@ export default function Docentes() {
       cpf: formData.cpf ? formData.cpf.replace(/\D/g, '') : '',
       siape: formData.siape ? formData.siape.replace(/\D/g, '') : '',
       email: formData.email ? formData.email.trim() : '',
+      status: formData.status !== false,
     }
     try {
       let savedDocenteId = editingId
@@ -672,8 +682,26 @@ export default function Docentes() {
                       Impacta na flexibilização dos critérios de produtividade CAPES
                     </p>
                   </div>
-
-                  {/* Multiseleção de Linhas de Pesquisa */}
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50/50">
+                    <div className="space-y-0.5">
+                      <Label
+                        htmlFor="status-docente"
+                        className="text-sm font-medium cursor-pointer"
+                      >
+                        Ativo no programa
+                      </Label>
+                      <p className="text-xs text-slate-500">
+                        Quando inativo (status desmarcado), o nome do docente é destacado em cor
+                        laranja no sistema.
+                      </p>
+                    </div>
+                    <Switch
+                      id="status-docente"
+                      checked={formData.status !== false}
+                      onCheckedChange={(checked) => setFormData({ ...formData, status: checked })}
+                    />
+                  </div>
+                  {/* Multiseleção de Linhas de Pesquisa */}{' '}
                   <div className="space-y-2 pt-2 border-t border-slate-200">
                     <Label className="text-sm font-semibold text-slate-800">
                       Linhas de Pesquisa
@@ -788,15 +816,17 @@ export default function Docentes() {
                   const statusVal = String(dAny.status ?? '')
                     .trim()
                     .toLowerCase()
-                  const isInativo =
+                  const isInativoLegado =
                     statusVal === 'inativo' || statusVal === 'desligado' || statusVal === 'inativa'
+                  const isStatusFalse = d.status === false
+                  const isInativo = isInativoLegado || isStatusFalse
                   const destacarOlhoLaranja = temLicenca || isInativo
 
                   return (
                     <TableRow key={d.id} className="hover:bg-slate-50/50">
                       <TableCell className="text-left font-medium text-slate-900">
                         <div className="flex flex-col items-start gap-1">
-                          <span>{normalizarNomePessoa(d.nome)}</span>
+                          <DocenteNome nome={d.nome} status={d.status} className="text-slate-900" />
                           {(d.email || d.cpf || d.siape) && (
                             <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 font-normal">
                               {d.email && <span className="text-slate-600">{d.email}</span>}
@@ -961,7 +991,7 @@ export default function Docentes() {
                             }
                             title={
                               destacarOlhoLaranja
-                                ? `Visualizar (Docente ${isInativo ? 'inativo' : ''}${temLicenca ? ' em gozo de licença: ' + d.licenca : ''})`
+                                ? `Visualizar (Docente ${isInativo ? 'inativo' : ''}${temLicenca ? (isInativo ? ' e' : '') + ' em gozo de licença: ' + d.licenca : ''})`
                                 : 'Visualizar Docente'
                             }
                             aria-label="Visualizar Docente"

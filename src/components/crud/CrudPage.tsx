@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCrudData } from '@/hooks/use-crud-data'
 import { useAuth } from '@/hooks/use-auth'
@@ -48,6 +48,13 @@ interface CrudPageProps<T extends { id: number | string }> {
   searchKey: keyof T
   entityName: string
   printModule?: string
+  tableHeaderClassName?: string
+  tableHeaderRowClassName?: string
+  actionsHeaderClassName?: string
+  renderCustomActions?: (
+    item: T,
+    defaultActions: { openEdit: () => void; openDelete: () => void },
+  ) => ReactNode
 }
 
 export function CrudPage<T extends { id: number | string }>({
@@ -60,6 +67,10 @@ export function CrudPage<T extends { id: number | string }>({
   searchKey,
   entityName,
   printModule,
+  tableHeaderClassName,
+  tableHeaderRowClassName,
+  actionsHeaderClassName,
+  renderCustomActions,
 }: CrudPageProps<T>) {
   const navigate = useNavigate()
   const { profile } = useAuth()
@@ -230,18 +241,24 @@ export function CrudPage<T extends { id: number | string }>({
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto">
           <Table>
-            <TableHeader className="bg-slate-50/80 sticky top-0 z-10">
-              <TableRow>
+            <TableHeader className={tableHeaderClassName ?? 'bg-slate-50/80 sticky top-0 z-10'}>
+              <TableRow className={tableHeaderRowClassName}>
                 {columns.map((col) => (
                   <TableHead
                     key={String(col.key)}
-                    className={col.className ?? 'font-semibold text-slate-700'}
+                    className={
+                      col.headerClassName ?? col.className ?? 'font-semibold text-slate-700'
+                    }
                   >
                     {col.label}
                   </TableHead>
                 ))}
                 {canEdit && (
-                  <TableHead className="text-right font-semibold text-slate-700">Ações</TableHead>
+                  <TableHead
+                    className={actionsHeaderClassName ?? 'text-right font-semibold text-slate-700'}
+                  >
+                    Ações
+                  </TableHead>
                 )}
               </TableRow>
             </TableHeader>
@@ -269,26 +286,35 @@ export function CrudPage<T extends { id: number | string }>({
                       </TableCell>
                     ))}
                     {canEdit && (
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpen(item)}
-                          className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4 text-primary" />
-                        </Button>
-                        {canDelete && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => setIdParaExcluir(item.id)}
-                            title="Excluir"
-                          >
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                          </Button>
+                      <TableCell className={actionsHeaderClassName ?? 'text-right'}>
+                        {renderCustomActions ? (
+                          renderCustomActions(item, {
+                            openEdit: () => handleOpen(item),
+                            openDelete: () => setIdParaExcluir(item.id),
+                          })
+                        ) : (
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpen(item)}
+                              className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                              title="Editar"
+                            >
+                              <Edit className="h-4 w-4 text-primary" />
+                            </Button>
+                            {canDelete && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => setIdParaExcluir(item.id)}
+                                title="Excluir"
+                              >
+                                <Trash2 className="h-4 w-4 text-red-600" />
+                              </Button>
+                            )}
+                          </div>
                         )}
                       </TableCell>
                     )}
