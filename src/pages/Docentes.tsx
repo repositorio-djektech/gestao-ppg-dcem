@@ -961,8 +961,10 @@ export default function Docentes() {
         </div>
       </div>
 
+      {/* Contêiner de Dados: Desktop (>= 768px) Tabela clássica; Mobile (< 768px) Cards com ações mín. 44px */}
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-auto">
+        {/* DESKTOP TABLE: >= 768px */}
+        <div className="hidden md:block flex-1 overflow-auto">
           <Table>
             <TableHeader className="bg-[#e9effc] sticky top-0 z-10">
               <TableRow className="bg-[#e9effc] hover:bg-[#e9effc]">
@@ -1260,6 +1262,205 @@ export default function Docentes() {
             </TableBody>
           </Table>
         </div>
+
+        {/* MOBILE CARDS: < 768px (md:hidden) */}
+        <div className="block md:hidden flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/40">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="p-4 rounded-lg border border-slate-200 bg-white space-y-3">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              </div>
+            ))
+          ) : paginated.length > 0 ? (
+            paginated.map((d) => {
+              const licencaTrim = (d.licenca ?? '').trim()
+              const temLicenca = licencaTrim !== '' && licencaTrim !== '-'
+              const dAny = d as any
+              const statusVal = String(dAny.status ?? '')
+                .trim()
+                .toLowerCase()
+              const isInativoLegado =
+                statusVal === 'inativo' || statusVal === 'desligado' || statusVal === 'inativa'
+              const isStatusFalse = d.status === false
+              const isInativo = isInativoLegado || isStatusFalse
+              const destacarOlhoLaranja = temLicenca || isInativo
+
+              return (
+                <div
+                  key={d.id}
+                  className="rounded-lg border border-slate-200/90 bg-white p-4 shadow-xs space-y-3"
+                  data-testid={`mobile-docente-card-${d.id}`}
+                >
+                  {/* Topo do card: Nome com destaque e Badges de Categoria */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <DocenteNome
+                        nome={d.nome}
+                        status={d.status}
+                        className="text-slate-900 font-semibold text-sm"
+                      />
+                      {d.categoria === 'permanente' && (
+                        <Badge
+                          variant="secondary"
+                          className="bg-blue-100 text-blue-800 border-blue-200 text-[10px] font-semibold shrink-0"
+                        >
+                          Permanente
+                        </Badge>
+                      )}
+                      {d.categoria === 'colaborador' && (
+                        <Badge
+                          variant="outline"
+                          className="bg-amber-50 text-amber-800 border-amber-300 text-[10px] font-semibold shrink-0"
+                        >
+                          Colaborador
+                        </Badge>
+                      )}
+                      {d.categoria === 'visitante' && (
+                        <Badge
+                          variant="outline"
+                          className="bg-purple-50 text-purple-800 border-purple-300 text-[10px] font-semibold shrink-0"
+                        >
+                          Visitante
+                        </Badge>
+                      )}
+                      {d.categoria === 'jdp' && (
+                        <Badge
+                          variant="secondary"
+                          className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px] font-semibold shrink-0"
+                        >
+                          JDP
+                        </Badge>
+                      )}
+                    </div>
+                    {(d.email || d.cpf || d.siape) && (
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
+                        {d.email && (
+                          <span className="text-slate-600 truncate max-w-[200px]">{d.email}</span>
+                        )}
+                        {d.cpf && <span>• CPF: {d.cpf}</span>}
+                        {d.siape && <span>• SIAPE: {d.siape}</span>}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Campos de apoio em grid 2 colunas */}
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                    <div>
+                      <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
+                        Índice-H
+                      </span>
+                      <span className="font-semibold text-slate-800">{d.indice_h ?? '—'}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
+                        Bolsa CNPq
+                      </span>
+                      {d.bolsa_cnpq ? (
+                        <Badge
+                          variant="secondary"
+                          className="bg-blue-50 text-blue-700 text-[10px] px-1.5 py-0"
+                        >
+                          {d.bolsa_cnpq}
+                        </Badge>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </div>
+
+                    <div>
+                      <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
+                        Scopus ID
+                      </span>
+                      {d.scopus_id ? (
+                        <span className="font-mono text-emerald-700 text-[11px]">
+                          {d.scopus_id}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </div>
+
+                    <div>
+                      <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
+                        OpenAlex
+                      </span>
+                      {d.openalex_id ? (
+                        <span className="font-mono text-indigo-700 text-[11px] truncate block">
+                          {d.openalex_id}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Ações Mobile: alvos de toque com pelo menos 44px de altura */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 flex-wrap">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleVisualizarDocente(d)}
+                      className={`min-h-[44px] px-3.5 text-xs gap-1.5 flex-1 sm:flex-initial ${
+                        destacarOlhoLaranja
+                          ? 'border-orange-300 text-orange-600 hover:bg-orange-50'
+                          : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                      }`}
+                      title={
+                        destacarOlhoLaranja
+                          ? `Visualizar (Docente ${isInativo ? 'inativo' : ''}${temLicenca ? (isInativo ? ' e' : '') + ' em licença: ' + d.licenca : ''})`
+                          : 'Visualizar Docente'
+                      }
+                      aria-label="Visualizar Docente"
+                    >
+                      <Eye
+                        className={`h-4 w-4 ${destacarOlhoLaranja ? 'text-orange-500' : 'text-slate-600'}`}
+                      />
+                      <span>Visualizar</span>
+                    </Button>
+
+                    {canEdit && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpen(d)}
+                        className="min-h-[44px] px-3.5 text-xs text-primary border-primary/30 hover:bg-primary/5 gap-1.5"
+                        title="Editar Docente"
+                        aria-label="Editar Docente"
+                      >
+                        <Edit className="h-4 w-4" />
+                        <span>Editar</span>
+                      </Button>
+                    )}
+
+                    {canDelete && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="min-h-[44px] px-3 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => setIdParaExcluir(d.id)}
+                        title="Excluir Docente"
+                        aria-label="Excluir Docente"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            <div className="p-8 text-center text-slate-500 text-sm bg-white rounded-lg border border-dashed border-slate-200">
+              Nenhum docente encontrado.
+            </div>
+          )}
+        </div>
+
         {totalPages > 1 && (
           <div className="border-t p-3 bg-slate-50/50">
             <Pagination>

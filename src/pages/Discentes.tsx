@@ -282,6 +282,7 @@ export default function Discentes() {
       {
         key: 'nome',
         label: 'Nome',
+        mobileTitle: true,
         className: 'text-left font-medium text-slate-900',
         headerClassName: 'text-left font-semibold text-slate-700',
         render: (d) => {
@@ -313,6 +314,7 @@ export default function Discentes() {
       {
         key: 'cpf',
         label: 'CPF',
+        desktopOnly: true,
         className: 'text-center',
         headerClassName: 'text-center font-semibold text-slate-700',
         render: (d) =>
@@ -325,6 +327,7 @@ export default function Discentes() {
       {
         key: 'data_ingresso',
         label: 'Ingresso',
+        mobileSupport: true,
         className: 'text-center',
         headerClassName: 'text-center font-semibold text-slate-700',
         render: (d) =>
@@ -337,10 +340,11 @@ export default function Discentes() {
       {
         key: 'status',
         label: 'Status',
+        mobileSupport: true,
         className: 'text-center',
         headerClassName: 'text-center font-semibold text-slate-700',
         render: (d) => (
-          <div className="flex justify-center items-center">
+          <div className="flex justify-start md:justify-center items-center">
             <Badge
               variant="secondary"
               className={`border-0 capitalize ${statusColors[d.status] ?? ''}`}
@@ -353,6 +357,7 @@ export default function Discentes() {
       {
         key: 'orientador' as any,
         label: 'Orientador',
+        mobileSupport: true,
         className: 'text-center',
         headerClassName: 'text-center font-semibold text-slate-700',
         render: (d) => {
@@ -393,6 +398,7 @@ export default function Discentes() {
       {
         key: 'ano_conclusao' as any,
         label: 'Conclusão',
+        mobileSupport: true,
         className: 'text-center',
         headerClassName: 'text-center font-semibold text-slate-700',
         render: (d) => {

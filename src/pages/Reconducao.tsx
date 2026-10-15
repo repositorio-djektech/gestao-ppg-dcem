@@ -859,9 +859,10 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
         </div>
       </div>
 
-      {/* Tabela Principal de Docentes */}
+      {/* Tabela Principal de Docentes: Desktop (>= 768px) Tabela; Mobile (< 768px) Cards */}
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* DESKTOP TABLE: >= 768px */}
+        <div className="hidden md:block overflow-x-auto">
           <Table>
             <TableHeader className="bg-slate-50/80">
               <TableRow>
@@ -1021,6 +1022,113 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
               )}
             </TableBody>
           </Table>
+        </div>
+
+        {/* MOBILE CARDS: < 768px (md:hidden) */}
+        <div className="block md:hidden p-3 space-y-3 bg-slate-50/50">
+          {carregando ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="p-4 rounded-lg border border-slate-200 bg-white space-y-3">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              </div>
+            ))
+          ) : docentesFiltrados.length > 0 ? (
+            docentesFiltrados.map((doc) => {
+              const pdq = doc.pdq_detalhes.pdq
+              const precondicaoAtendida = doc.pdq_detalhes.precondicao_atendida
+
+              return (
+                <div
+                  key={doc.docente_id}
+                  className="rounded-lg border border-slate-200/90 bg-white p-3.5 shadow-xs space-y-3"
+                  data-testid={`mobile-card-reconducao-${doc.docente_id}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <DocenteNome
+                        nome={doc.nome}
+                        status={doc.status}
+                        className="font-semibold text-slate-900 text-sm"
+                      />
+                      <div>{renderBadgeCategoria(doc.categoria)}</div>
+                    </div>
+                    <div className="shrink-0">{renderBadgeVeredito(doc.veredito)}</div>
+                  </div>
+
+                  {/* Grid com os 4 Critérios e PDQ */}
+                  <div className="grid grid-cols-4 gap-1.5 p-2 bg-slate-50 rounded border border-slate-100 text-center">
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] text-slate-500 font-medium">Crit I</span>
+                      <div className="mt-0.5">
+                        {renderStatusCriterioIcon(doc.criterio_i.atendido)}
+                      </div>
+                      <span className="text-[9px] text-slate-400 mt-0.5">
+                        {doc.criterio_i.quantidade}p
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] text-slate-500 font-medium">Crit II</span>
+                      <div className="mt-0.5">
+                        {renderStatusCriterioIcon(doc.criterio_ii.atendido)}
+                      </div>
+                      <span className="text-[9px] text-slate-400 mt-0.5">
+                        {doc.criterio_ii.quantidade}d
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] text-slate-500 font-medium">Crit III</span>
+                      <div className="mt-0.5">
+                        {renderStatusCriterioIcon(doc.criterio_iii.atendido)}
+                      </div>
+                      <span className="text-[9px] text-slate-400 mt-0.5">
+                        {doc.criterio_iii.quantidade}f
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] text-slate-500 font-medium">PDQ</span>
+                      {precondicaoAtendida && pdq !== null ? (
+                        <span
+                          className={`font-mono font-bold text-xs mt-0.5 ${pdq >= 1.0 ? 'text-emerald-700' : 'text-amber-700'}`}
+                        >
+                          {pdq.toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="font-mono text-slate-400 text-xs mt-0.5">—</span>
+                      )}
+                      <span className="text-[9px] text-slate-400">NP {doc.pdq_detalhes.np}</span>
+                    </div>
+                  </div>
+
+                  {/* Botão de Evidências com área de toque mínima de 44px */}
+                  <div className="pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleAbrirDetalhes(doc)}
+                      className="min-h-[44px] w-full px-3 text-xs text-primary border-primary/30 hover:bg-primary/5 gap-1.5 font-medium"
+                      aria-label={`Ver evidências de ${doc.nome}`}
+                    >
+                      <Eye className="h-4 w-4" />
+                      <span>Ver Evidências e Dossiê</span>
+                    </Button>
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            <div className="p-8 text-center text-slate-500 text-sm bg-white rounded-lg border border-dashed border-slate-200">
+              Nenhum docente localizado com os filtros selecionados.
+            </div>
+          )}
         </div>
       </div>
 

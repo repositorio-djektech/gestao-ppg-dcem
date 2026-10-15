@@ -254,6 +254,7 @@ export default function Egressos() {
       {
         key: 'nome',
         label: 'Nome',
+        mobileTitle: true,
         className: 'text-left font-medium text-slate-900',
         headerClassName: 'text-left font-semibold text-slate-700',
         render: (e) => (
@@ -270,6 +271,7 @@ export default function Egressos() {
       {
         key: 'ano_ingresso' as any,
         label: 'Ano Ingresso',
+        mobileSupport: true,
         className: 'text-center',
         headerClassName: 'text-center font-semibold text-slate-700',
         render: (e) =>
@@ -282,6 +284,7 @@ export default function Egressos() {
       {
         key: 'ano_titulacao',
         label: 'Ano Titulação',
+        mobileSupport: true,
         className: 'text-center',
         headerClassName: 'text-center font-semibold text-slate-700',
         render: (e) =>
@@ -294,6 +297,7 @@ export default function Egressos() {
       {
         key: 'orientador' as any,
         label: 'Orientador',
+        mobileSupport: true,
         className: 'text-center',
         headerClassName: 'text-center font-semibold text-slate-700',
         render: (e) => {
@@ -334,6 +338,7 @@ export default function Egressos() {
       {
         key: 'atuacao_profissional',
         label: 'Atuação Profissional',
+        mobileSupport: true,
         className: 'text-center',
         headerClassName: 'text-center font-semibold text-slate-700',
         render: (e) => (

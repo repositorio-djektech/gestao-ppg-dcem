@@ -606,26 +606,53 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
                       Decomposição Completa dos Termos:
                     </h4>
                     <div className="rounded border border-slate-200 overflow-hidden">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-100 text-slate-700 font-semibold border-b">
-                          <tr>
-                            <th className="p-2">Termo</th>
-                            <th className="p-2">Descrição</th>
-                            <th className="p-2 text-right">Valor</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {indicadorModal.decomposicao.map((d, i) => (
-                            <tr key={i} className="hover:bg-slate-50">
-                              <td className="p-2 font-mono font-semibold text-primary">
-                                {d.termo}
-                              </td>
-                              <td className="p-2 text-slate-600">{d.descricao}</td>
-                              <td className="p-2 text-right font-bold text-slate-900">{d.valor}</td>
+                      {/* Desktop Table (>= 640px) */}
+                      <div className="hidden sm:block overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-slate-100 text-slate-700 font-semibold border-b">
+                            <tr>
+                              <th className="p-2">Termo</th>
+                              <th className="p-2">Descrição</th>
+                              <th className="p-2 text-right">Valor</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {indicadorModal.decomposicao.map((d, i) => (
+                              <tr key={i} className="hover:bg-slate-50">
+                                <td className="p-2 font-mono font-semibold text-primary">
+                                  {d.termo}
+                                </td>
+                                <td className="p-2 text-slate-600">{d.descricao}</td>
+                                <td className="p-2 text-right font-bold text-slate-900">
+                                  {d.valor}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Mobile Cards (< 640px) */}
+                      <div className="block sm:hidden divide-y divide-slate-100 bg-white">
+                        {indicadorModal.decomposicao.map((d, i) => (
+                          <div
+                            key={i}
+                            className="p-2.5 flex items-start justify-between gap-2 text-xs"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <span className="font-mono font-semibold text-primary block">
+                                {d.termo}
+                              </span>
+                              <span className="text-slate-600 text-[11px] block mt-0.5">
+                                {d.descricao}
+                              </span>
+                            </div>
+                            <span className="font-bold text-slate-900 shrink-0 text-sm font-mono">
+                              {d.valor}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}

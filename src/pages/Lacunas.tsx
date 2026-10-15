@@ -1482,123 +1482,212 @@ export default function Lacunas({
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
-                    <th scope="col" className="py-3 px-4 w-[280px] max-w-[320px]">
-                      Quem
-                    </th>
-                    <th scope="col" className="py-3 px-4 min-w-[220px]">
-                      O que falta
-                    </th>
-                    <th scope="col" className="py-3 px-4 w-[130px]">
-                      Grupo
-                    </th>
-                    <th scope="col" className="py-3 px-4 w-[120px] text-left">
-                      Severidade
-                    </th>
-                    <th scope="col" className="py-3 px-4 w-[100px] text-right">
-                      Ação
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {lacunasFiltradas.map((item, idx) => {
-                    const configGrupo = GRUPOS_VISUAIS.find((g) => g.id === item.grupoVisualId)
-                    const badgeClass =
-                      configGrupo?.theme.badge || 'bg-slate-100 text-slate-800 border-slate-200'
-                    const isCritica = item.severidade === 'critica'
+            <>
+              {/* DESKTOP TABLE: >= 768px */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                      <th scope="col" className="py-3 px-4 w-[280px] max-w-[320px]">
+                        Quem
+                      </th>
+                      <th scope="col" className="py-3 px-4 min-w-[220px]">
+                        O que falta
+                      </th>
+                      <th scope="col" className="py-3 px-4 w-[130px]">
+                        Grupo
+                      </th>
+                      <th scope="col" className="py-3 px-4 w-[120px] text-left">
+                        Severidade
+                      </th>
+                      <th scope="col" className="py-3 px-4 w-[100px] text-right">
+                        Ação
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {lacunasFiltradas.map((item, idx) => {
+                      const configGrupo = GRUPOS_VISUAIS.find((g) => g.id === item.grupoVisualId)
+                      const badgeClass =
+                        configGrupo?.theme.badge || 'bg-slate-100 text-slate-800 border-slate-200'
+                      const isCritica = item.severidade === 'critica'
 
-                    return (
-                      <tr
-                        key={`${item.regraId}-${item.idRegistro}-${idx}`}
-                        className="hover:bg-slate-50/70 transition-colors"
-                        data-testid={`linha-lacuna-${item.regraId}-${item.idRegistro}`}
-                      >
-                        {/* Coluna Quem: largura máxima limitada com quebra de linha normal */}
-                        <td className="py-3 px-4 font-medium text-slate-900 w-[280px] max-w-[320px] break-words whitespace-normal align-top">
-                          <div className="flex items-start gap-2">
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${
-                                isCritica ? 'bg-red-500' : 'bg-amber-500'
-                              }`}
-                            />
-                            <div className="min-w-0 flex-1 break-words whitespace-normal">
-                              <span className="font-semibold text-slate-900 block break-words whitespace-normal">
-                                {item.nome}
-                              </span>
-                              <span className="text-[10px] text-slate-400 font-normal block break-all">
-                                ({item.tabela} #{item.idRegistro})
-                              </span>
+                      return (
+                        <tr
+                          key={`${item.regraId}-${item.idRegistro}-${idx}`}
+                          className="hover:bg-slate-50/70 transition-colors"
+                          data-testid={`linha-lacuna-${item.regraId}-${item.idRegistro}`}
+                        >
+                          {/* Coluna Quem: largura máxima limitada com quebra de linha normal */}
+                          <td className="py-3 px-4 font-medium text-slate-900 w-[280px] max-w-[320px] break-words whitespace-normal align-top">
+                            <div className="flex items-start gap-2">
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${
+                                  isCritica ? 'bg-red-500' : 'bg-amber-500'
+                                }`}
+                              />
+                              <div className="min-w-0 flex-1 break-words whitespace-normal">
+                                <span className="font-semibold text-slate-900 block break-words whitespace-normal">
+                                  {item.nome}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-normal block break-all">
+                                  ({item.tabela} #{item.idRegistro})
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        </td>
+                          </td>
 
-                        {/* Coluna O que falta */}
-                        <td className="py-3 px-4 text-slate-700 align-top break-words whitespace-normal">
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-slate-800 break-words whitespace-normal">
-                              {item.regraDescricao}
+                          {/* Coluna O que falta */}
+                          <td className="py-3 px-4 text-slate-700 align-top break-words whitespace-normal">
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-slate-800 break-words whitespace-normal">
+                                {item.regraDescricao}
+                              </span>
+                              {item.motivo && item.motivo !== item.regraDescricao && (
+                                <span className="text-[11px] text-slate-500 mt-0.5 break-words whitespace-normal">
+                                  {item.motivo}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Coluna Grupo */}
+                          <td className="py-3 px-4">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${badgeClass}`}
+                            >
+                              {item.grupoVisualLabel}
                             </span>
-                            {item.motivo && item.motivo !== item.regraDescricao && (
-                              <span className="text-[11px] text-slate-500 mt-0.5 break-words whitespace-normal">
-                                {item.motivo}
+                          </td>
+
+                          {/* Coluna Severidade */}
+                          <td className="py-3 px-4 text-left">
+                            {isCritica ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-800 border border-red-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                Crítica
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                Atenção
                               </span>
                             )}
-                          </div>
-                        </td>
+                          </td>
 
-                        {/* Coluna Grupo */}
-                        <td className="py-3 px-4">
+                          {/* Coluna Ação: Corrigir */}
+                          <td className="py-3 px-4 text-right">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              disabled={carregandoCorrecaoId === item.idRegistro}
+                              onClick={() => handleCorrigirLacuna(item)}
+                              className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                              title={`Corrigir pendência de ${item.nome}`}
+                              aria-label={`Corrigir pendência de ${item.nome}`}
+                              data-testid={`btn-corrigir-${item.regraId}-${item.idRegistro}`}
+                            >
+                              {carregandoCorrecaoId === item.idRegistro ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                              ) : (
+                                <Wrench className="h-4 w-4 text-primary" />
+                              )}
+                            </Button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* MOBILE CARDS: < 768px (md:hidden) */}
+              <div className="block md:hidden p-3 space-y-3 bg-slate-50/50">
+                {lacunasFiltradas.map((item, idx) => {
+                  const configGrupo = GRUPOS_VISUAIS.find((g) => g.id === item.grupoVisualId)
+                  const badgeClass =
+                    configGrupo?.theme.badge || 'bg-slate-100 text-slate-800 border-slate-200'
+                  const isCritica = item.severidade === 'critica'
+
+                  return (
+                    <div
+                      key={`mobile-${item.regraId}-${item.idRegistro}-${idx}`}
+                      className="rounded-lg border border-slate-200/90 bg-white p-3.5 shadow-xs space-y-2.5"
+                      data-testid={`mobile-card-lacuna-${item.regraId}-${item.idRegistro}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2 min-w-0 flex-1">
                           <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${badgeClass}`}
-                          >
-                            {item.grupoVisualLabel}
-                          </span>
-                        </td>
+                            className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${
+                              isCritica ? 'bg-red-500' : 'bg-amber-500'
+                            }`}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <span className="font-semibold text-slate-900 text-sm block break-words">
+                              {item.nome}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block">
+                              {item.tabela} #{item.idRegistro}
+                            </span>
+                          </div>
+                        </div>
 
-                        {/* Coluna Severidade */}
-                        <td className="py-3 px-4 text-left">
+                        <div className="shrink-0">
                           {isCritica ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-800 border border-red-200">
-                              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-800 border border-red-200">
                               Crítica
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
                               Atenção
                             </span>
                           )}
-                        </td>
+                        </div>
+                      </div>
 
-                        {/* Coluna Ação: Corrigir */}
-                        <td className="py-3 px-4 text-right">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            disabled={carregandoCorrecaoId === item.idRegistro}
-                            onClick={() => handleCorrigirLacuna(item)}
-                            className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                            title={`Corrigir pendência de ${item.nome}`}
-                            aria-label={`Corrigir pendência de ${item.nome}`}
-                            data-testid={`btn-corrigir-${item.regraId}-${item.idRegistro}`}
+                      <div className="text-xs bg-slate-50 p-2.5 rounded border border-slate-100 space-y-1">
+                        <span className="font-medium text-slate-800 block break-words">
+                          {item.regraDescricao}
+                        </span>
+                        {item.motivo && item.motivo !== item.regraDescricao && (
+                          <span className="text-[11px] text-slate-500 block break-words">
+                            {item.motivo}
+                          </span>
+                        )}
+                        <div className="pt-1">
+                          <span
+                            className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium border ${badgeClass}`}
                           >
-                            {carregandoCorrecaoId === item.idRegistro ? (
-                              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                            ) : (
-                              <Wrench className="h-4 w-4 text-primary" />
-                            )}
-                          </Button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                            {item.grupoVisualLabel}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="pt-1 flex items-center justify-end">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={carregandoCorrecaoId === item.idRegistro}
+                          onClick={() => handleCorrigirLacuna(item)}
+                          className="min-h-[44px] w-full px-3 text-xs text-primary border-primary/30 hover:bg-primary/5 gap-1.5 font-medium"
+                          title={`Corrigir pendência de ${item.nome}`}
+                          aria-label={`Corrigir pendência de ${item.nome}`}
+                        >
+                          {carregandoCorrecaoId === item.idRegistro ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          ) : (
+                            <Wrench className="h-4 w-4 text-primary" />
+                          )}
+                          <span>Corrigir Pendência</span>
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -1631,7 +1720,6 @@ export default function Lacunas({
             </Button>
           )}
         </div>
-
         {historico.length === 0 ? (
           <div
             className="rounded-lg border border-dashed border-slate-200 bg-slate-50/50 p-4 text-center text-xs text-slate-500"
@@ -1646,7 +1734,8 @@ export default function Lacunas({
             className="rounded-lg border border-slate-200 bg-white overflow-hidden shadow-xs"
             data-testid="tabela-historico-lacunas"
           >
-            <div className="overflow-x-auto">
+            {/* Desktop Table (>= 768px) */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-semibold text-[11px]">
@@ -1724,8 +1813,56 @@ export default function Lacunas({
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile Cards (< 768px) */}
+            <div className="block md:hidden divide-y divide-slate-100 bg-white">
+              {historico.map((item) => {
+                let dataTexto = item.timestamp
+                try {
+                  dataTexto = new Date(item.timestamp).toLocaleString('pt-BR', {
+                    dateStyle: 'short',
+                    timeStyle: 'short',
+                  })
+                } catch {
+                  // noop
+                }
+
+                const filtrosResumo = [
+                  item.filtros.grupo !== 'Todos os Grupos' && `Grupo: ${item.filtros.grupo}`,
+                  item.filtros.severidade !== 'Todas' && `Sev: ${item.filtros.severidade}`,
+                  item.filtros.regra !== 'Todas' && `Regra: ${item.filtros.regra}`,
+                  item.filtros.busca !== '—' && `Busca: "${item.filtros.busca}"`,
+                ]
+                  .filter(Boolean)
+                  .join(' | ')
+
+                return (
+                  <div
+                    key={`mob-hist-${item.id}`}
+                    className="p-3 space-y-2 text-xs"
+                    data-testid={`linha-historico-${item.id}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-slate-800">{dataTexto}</span>
+                      <span className="inline-flex items-center gap-1 font-medium text-slate-600">
+                        <Download className="h-3 w-3 text-slate-500" />
+                        {item.nomeArquivo || 'Exportação CSV'}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 break-words">
+                      {filtrosResumo || 'Todos os registros'}
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
+                      <span className="text-red-600 font-semibold">{item.criticas} críticas</span>
+                      <span className="text-amber-600 font-medium">{item.atencao} atenção</span>
+                      <span className="text-slate-900 font-bold">Total: {item.total}</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        )}
+        )}{' '}
       </div>
 
       {/* Diálogo de Vinculação Scopus / OpenAlex (Docentes) */}

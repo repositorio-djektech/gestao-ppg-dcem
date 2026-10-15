@@ -744,8 +744,10 @@ export default function Publicacoes() {
         </div>
       </div>
 
+      {/* Contêiner de Dados: Desktop (>= 768px) Tabela; Mobile (< 768px) Cards elegantes com ações mín. 44px */}
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-auto">
+        {/* DESKTOP TABLE: >= 768px */}
+        <div className="hidden md:block flex-1 overflow-auto">
           <Table>
             <TableHeader className="bg-slate-50/80 sticky top-0">
               <TableRow>
@@ -941,6 +943,174 @@ export default function Publicacoes() {
             </TableBody>
           </Table>
         </div>
+
+        {/* MOBILE CARDS: < 768px (md:hidden) */}
+        <div className="block md:hidden flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/40">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="p-4 rounded-lg border border-slate-200 bg-white space-y-3">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              </div>
+            ))
+          ) : paginated.length > 0 ? (
+            paginated.map((p) => {
+              const docentesVinculados = todasPubsDocentes
+                .filter((pd) => pd.publicacao_id === p.id)
+                .map((pd) => docentesLista.find((d) => d.id === pd.docente_id))
+                .filter(Boolean) as Docente[]
+
+              return (
+                <div
+                  key={p.id}
+                  className="rounded-lg border border-slate-200/90 bg-white p-4 shadow-xs space-y-3"
+                  data-testid={`mobile-publicacao-card-${p.id}`}
+                >
+                  {/* Topo do card: Título e Badges (Qualis, Nível, etc.) */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-semibold text-slate-900 text-sm leading-snug break-words flex-1">
+                        {normalizarTituloAcademico(p.titulo)}
+                      </h3>
+                      <div className="shrink-0">{getQualisBadge(p.estrato_qualis)}</div>
+                    </div>
+
+                    {p.autores && (
+                      <p className="text-xs text-slate-500 line-clamp-2 break-words">{p.autores}</p>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                      {p.indicacao_nivel && (
+                        <Badge
+                          variant="outline"
+                          className={
+                            p.indicacao_nivel === 2
+                              ? 'border-indigo-300 bg-indigo-50 text-indigo-700 text-[10px]'
+                              : 'border-purple-300 bg-purple-50 text-purple-700 text-[10px]'
+                          }
+                        >
+                          Nível {p.indicacao_nivel}
+                        </Badge>
+                      )}
+                      {p.tipo_producao && (
+                        <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                          {p.tipo_producao}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Campos de apoio em grid 2 colunas */}
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                    <div>
+                      <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
+                        Periódico
+                      </span>
+                      <span className="text-slate-700 line-clamp-2">{p.periodico || '—'}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
+                        Ano / JCR
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold text-slate-900">{p.ano}</span>
+                        {p.fator_impacto_jcr !== null && p.fator_impacto_jcr !== undefined && (
+                          <span className="font-mono text-[11px] text-slate-600 bg-slate-100 px-1 rounded">
+                            JCR {Number(p.fator_impacto_jcr).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="col-span-2">
+                      <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
+                        Docentes Autores
+                      </span>
+                      {docentesVinculados.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {docentesVinculados.map((doc) => {
+                            const nomes = doc.nome.trim().split(' ')
+                            const primeiro = nomes[0]
+                            const ultimo = nomes.length > 1 ? nomes[nomes.length - 1] : ''
+                            const exibicao = ultimo ? `${primeiro[0]}. ${ultimo}` : primeiro
+                            return (
+                              <Badge
+                                key={doc.id}
+                                variant={doc.status === false ? 'outline' : 'secondary'}
+                                className={`text-[10px] px-1.5 py-0 font-normal ${
+                                  doc.status === false
+                                    ? 'border-orange-300 bg-orange-50 text-orange-600 font-medium'
+                                    : 'bg-slate-100 text-slate-700'
+                                }`}
+                              >
+                                <DocenteNome
+                                  nome={exibicao}
+                                  status={doc.status}
+                                  normalizar={false}
+                                />
+                              </Badge>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </div>
+
+                    {p.doi && (
+                      <div className="col-span-2">
+                        <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
+                          DOI
+                        </span>
+                        <span className="font-mono text-xs text-primary break-all">{p.doi}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Ações Mobile: alvos de toque com pelo menos 44px de altura */}
+                  {canEdit && (
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpen(p)}
+                        className="min-h-[44px] px-3.5 text-xs text-primary border-primary/30 hover:bg-primary/5 gap-1.5 flex-1"
+                        title="Editar Publicação"
+                        aria-label="Editar Publicação"
+                      >
+                        <Edit className="h-4 w-4" />
+                        <span>Editar</span>
+                      </Button>
+                      {canDelete && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="min-h-[44px] px-3.5 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 gap-1.5"
+                          onClick={() => setIdParaExcluir(p.id)}
+                          title="Excluir Publicação"
+                          aria-label="Excluir Publicação"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span>Excluir</span>
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })
+          ) : (
+            <div className="p-8 text-center text-slate-500 text-sm bg-white rounded-lg border border-dashed border-slate-200">
+              Nenhuma publicação encontrada.
+            </div>
+          )}
+        </div>
+
         {totalPages > 1 && (
           <div className="border-t p-3 bg-slate-50/50">
             <Pagination>
