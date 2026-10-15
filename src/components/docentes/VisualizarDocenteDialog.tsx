@@ -971,7 +971,7 @@ export function VisualizarDocenteDialog({
             </form>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-              <div>
+              <div className="flex flex-col gap-0.5 break-words">
                 <span className="text-slate-500 dark:text-neutral-400 font-medium block">
                   Nome Completo:
                 </span>
@@ -979,27 +979,27 @@ export function VisualizarDocenteDialog({
                   <DocenteNome nome={doc.nome || '—'} status={doc.status} />
                 </span>
               </div>
-              <div>
+              <div className="flex flex-col gap-0.5 break-words">
                 <span className="text-slate-500 dark:text-neutral-400 font-medium block">
                   Status no Programa:
                 </span>
                 {doc.status === false ? (
                   <Badge
                     variant="outline"
-                    className="bg-orange-50 text-orange-700 border-orange-300 font-medium mt-0.5"
+                    className="bg-orange-50 text-orange-700 border-orange-300 font-medium mt-0.5 w-fit"
                   >
                     Inativo no programa
                   </Badge>
                 ) : (
                   <Badge
                     variant="outline"
-                    className="bg-emerald-50 text-emerald-700 border-emerald-300 font-medium mt-0.5"
+                    className="bg-emerald-50 text-emerald-700 border-emerald-300 font-medium mt-0.5 w-fit"
                   >
                     Ativo no programa
                   </Badge>
                 )}
               </div>
-              <div>
+              <div className="flex flex-col gap-0.5 break-words">
                 <span className="text-slate-500 dark:text-neutral-400 font-medium block">
                   ID Lattes (CNPq):
                 </span>
@@ -1017,7 +1017,7 @@ export function VisualizarDocenteDialog({
                   <span className="text-slate-400">—</span>
                 )}
               </div>
-              <div>
+              <div className="flex flex-col gap-0.5 break-words">
                 <span className="text-slate-500 dark:text-neutral-400 font-medium block">
                   Scopus Author ID:
                 </span>
@@ -1035,7 +1035,7 @@ export function VisualizarDocenteDialog({
                   <span className="text-slate-400">—</span>
                 )}
               </div>
-              <div>
+              <div className="flex flex-col gap-0.5 break-words">
                 <span className="text-slate-500 dark:text-neutral-400 font-medium block">
                   OpenAlex ID:
                 </span>
@@ -1053,7 +1053,7 @@ export function VisualizarDocenteDialog({
                   <span className="text-slate-400">—</span>
                 )}
               </div>
-              <div>
+              <div className="flex flex-col gap-0.5 break-words">
                 <span className="text-slate-500 dark:text-neutral-400 font-medium block">
                   ORCID:
                 </span>
@@ -1073,25 +1073,25 @@ export function VisualizarDocenteDialog({
                   <span className="text-slate-400">—</span>
                 )}
               </div>
-              <div>
+              <div className="flex flex-col gap-0.5 break-words">
                 <span className="text-slate-500 dark:text-neutral-400 font-medium block">
                   Índice-H:
                 </span>
                 <Badge
                   variant="outline"
-                  className="font-mono font-bold text-slate-800 dark:text-neutral-200 mt-0.5"
+                  className="font-mono font-bold text-slate-800 dark:text-neutral-200 mt-0.5 w-fit"
                 >
                   {doc.indice_h ?? 0}
                 </Badge>
               </div>
-              <div>
+              <div className="flex flex-col gap-0.5 break-words">
                 <span className="text-slate-500 dark:text-neutral-400 font-medium block">
                   Bolsa Produtividade CNPq:
                 </span>
                 {doc.bolsa_cnpq ? (
                   <Badge
                     variant="secondary"
-                    className="bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-medium mt-0.5"
+                    className="bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-medium mt-0.5 w-fit"
                   >
                     {doc.bolsa_cnpq}
                   </Badge>
@@ -1099,7 +1099,7 @@ export function VisualizarDocenteDialog({
                   <span className="text-slate-400">—</span>
                 )}
               </div>
-              <div>
+              <div className="flex flex-col gap-0.5 break-words">
                 <span className="text-slate-500 dark:text-neutral-400 font-medium block">
                   Categoria no PPG-DCEM:
                 </span>
@@ -1130,14 +1130,14 @@ export function VisualizarDocenteDialog({
                   )}
                 </div>
               </div>{' '}
-              <div>
+              <div className="flex flex-col gap-0.5 break-words">
                 <span className="text-slate-500 dark:text-neutral-400 font-medium block">
                   E-mail:
                 </span>
                 {doc.email ? (
                   <a
                     href={`mailto:${doc.email}`}
-                    className="text-primary hover:underline font-medium"
+                    className="text-primary hover:underline font-medium break-all"
                   >
                     {doc.email}
                   </a>
@@ -1145,13 +1145,13 @@ export function VisualizarDocenteDialog({
                   <span className="text-slate-400">—</span>
                 )}
               </div>
-              <div>
+              <div className="flex flex-col gap-0.5 break-words">
                 <span className="text-slate-500 dark:text-neutral-400 font-medium block">CPF:</span>
                 <span className="text-slate-800 dark:text-neutral-200 font-mono">
                   {textoSeguro(doc.cpf)}
                 </span>
               </div>
-              <div>
+              <div className="flex flex-col gap-0.5 break-words">
                 <span className="text-slate-500 dark:text-neutral-400 font-medium block">
                   SIAPE:
                 </span>
@@ -1159,7 +1159,7 @@ export function VisualizarDocenteDialog({
                   {textoSeguro(doc.siape)}
                 </span>
               </div>
-              <div className="md:col-span-2">
+              <div className="md:col-span-2 flex flex-col gap-0.5 break-words">
                 <span className="text-slate-500 dark:text-neutral-400 font-medium block">
                   Licença Saúde / Parental:
                 </span>
@@ -1759,9 +1759,12 @@ export function VisualizarDocenteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[95vw] h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden bg-white dark:bg-neutral-900">
+      <DialogContent
+        bottomSheetOnMobile
+        className="max-w-5xl md:w-[95vw] md:h-[92vh] md:max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden bg-white dark:bg-neutral-900"
+      >
         {/* Cabeçalho */}
-        <DialogHeader className="p-5 pb-3 border-b bg-slate-50/80 dark:bg-neutral-900/80 shrink-0">
+        <DialogHeader className="p-4 md:p-5 pb-3 border-b bg-slate-50/80 dark:bg-neutral-900/80 shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-6">
             <div className="min-w-0">
               <DialogTitle className="flex items-center gap-2 text-xl text-primary font-bold truncate">
@@ -1932,19 +1935,19 @@ export function VisualizarDocenteDialog({
           )}
         </div>
 
-        {/* Rodapé Somente-Leitura */}
-        <DialogFooter className="p-4 border-t bg-slate-50/80 dark:bg-neutral-900/80 shrink-0 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-neutral-400">
+        {/* Rodapé Somente-Leitura com safe-area no mobile */}
+        <DialogFooter className="p-3 md:p-4 border-t bg-slate-50/80 dark:bg-neutral-900/80 shrink-0 flex flex-row items-center justify-between gap-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] md:pb-4">
+          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 dark:text-neutral-400">
             <span>Visualização de registros vinculados no banco de dados.</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="bg-white hover:bg-slate-50"
+              className="bg-white hover:bg-slate-50 min-h-[44px] md:min-h-8 flex-1 sm:flex-initial"
             >
               Fechar
             </Button>
@@ -1953,7 +1956,7 @@ export function VisualizarDocenteDialog({
               variant="default"
               size="sm"
               onClick={handleDispararImpressao}
-              className="gap-1.5"
+              className="gap-1.5 min-h-[44px] md:min-h-8 flex-1 sm:flex-initial"
             >
               <Printer className="h-4 w-4" />
               <span>Imprimir</span>

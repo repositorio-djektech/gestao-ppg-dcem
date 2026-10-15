@@ -148,36 +148,36 @@ export function VisualizarDiscenteDialog({
             Identificação do Discente
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Nome Completo:</span>
               <span className="text-slate-900 font-semibold text-sm">
                 {nomeDiscenteNormalizado}
               </span>
             </div>
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">CPF:</span>
               <span className="text-slate-800 font-mono">
                 {discente.cpf ? formatarCpf(discente.cpf) : '—'}
               </span>
             </div>
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Status no Programa:</span>
               <Badge
                 variant="outline"
-                className={`capitalize mt-0.5 ${statusColors[discente.status] ?? ''}`}
+                className={`capitalize mt-0.5 w-fit ${statusColors[discente.status] ?? ''}`}
               >
                 {discente.status}
               </Badge>
             </div>
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Tipo / Nível do Curso:</span>
               <span className="text-slate-800 font-medium">{discente.tipo_curso || '—'}</span>
             </div>
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Data de Ingresso:</span>
               <span className="text-slate-800 font-mono">{discente.data_ingresso || '—'}</span>
             </div>
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Ano de Conclusão / Defesa:</span>
               <span className="text-slate-800 font-semibold">{discente.ano_conclusao || '—'}</span>
             </div>
@@ -191,10 +191,10 @@ export function VisualizarDiscenteDialog({
             Orientador Responsável
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Docente Vinculado:</span>
               {docenteOrientador ? (
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex flex-wrap items-center gap-2 mt-1">
                   <DocenteNome
                     nome={docenteOrientador.nome}
                     status={docenteOrientador.status}
@@ -226,18 +226,21 @@ export function VisualizarDiscenteDialog({
               )}
             </div>
 
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Tipo de Vínculo:</span>
               <span className="text-slate-800 mt-1 block">
                 {docenteOrientador ? (
                   <Badge
                     variant="outline"
-                    className="bg-emerald-50 text-emerald-800 border-emerald-300"
+                    className="bg-emerald-50 text-emerald-800 border-emerald-300 w-fit"
                   >
                     Vínculo formal com Docente PPG-DCEM
                   </Badge>
                 ) : discente.orientador ? (
-                  <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200">
+                  <Badge
+                    variant="outline"
+                    className="bg-slate-100 text-slate-700 border-slate-200 w-fit"
+                  >
                     Registro textual livre
                   </Badge>
                 ) : (
@@ -306,16 +309,16 @@ export function VisualizarDiscenteDialog({
             Comprovações e Links
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Currículo Lattes:</span>
               {discente.link_lattes ? (
                 <a
                   href={discente.link_lattes}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary hover:underline flex items-center gap-1 mt-0.5 font-medium"
+                  className="text-primary hover:underline flex items-center gap-1 mt-0.5 font-medium break-all"
                 >
-                  <span className="truncate">{discente.link_lattes}</span>
+                  <span className="break-all">{discente.link_lattes}</span>
                   <ExternalLink className="h-3 w-3 shrink-0" />
                 </a>
               ) : (
@@ -323,16 +326,16 @@ export function VisualizarDiscenteDialog({
               )}
             </div>
 
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Documento de Comprovação:</span>
               {discente.link_comprovacao ? (
                 <a
                   href={discente.link_comprovacao}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary hover:underline flex items-center gap-1 mt-0.5 font-medium"
+                  className="text-primary hover:underline flex items-center gap-1 mt-0.5 font-medium break-all"
                 >
-                  <span className="truncate">{discente.link_comprovacao}</span>
+                  <span className="break-all">{discente.link_comprovacao}</span>
                   <ExternalLink className="h-3 w-3 shrink-0" />
                 </a>
               ) : (
@@ -515,9 +518,12 @@ export function VisualizarDiscenteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] h-[85vh] flex flex-col p-0 overflow-hidden bg-white">
+      <DialogContent
+        bottomSheetOnMobile
+        className="max-w-4xl md:max-h-[90vh] md:h-[85vh] flex flex-col p-0 overflow-hidden bg-white"
+      >
         {/* Cabeçalho */}
-        <DialogHeader className="p-5 pb-4 border-b bg-slate-50/90 shrink-0">
+        <DialogHeader className="p-4 md:p-5 pb-3 md:pb-4 border-b bg-slate-50/90 shrink-0">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <DialogTitle className="flex items-center gap-2 text-xl text-primary font-bold truncate">
@@ -544,7 +550,6 @@ export function VisualizarDiscenteDialog({
             </div>
           </div>
         </DialogHeader>
-
         {/* Corpo com Abas */}
         <div className="flex-1 overflow-hidden p-5 flex flex-col min-h-0 bg-white">
           {loading ? (
@@ -621,11 +626,10 @@ export function VisualizarDiscenteDialog({
             </Tabs>
           )}
         </div>
-
-        {/* Rodapé */}
-        <DialogFooter className="p-4 border-t bg-slate-50/80 shrink-0 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <span>Visualização somente leitura dos registros acadêmicos do discente.</span>
+        {/* Rodapé com safe-area no mobile */}
+        <DialogFooter className="p-3 md:p-4 border-t bg-slate-50/80 dark:bg-neutral-900/80 shrink-0 flex flex-row items-center justify-between gap-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] md:pb-4">
+          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 dark:text-neutral-400">
+            <span>Visualização de registros vinculados no banco de dados.</span>
           </div>
 
           <Button
@@ -633,11 +637,11 @@ export function VisualizarDiscenteDialog({
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="bg-white hover:bg-slate-50"
+            className="bg-white hover:bg-slate-50 min-h-[44px] md:min-h-8 w-full sm:w-auto"
           >
             Fechar
           </Button>
-        </DialogFooter>
+        </DialogFooter>{' '}
       </DialogContent>
     </Dialog>
   )

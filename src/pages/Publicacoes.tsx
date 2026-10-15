@@ -448,293 +448,320 @@ export default function Publicacoes() {
                   <span className="hidden sm:inline">Nova Publicação</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle className="text-primary font-bold">
+              <DialogContent
+                bottomSheetOnMobile
+                className="md:max-w-[580px] md:max-h-[90vh] flex flex-col p-0 overflow-hidden"
+              >
+                <DialogHeader className="p-4 md:p-6 pb-2 md:pb-4 border-b border-slate-100 dark:border-neutral-800 shrink-0 pr-12 md:pr-12">
+                  <DialogTitle className="text-primary font-bold text-lg md:text-xl text-left">
                     {editingId ? 'Editar' : 'Registrar'} Publicação
                   </DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="pub-titulo">
-                      Título do Artigo <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="pub-titulo"
-                      placeholder="Título completo do artigo científico..."
-                      value={formData.titulo}
-                      onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                      required
-                      className="bg-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="pub-autores">
-                      Autores <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="pub-autores"
-                      placeholder="Ex: Silva, J. A.; Mendes, R. C.; Santos, L. M."
-                      value={formData.autores}
-                      onChange={(e) => setFormData({ ...formData, autores: e.target.value })}
-                      required
-                      className="bg-white"
-                    />
-                    <p className="text-xs text-slate-500">
-                      Identifique claramente os docentes e discentes do programa
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+                <form
+                  onSubmit={handleSubmit}
+                  className="flex flex-col flex-1 min-h-0 overflow-hidden"
+                >
+                  <div
+                    className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 min-h-0"
+                    onFocusCapture={(e) => {
+                      const target = e.target as HTMLElement
+                      if (target && typeof target.scrollIntoView === 'function') {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                      }
+                    }}
+                  >
                     <div className="space-y-2">
-                      <Label htmlFor="pub-periodico">
-                        Periódico / Revista <span className="text-destructive">*</span>
+                      <Label htmlFor="pub-titulo">
+                        Título do Artigo <span className="text-destructive">*</span>
                       </Label>
                       <Input
-                        id="pub-periodico"
-                        placeholder="Ex: Journal of Materials Chemistry A"
-                        value={formData.periodico}
-                        onChange={(e) => setFormData({ ...formData, periodico: e.target.value })}
+                        id="pub-titulo"
+                        placeholder="Título completo do artigo científico..."
+                        value={formData.titulo}
+                        onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
                         required
                         className="bg-white"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="pub-ano">
-                        Ano de Publicação <span className="text-destructive">*</span>
+                      <Label htmlFor="pub-autores">
+                        Autores <span className="text-destructive">*</span>
                       </Label>
                       <Input
-                        id="pub-ano"
-                        type="number"
-                        min="2015"
-                        max="2035"
-                        value={formData.ano}
-                        onChange={(e) => setFormData({ ...formData, ano: Number(e.target.value) })}
+                        id="pub-autores"
+                        placeholder="Ex: Silva, J. A.; Mendes, R. C.; Santos, L. M."
+                        value={formData.autores}
+                        onChange={(e) => setFormData({ ...formData, autores: e.target.value })}
                         required
                         className="bg-white"
                       />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="pub-doi">DOI</Label>
-                      <Input
-                        id="pub-doi"
-                        placeholder="10.1016/j.jmatchem.2025.01.001"
-                        value={formData.doi}
-                        onChange={(e) => setFormData({ ...formData, doi: e.target.value })}
-                        className="bg-white"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="pub-jcr">Fator de Impacto (JCR)</Label>
-                      <Input
-                        id="pub-jcr"
-                        type="number"
-                        step="0.001"
-                        min="0"
-                        max="999.999"
-                        placeholder="Ex: 3.850"
-                        value={
-                          formData.fator_impacto_jcr !== null &&
-                          formData.fator_impacto_jcr !== undefined
-                            ? formData.fator_impacto_jcr
-                            : ''
-                        }
-                        onChange={(e) => {
-                          const val = e.target.value === '' ? null : parseFloat(e.target.value)
-                          setFormData({
-                            ...formData,
-                            fator_impacto_jcr: val !== null && !isNaN(val) ? val : null,
-                          })
-                        }}
-                        className="bg-white"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Campos Ficha CAPES (Etapa Q1): Qualis, Tipo de Produção, Indicação */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3 bg-slate-50/80 rounded-lg border border-slate-200">
-                    <div className="space-y-2">
-                      <Label htmlFor="pub-estrato-qualis">Estrato Qualis</Label>
-                      <Select
-                        value={formData.estrato_qualis || 'sem_estrato'}
-                        onValueChange={(val) =>
-                          setFormData({
-                            ...formData,
-                            estrato_qualis: val === 'sem_estrato' ? null : (val as EstratoQualis),
-                          })
-                        }
-                      >
-                        <SelectTrigger id="pub-estrato-qualis" className="bg-white">
-                          <SelectValue placeholder="Selecione o estrato" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="sem_estrato">Sem estrato</SelectItem>
-                          <SelectItem value="A1">A1</SelectItem>
-                          <SelectItem value="A2">A2</SelectItem>
-                          <SelectItem value="A3">A3</SelectItem>
-                          <SelectItem value="A4">A4</SelectItem>
-                          <SelectItem value="B1">B1</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="pub-tipo-producao">Tipo de Produção</Label>
-                      <Select
-                        value={formData.tipo_producao || 'vazio'}
-                        onValueChange={(val) =>
-                          setFormData({
-                            ...formData,
-                            tipo_producao: val === 'vazio' ? null : (val as TipoProducao),
-                          })
-                        }
-                      >
-                        <SelectTrigger id="pub-tipo-producao" className="bg-white">
-                          <SelectValue placeholder="Selecione o tipo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="vazio">(vazio)</SelectItem>
-                          <SelectItem value="Artigo em periódico">Artigo em periódico</SelectItem>
-                          <SelectItem value="Trabalho em anais">Trabalho em anais</SelectItem>
-                          <SelectItem value="Capítulo">Capítulo</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="pub-indicacao-nivel">Indicação (nível)</Label>
-                      <Select
-                        value={
-                          formData.indicacao_nivel !== null &&
-                          formData.indicacao_nivel !== undefined
-                            ? String(formData.indicacao_nivel)
-                            : 'sem_indicacao'
-                        }
-                        onValueChange={(val) =>
-                          setFormData({
-                            ...formData,
-                            indicacao_nivel:
-                              val === 'sem_indicacao' ? null : (Number(val) as IndicacaoNivel),
-                          })
-                        }
-                      >
-                        <SelectTrigger id="pub-indicacao-nivel" className="bg-white">
-                          <SelectValue placeholder="Selecione a indicação" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="sem_indicacao">Sem indicação</SelectItem>
-                          <SelectItem value="2">Nível 2 (melhores do programa)</SelectItem>
-                          <SelectItem value="3">Nível 3 (quadriênio)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Justificativa da indicação (obrigatória quando Nível 2 ou 3) */}
-                  {(formData.indicacao_nivel === 2 || formData.indicacao_nivel === 3) && (
-                    <div className="space-y-2 p-3 bg-blue-50/50 rounded-lg border border-blue-200">
-                      <Label
-                        htmlFor="pub-justificativa-indicacao"
-                        className="text-blue-900 font-medium"
-                      >
-                        Justificativa da Indicação (Nível {formData.indicacao_nivel}){' '}
-                        <span className="text-destructive">*</span>
-                      </Label>
-                      <Textarea
-                        id="pub-justificativa-indicacao"
-                        rows={3}
-                        required
-                        placeholder={
-                          formData.indicacao_nivel === 2
-                            ? 'Descreva a relevância desta produção entre as melhores do programa no quadriênio (máx. 4 por docente)...'
-                            : 'Descreva a justificativa para indicação desta produção como destaque do quadriênio (até 5 do programa)...'
-                        }
-                        value={formData.justificativa_indicacao || ''}
-                        onChange={(e) =>
-                          setFormData({ ...formData, justificativa_indicacao: e.target.value })
-                        }
-                        className="bg-white"
-                      />
-                      <p className="text-xs text-blue-700">
-                        {formData.indicacao_nivel === 2
-                          ? 'Ficha CAPES 2.4.3: máximo de 4 produções com Nível 2 por docente no quadriênio.'
-                          : 'Ficha CAPES 2.4.4: até 5 melhores produções científicas do Programa no quadriênio.'}
+                      <p className="text-xs text-slate-500">
+                        Identifique claramente os docentes e discentes do programa
                       </p>
                     </div>
-                  )}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="pub-periodico">
+                          Periódico / Revista <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="pub-periodico"
+                          placeholder="Ex: Journal of Materials Chemistry A"
+                          value={formData.periodico}
+                          onChange={(e) => setFormData({ ...formData, periodico: e.target.value })}
+                          required
+                          className="bg-white"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="pub-ano">
+                          Ano de Publicação <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="pub-ano"
+                          type="number"
+                          min="2015"
+                          max="2035"
+                          value={formData.ano}
+                          onChange={(e) =>
+                            setFormData({ ...formData, ano: Number(e.target.value) })
+                          }
+                          required
+                          className="bg-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="pub-doi">DOI</Label>
+                        <Input
+                          id="pub-doi"
+                          placeholder="10.1016/j.jmatchem.2025.01.001"
+                          value={formData.doi}
+                          onChange={(e) => setFormData({ ...formData, doi: e.target.value })}
+                          className="bg-white"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="pub-jcr">Fator de Impacto (JCR)</Label>
+                        <Input
+                          id="pub-jcr"
+                          type="number"
+                          step="0.001"
+                          min="0"
+                          max="999.999"
+                          placeholder="Ex: 3.850"
+                          value={
+                            formData.fator_impacto_jcr !== null &&
+                            formData.fator_impacto_jcr !== undefined
+                              ? formData.fator_impacto_jcr
+                              : ''
+                          }
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? null : parseFloat(e.target.value)
+                            setFormData({
+                              ...formData,
+                              fator_impacto_jcr: val !== null && !isNaN(val) ? val : null,
+                            })
+                          }}
+                          className="bg-white"
+                        />
+                      </div>
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="pub-justificativa">Justificativa de Impacto e Relevância</Label>{' '}
-                    <Textarea
-                      id="pub-justificativa"
-                      rows={3}
-                      placeholder="Contribuição para o quadriênio CAPES, aderência às linhas de pesquisa, colaboração internacional..."
-                      value={formData.justificativa}
-                      onChange={(e) => setFormData({ ...formData, justificativa: e.target.value })}
-                      className="bg-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="pub-link">Link de Comprovação / Acesso Aberto</Label>
-                    <Input
-                      id="pub-link"
-                      type="url"
-                      placeholder="https://doi.org/... ou https://sciencedirect.com/..."
-                      value={formData.link_comprovacao}
-                      onChange={(e) =>
-                        setFormData({ ...formData, link_comprovacao: e.target.value })
-                      }
-                      className="bg-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="pub-obs">Observações</Label>
-                    <Textarea
-                      id="pub-obs"
-                      rows={2}
-                      placeholder="Quartis Qualis, número de citações, projetos associados..."
-                      value={formData.observacoes}
-                      onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
-                      className="bg-white"
-                    />
-                  </div>
+                    {/* Campos Ficha CAPES (Etapa Q1): Qualis, Tipo de Produção, Indicação */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3 bg-slate-50/80 rounded-lg border border-slate-200">
+                      <div className="space-y-2">
+                        <Label htmlFor="pub-estrato-qualis">Estrato Qualis</Label>
+                        <Select
+                          value={formData.estrato_qualis || 'sem_estrato'}
+                          onValueChange={(val) =>
+                            setFormData({
+                              ...formData,
+                              estrato_qualis: val === 'sem_estrato' ? null : (val as EstratoQualis),
+                            })
+                          }
+                        >
+                          <SelectTrigger id="pub-estrato-qualis" className="bg-white">
+                            <SelectValue placeholder="Selecione o estrato" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="sem_estrato">Sem estrato</SelectItem>
+                            <SelectItem value="A1">A1</SelectItem>
+                            <SelectItem value="A2">A2</SelectItem>
+                            <SelectItem value="A3">A3</SelectItem>
+                            <SelectItem value="A4">A4</SelectItem>
+                            <SelectItem value="B1">B1</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                  {/* Seção de Docentes Autores do P²CEM */}
-                  <div className="pt-2">
-                    <SeletorDocentesAutores
-                      autoresTexto={formData.autores}
-                      docentes={docentesLista}
-                      docentesSelecionadosIds={docentesAutoresSelecionados}
-                      onChangeDocentesIds={setDocentesAutoresSelecionados}
-                      canEdit={canEdit}
-                    />
-                  </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="pub-tipo-producao">Tipo de Produção</Label>
+                        <Select
+                          value={formData.tipo_producao || 'vazio'}
+                          onValueChange={(val) =>
+                            setFormData({
+                              ...formData,
+                              tipo_producao: val === 'vazio' ? null : (val as TipoProducao),
+                            })
+                          }
+                        >
+                          <SelectTrigger id="pub-tipo-producao" className="bg-white">
+                            <SelectValue placeholder="Selecione o tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="vazio">(vazio)</SelectItem>
+                            <SelectItem value="Artigo em periódico">Artigo em periódico</SelectItem>
+                            <SelectItem value="Trabalho em anais">Trabalho em anais</SelectItem>
+                            <SelectItem value="Capítulo">Capítulo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                  {/* Seção de Coautoria com Orientandos/Egressos do P²CEM */}
-                  <div className="pt-2">
-                    <SeletorCoautoria
-                      publicacaoId={editingId}
-                      autoresTexto={formData.autores}
-                      fatorImpactoJcr={formData.fator_impacto_jcr}
-                      discentes={discentesLista}
-                      egressos={egressosLista}
-                      usuarioNome={profile?.name || profile?.email || 'Colegiado'}
-                      canEdit={canEdit}
-                      onCoautoriaAtualizada={carregarRelacionados}
-                    />
+                      <div className="space-y-2">
+                        <Label htmlFor="pub-indicacao-nivel">Indicação (nível)</Label>
+                        <Select
+                          value={
+                            formData.indicacao_nivel !== null &&
+                            formData.indicacao_nivel !== undefined
+                              ? String(formData.indicacao_nivel)
+                              : 'sem_indicacao'
+                          }
+                          onValueChange={(val) =>
+                            setFormData({
+                              ...formData,
+                              indicacao_nivel:
+                                val === 'sem_indicacao' ? null : (Number(val) as IndicacaoNivel),
+                            })
+                          }
+                        >
+                          <SelectTrigger id="pub-indicacao-nivel" className="bg-white">
+                            <SelectValue placeholder="Selecione a indicação" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="sem_indicacao">Sem indicação</SelectItem>
+                            <SelectItem value="2">Nível 2 (melhores do programa)</SelectItem>
+                            <SelectItem value="3">Nível 3 (quadriênio)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Justificativa da indicação (obrigatória quando Nível 2 ou 3) */}
+                    {(formData.indicacao_nivel === 2 || formData.indicacao_nivel === 3) && (
+                      <div className="space-y-2 p-3 bg-blue-50/50 rounded-lg border border-blue-200">
+                        <Label
+                          htmlFor="pub-justificativa-indicacao"
+                          className="text-blue-900 font-medium"
+                        >
+                          Justificativa da Indicação (Nível {formData.indicacao_nivel}){' '}
+                          <span className="text-destructive">*</span>
+                        </Label>
+                        <Textarea
+                          id="pub-justificativa-indicacao"
+                          rows={3}
+                          required
+                          placeholder={
+                            formData.indicacao_nivel === 2
+                              ? 'Descreva a relevância desta produção entre as melhores do programa no quadriênio (máx. 4 por docente)...'
+                              : 'Descreva a justificativa para indicação desta produção como destaque do quadriênio (até 5 do programa)...'
+                          }
+                          value={formData.justificativa_indicacao || ''}
+                          onChange={(e) =>
+                            setFormData({ ...formData, justificativa_indicacao: e.target.value })
+                          }
+                          className="bg-white"
+                        />
+                        <p className="text-xs text-blue-700">
+                          {formData.indicacao_nivel === 2
+                            ? 'Ficha CAPES 2.4.3: máximo de 4 produções com Nível 2 por docente no quadriênio.'
+                            : 'Ficha CAPES 2.4.4: até 5 melhores produções científicas do Programa no quadriênio.'}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="pub-justificativa">
+                        Justificativa de Impacto e Relevância
+                      </Label>{' '}
+                      <Textarea
+                        id="pub-justificativa"
+                        rows={3}
+                        placeholder="Contribuição para o quadriênio CAPES, aderência às linhas de pesquisa, colaboração internacional..."
+                        value={formData.justificativa}
+                        onChange={(e) =>
+                          setFormData({ ...formData, justificativa: e.target.value })
+                        }
+                        className="bg-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="pub-link">Link de Comprovação / Acesso Aberto</Label>
+                      <Input
+                        id="pub-link"
+                        type="url"
+                        placeholder="https://doi.org/... ou https://sciencedirect.com/..."
+                        value={formData.link_comprovacao}
+                        onChange={(e) =>
+                          setFormData({ ...formData, link_comprovacao: e.target.value })
+                        }
+                        className="bg-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="pub-obs">Observações</Label>
+                      <Textarea
+                        id="pub-obs"
+                        rows={2}
+                        placeholder="Quartis Qualis, número de citações, projetos associados..."
+                        value={formData.observacoes}
+                        onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                        className="bg-white"
+                      />
+                    </div>
+
+                    {/* Seção de Docentes Autores do P²CEM */}
+                    <div className="pt-2">
+                      <SeletorDocentesAutores
+                        autoresTexto={formData.autores}
+                        docentes={docentesLista}
+                        docentesSelecionadosIds={docentesAutoresSelecionados}
+                        onChangeDocentesIds={setDocentesAutoresSelecionados}
+                        canEdit={canEdit}
+                      />
+                    </div>
+
+                    {/* Seção de Coautoria com Orientandos/Egressos do P²CEM */}
+                    <div className="pt-2">
+                      <SeletorCoautoria
+                        publicacaoId={editingId}
+                        autoresTexto={formData.autores}
+                        fatorImpactoJcr={formData.fator_impacto_jcr}
+                        discentes={discentesLista}
+                        egressos={egressosLista}
+                        usuarioNome={profile?.name || profile?.email || 'Colegiado'}
+                        canEdit={canEdit}
+                        onCoautoriaAtualizada={carregarRelacionados}
+                      />
+                    </div>
                   </div>
-                  <div className="flex justify-end gap-3 pt-4">
+                  {/* Rodapé fixo no mobile com safe-area */}
+                  <div className="border-t border-slate-200 dark:border-neutral-800 bg-slate-50/90 dark:bg-neutral-900/90 p-3 md:p-4 flex items-center justify-end gap-2 md:gap-3 shrink-0 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] md:pb-4">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setIsDialogOpen(false)}
-                      className="bg-white hover:bg-slate-50"
+                      className="bg-white hover:bg-slate-50 min-h-[44px] md:min-h-9 px-4 text-xs md:text-sm flex-1 md:flex-initial"
                     >
                       Cancelar
                     </Button>
-                    <Button type="submit" disabled={submitting}>
-                      Salvar Publicação
+                    <Button
+                      type="submit"
+                      disabled={submitting}
+                      className="min-h-[44px] md:min-h-9 px-5 text-xs md:text-sm flex-1 md:flex-initial"
+                    >
+                      {submitting ? 'Salvando...' : 'Salvar Publicação'}
                     </Button>
                   </div>
                 </form>
@@ -772,12 +799,12 @@ export default function Publicacoes() {
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    {Array.from({ length: canEdit ? 9 : 8 }).map((_, j) => (
-                      <TableCell key={j}>
-                        <Skeleton className="h-6 w-full" />
+                  <TableRow key={i} className="h-14">
+                    {Array.from({ length: 7 }).map((_, j) => (
+                      <TableCell key={j} className="text-center py-3">
+                        <Skeleton className="h-5 w-full" />
                       </TableCell>
-                    ))}{' '}
+                    ))}
                   </TableRow>
                 ))
               ) : paginated.length > 0 ? (
@@ -948,12 +975,19 @@ export default function Publicacoes() {
         <div className="block md:hidden flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/40">
           {loading ? (
             Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="p-4 rounded-lg border border-slate-200 bg-white space-y-3">
+              <div
+                key={i}
+                className="p-4 rounded-lg border border-slate-200 bg-white space-y-3 min-h-[160px]"
+              >
                 <Skeleton className="h-5 w-3/4" />
                 <Skeleton className="h-4 w-1/2" />
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
                   <Skeleton className="h-4 w-full" />
                   <Skeleton className="h-4 w-full" />
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
+                  <Skeleton className="h-10 w-24 rounded-md" />
+                  <Skeleton className="h-10 w-16 rounded-md" />
                 </div>
               </div>
             ))

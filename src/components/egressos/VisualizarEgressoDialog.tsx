@@ -198,27 +198,27 @@ export function VisualizarEgressoDialog({
             Identificação do Egresso
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Nome Completo:</span>
               <span className="text-slate-900 font-semibold text-sm">{nomeEgressoNormalizado}</span>
             </div>
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Tipo / Nível do Curso:</span>
               {egresso.tipo_curso ? (
-                <span className="inline-block mt-0.5 font-medium text-primary bg-primary/10 px-2 py-0.5 rounded text-xs">
+                <span className="inline-block mt-0.5 font-medium text-primary bg-primary/10 px-2 py-0.5 rounded text-xs w-fit">
                   {egresso.tipo_curso}
                 </span>
               ) : (
                 <span className="text-slate-400 mt-0.5 block">Não informado</span>
               )}
             </div>
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Ano de Ingresso:</span>
               <span className="text-slate-800 font-mono mt-0.5 block">
                 {egresso.ano_ingresso || 'Não informado'}
               </span>
             </div>
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">
                 Ano de Titulação / Conclusão:
               </span>
@@ -226,13 +226,13 @@ export function VisualizarEgressoDialog({
                 {egresso.ano_titulacao ? String(egresso.ano_titulacao) : 'Não informado'}
               </span>
             </div>
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Nacionalidade:</span>
               <span className="text-slate-800 mt-0.5 block">
                 {egresso.nacionalidade || 'Não informado'}
               </span>
             </div>
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">ID Lattes (16 dígitos):</span>
               <span className="text-slate-800 font-mono mt-0.5 block">
                 {egresso.lattes_id || 'Não informado'}
@@ -248,10 +248,10 @@ export function VisualizarEgressoDialog({
             Orientador Responsável
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Docente Vinculado:</span>
               {docenteOrientador ? (
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex flex-wrap items-center gap-2 mt-1">
                   <DocenteNome
                     nome={docenteOrientador.nome}
                     status={docenteOrientador.status}
@@ -283,18 +283,21 @@ export function VisualizarEgressoDialog({
               )}
             </div>
 
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Tipo de Vínculo:</span>
               <span className="text-slate-800 mt-1 block">
                 {docenteOrientador ? (
                   <Badge
                     variant="outline"
-                    className="bg-emerald-50 text-emerald-800 border-emerald-300"
+                    className="bg-emerald-50 text-emerald-800 border-emerald-300 w-fit"
                   >
                     Vínculo formal com Docente PPG-DCEM
                   </Badge>
                 ) : egresso.orientador ? (
-                  <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200">
+                  <Badge
+                    variant="outline"
+                    className="bg-slate-100 text-slate-700 border-slate-200 w-fit"
+                  >
                     Registro textual livre
                   </Badge>
                 ) : (
@@ -329,7 +332,7 @@ export function VisualizarEgressoDialog({
             Comprovações e Links
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Currículo Lattes / LinkedIn:</span>
               {egresso.link_lattes ? (
                 <a
@@ -340,9 +343,9 @@ export function VisualizarEgressoDialog({
                   }
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary hover:underline flex items-center gap-1 mt-1 font-medium"
+                  className="text-primary hover:underline flex items-center gap-1 mt-1 font-medium break-all"
                 >
-                  <span className="truncate">{egresso.link_lattes}</span>
+                  <span className="break-all">{egresso.link_lattes}</span>
                   <ExternalLink className="h-3 w-3 shrink-0" />
                 </a>
               ) : (
@@ -350,14 +353,14 @@ export function VisualizarEgressoDialog({
               )}
             </div>
 
-            <div>
+            <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Link de Comprovação:</span>
               {egresso.link_comprovacao ? (
                 <a
                   href={egresso.link_comprovacao}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary hover:underline flex items-center gap-1.5 mt-1 font-medium bg-primary/5 px-2.5 py-1 rounded border border-primary/20 w-fit"
+                  className="text-primary hover:underline flex items-center gap-1.5 mt-1 font-medium bg-primary/5 px-2.5 py-1 rounded border border-primary/20 w-fit break-all"
                 >
                   <span>Abrir documento</span>
                   <ExternalLink className="h-3 w-3 shrink-0" />
@@ -498,9 +501,12 @@ export function VisualizarEgressoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] h-[85vh] flex flex-col p-0 overflow-hidden bg-white">
+      <DialogContent
+        bottomSheetOnMobile
+        className="max-w-4xl md:max-h-[90vh] md:h-[85vh] flex flex-col p-0 overflow-hidden bg-white"
+      >
         {/* Cabeçalho */}
-        <DialogHeader className="p-5 pb-4 border-b bg-slate-50/90 shrink-0">
+        <DialogHeader className="p-4 md:p-5 pb-3 md:pb-4 border-b bg-slate-50/90 shrink-0">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <DialogTitle className="flex items-center gap-2 text-xl text-primary font-bold truncate">
@@ -598,13 +604,13 @@ export function VisualizarEgressoDialog({
           )}
         </div>
 
-        {/* Rodapé com ação Editar alinhado ao padrão */}
-        <DialogFooter className="p-4 border-t bg-slate-50/80 shrink-0 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
+        {/* Rodapé com ação Editar alinhado ao padrão e safe-area */}
+        <DialogFooter className="p-3 md:p-4 border-t bg-slate-50/80 shrink-0 flex flex-row items-center justify-between gap-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] md:pb-4">
+          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
             <span>Visualização somente leitura dos registros do egresso.</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             {onEditar && (
               <Button
                 type="button"
@@ -614,7 +620,7 @@ export function VisualizarEgressoDialog({
                   onOpenChange(false)
                   onEditar(egresso)
                 }}
-                className="gap-1.5 bg-white text-primary border-primary/30 hover:bg-primary/10"
+                className="gap-1.5 bg-white text-primary border-primary/30 hover:bg-primary/10 min-h-[44px] md:min-h-8 flex-1 sm:flex-initial"
               >
                 <Edit className="h-3.5 w-3.5" />
                 <span>Editar Egresso</span>
@@ -625,7 +631,7 @@ export function VisualizarEgressoDialog({
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="bg-white hover:bg-slate-50"
+              className="bg-white hover:bg-slate-50 min-h-[44px] md:min-h-8 flex-1 sm:flex-initial"
             >
               Fechar
             </Button>

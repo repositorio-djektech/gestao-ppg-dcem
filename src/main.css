@@ -52,6 +52,31 @@
 }
 
 @layer utilities {
+  /* Safe-area insets helpers para notch e barra de gestos iPhone / iPad */
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .safe-left {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+  .safe-right {
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+  .safe-pb-modal {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+
+  /* Alvo de toque acessível no mobile (mínimo de 44px) sem impactar densidade desktop */
+  @media (pointer: coarse), (max-width: 767px) {
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
   /* Scrollbar fina, translúcida e suave para a barra lateral */
   .sidebar-scrollbar {
     scrollbar-width: thin;

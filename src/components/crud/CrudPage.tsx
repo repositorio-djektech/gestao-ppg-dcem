@@ -221,10 +221,10 @@ export function CrudPage<T extends { id: number | string }>({
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             <Input
               placeholder="Buscar..."
-              className="pl-9 bg-white border-slate-200"
+              className="pl-9 bg-white border-slate-200 min-h-[44px] md:min-h-9 text-sm"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value)
@@ -236,7 +236,7 @@ export function CrudPage<T extends { id: number | string }>({
             <Button
               variant="outline"
               onClick={() => navigate(`/imprimir/${printModule}`)}
-              className="gap-2 shrink-0 bg-white"
+              className="gap-2 shrink-0 bg-white min-h-[44px] md:min-h-9 px-3.5"
               title="Versão para Impressão / Exportar PDF"
             >
               <Printer className="h-4 w-4 text-slate-600" />
@@ -244,7 +244,10 @@ export function CrudPage<T extends { id: number | string }>({
             </Button>
           )}
           {canEdit && (
-            <Button onClick={() => handleOpen()} className="gap-2 shrink-0">
+            <Button
+              onClick={() => handleOpen()}
+              className="gap-2 shrink-0 min-h-[44px] md:min-h-9 px-4"
+            >
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Novo {entityName}</span>
             </Button>
@@ -280,10 +283,10 @@ export function CrudPage<T extends { id: number | string }>({
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
+                  <TableRow key={i} className="h-14">
                     {Array.from({ length: colCount }).map((_, j) => (
-                      <TableCell key={j}>
-                        <Skeleton className="h-6 w-full" />
+                      <TableCell key={j} className="py-3">
+                        <Skeleton className="h-5 w-full" />
                       </TableCell>
                     ))}
                   </TableRow>
@@ -350,13 +353,16 @@ export function CrudPage<T extends { id: number | string }>({
         <div className="block md:hidden flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/40">
           {loading ? (
             Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i} className="border border-slate-200 shadow-xs bg-white">
+              <Card key={i} className="border border-slate-200 shadow-xs bg-white min-h-[148px]">
                 <CardContent className="p-4 space-y-3">
                   <Skeleton className="h-5 w-3/4" />
                   <Skeleton className="h-4 w-1/2" />
                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-full" />
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 flex justify-end">
+                    <Skeleton className="h-10 w-24 rounded-md" />
                   </div>
                 </CardContent>
               </Card>

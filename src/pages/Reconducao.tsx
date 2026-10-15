@@ -899,10 +899,10 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
             <TableBody>
               {carregando ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
+                  <TableRow key={i} className="h-14">
                     {Array.from({ length: 7 }).map((_, j) => (
-                      <TableCell key={j}>
-                        <Skeleton className="h-6 w-full" />
+                      <TableCell key={j} className="py-3">
+                        <Skeleton className="h-5 w-full" />
                       </TableCell>
                     ))}
                   </TableRow>
@@ -1028,12 +1028,18 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
         <div className="block md:hidden p-3 space-y-3 bg-slate-50/50">
           {carregando ? (
             Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="p-4 rounded-lg border border-slate-200 bg-white space-y-3">
+              <div
+                key={i}
+                className="p-4 rounded-lg border border-slate-200 bg-white space-y-3 min-h-[160px]"
+              >
                 <Skeleton className="h-5 w-3/4" />
                 <Skeleton className="h-4 w-1/2" />
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
                   <Skeleton className="h-4 w-full" />
                   <Skeleton className="h-4 w-full" />
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex justify-end">
+                  <Skeleton className="h-10 w-24 rounded-md" />
                 </div>
               </div>
             ))

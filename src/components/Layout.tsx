@@ -41,7 +41,7 @@ export function Layout() {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-slate-100/70 dark:bg-neutral-950">
+    <div className="flex h-screen h-[100dvh] w-full overflow-hidden bg-slate-100/70 dark:bg-neutral-950">
       {/* Sidebar lateral com borda direita */}
       <AppSidebar open={sidebarOpen} setOpen={setSidebarOpen} />
       <div className="flex flex-1 flex-col min-w-0 w-full overflow-hidden">
@@ -49,8 +49,8 @@ export function Layout() {
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
         />
-        {/* Área interna de conteúdo: fundo com contraste suave e sombra sutil para destaque */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 shadow-inner">
+        {/* Área interna de conteúdo: fundo com contraste suave e sombra sutil para destaque, com safe-area padding */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 shadow-inner pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] md:pb-6 lg:pb-8">
           <Outlet />
         </main>
       </div>

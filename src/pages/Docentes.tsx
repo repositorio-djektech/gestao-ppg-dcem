@@ -575,383 +575,405 @@ export default function Docentes() {
                   <span className="hidden sm:inline">Novo Docente</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[480px]">
-                <DialogHeader>
-                  <DialogTitle className="text-primary font-bold">
+              <DialogContent
+                bottomSheetOnMobile
+                className="md:max-w-[500px] md:max-h-[90vh] flex flex-col p-0 overflow-hidden"
+              >
+                <DialogHeader className="p-4 md:p-6 pb-2 md:pb-4 border-b border-slate-100 dark:border-neutral-800 shrink-0 pr-12 md:pr-12">
+                  <DialogTitle className="text-primary font-bold text-lg md:text-xl text-left">
                     {editingId ? 'Editar Docente' : 'Adicionar Docente'}
                   </DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="nome">
-                      Nome Completo <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="nome"
-                      placeholder="Ex: Prof. Dr. Carlos Alberto..."
-                      value={formData.nome}
-                      onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                      required
-                      className="bg-white"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="scopusId">Scopus Author ID</Label>
-                      <Input
-                        id="scopusId"
-                        placeholder="Ex: 57201234567"
-                        value={formData.scopus_id}
-                        onChange={(e) => setFormData({ ...formData, scopus_id: e.target.value })}
-                        className="bg-white"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="indiceH">Índice-H</Label>
-                      <Input
-                        id="indiceH"
-                        type="number"
-                        min="0"
-                        placeholder="0"
-                        value={formData.indice_h}
-                        onChange={(e) =>
-                          setFormData({ ...formData, indice_h: Number(e.target.value) })
-                        }
-                        className="bg-white"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bolsaCnpq">Bolsa de Produtividade CNPq</Label>
-                    <Select
-                      value={formData.bolsa_cnpq || '__none__'}
-                      onValueChange={(v) =>
-                        setFormData({ ...formData, bolsa_cnpq: v === '__none__' ? '' : v })
+                <form
+                  onSubmit={handleSubmit}
+                  className="flex flex-col flex-1 min-h-0 overflow-hidden"
+                >
+                  <div
+                    className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 min-h-0"
+                    onFocusCapture={(e) => {
+                      const target = e.target as HTMLElement
+                      if (target && typeof target.scrollIntoView === 'function') {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'center' })
                       }
-                    >
-                      <SelectTrigger id="bolsaCnpq" className="bg-white">
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">— Nenhuma Bolsa —</SelectItem>
-                        <SelectItem value="PQ-1A">PQ 1A</SelectItem>
-                        <SelectItem value="PQ-1B">PQ 1B</SelectItem>
-                        <SelectItem value="PQ-1C">PQ 1C</SelectItem>
-                        <SelectItem value="PQ-1D">PQ 1D</SelectItem>
-                        <SelectItem value="PQ-2">PQ 2</SelectItem>
-                        <SelectItem value="DT-1A">DT 1A</SelectItem>
-                        <SelectItem value="DT-1B">DT 1B</SelectItem>
-                        <SelectItem value="DT-2">DT 2</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="categoria">Categoria no PPG-DCEM</Label>
-                    <Select
-                      value={formData.categoria || '__none__'}
-                      onValueChange={(v) => {
-                        const novaCat =
-                          v === '__none__'
-                            ? null
-                            : (v as 'permanente' | 'colaborador' | 'visitante' | 'jdp')
-                        const desmarcarJdp = novaCat !== 'permanente' && formData.jdp
-                        setFormData({
-                          ...formData,
-                          categoria: novaCat,
-                          jdp: desmarcarJdp ? false : formData.jdp,
-                          jdp_desde: desmarcarJdp ? null : formData.jdp_desde,
-                          ano_doutorado: desmarcarJdp ? null : formData.ano_doutorado,
-                        })
-                      }}
-                    >
-                      <SelectTrigger id="categoria" className="bg-white">
-                        <SelectValue placeholder="Selecione a categoria..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">Sem categoria (Não informado)</SelectItem>
-                        <SelectItem value="permanente">Permanente</SelectItem>
-                        <SelectItem value="colaborador">Colaborador</SelectItem>
-                        <SelectItem value="visitante">Visitante</SelectItem>
-                        <SelectItem value="jdp">JDP</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {/* Controle de Jovem Doutor Pesquisador (JDP) */}
-                  <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 space-y-3">
-                    <div className="flex items-center justify-between">
+                    }}
+                  >
+                    <div className="space-y-2">
+                      <Label htmlFor="nome">
+                        Nome Completo <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="nome"
+                        placeholder="Ex: Prof. Dr. Carlos Alberto..."
+                        value={formData.nome}
+                        onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                        required
+                        className="bg-white"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="scopusId">Scopus Author ID</Label>
+                        <Input
+                          id="scopusId"
+                          placeholder="Ex: 57201234567"
+                          value={formData.scopus_id}
+                          onChange={(e) => setFormData({ ...formData, scopus_id: e.target.value })}
+                          className="bg-white"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="indiceH">Índice-H</Label>
+                        <Input
+                          id="indiceH"
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={formData.indice_h}
+                          onChange={(e) =>
+                            setFormData({ ...formData, indice_h: Number(e.target.value) })
+                          }
+                          className="bg-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bolsaCnpq">Bolsa de Produtividade CNPq</Label>
+                      <Select
+                        value={formData.bolsa_cnpq || '__none__'}
+                        onValueChange={(v) =>
+                          setFormData({ ...formData, bolsa_cnpq: v === '__none__' ? '' : v })
+                        }
+                      >
+                        <SelectTrigger id="bolsaCnpq" className="bg-white">
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">— Nenhuma Bolsa —</SelectItem>
+                          <SelectItem value="PQ-1A">PQ 1A</SelectItem>
+                          <SelectItem value="PQ-1B">PQ 1B</SelectItem>
+                          <SelectItem value="PQ-1C">PQ 1C</SelectItem>
+                          <SelectItem value="PQ-1D">PQ 1D</SelectItem>
+                          <SelectItem value="PQ-2">PQ 2</SelectItem>
+                          <SelectItem value="DT-1A">DT 1A</SelectItem>
+                          <SelectItem value="DT-1B">DT 1B</SelectItem>
+                          <SelectItem value="DT-2">DT 2</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="categoria">Categoria no PPG-DCEM</Label>
+                      <Select
+                        value={formData.categoria || '__none__'}
+                        onValueChange={(v) => {
+                          const novaCat =
+                            v === '__none__'
+                              ? null
+                              : (v as 'permanente' | 'colaborador' | 'visitante' | 'jdp')
+                          const desmarcarJdp = novaCat !== 'permanente' && formData.jdp
+                          setFormData({
+                            ...formData,
+                            categoria: novaCat,
+                            jdp: desmarcarJdp ? false : formData.jdp,
+                            jdp_desde: desmarcarJdp ? null : formData.jdp_desde,
+                            ano_doutorado: desmarcarJdp ? null : formData.ano_doutorado,
+                          })
+                        }}
+                      >
+                        <SelectTrigger id="categoria" className="bg-white">
+                          <SelectValue placeholder="Selecione a categoria..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Sem categoria (Não informado)</SelectItem>
+                          <SelectItem value="permanente">Permanente</SelectItem>
+                          <SelectItem value="colaborador">Colaborador</SelectItem>
+                          <SelectItem value="visitante">Visitante</SelectItem>
+                          <SelectItem value="jdp">JDP</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* Controle de Jovem Doutor Pesquisador (JDP) */}
+                    <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label
+                            htmlFor="jdp-docente"
+                            className="text-sm font-semibold cursor-pointer"
+                          >
+                            Jovem Doutor Pesquisador (JDP)
+                          </Label>
+                          <p className="text-xs text-slate-500">
+                            Exclusivo para categoria Permanente (máx. 20% do DP, prazo máx. 4 anos).
+                          </p>
+                        </div>
+                        <Switch
+                          id="jdp-docente"
+                          checked={Boolean(formData.jdp)}
+                          onCheckedChange={(checked) => {
+                            if (checked && formData.categoria !== 'permanente') {
+                              toast.error(
+                                'A marcação de JDP só é permitida para docentes da categoria Permanente.',
+                              )
+                              return
+                            }
+                            setFormData({
+                              ...formData,
+                              jdp: checked,
+                            })
+                          }}
+                        />
+                      </div>
+
+                      {formData.jdp && formData.categoria !== 'permanente' && (
+                        <div className="flex items-start gap-2 p-2 rounded bg-amber-50 text-amber-900 border border-amber-200 text-xs">
+                          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                          <div>
+                            Regra CAPES: Apenas docentes <strong>Permanentes</strong> podem ser
+                            enquadrados como JDP. Altere a categoria acima para "Permanente".
+                          </div>
+                        </div>
+                      )}
+
+                      {formData.jdp && (
+                        <div className="space-y-3 pt-2 border-t border-slate-200">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <Label htmlFor="ano_doutorado" className="text-xs font-medium">
+                                Ano do Doutorado <span className="text-destructive">*</span>
+                              </Label>
+                              <Input
+                                id="ano_doutorado"
+                                type="number"
+                                min="1950"
+                                max="2100"
+                                placeholder="Ex: 2021"
+                                value={formData.ano_doutorado ?? ''}
+                                onChange={(e) =>
+                                  setFormData({
+                                    ...formData,
+                                    ano_doutorado:
+                                      e.target.value === '' ? null : Number(e.target.value),
+                                  })
+                                }
+                                className="bg-white h-8 text-xs"
+                              />
+                              <p className="text-[10px] text-slate-500">
+                                Doutorado obtido há menos de 10 anos
+                              </p>
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="jdp_desde" className="text-xs font-medium">
+                                JDP desde (Ano) <span className="text-destructive">*</span>
+                              </Label>
+                              <Input
+                                id="jdp_desde"
+                                type="number"
+                                min="1950"
+                                max="2100"
+                                placeholder="Ex: 2024"
+                                value={formData.jdp_desde ?? ''}
+                                onChange={(e) =>
+                                  setFormData({
+                                    ...formData,
+                                    jdp_desde:
+                                      e.target.value === '' ? null : Number(e.target.value),
+                                  })
+                                }
+                                className="bg-white h-8 text-xs"
+                              />
+                              <p className="text-[10px] text-slate-500">
+                                Prazo máximo de 4 anos como JDP
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Avaliação em tempo real de expiração */}
+                          {(() => {
+                            const statusTemp = avaliarStatusJdpDocente({
+                              jdp: true,
+                              categoria: formData.categoria,
+                              jdp_desde: formData.jdp_desde,
+                              ano_doutorado: formData.ano_doutorado,
+                            })
+                            if (statusTemp.isExpirado) {
+                              return (
+                                <div className="flex items-start gap-2 p-2 rounded bg-amber-50 text-amber-900 border border-amber-200 text-xs">
+                                  <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                                  <div>
+                                    <strong>Condição Expirada:</strong> {statusTemp.motivoExpiracao}
+                                    . Este docente será indicado como "JDP expirado" e não contará
+                                    no conjunto de JDPs válidos para cálculos CAPES.
+                                  </div>
+                                </div>
+                              )
+                            }
+                            return null
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="cpf">CPF</Label>
+                        <Input
+                          id="cpf"
+                          placeholder="000.000.000-00"
+                          value={formData.cpf || ''}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              cpf: e.target.value.replace(/\D/g, '').slice(0, 11),
+                            })
+                          }
+                          className="bg-white"
+                        />
+                        <p className="text-[11px] text-slate-500">Apenas números (salvo limpo)</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="siape">SIAPE</Label>
+                        <Input
+                          id="siape"
+                          placeholder="Ex: 1234567"
+                          value={formData.siape || ''}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              siape: e.target.value.replace(/\D/g, ''),
+                            })
+                          }
+                          className="bg-white"
+                        />
+                        <p className="text-[11px] text-slate-500">Apenas números (salvo limpo)</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">E-mail Institucional / Contato</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="docente@ufs.br"
+                        value={formData.email || ''}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="bg-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="orcId">ORCID</Label>
+                      <Input
+                        id="orcId"
+                        placeholder="0000-0002-1825-0097"
+                        value={formData.orc_id || ''}
+                        onChange={(e) => setFormData({ ...formData, orc_id: e.target.value })}
+                        className="bg-white font-mono text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="licenca">Licença Saúde / Parental</Label>
+                      <Input
+                        id="licenca"
+                        placeholder="Ex: Licença Maternidade (6 meses em 2024)"
+                        value={formData.licenca}
+                        onChange={(e) => setFormData({ ...formData, licenca: e.target.value })}
+                        className="bg-white"
+                      />
+                      <p className="text-xs text-slate-500">
+                        Impacta na flexibilização dos critérios de produtividade CAPES
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50/50">
                       <div className="space-y-0.5">
                         <Label
-                          htmlFor="jdp-docente"
-                          className="text-sm font-semibold cursor-pointer"
+                          htmlFor="status-docente"
+                          className="text-sm font-medium cursor-pointer"
                         >
-                          Jovem Doutor Pesquisador (JDP)
+                          Ativo no programa
                         </Label>
                         <p className="text-xs text-slate-500">
-                          Exclusivo para categoria Permanente (máx. 20% do DP, prazo máx. 4 anos).
+                          Quando inativo (status desmarcado), o nome do docente é destacado em cor
+                          laranja no sistema.
                         </p>
                       </div>
                       <Switch
-                        id="jdp-docente"
-                        checked={Boolean(formData.jdp)}
-                        onCheckedChange={(checked) => {
-                          if (checked && formData.categoria !== 'permanente') {
-                            toast.error(
-                              'A marcação de JDP só é permitida para docentes da categoria Permanente.',
-                            )
-                            return
-                          }
-                          setFormData({
-                            ...formData,
-                            jdp: checked,
-                          })
-                        }}
+                        id="status-docente"
+                        checked={formData.status !== false}
+                        onCheckedChange={(checked) => setFormData({ ...formData, status: checked })}
                       />
                     </div>
-
-                    {formData.jdp && formData.categoria !== 'permanente' && (
-                      <div className="flex items-start gap-2 p-2 rounded bg-amber-50 text-amber-900 border border-amber-200 text-xs">
-                        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
-                        <div>
-                          Regra CAPES: Apenas docentes <strong>Permanentes</strong> podem ser
-                          enquadrados como JDP. Altere a categoria acima para "Permanente".
-                        </div>
-                      </div>
-                    )}
-
-                    {formData.jdp && (
-                      <div className="space-y-3 pt-2 border-t border-slate-200">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <Label htmlFor="ano_doutorado" className="text-xs font-medium">
-                              Ano do Doutorado <span className="text-destructive">*</span>
-                            </Label>
-                            <Input
-                              id="ano_doutorado"
-                              type="number"
-                              min="1950"
-                              max="2100"
-                              placeholder="Ex: 2021"
-                              value={formData.ano_doutorado ?? ''}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  ano_doutorado:
-                                    e.target.value === '' ? null : Number(e.target.value),
-                                })
-                              }
-                              className="bg-white h-8 text-xs"
-                            />
-                            <p className="text-[10px] text-slate-500">
-                              Doutorado obtido há menos de 10 anos
-                            </p>
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label htmlFor="jdp_desde" className="text-xs font-medium">
-                              JDP desde (Ano) <span className="text-destructive">*</span>
-                            </Label>
-                            <Input
-                              id="jdp_desde"
-                              type="number"
-                              min="1950"
-                              max="2100"
-                              placeholder="Ex: 2024"
-                              value={formData.jdp_desde ?? ''}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  jdp_desde: e.target.value === '' ? null : Number(e.target.value),
-                                })
-                              }
-                              className="bg-white h-8 text-xs"
-                            />
-                            <p className="text-[10px] text-slate-500">
-                              Prazo máximo de 4 anos como JDP
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Avaliação em tempo real de expiração */}
-                        {(() => {
-                          const statusTemp = avaliarStatusJdpDocente({
-                            jdp: true,
-                            categoria: formData.categoria,
-                            jdp_desde: formData.jdp_desde,
-                            ano_doutorado: formData.ano_doutorado,
-                          })
-                          if (statusTemp.isExpirado) {
-                            return (
-                              <div className="flex items-start gap-2 p-2 rounded bg-amber-50 text-amber-900 border border-amber-200 text-xs">
-                                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
-                                <div>
-                                  <strong>Condição Expirada:</strong> {statusTemp.motivoExpiracao}.
-                                  Este docente será indicado como "JDP expirado" e não contará no
-                                  conjunto de JDPs válidos para cálculos CAPES.
-                                </div>
-                              </div>
-                            )
-                          }
-                          return null
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="cpf">CPF</Label>
-                      <Input
-                        id="cpf"
-                        placeholder="000.000.000-00"
-                        value={formData.cpf || ''}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            cpf: e.target.value.replace(/\D/g, '').slice(0, 11),
-                          })
-                        }
-                        className="bg-white"
-                      />
-                      <p className="text-[11px] text-slate-500">Apenas números (salvo limpo)</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="siape">SIAPE</Label>
-                      <Input
-                        id="siape"
-                        placeholder="Ex: 1234567"
-                        value={formData.siape || ''}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            siape: e.target.value.replace(/\D/g, ''),
-                          })
-                        }
-                        className="bg-white"
-                      />
-                      <p className="text-[11px] text-slate-500">Apenas números (salvo limpo)</p>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">E-mail Institucional / Contato</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="docente@ufs.br"
-                      value={formData.email || ''}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="bg-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="orcId">ORCID</Label>
-                    <Input
-                      id="orcId"
-                      placeholder="0000-0002-1825-0097"
-                      value={formData.orc_id || ''}
-                      onChange={(e) => setFormData({ ...formData, orc_id: e.target.value })}
-                      className="bg-white font-mono text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="licenca">Licença Saúde / Parental</Label>
-                    <Input
-                      id="licenca"
-                      placeholder="Ex: Licença Maternidade (6 meses em 2024)"
-                      value={formData.licenca}
-                      onChange={(e) => setFormData({ ...formData, licenca: e.target.value })}
-                      className="bg-white"
-                    />
-                    <p className="text-xs text-slate-500">
-                      Impacta na flexibilização dos critérios de produtividade CAPES
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50/50">
-                    <div className="space-y-0.5">
-                      <Label
-                        htmlFor="status-docente"
-                        className="text-sm font-medium cursor-pointer"
-                      >
-                        Ativo no programa
+                    {/* Multiseleção de Linhas de Pesquisa */}{' '}
+                    <div className="space-y-2 pt-2 border-t border-slate-200">
+                      <Label className="text-sm font-semibold text-slate-800">
+                        Linhas de Pesquisa
                       </Label>
                       <p className="text-xs text-slate-500">
-                        Quando inativo (status desmarcado), o nome do docente é destacado em cor
-                        laranja no sistema.
+                        Selecione uma ou mais linhas de pesquisa em que o docente atua:
                       </p>
-                    </div>
-                    <Switch
-                      id="status-docente"
-                      checked={formData.status !== false}
-                      onCheckedChange={(checked) => setFormData({ ...formData, status: checked })}
-                    />
-                  </div>
-                  {/* Multiseleção de Linhas de Pesquisa */}{' '}
-                  <div className="space-y-2 pt-2 border-t border-slate-200">
-                    <Label className="text-sm font-semibold text-slate-800">
-                      Linhas de Pesquisa
-                    </Label>
-                    <p className="text-xs text-slate-500">
-                      Selecione uma ou mais linhas de pesquisa em que o docente atua:
-                    </p>
-                    {carregandoLinhas ? (
-                      <div className="text-xs text-slate-400 py-2">Carregando linhas...</div>
-                    ) : todasLinhas.length === 0 ? (
-                      <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
-                        Nenhuma linha de pesquisa cadastrada no sistema. Cadastre primeiro em
-                        "Linhas de Pesquisa".
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border border-slate-200 rounded-md bg-slate-50/50">
-                        {todasLinhas.map((lp) => {
-                          const isChecked = linhasDocenteSelecionadas.includes(lp.id)
-                          return (
-                            <label
-                              key={lp.id}
-                              className="flex items-start gap-2.5 p-1.5 rounded hover:bg-white cursor-pointer transition-colors text-xs"
-                            >
-                              <input
-                                type="checkbox"
-                                className="mt-0.5 rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
-                                checked={isChecked}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setLinhasDocenteSelecionadas((prev) => [...prev, lp.id])
-                                  } else {
-                                    setLinhasDocenteSelecionadas((prev) =>
-                                      prev.filter((id) => id !== lp.id),
-                                    )
-                                  }
-                                }}
-                              />
-                              <div className="flex-1 min-w-0">
-                                <span className="font-medium text-slate-900 block leading-tight">
-                                  {lp.nome}
-                                </span>
-                                {lp.area && (
-                                  <span className="text-[11px] text-slate-500 block">
-                                    Área: {lp.area}
+                      {carregandoLinhas ? (
+                        <div className="text-xs text-slate-400 py-2">Carregando linhas...</div>
+                      ) : todasLinhas.length === 0 ? (
+                        <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                          Nenhuma linha de pesquisa cadastrada no sistema. Cadastre primeiro em
+                          "Linhas de Pesquisa".
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border border-slate-200 rounded-md bg-slate-50/50">
+                          {todasLinhas.map((lp) => {
+                            const isChecked = linhasDocenteSelecionadas.includes(lp.id)
+                            return (
+                              <label
+                                key={lp.id}
+                                className="flex items-start gap-2.5 p-1.5 rounded hover:bg-white cursor-pointer transition-colors text-xs"
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="mt-0.5 rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setLinhasDocenteSelecionadas((prev) => [...prev, lp.id])
+                                    } else {
+                                      setLinhasDocenteSelecionadas((prev) =>
+                                        prev.filter((id) => id !== lp.id),
+                                      )
+                                    }
+                                  }}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <span className="font-medium text-slate-900 block leading-tight">
+                                    {lp.nome}
                                   </span>
-                                )}
-                              </div>
-                            </label>
-                          )
-                        })}
-                      </div>
-                    )}
-                    {linhasDocenteSelecionadas.length > 0 && (
-                      <div className="text-[11px] text-emerald-700 font-medium">
-                        {linhasDocenteSelecionadas.length} linha(s) selecionada(s)
-                      </div>
-                    )}
+                                  {lp.area && (
+                                    <span className="text-[11px] text-slate-500 block">
+                                      Área: {lp.area}
+                                    </span>
+                                  )}
+                                </div>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      )}
+                      {linhasDocenteSelecionadas.length > 0 && (
+                        <div className="text-[11px] text-emerald-700 font-medium">
+                          {linhasDocenteSelecionadas.length} linha(s) selecionada(s)
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex justify-end gap-3 pt-4">
+                  {/* Rodapé fixo com safe-area no mobile */}
+                  <div className="border-t border-slate-200 dark:border-neutral-800 bg-slate-50/90 dark:bg-neutral-900/90 p-3 md:p-4 flex items-center justify-end gap-2 md:gap-3 shrink-0 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] md:pb-4">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setIsDialogOpen(false)}
-                      className="bg-white hover:bg-slate-50"
+                      className="bg-white hover:bg-slate-50 min-h-[44px] md:min-h-9 px-4 text-xs md:text-sm flex-1 md:flex-initial"
                     >
                       Cancelar
                     </Button>
-                    <Button type="submit" disabled={submitting}>
-                      Salvar Docente
+                    <Button
+                      type="submit"
+                      disabled={submitting}
+                      className="min-h-[44px] md:min-h-9 px-5 text-xs md:text-sm flex-1 md:flex-initial"
+                    >
+                      {submitting ? 'Salvando...' : 'Salvar Docente'}
                     </Button>
                   </div>
                 </form>
@@ -983,10 +1005,10 @@ export default function Docentes() {
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
+                  <TableRow key={i} className="h-14">
                     {Array.from({ length: 6 }).map((_, j) => (
-                      <TableCell key={j} className="text-center">
-                        <Skeleton className="h-6 w-full" />
+                      <TableCell key={j} className="text-center py-3">
+                        <Skeleton className="h-5 w-full" />
                       </TableCell>
                     ))}
                   </TableRow>
@@ -1267,12 +1289,19 @@ export default function Docentes() {
         <div className="block md:hidden flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/40">
           {loading ? (
             Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="p-4 rounded-lg border border-slate-200 bg-white space-y-3">
+              <div
+                key={i}
+                className="p-4 rounded-lg border border-slate-200 bg-white space-y-3 min-h-[160px]"
+              >
                 <Skeleton className="h-5 w-3/4" />
                 <Skeleton className="h-4 w-1/2" />
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
                   <Skeleton className="h-4 w-full" />
                   <Skeleton className="h-4 w-full" />
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
+                  <Skeleton className="h-10 w-24 rounded-md" />
+                  <Skeleton className="h-10 w-16 rounded-md" />
                 </div>
               </div>
             ))
