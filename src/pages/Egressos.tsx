@@ -52,9 +52,7 @@ export default function Egressos() {
   const [egressosExistentes, setEgressosExistentes] = useState<Egresso[]>([])
   const [egressoParaVisualizar, setEgressoParaVisualizar] = useState<Egresso | null>(null)
   const [dialogoVisualizarAberto, setDialogoVisualizarAberto] = useState(false)
-  const [funcaoAbrirEdicao, setFuncaoAbrirEdicao] = useState<((egresso: Egresso) => void) | null>(
-    null,
-  )
+  const edicaoRef = useRef<((egresso: Egresso) => void) | null>(null)
 
   // Estado para Importação Lattes
   const [importandoLattes, setImportandoLattes] = useState(false)
@@ -475,9 +473,7 @@ export default function Egressos() {
         }}
         renderCustomActions={(item, { openEdit, openDelete }) => {
           // Salva referência do openEdit para o rodapé do modal de visualização
-          if (funcaoAbrirEdicao !== openEdit) {
-            setFuncaoAbrirEdicao(() => openEdit)
-          }
+          edicaoRef.current = openEdit
 
           return (
             <div className="flex items-center justify-center gap-1">
@@ -519,14 +515,10 @@ export default function Egressos() {
         onOpenChange={setDialogoVisualizarAberto}
         egresso={egressoParaVisualizar}
         docentes={docentes}
-        onEditar={
-          funcaoAbrirEdicao
-            ? (eg) => {
-                setDialogoVisualizarAberto(false)
-                funcaoAbrirEdicao(eg)
-              }
-            : undefined
-        }
+        onEditar={(eg) => {
+          setDialogoVisualizarAberto(false)
+          edicaoRef.current?.(eg)
+        }}
       />
 
       {/* Modal de Importação Lattes com Drag-and-Drop (mesma estrutura de Docentes e Discentes) */}
