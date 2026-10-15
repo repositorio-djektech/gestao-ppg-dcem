@@ -6,12 +6,15 @@ import { docentesService } from '@/services/docentes'
 import { projetosPesquisaService } from '@/services/projetos-pesquisa'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Eye, Edit, Trash2 } from 'lucide-react'
+import { useRef } from 'react'
+import { Eye, Edit, Trash2, Upload, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import type { Discente, Docente, ProjetoPesquisa } from '@/types/database'
 import { formatarCpf } from '@/lib/utils'
 import { normalizarNomePessoa } from '@/lib/normalizacao'
 import { DocenteNome } from '@/components/docentes/DocenteNome'
 import { VisualizarDiscenteDialog } from '@/components/discentes/VisualizarDiscenteDialog'
+import { readLattesFiles } from '@/lib/lattes/readFiles'
 
 const emptyForm = {
   nome: '',
@@ -30,6 +33,7 @@ const emptyForm = {
 
 const statusColors: Record<string, string> = {
   ativo: 'bg-emerald-50 text-emerald-700',
+  concluido: 'bg-indigo-50 text-indigo-700',
   titulado: 'bg-blue-50 text-blue-700',
   desligado: 'bg-red-50 text-red-700',
 }
@@ -39,6 +43,13 @@ export default function Discentes() {
   const [projetos, setProjetos] = useState<ProjetoPesquisa[]>([])
   const [discenteParaVisualizar, setDiscenteParaVisualizar] = useState<Discente | null>(null)
   const [dialogoVisualizarAberto, setDialogoVisualizarAberto] = useState(false)
+  const [importandoLattes, setImportandoLattes] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const formStateRef = useRef<{
+    isEditing: boolean
+    formData: any
+    setFormData: React.Dispatch<React.SetStateAction<any>>
+  } | null>(null)
 
   useEffect(() => {
     Promise.all([docentesService.list(), projetosPesquisaService.list()])
@@ -64,6 +75,144 @@ export default function Discentes() {
   const handleVisualizarDiscente = (d: Discente) => {
     setDiscenteParaVisualizar(d)
     setDialogoVisualizarAberto(true)
+  }
+
+  const handleArquivoLattesSelecionado = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    const context = formStateRef.current
+    if (!context) return
+
+    setImportandoLattes(true)
+    try {
+      const arquivosLidos = await readLattesFiles(files)
+      if (arquivosLidos.length === 0) {
+        toast.error('Nenhum arquivo XML válido encontrado.')
+        return
+      }
+
+      const arquivo = arquivosLidos[0]
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(arquivo.xml, 'text/xml')
+
+      const parserError = doc.querySelector('parsererror')
+      if (parserError) {
+        toast.error('Erro ao ler a estrutura do arquivo XML.')
+        return
+      }
+
+      const raiz = doc.querySelector('CURRICULO-VITAE')
+      if (!raiz) {
+        toast.error('XML não contém a raiz <CURRICULO-VITAE> oficial do Lattes.')
+        return
+      }
+
+      const idLattes = (raiz.getAttribute('NUMERO-IDENTIFICADOR') || '').trim()
+
+      const dadosGeraisEl = raiz.querySelector('DADOS-GERAIS')
+      const nomeCompletoBruto = dadosGeraisEl?.getAttribute('NOME-COMPLETO') || ''
+      const nomeCompleto = normalizarNomePessoa(nomeCompletoBruto)
+
+      const nacionalidade =
+        dadosGeraisEl?.getAttribute('PAIS-DE-NACIONALIDADE') ||
+        dadosGeraisEl?.getAttribute('PAIS-DE-NASCIMENTO') ||
+        dadosGeraisEl?.getAttribute('NACIONALIDADE') ||
+        ''
+
+      // Extração de MESTRADO ou DOUTORADO mais recente de FORMACAO-ACADEMICA-TITULACAO
+      const formacaoEl = raiz.querySelector('FORMACAO-ACADEMICA-TITULACAO')
+      let tipoCursoExtraido: string | null = null
+      let anoConclusaoExtraido: string | null = null
+
+      if (formacaoEl) {
+        const itensFormacao: {
+          tipo: string
+          anoConclusao: string | null
+          anoInicio: number
+          order: number
+        }[] = []
+        formacaoEl.querySelectorAll('DOUTORADO, MESTRADO').forEach((el) => {
+          const tag = el.tagName.toUpperCase()
+          const tipo = tag === 'DOUTORADO' ? 'Doutorado' : 'Mestrado'
+          const anoFim =
+            el.getAttribute('ANO-DE-CONCLUSAO') ||
+            el.getAttribute('ANO-DE-OBTENCAO-DO-TITULO') ||
+            ''
+          const anoIni = parseInt(el.getAttribute('ANO-DE-INICIO') || '0', 10) || 0
+          const anoNum = parseInt(anoFim, 10) || 0
+          itensFormacao.push({
+            tipo,
+            anoConclusao: anoFim.trim() || null,
+            anoInicio: anoIni,
+            order: anoNum * 100 + (tag === 'DOUTORADO' ? 2 : 1),
+          })
+        })
+
+        if (itensFormacao.length > 0) {
+          // Ordenar pelo mais recente (maior anoConclusao ou maior anoInicio)
+          itensFormacao.sort((a, b) => b.order - a.order || b.anoInicio - a.anoInicio)
+          tipoCursoExtraido = itensFormacao[0].tipo
+          if (itensFormacao[0].anoConclusao) {
+            anoConclusaoExtraido = itensFormacao[0].anoConclusao
+          }
+        }
+      }
+
+      // Validação no modo EDITAR: se nome do XML divergir claramente do discente aberto
+      if (context.isEditing && context.formData.nome && context.formData.nome.trim()) {
+        const nomeAtualNorm = normalizarNomePessoa(context.formData.nome).toLowerCase()
+        const nomeLattesNorm = nomeCompleto.toLowerCase()
+
+        if (nomeAtualNorm && nomeLattesNorm && nomeAtualNorm !== nomeLattesNorm) {
+          const confirmou = window.confirm(
+            `Atenção: O currículo Lattes importado pertence a "${nomeCompleto}", mas o registro atual é de "${context.formData.nome}".\n\nDeseja realmente aplicar os dados deste currículo ao discente selecionado?`,
+          )
+          if (!confirmou) {
+            toast.info('Importação cancelada pelo usuário.')
+            return
+          }
+        }
+      }
+
+      // Aplica os dados extraídos no formData
+      context.setFormData((prev: any) => {
+        const atualizado = { ...prev }
+
+        if (nomeCompleto) {
+          atualizado.nome = nomeCompleto
+        }
+        if (idLattes) {
+          atualizado.id_lattes = idLattes
+          // Preenche link_lattes caso não tenha
+          if (!atualizado.link_lattes) {
+            atualizado.link_lattes = `http://lattes.cnpq.br/${idLattes}`
+          }
+        }
+        if (tipoCursoExtraido) {
+          atualizado.tipo_curso = tipoCursoExtraido
+        }
+        if (anoConclusaoExtraido) {
+          atualizado.ano_conclusao = anoConclusaoExtraido
+        }
+        if (nacionalidade && 'nacionalidade' in atualizado) {
+          atualizado.nacionalidade = nacionalidade
+        }
+
+        return atualizado
+      })
+
+      toast.success(
+        `Dados do Lattes importados com sucesso! Revise e clique em Salvar para gravar.`,
+      )
+    } catch (err: any) {
+      console.error('Erro ao importar Lattes:', err)
+      toast.error(`Falha ao ler arquivo Lattes: ${err?.message || 'erro desconhecido'}`)
+    } finally {
+      setImportandoLattes(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
   }
 
   // Definição de colunas conforme os Pedidos 2 e 4:
@@ -230,9 +379,17 @@ export default function Discentes() {
         required: true,
         options: [
           { value: 'ativo', label: 'Ativo' },
+          { value: 'concluido', label: 'Concluído' },
           { value: 'titulado', label: 'Titulado' },
           { value: 'desligado', label: 'Desligado' },
         ],
+      },
+      {
+        key: 'ano_conclusao',
+        label: 'Ano de Conclusão',
+        type: 'text',
+        placeholder: 'Ex: 2026',
+        helperText: 'Ano de defesa ou previsão de conclusão',
       },
       {
         key: 'tipo_curso',
@@ -300,19 +457,6 @@ export default function Discentes() {
         helperText: 'Projeto de pesquisa institucional ou individual em que o discente atua',
       },
       {
-        key: 'ano_conclusao',
-        label: 'Ano de Conclusão',
-        type: 'text',
-        placeholder: 'Ex: 2026',
-        helperText: 'Ano de defesa ou previsão de conclusão',
-      },
-      {
-        key: 'link_lattes',
-        label: 'Currículo Lattes',
-        type: 'url',
-        placeholder: 'http://lattes.cnpq.br/...',
-      },
-      {
         key: 'link_comprovacao',
         label: 'Link de Comprovação',
         type: 'url',
@@ -326,6 +470,14 @@ export default function Discentes() {
 
   return (
     <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xml,.zip"
+        className="hidden"
+        onChange={handleArquivoLattesSelecionado}
+      />
+
       <CrudPage
         title="Discentes"
         description="Gerencie os discentes do programa de pós-graduação."
@@ -339,6 +491,30 @@ export default function Discentes() {
         tableHeaderClassName="bg-[#e9effc] sticky top-0 z-10"
         tableHeaderRowClassName="bg-[#e9effc] hover:bg-[#e9effc]"
         actionsHeaderClassName="text-center font-semibold text-slate-700"
+        formHeaderActions={(ctx) => {
+          formStateRef.current = ctx
+          return (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={importandoLattes}
+              onClick={() => {
+                formStateRef.current = ctx
+                fileInputRef.current?.click()
+              }}
+              className="gap-1.5 h-8 text-xs font-medium border-primary/30 text-primary hover:bg-primary/10 hover:text-primary bg-white shadow-none"
+              title="Importar dados do currículo Lattes (.xml ou .zip)"
+            >
+              {importandoLattes ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Upload className="h-3.5 w-3.5" />
+              )}
+              <span>{importandoLattes ? 'Lendo...' : 'Importar Lattes'}</span>
+            </Button>
+          )
+        }}
         renderCustomActions={(item, { openEdit, openDelete }) => (
           <div className="flex items-center justify-center gap-1">
             <Button

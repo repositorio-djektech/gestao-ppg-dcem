@@ -27,6 +27,13 @@ interface CrudFormDialogProps {
   submitting: boolean
   entityName: string
   campoFocoInicial?: string
+  headerActions?:
+    | React.ReactNode
+    | ((context: {
+        isEditing: boolean
+        formData: any
+        setFormData: React.Dispatch<React.SetStateAction<any>>
+      }) => React.ReactNode)
 }
 
 export function CrudFormDialog({
@@ -41,6 +48,7 @@ export function CrudFormDialog({
   submitting,
   entityName,
   campoFocoInicial,
+  headerActions,
 }: CrudFormDialogProps) {
   React.useEffect(() => {
     if (open && campoFocoInicial) {
@@ -54,13 +62,26 @@ export function CrudFormDialog({
     }
   }, [open, campoFocoInicial])
 
+  const isEditing = Boolean(editingId)
+  const renderedHeaderActions =
+    typeof headerActions === 'function'
+      ? headerActions({
+          isEditing,
+          formData,
+          setFormData: setFormData as React.Dispatch<React.SetStateAction<any>>,
+        })
+      : headerActions
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+        <DialogHeader className="flex flex-row items-center justify-between gap-2 pr-6">
           <DialogTitle className="text-primary font-bold">
             {editingId ? `Editar ${entityName}` : `Adicionar ${entityName}`}
           </DialogTitle>
+          {renderedHeaderActions && (
+            <div className="flex items-center gap-2">{renderedHeaderActions}</div>
+          )}
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4 mt-2">
           {fields.map((field) => (

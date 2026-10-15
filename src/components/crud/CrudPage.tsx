@@ -55,6 +55,13 @@ interface CrudPageProps<T extends { id: number | string }> {
     item: T,
     defaultActions: { openEdit: () => void; openDelete: () => void },
   ) => ReactNode
+  formHeaderActions?:
+    | ReactNode
+    | ((context: {
+        isEditing: boolean
+        formData: any
+        setFormData: React.Dispatch<React.SetStateAction<any>>
+      }) => ReactNode)
 }
 
 export function CrudPage<T extends { id: number | string }>({
@@ -71,6 +78,7 @@ export function CrudPage<T extends { id: number | string }>({
   tableHeaderRowClassName,
   actionsHeaderClassName,
   renderCustomActions,
+  formHeaderActions,
 }: CrudPageProps<T>) {
   const navigate = useNavigate()
   const { profile } = useAuth()
@@ -370,6 +378,7 @@ export function CrudPage<T extends { id: number | string }>({
           onSubmit={handleSubmit}
           submitting={submitting}
           entityName={entityName}
+          headerActions={formHeaderActions}
         />
       )}
 
