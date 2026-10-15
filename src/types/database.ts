@@ -74,11 +74,13 @@ export type Evento = {
 export type Patente = {
   id: number
   titulo: string
-  status: 'Concessão' | 'Licenciamento' | 'Pendente'
+  status: 'Concessão' | 'Licenciamento' | 'Pendente' | string
   autores: string
   inpi: string
   link_comprovacao: string
   observacoes: string
+  created_at?: string
+  ambito?: 'nacional' | 'internacional' | string | null
 }
 
 export type Discente = {
