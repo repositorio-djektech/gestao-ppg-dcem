@@ -26,6 +26,10 @@ export type Docente = {
   orc_id?: string | null
 }
 
+export type EstratoQualis = 'A1' | 'A2' | 'A3' | 'A4' | 'B1'
+export type TipoProducao = 'Artigo em periódico' | 'Trabalho em anais' | 'Capítulo'
+export type IndicacaoNivel = 2 | 3
+
 export type Publicacao = {
   id: number
   titulo: string
@@ -37,6 +41,10 @@ export type Publicacao = {
   link_comprovacao: string
   observacoes: string
   fator_impacto_jcr?: number | null
+  estrato_qualis?: EstratoQualis | null
+  tipo_producao?: TipoProducao | null
+  indicacao_nivel?: IndicacaoNivel | null
+  justificativa_indicacao?: string | null
 }
 
 export type Mobilidade = {

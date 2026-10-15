@@ -17,7 +17,11 @@ import type {
   Docente,
   PublicacaoDocente,
   PublicacaoCoautorPrograma,
+  EstratoQualis,
+  TipoProducao,
+  IndicacaoNivel,
 } from '@/types/database'
+import { ANO_INICIO, ANO_FIM } from '@/lib/lattes/quadrienio'
 import { useAuth } from '@/hooks/use-auth'
 import { normalizarTituloAcademico } from '@/lib/normalizacao'
 import { Badge } from '@/components/ui/badge'
@@ -79,6 +83,51 @@ const emptyForm: Omit<Publicacao, 'id'> = {
   link_comprovacao: '',
   observacoes: '',
   fator_impacto_jcr: null,
+  estrato_qualis: null,
+  tipo_producao: null,
+  indicacao_nivel: null,
+  justificativa_indicacao: '',
+}
+
+function getQualisBadge(estrato?: EstratoQualis | null) {
+  if (!estrato) {
+    return (
+      <Badge
+        variant="outline"
+        className="text-slate-400 bg-slate-50 border-slate-200 font-mono text-[11px]"
+      >
+        Sem estrato
+      </Badge>
+    )
+  }
+  switch (estrato) {
+    case 'A1':
+    case 'A2':
+      return (
+        <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white font-mono text-[11px]">
+          {estrato}
+        </Badge>
+      )
+    case 'A3':
+    case 'A4':
+      return (
+        <Badge className="bg-blue-600 hover:bg-blue-700 text-white font-mono text-[11px]">
+          {estrato}
+        </Badge>
+      )
+    case 'B1':
+      return (
+        <Badge className="bg-amber-500 hover:bg-amber-600 text-white font-mono text-[11px]">
+          {estrato}
+        </Badge>
+      )
+    default:
+      return (
+        <Badge variant="outline" className="text-slate-600 font-mono text-[11px]">
+          {estrato}
+        </Badge>
+      )
+  }
 }
 
 export default function Publicacoes() {
@@ -87,6 +136,8 @@ export default function Publicacoes() {
   const { data: publicacoes, loading, create, update, remove } = useCrudData(publicacoesService)
   const [searchTerm, setSearchTerm] = useState('')
   const [yearFilter, setYearFilter] = useState('all')
+  const [qualisFilter, setQualisFilter] = useState('all')
+  const [tipoProducaoFilter, setTipoProducaoFilter] = useState('all')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | string | null>(null)
   const [page, setPage] = useState(1)
@@ -135,7 +186,17 @@ export default function Publicacoes() {
     const s =
       p.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.autores.toLowerCase().includes(searchTerm.toLowerCase())
-    return s && (yearFilter === 'all' || p.ano.toString() === yearFilter)
+    if (!s) return false
+    if (yearFilter !== 'all' && p.ano.toString() !== yearFilter) return false
+    if (qualisFilter !== 'all') {
+      if (qualisFilter === 'nenhum' && p.estrato_qualis) return false
+      if (qualisFilter !== 'nenhum' && p.estrato_qualis !== qualisFilter) return false
+    }
+    if (tipoProducaoFilter !== 'all') {
+      if (tipoProducaoFilter === 'nenhum' && p.tipo_producao) return false
+      if (tipoProducaoFilter !== 'nenhum' && p.tipo_producao !== tipoProducaoFilter) return false
+    }
+    return true
   })
   const totalPages = Math.ceil(filtered.length / PER_PAGE)
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
@@ -166,9 +227,66 @@ export default function Publicacoes() {
         return
       }
     }
+
+    // Validação de Justificativa obrigatória para Níveis 2 e 3
+    if (
+      (formData.indicacao_nivel === 2 || formData.indicacao_nivel === 3) &&
+      (!formData.justificativa_indicacao || formData.justificativa_indicacao.trim() === '')
+    ) {
+      toast.error('A justificativa da indicação é obrigatória para os Níveis 2 e 3.')
+      setSubmitting(false)
+      return
+    }
+
+    // Regra da Ficha CAPES:
+    // Máximo de 4 publicações com indicacao_nivel=2 por docente no quadriênio (2025-2028).
+    // Considera publicacoes_docentes (docentesAutoresSelecionados na edição atual).
+    if (formData.indicacao_nivel === 2 && formData.ano >= ANO_INICIO && formData.ano <= ANO_FIM) {
+      // Para cada docente vinculado a esta publicação, checar quantas já indicou nível 2 no quadriênio
+      for (const docenteId of docentesAutoresSelecionados) {
+        // Encontra todas as publicações deste docente no quadriênio com indicacao_nivel=2
+        const pubsDocenteNoQuadrienio = todasPubsDocentes
+          .filter((pd) => pd.docente_id === docenteId && pd.publicacao_id !== editingId)
+          .map((pd) => publicacoes.find((p) => p.id === pd.publicacao_id))
+          .filter(
+            (p): p is Publicacao =>
+              Boolean(p) && p.ano >= ANO_INICIO && p.ano <= ANO_FIM && p.indicacao_nivel === 2,
+          )
+
+        if (pubsDocenteNoQuadrienio.length >= 4) {
+          const doc = docentesLista.find((d) => d.id === docenteId)
+          const nomeDoc = doc?.nome || `Docente ID ${docenteId}`
+          toast.error(
+            `Limite excedido: o docente "${nomeDoc}" já possui 4 publicações indicadas no Nível 2 para o quadriênio ${ANO_INICIO}-${ANO_FIM}. O sistema bloqueia a 5ª indicação.`,
+          )
+          setSubmitting(false)
+          return
+        }
+      }
+    }
+
+    // Aviso não-bloqueante para Nível 3: até 5 produções indicadas no quadriênio pelo Programa
+    if (formData.indicacao_nivel === 3 && formData.ano >= ANO_INICIO && formData.ano <= ANO_FIM) {
+      const pubsNivel3Quadrienio = publicacoes.filter(
+        (p) =>
+          p.id !== editingId && p.ano >= ANO_INICIO && p.ano <= ANO_FIM && p.indicacao_nivel === 3,
+      )
+      if (pubsNivel3Quadrienio.length >= 5) {
+        toast.warning(
+          `Aviso: O programa já possui ${pubsNivel3Quadrienio.length} publicações indicadas no Nível 3 no quadriênio ${ANO_INICIO}-${ANO_FIM} (recomendação CAPES: até 5).`,
+        )
+      }
+    }
+
     const payload = {
       ...formData,
       titulo: normalizarTituloAcademico(formData.titulo),
+      estrato_qualis: formData.estrato_qualis || null,
+      tipo_producao: formData.tipo_producao || null,
+      indicacao_nivel: formData.indicacao_nivel || null,
+      justificativa_indicacao: formData.indicacao_nivel
+        ? formData.justificativa_indicacao || ''
+        : null,
     }
     try {
       let savedPubId = editingId
@@ -261,6 +379,44 @@ export default function Publicacoes() {
               <SelectItem value="2026">2026</SelectItem>
               <SelectItem value="2027">2027</SelectItem>
               <SelectItem value="2028">2028</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={qualisFilter}
+            onValueChange={(v) => {
+              setQualisFilter(v)
+              setPage(1)
+            }}
+          >
+            <SelectTrigger className="w-[130px] bg-white">
+              <SelectValue placeholder="Qualis" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos Qualis</SelectItem>
+              <SelectItem value="A1">A1</SelectItem>
+              <SelectItem value="A2">A2</SelectItem>
+              <SelectItem value="A3">A3</SelectItem>
+              <SelectItem value="A4">A4</SelectItem>
+              <SelectItem value="B1">B1</SelectItem>
+              <SelectItem value="nenhum">Sem estrato</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={tipoProducaoFilter}
+            onValueChange={(v) => {
+              setTipoProducaoFilter(v)
+              setPage(1)
+            }}
+          >
+            <SelectTrigger className="w-[160px] bg-white">
+              <SelectValue placeholder="Tipo de produção" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os tipos</SelectItem>
+              <SelectItem value="Artigo em periódico">Artigo em periódico</SelectItem>
+              <SelectItem value="Trabalho em anais">Trabalho em anais</SelectItem>
+              <SelectItem value="Capítulo">Capítulo</SelectItem>
+              <SelectItem value="nenhum">Sem tipo</SelectItem>
             </SelectContent>
           </Select>
           <div className="relative flex-1 sm:w-64">
@@ -395,6 +551,119 @@ export default function Publicacoes() {
                       />
                     </div>
                   </div>
+
+                  {/* Campos Ficha CAPES (Etapa Q1): Qualis, Tipo de Produção, Indicação */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3 bg-slate-50/80 rounded-lg border border-slate-200">
+                    <div className="space-y-2">
+                      <Label htmlFor="pub-estrato-qualis">Estrato Qualis</Label>
+                      <Select
+                        value={formData.estrato_qualis || 'sem_estrato'}
+                        onValueChange={(val) =>
+                          setFormData({
+                            ...formData,
+                            estrato_qualis: val === 'sem_estrato' ? null : (val as EstratoQualis),
+                          })
+                        }
+                      >
+                        <SelectTrigger id="pub-estrato-qualis" className="bg-white">
+                          <SelectValue placeholder="Selecione o estrato" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sem_estrato">Sem estrato</SelectItem>
+                          <SelectItem value="A1">A1</SelectItem>
+                          <SelectItem value="A2">A2</SelectItem>
+                          <SelectItem value="A3">A3</SelectItem>
+                          <SelectItem value="A4">A4</SelectItem>
+                          <SelectItem value="B1">B1</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="pub-tipo-producao">Tipo de Produção</Label>
+                      <Select
+                        value={formData.tipo_producao || 'vazio'}
+                        onValueChange={(val) =>
+                          setFormData({
+                            ...formData,
+                            tipo_producao: val === 'vazio' ? null : (val as TipoProducao),
+                          })
+                        }
+                      >
+                        <SelectTrigger id="pub-tipo-producao" className="bg-white">
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="vazio">(vazio)</SelectItem>
+                          <SelectItem value="Artigo em periódico">Artigo em periódico</SelectItem>
+                          <SelectItem value="Trabalho em anais">Trabalho em anais</SelectItem>
+                          <SelectItem value="Capítulo">Capítulo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="pub-indicacao-nivel">Indicação (nível)</Label>
+                      <Select
+                        value={
+                          formData.indicacao_nivel !== null &&
+                          formData.indicacao_nivel !== undefined
+                            ? String(formData.indicacao_nivel)
+                            : 'sem_indicacao'
+                        }
+                        onValueChange={(val) =>
+                          setFormData({
+                            ...formData,
+                            indicacao_nivel:
+                              val === 'sem_indicacao' ? null : (Number(val) as IndicacaoNivel),
+                          })
+                        }
+                      >
+                        <SelectTrigger id="pub-indicacao-nivel" className="bg-white">
+                          <SelectValue placeholder="Selecione a indicação" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sem_indicacao">Sem indicação</SelectItem>
+                          <SelectItem value="2">Nível 2 (melhores do programa)</SelectItem>
+                          <SelectItem value="3">Nível 3 (quadriênio)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Justificativa da indicação (obrigatória quando Nível 2 ou 3) */}
+                  {(formData.indicacao_nivel === 2 || formData.indicacao_nivel === 3) && (
+                    <div className="space-y-2 p-3 bg-blue-50/50 rounded-lg border border-blue-200">
+                      <Label
+                        htmlFor="pub-justificativa-indicacao"
+                        className="text-blue-900 font-medium"
+                      >
+                        Justificativa da Indicação (Nível {formData.indicacao_nivel}){' '}
+                        <span className="text-destructive">*</span>
+                      </Label>
+                      <Textarea
+                        id="pub-justificativa-indicacao"
+                        rows={3}
+                        required
+                        placeholder={
+                          formData.indicacao_nivel === 2
+                            ? 'Descreva a relevância desta produção entre as melhores do programa no quadriênio (máx. 4 por docente)...'
+                            : 'Descreva a justificativa para indicação desta produção como destaque do quadriênio (até 5 do programa)...'
+                        }
+                        value={formData.justificativa_indicacao || ''}
+                        onChange={(e) =>
+                          setFormData({ ...formData, justificativa_indicacao: e.target.value })
+                        }
+                        className="bg-white"
+                      />
+                      <p className="text-xs text-blue-700">
+                        {formData.indicacao_nivel === 2
+                          ? 'Ficha CAPES 2.4.3: máximo de 4 produções com Nível 2 por docente no quadriênio.'
+                          : 'Ficha CAPES 2.4.4: até 5 melhores produções científicas do Programa no quadriênio.'}
+                      </p>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label htmlFor="pub-justificativa">Justificativa de Impacto e Relevância</Label>{' '}
                     <Textarea
@@ -480,9 +749,10 @@ export default function Publicacoes() {
           <Table>
             <TableHeader className="bg-slate-50/80 sticky top-0">
               <TableRow>
-                <TableHead className="w-[28%] font-semibold text-slate-700">
+                <TableHead className="w-[26%] font-semibold text-slate-700">
                   Título & Autores
                 </TableHead>
+                <TableHead className="font-semibold text-slate-700">Qualis</TableHead>
                 <TableHead className="font-semibold text-slate-700">Docentes Autores</TableHead>
                 <TableHead className="font-semibold text-slate-700">Periódico</TableHead>
                 <TableHead className="font-semibold text-slate-700">Ano</TableHead>
@@ -491,7 +761,7 @@ export default function Publicacoes() {
                 </TableHead>
                 <TableHead className="font-semibold text-slate-700">Coautoria P²CEM</TableHead>
                 <TableHead className="font-semibold text-slate-700">DOI</TableHead>
-                <TableHead className="w-[14%] font-semibold text-slate-700">Impacto</TableHead>
+                <TableHead className="w-[12%] font-semibold text-slate-700">Impacto</TableHead>
                 {canEdit && (
                   <TableHead className="text-right font-semibold text-slate-700">Ações</TableHead>
                 )}{' '}
@@ -501,7 +771,7 @@ export default function Publicacoes() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: canEdit ? 8 : 7 }).map((_, j) => (
+                    {Array.from({ length: canEdit ? 9 : 8 }).map((_, j) => (
                       <TableCell key={j}>
                         <Skeleton className="h-6 w-full" />
                       </TableCell>
@@ -518,11 +788,34 @@ export default function Publicacoes() {
                   return (
                     <TableRow key={p.id} className="hover:bg-slate-50/50">
                       <TableCell>
-                        <div className="font-medium text-slate-900 mb-1">
-                          {normalizarTituloAcademico(p.titulo)}
+                        <div className="font-medium text-slate-900 mb-1 flex items-start gap-1.5 flex-wrap">
+                          <span>{normalizarTituloAcademico(p.titulo)}</span>
+                          {p.indicacao_nivel && (
+                            <Badge
+                              variant="outline"
+                              className={
+                                p.indicacao_nivel === 2
+                                  ? 'border-indigo-300 bg-indigo-50 text-indigo-700 text-[10px]'
+                                  : 'border-purple-300 bg-purple-50 text-purple-700 text-[10px]'
+                              }
+                              title={
+                                p.justificativa_indicacao
+                                  ? `Justificativa: ${p.justificativa_indicacao}`
+                                  : undefined
+                              }
+                            >
+                              Nível {p.indicacao_nivel}
+                            </Badge>
+                          )}
+                          {p.tipo_producao && (
+                            <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                              {p.tipo_producao}
+                            </span>
+                          )}
                         </div>
                         <div className="text-xs text-slate-500">{p.autores}</div>
                       </TableCell>
+                      <TableCell>{getQualisBadge(p.estrato_qualis)}</TableCell>
                       <TableCell>
                         {docentesVinculados.length > 0 ? (
                           <div className="flex flex-wrap gap-1 max-w-[160px]">
@@ -640,7 +933,7 @@ export default function Publicacoes() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={canEdit ? 8 : 7} className="h-32 text-center text-slate-500">
+                  <TableCell colSpan={canEdit ? 9 : 8} className="h-32 text-center text-slate-500">
                     Nenhuma publicação encontrada.
                   </TableCell>
                 </TableRow>

@@ -516,6 +516,44 @@ describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => 
       expect(pubNoBanco?.fator_impacto_jcr).toBe(4.521)
     })
 
+    it('preserva estrato_qualis, tipo_producao, indicacao_nivel e justificativa_indicacao ao reimportar XML', async () => {
+      const mock = createMockSupabaseClient({
+        publicacoes: [
+          {
+            id: 15,
+            titulo: 'Estudo Avançado de Materiais Cerâmicos',
+            ano: 2025,
+            autores: 'Barreto, L. S.',
+            periodico: 'Ceramics International',
+            estrato_qualis: 'A1',
+            tipo_producao: 'Artigo em periódico',
+            indicacao_nivel: 2,
+            justificativa_indicacao: 'Publicação com elevado impacto e coautoria com discente.',
+          },
+        ],
+      })
+
+      // Reimportação do Lattes sem esses campos manuais
+      const pubReimportada: PublicacaoParaGravar[] = [
+        {
+          titulo: 'Estudo Avançado de Materiais Cerâmicos',
+          ano: 2025,
+          autores: 'Barreto, L. S.; Silva, M.',
+          periodico: 'Ceramics International (revisado)',
+        },
+      ]
+
+      const resultado = await gravarPublicacoes(pubReimportada, mock.client)
+      expect(resultado.contagem.atualizados).toBe(1)
+      const pubNoBanco = mock.database.publicacoes.find((p) => p.id === 15)
+      expect(pubNoBanco?.estrato_qualis).toBe('A1')
+      expect(pubNoBanco?.tipo_producao).toBe('Artigo em periódico')
+      expect(pubNoBanco?.indicacao_nivel).toBe(2)
+      expect(pubNoBanco?.justificativa_indicacao).toBe(
+        'Publicação com elevado impacto e coautoria com discente.',
+      )
+    })
+
     it('grava fator_impacto_jcr informado na importação de publicação', async () => {
       const mock = createMockSupabaseClient({
         publicacoes: [],

@@ -62,6 +62,10 @@ export interface PublicacaoParaGravar {
   link_comprovacao?: string | null
   observacoes?: string | null
   fator_impacto_jcr?: number | null
+  estrato_qualis?: string | null
+  tipo_producao?: string | null
+  indicacao_nivel?: number | null
+  justificativa_indicacao?: string | null
   docentes_autores_ids?: number[]
   coautores_programa?: Array<{
     tipo: 'orientando' | 'egresso'
@@ -164,6 +168,10 @@ interface PublicacaoExistenteBanco {
   titulo: string
   ano: number
   fator_impacto_jcr?: number | null
+  estrato_qualis?: string | null
+  tipo_producao?: string | null
+  indicacao_nivel?: number | null
+  justificativa_indicacao?: string | null
 }
 
 // Tipo flexível para permitir injeção de dependência / mock do Supabase nos testes unitários
@@ -661,7 +669,9 @@ export async function gravarPublicacoes(
   // 1. Carrega todas as publicações existentes no banco para comparação por título normalizado + ano
   const { data: existentes, error: buscaErro } = await (client as any)
     .from('publicacoes')
-    .select('id, titulo, ano, fator_impacto_jcr')
+    .select(
+      'id, titulo, ano, fator_impacto_jcr, estrato_qualis, tipo_producao, indicacao_nivel, justificativa_indicacao',
+    )
 
   if (buscaErro) {
     erros.push({
@@ -722,6 +732,35 @@ export async function gravarPublicacoes(
         payload.fator_impacto_jcr = encontrado.fator_impacto_jcr
       }
 
+      // Preservação de campos manuais da Ficha CAPES (Etapa Q1):
+      // estrato_qualis, tipo_producao, indicacao_nivel, justificativa_indicacao
+      if (pub.estrato_qualis !== undefined && pub.estrato_qualis !== null) {
+        payload.estrato_qualis = pub.estrato_qualis
+      } else if (encontrado.estrato_qualis !== undefined && encontrado.estrato_qualis !== null) {
+        payload.estrato_qualis = encontrado.estrato_qualis
+      }
+
+      if (pub.tipo_producao !== undefined && pub.tipo_producao !== null) {
+        payload.tipo_producao = pub.tipo_producao
+      } else if (encontrado.tipo_producao !== undefined && encontrado.tipo_producao !== null) {
+        payload.tipo_producao = encontrado.tipo_producao
+      }
+
+      if (pub.indicacao_nivel !== undefined && pub.indicacao_nivel !== null) {
+        payload.indicacao_nivel = pub.indicacao_nivel
+      } else if (encontrado.indicacao_nivel !== undefined && encontrado.indicacao_nivel !== null) {
+        payload.indicacao_nivel = encontrado.indicacao_nivel
+      }
+
+      if (pub.justificativa_indicacao !== undefined && pub.justificativa_indicacao !== null) {
+        payload.justificativa_indicacao = pub.justificativa_indicacao
+      } else if (
+        encontrado.justificativa_indicacao !== undefined &&
+        encontrado.justificativa_indicacao !== null
+      ) {
+        payload.justificativa_indicacao = encontrado.justificativa_indicacao
+      }
+
       const { error: updErr } = await (client as any)
         .from('publicacoes')
         .update(payload)
@@ -750,6 +789,10 @@ export async function gravarPublicacoes(
         link_comprovacao: pub.link_comprovacao ?? '',
         observacoes: pub.observacoes ?? '',
         fator_impacto_jcr: pub.fator_impacto_jcr ?? null,
+        estrato_qualis: pub.estrato_qualis ?? null,
+        tipo_producao: pub.tipo_producao ?? null,
+        indicacao_nivel: pub.indicacao_nivel ?? null,
+        justificativa_indicacao: pub.justificativa_indicacao ?? null,
       }
 
       const { data: inserido, error: insErr } = await (client as any)
