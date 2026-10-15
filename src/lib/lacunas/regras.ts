@@ -163,6 +163,62 @@ export const REGRAS_DOCENTES: RegraLacuna<Docente>[] = [
       }
     },
   },
+  {
+    id: 'docente_jdp_expirado',
+    tabela: 'docentes',
+    campos: ['jdp', 'jdp_desde', 'ano_doutorado'],
+    descricao:
+      'Docente marcado como JDP com condição expirada (4 anos como JDP ou doutorado há mais de 10 anos)',
+    severidade: 'atencao',
+    grupo: 'Identificação Cadastral',
+    avaliar: (docente) => {
+      if (!docente.jdp) return { temLacuna: false }
+      const anoCorrente = new Date().getFullYear()
+      const jdpDesde = docente.jdp_desde ? Number(docente.jdp_desde) : null
+      const anoDoutorado = docente.ano_doutorado ? Number(docente.ano_doutorado) : null
+
+      const expiradoJdp = jdpDesde !== null && !isNaN(jdpDesde) && jdpDesde + 4 < anoCorrente
+      const expiradoDoutorado =
+        anoDoutorado !== null && !isNaN(anoDoutorado) && anoDoutorado + 10 < anoCorrente
+
+      const tem = expiradoJdp || expiradoDoutorado
+      let motivo: string | undefined
+      if (expiradoJdp && expiradoDoutorado) {
+        motivo = `Condição JDP expirada: início há mais de 4 anos (${jdpDesde}) e doutorado há mais de 10 anos (${anoDoutorado})`
+      } else if (expiradoJdp) {
+        motivo = `Condição JDP expirada: início em ${jdpDesde} (limite máximo CAPES de 4 anos atingido)`
+      } else if (expiradoDoutorado) {
+        motivo = `Condição JDP expirada: doutorado obtido em ${anoDoutorado} (mais de 10 anos do ano corrente)`
+      }
+
+      return {
+        temLacuna: tem,
+        motivo,
+      }
+    },
+  },
+  {
+    id: 'docente_jdp_sem_categoria_permanente',
+    tabela: 'docentes',
+    campos: ['jdp', 'categoria'],
+    descricao: 'Docente marcado como JDP sem categoria Permanente',
+    severidade: 'critica',
+    grupo: 'Identificação Cadastral',
+    avaliar: (docente) => {
+      if (!docente.jdp) return { temLacuna: false }
+      const isPermanente =
+        String(docente.categoria || '')
+          .toLowerCase()
+          .trim() === 'permanente'
+      const tem = !isPermanente
+      return {
+        temLacuna: tem,
+        motivo: tem
+          ? `Docente marcado como JDP com categoria "${docente.categoria || 'Não informada'}". Apenas docentes Permanentes podem ser JDP.`
+          : undefined,
+      }
+    },
+  },
 ]
 
 export const REGRAS_DISCENTES: RegraLacuna<Discente>[] = [

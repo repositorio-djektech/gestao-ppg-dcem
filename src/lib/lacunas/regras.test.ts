@@ -178,8 +178,28 @@ describe('Regras de Lacunas - Etapa 1', () => {
   })
 
   describe('Regras das 9 tabelas restantes (Etapa 5) e R4', () => {
-    it('totaliza 31 regras no sistema (7 doc + 6 disc + 4 pub + 3 ori + 3 proj + 2 banc + 2 ev + 2 mob + 2 pat + 2 prem + 1 pt)', () => {
-      expect(TODAS_AS_REGRAS).toHaveLength(31)
+    it('totaliza 33 regras no sistema (9 doc + 6 disc + 4 pub + 3 ori + 3 proj + 2 banc + 2 ev + 2 mob + 2 pat + 2 prem + 1 pt)', () => {
+      expect(TODAS_AS_REGRAS).toHaveLength(33)
+    })
+
+    it('identifica docente JDP com prazo expirado', () => {
+      const regra = REGRAS_DOCENTES.find((r) => r.id === 'docente_jdp_expirado')!
+      expect(regra).toBeDefined()
+      const d1 = { id: 1, nome: 'Prof A', jdp: true, jdp_desde: 2018, ano_doutorado: 2022 } as any
+      expect(regra.avaliar(d1).temLacuna).toBe(true)
+
+      const d2 = { id: 2, nome: 'Prof B', jdp: true, jdp_desde: 2024, ano_doutorado: 2022 } as any
+      expect(regra.avaliar(d2).temLacuna).toBe(false)
+    })
+
+    it('identifica docente JDP sem categoria permanente', () => {
+      const regra = REGRAS_DOCENTES.find((r) => r.id === 'docente_jdp_sem_categoria_permanente')!
+      expect(regra).toBeDefined()
+      const d1 = { id: 1, nome: 'Prof A', jdp: true, categoria: 'colaborador' } as any
+      expect(regra.avaliar(d1).temLacuna).toBe(true)
+
+      const d2 = { id: 2, nome: 'Prof B', jdp: true, categoria: 'permanente' } as any
+      expect(regra.avaliar(d2).temLacuna).toBe(false)
     })
 
     it('R4: docente permanente sem linha de pesquisa gera lacuna crítica', () => {
@@ -530,8 +550,8 @@ describe('Regras de Lacunas - Etapa 1', () => {
       })
 
       expect(relatorio.gerado_em).toBe('2026-10-10T12:00:00.000Z')
-      expect(relatorio.resumo).toHaveLength(31) // Todas as 31 regras consolidadas
-      expect(relatorio.lacunas).toHaveLength(31)
+      expect(relatorio.resumo).toHaveLength(33) // Todas as 33 regras consolidadas (+2 regras JDP)
+      expect(relatorio.lacunas).toHaveLength(33)
 
       // Verificar que Ledjane NÃO aparece na lacuna de Scopus, mas Euler aparece
       const lacunaScopus = relatorio.lacunas.find((l) => l.regra_id === 'docente_sem_scopus_id')!

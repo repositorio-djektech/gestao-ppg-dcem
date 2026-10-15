@@ -68,13 +68,18 @@ import {
 } from 'lucide-react'
 import type { OpenAlexAutorCandidato } from '@/lib/openalex/buscar'
 import type { ScopusAutorCandidato } from '@/services/scopus'
-import { Database } from 'lucide-react'
+import { Database, AlertTriangle, Info } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { normalizarNomePessoa } from '@/lib/normalizacao'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { DocenteNome } from '@/components/docentes/DocenteNome'
 import { registrarLog } from '@/services/logs'
+import {
+  avaliarStatusJdpDocente,
+  calcularResumoJdpPrograma,
+  parseAnoNumerico,
+} from '@/lib/capes/jdp'
 import {
   Pagination,
   PaginationContent,
@@ -96,6 +101,8 @@ const emptyForm: Omit<Docente, 'id'> = {
   email: '',
   orc_id: '',
   status: true,
+  jdp_desde: null,
+  ano_doutorado: null,
 }
 
 export default function Docentes() {
@@ -190,9 +197,35 @@ export default function Docentes() {
     }
   }
 
+  const resumoJdp = useMemo(() => {
+    return calcularResumoJdpPrograma(docentes)
+  }, [docentes])
+  void resumoJdp
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validações de JDP
+    if (formData.jdp) {
+      if (formData.categoria !== 'permanente') {
+        toast.error('Apenas docentes da categoria Permanente podem ser marcados como JDP.')
+        return
+      }
+
+      const jdpDesdeNum = parseAnoNumerico(formData.jdp_desde)
+      const anoDoutoradoNum = parseAnoNumerico(formData.ano_doutorado)
+
+      if (!jdpDesdeNum || !anoDoutoradoNum) {
+        toast.error('Para docente JDP, informe obrigatoriamente o Ano do Doutorado e JDP Desde.')
+        return
+      }
+    }
+
     setSubmitting(true)
+
+    const jdpDesdeLimpo = formData.jdp ? parseAnoNumerico(formData.jdp_desde) : null
+    const anoDoutoradoLimpo = formData.jdp ? parseAnoNumerico(formData.ano_doutorado) : null
+
     const payload = {
       ...formData,
       nome: normalizarNomePessoa(formData.nome),
@@ -200,6 +233,9 @@ export default function Docentes() {
       siape: formData.siape ? formData.siape.replace(/\D/g, '') : '',
       email: formData.email ? formData.email.trim() : '',
       status: formData.status !== false,
+      jdp: Boolean(formData.jdp),
+      jdp_desde: jdpDesdeLimpo,
+      ano_doutorado: anoDoutoradoLimpo,
     }
     try {
       let savedDocenteId = editingId
@@ -238,6 +274,27 @@ export default function Docentes() {
           savedDocenteId,
           linhasDocenteSelecionadas,
         )
+      }
+
+      // Validação não-bloqueante dos 20% do DP
+      if (payload.jdp && payload.categoria === 'permanente') {
+        const anoAtual = new Date().getFullYear()
+        const statusDocSalvo = avaliarStatusJdpDocente(payload, anoAtual)
+        if (statusDocSalvo.isValido) {
+          const docentesAtualizados = docentes.map((d) =>
+            d.id === savedDocenteId ? ({ ...d, ...payload } as Docente) : d,
+          )
+          if (!editingId) {
+            docentesAtualizados.push({ id: savedDocenteId as number, ...payload } as Docente)
+          }
+          const novoResumo = calcularResumoJdpPrograma(docentesAtualizados, anoAtual)
+          if (novoResumo.excedeLimite20Porcento) {
+            toast.warning(
+              `Atenção: O programa possui ${novoResumo.totalJdpValidos} JDPs válidos para ${novoResumo.totalPermanentes} docentes permanentes (${novoResumo.percentualJdpValido.toFixed(1)}%). O limite recomendado pela CAPES é de 20% (máx. ${novoResumo.limiteMaximoJdp}).`,
+              { duration: 8000 },
+            )
+          }
+        }
       }
 
       setIsDialogOpen(false)
@@ -592,15 +649,20 @@ export default function Docentes() {
                     <Label htmlFor="categoria">Categoria no PPG-DCEM</Label>
                     <Select
                       value={formData.categoria || '__none__'}
-                      onValueChange={(v) =>
+                      onValueChange={(v) => {
+                        const novaCat =
+                          v === '__none__'
+                            ? null
+                            : (v as 'permanente' | 'colaborador' | 'visitante' | 'jdp')
+                        const desmarcarJdp = novaCat !== 'permanente' && formData.jdp
                         setFormData({
                           ...formData,
-                          categoria:
-                            v === '__none__'
-                              ? null
-                              : (v as 'permanente' | 'colaborador' | 'visitante' | 'jdp'),
+                          categoria: novaCat,
+                          jdp: desmarcarJdp ? false : formData.jdp,
+                          jdp_desde: desmarcarJdp ? null : formData.jdp_desde,
+                          ano_doutorado: desmarcarJdp ? null : formData.ano_doutorado,
                         })
-                      }
+                      }}
                     >
                       <SelectTrigger id="categoria" className="bg-white">
                         <SelectValue placeholder="Selecione a categoria..." />
@@ -613,6 +675,125 @@ export default function Docentes() {
                         <SelectItem value="jdp">JDP</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  {/* Controle de Jovem Doutor Pesquisador (JDP) */}
+                  <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label
+                          htmlFor="jdp-docente"
+                          className="text-sm font-semibold cursor-pointer"
+                        >
+                          Jovem Doutor Pesquisador (JDP)
+                        </Label>
+                        <p className="text-xs text-slate-500">
+                          Exclusivo para categoria Permanente (máx. 20% do DP, prazo máx. 4 anos).
+                        </p>
+                      </div>
+                      <Switch
+                        id="jdp-docente"
+                        checked={Boolean(formData.jdp)}
+                        onCheckedChange={(checked) => {
+                          if (checked && formData.categoria !== 'permanente') {
+                            toast.error(
+                              'A marcação de JDP só é permitida para docentes da categoria Permanente.',
+                            )
+                            return
+                          }
+                          setFormData({
+                            ...formData,
+                            jdp: checked,
+                          })
+                        }}
+                      />
+                    </div>
+
+                    {formData.jdp && formData.categoria !== 'permanente' && (
+                      <div className="flex items-start gap-2 p-2 rounded bg-amber-50 text-amber-900 border border-amber-200 text-xs">
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                        <div>
+                          Regra CAPES: Apenas docentes <strong>Permanentes</strong> podem ser
+                          enquadrados como JDP. Altere a categoria acima para "Permanente".
+                        </div>
+                      </div>
+                    )}
+
+                    {formData.jdp && (
+                      <div className="space-y-3 pt-2 border-t border-slate-200">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="ano_doutorado" className="text-xs font-medium">
+                              Ano do Doutorado <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                              id="ano_doutorado"
+                              type="number"
+                              min="1950"
+                              max="2100"
+                              placeholder="Ex: 2021"
+                              value={formData.ano_doutorado ?? ''}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  ano_doutorado:
+                                    e.target.value === '' ? null : Number(e.target.value),
+                                })
+                              }
+                              className="bg-white h-8 text-xs"
+                            />
+                            <p className="text-[10px] text-slate-500">
+                              Doutorado obtido há menos de 10 anos
+                            </p>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="jdp_desde" className="text-xs font-medium">
+                              JDP desde (Ano) <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                              id="jdp_desde"
+                              type="number"
+                              min="1950"
+                              max="2100"
+                              placeholder="Ex: 2024"
+                              value={formData.jdp_desde ?? ''}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  jdp_desde: e.target.value === '' ? null : Number(e.target.value),
+                                })
+                              }
+                              className="bg-white h-8 text-xs"
+                            />
+                            <p className="text-[10px] text-slate-500">
+                              Prazo máximo de 4 anos como JDP
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Avaliação em tempo real de expiração */}
+                        {(() => {
+                          const statusTemp = avaliarStatusJdpDocente({
+                            jdp: true,
+                            categoria: formData.categoria,
+                            jdp_desde: formData.jdp_desde,
+                            ano_doutorado: formData.ano_doutorado,
+                          })
+                          if (statusTemp.isExpirado) {
+                            return (
+                              <div className="flex items-start gap-2 p-2 rounded bg-amber-50 text-amber-900 border border-amber-200 text-xs">
+                                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                                <div>
+                                  <strong>Condição Expirada:</strong> {statusTemp.motivoExpiracao}.
+                                  Este docente será indicado como "JDP expirado" e não contará no
+                                  conjunto de JDPs válidos para cálculos CAPES.
+                                </div>
+                              </div>
+                            )
+                          }
+                          return null
+                        })()}
+                      </div>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -866,6 +1047,44 @@ export default function Docentes() {
                               JDP
                             </Badge>
                           )}
+                          {/* Flag JDP com verificação de prazo e validade */}
+                          {d.jdp &&
+                            (() => {
+                              const statusJdp = avaliarStatusJdpDocente(d)
+                              if (statusJdp.isExpirado) {
+                                return (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-amber-100 text-amber-900 border-amber-300 text-[10px] font-medium gap-1 w-fit"
+                                    title={`JDP Expirado: ${statusJdp.motivoExpiracao || 'Condição de prazo expirada'}`}
+                                  >
+                                    <AlertTriangle className="h-3 w-3 text-amber-700" />
+                                    <span>JDP Expirado</span>
+                                  </Badge>
+                                )
+                              }
+                              if (!statusJdp.isPermanente) {
+                                return (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-rose-50 text-rose-800 border-rose-300 text-[10px] font-medium gap-1 w-fit"
+                                    title="Docente marcado como JDP porém sem categoria Permanente"
+                                  >
+                                    <AlertTriangle className="h-3 w-3 text-rose-600" />
+                                    <span>JDP Inválido (não permanente)</span>
+                                  </Badge>
+                                )
+                              }
+                              return (
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px] font-semibold w-fit"
+                                  title={`Jovem Doutor Pesquisador (Doutorado: ${d.ano_doutorado || '—'}, JDP desde: ${d.jdp_desde || '—'})`}
+                                >
+                                  JDP (Válido)
+                                </Badge>
+                              )
+                            })()}
                         </div>
                       </TableCell>
                       <TableCell className="text-center">

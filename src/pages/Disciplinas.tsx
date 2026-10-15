@@ -7,6 +7,7 @@ import type { Disciplina } from '@/types/database'
 const emptyForm = {
   nome: '',
   codigo: '',
+  nivel: 'pos_graduacao',
   creditos: 0,
   ano_semestre: '',
   link_comprovacao: '',
@@ -19,6 +20,26 @@ const columns: ColumnDef<Disciplina>[] = [
     key: 'codigo',
     label: 'Código',
     render: (d) => <span className="font-mono text-sm text-slate-600">{d.codigo || '-'}</span>,
+  },
+  {
+    key: 'nivel',
+    label: 'Nível',
+    render: (d) => {
+      if (!d.nivel) return <span className="text-slate-400">—</span>
+      const isPos = d.nivel === 'pos_graduacao'
+      return (
+        <Badge
+          variant="outline"
+          className={
+            isPos
+              ? 'bg-blue-50 text-blue-700 border-blue-200 text-[11px] font-medium'
+              : 'bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] font-medium'
+          }
+        >
+          {isPos ? 'Pós-graduação' : 'Graduação'}
+        </Badge>
+      )
+    },
   },
   {
     key: 'creditos',
@@ -48,32 +69,41 @@ const fields: FieldDef[] = [
     placeholder: 'Ex: PCM001',
   },
   {
+    key: 'nivel',
+    label: 'Nível da Disciplina',
+    type: 'select',
+    options: [
+      { label: 'Pós-graduação', value: 'pos_graduacao' },
+      { label: 'Graduação', value: 'graduacao' },
+    ],
+    placeholder: 'Selecione o nível...',
+  },
+  {
     key: 'creditos',
     label: 'Créditos',
     type: 'number',
     required: true,
-    min: 1,
-    placeholder: 'Ex: 4',
-    helperText: 'Número de créditos da disciplina',
+    placeholder: '4',
   },
   {
     key: 'ano_semestre',
-    label: 'Ano/Semestre de Oferta',
+    label: 'Ano / Semestre',
     type: 'text',
-    required: true,
-    placeholder: 'Ex: 2025/1',
-    helperText: 'Formato AAAA/S (ex: 2025/1)',
+    placeholder: 'Ex: 2024.1',
   },
   {
     key: 'link_comprovacao',
-    label: 'Link da Ementa / Plano de Ensino',
+    label: 'Link de Comprovação',
     type: 'url',
     placeholder: 'https://...',
-    helperText: 'URL com a ementa ou plano de ensino aprovado',
   },
-  { key: 'observacoes', label: 'Observações', type: 'textarea', rows: 2 },
+  {
+    key: 'observacoes',
+    label: 'Observações',
+    type: 'textarea',
+    placeholder: 'Ementa resumida ou informações adicionais...',
+  },
 ]
-
 export default function Disciplinas() {
   return (
     <CrudPage

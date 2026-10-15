@@ -139,6 +139,9 @@ export function VisualizarDocenteDialog({
     siape: '',
     licenca: '',
     status: true,
+    jdp: false,
+    jdp_desde: null as number | null,
+    ano_doutorado: null as number | null,
   })
   const [dados, setDados] = useState<DadosDocenteCompleto>({
     docente: null,
@@ -373,6 +376,9 @@ export function VisualizarDocenteDialog({
           siape: docFinal.siape || '',
           licenca: docFinal.licenca || '',
           status: docFinal.status !== false,
+          jdp: Boolean(docFinal.jdp),
+          jdp_desde: docFinal.jdp_desde ?? null,
+          ano_doutorado: docFinal.ano_doutorado ?? null,
         })
       } catch (err) {
         console.error('Erro ao carregar dados completos do docente:', err)
@@ -464,6 +470,9 @@ export function VisualizarDocenteDialog({
       siape: doc.siape || '',
       licenca: doc.licenca || '',
       status: doc.status !== false,
+      jdp: Boolean(doc.jdp),
+      jdp_desde: doc.jdp_desde ?? null,
+      ano_doutorado: doc.ano_doutorado ?? null,
     })
     setEditandoIdentificacao(true)
   }
@@ -485,6 +494,9 @@ export function VisualizarDocenteDialog({
         siape: doc.siape || '',
         licenca: doc.licenca || '',
         status: doc.status !== false,
+        jdp: Boolean(doc.jdp),
+        jdp_desde: doc.jdp_desde ?? null,
+        ano_doutorado: doc.ano_doutorado ?? null,
       })
     }
     setEditandoIdentificacao(false)
@@ -494,6 +506,17 @@ export function VisualizarDocenteDialog({
     if (e) e.preventDefault()
     const doc = dados.docente || docente
     if (!doc) return
+
+    if (formIdentificacao.jdp) {
+      if (formIdentificacao.categoria !== 'permanente') {
+        alert('Apenas docentes da categoria Permanente podem ser marcados como JDP.')
+        return
+      }
+      if (!formIdentificacao.ano_doutorado || !formIdentificacao.jdp_desde) {
+        alert('Para docente JDP, informe obrigatoriamente o Ano do Doutorado e JDP Desde.')
+        return
+      }
+    }
 
     setSalvandoIdentificacao(true)
     try {
@@ -511,6 +534,11 @@ export function VisualizarDocenteDialog({
         siape: formIdentificacao.siape.replace(/\D/g, '') || '',
         licenca: formIdentificacao.licenca.trim() || '',
         status: formIdentificacao.status !== false,
+        jdp: Boolean(formIdentificacao.jdp),
+        jdp_desde: formIdentificacao.jdp ? Number(formIdentificacao.jdp_desde) || null : null,
+        ano_doutorado: formIdentificacao.jdp
+          ? Number(formIdentificacao.ano_doutorado) || null
+          : null,
       }
 
       const { data, error } = await supabase
@@ -822,6 +850,80 @@ export function VisualizarDocenteDialog({
                   />
                 </div>
 
+                <div className="p-3 rounded-md border border-slate-200 bg-slate-50 md:col-span-2 lg:col-span-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="inline-jdp" className="text-xs font-semibold cursor-pointer">
+                        Jovem Doutor Pesquisador (JDP)
+                      </Label>
+                      <p className="text-[11px] text-slate-500">
+                        Exclusivo Permanente (máx 20% do DP, prazo máx 4 anos, doutorado há menos de
+                        10 anos).
+                      </p>
+                    </div>
+                    <Switch
+                      id="inline-jdp"
+                      checked={Boolean(formIdentificacao.jdp)}
+                      onCheckedChange={(checked) => {
+                        if (checked && formIdentificacao.categoria !== 'permanente') {
+                          alert(
+                            'Apenas docentes da categoria Permanente podem ser marcados como JDP.',
+                          )
+                          return
+                        }
+                        setFormIdentificacao({ ...formIdentificacao, jdp: checked })
+                      }}
+                    />
+                  </div>
+
+                  {formIdentificacao.jdp && (
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
+                      <div>
+                        <Label
+                          htmlFor="inline-ano-doutorado"
+                          className="text-[11px] font-medium text-slate-700"
+                        >
+                          Ano do Doutorado *
+                        </Label>
+                        <Input
+                          id="inline-ano-doutorado"
+                          type="number"
+                          placeholder="Ex: 2021"
+                          value={formIdentificacao.ano_doutorado ?? ''}
+                          onChange={(e) =>
+                            setFormIdentificacao({
+                              ...formIdentificacao,
+                              ano_doutorado: e.target.value === '' ? null : Number(e.target.value),
+                            })
+                          }
+                          className="h-8 text-xs bg-white"
+                        />
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="inline-jdp-desde"
+                          className="text-[11px] font-medium text-slate-700"
+                        >
+                          JDP Desde (Ano) *
+                        </Label>
+                        <Input
+                          id="inline-jdp-desde"
+                          type="number"
+                          placeholder="Ex: 2024"
+                          value={formIdentificacao.jdp_desde ?? ''}
+                          onChange={(e) =>
+                            setFormIdentificacao({
+                              ...formIdentificacao,
+                              jdp_desde: e.target.value === '' ? null : Number(e.target.value),
+                            })
+                          }
+                          className="h-8 text-xs bg-white"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex items-center justify-between p-2 rounded-md border border-slate-200 bg-slate-50 md:col-span-2 lg:col-span-3">
                   <div className="space-y-0.5">
                     <Label htmlFor="inline-status" className="text-xs font-medium cursor-pointer">
@@ -996,23 +1098,33 @@ export function VisualizarDocenteDialog({
                 <span className="text-slate-500 dark:text-neutral-400 font-medium block">
                   Categoria no PPG-DCEM:
                 </span>
-                <Badge
-                  variant={doc.categoria ? 'secondary' : 'outline'}
-                  className={
-                    doc.categoria === 'permanente'
-                      ? 'bg-blue-100 text-blue-800 border-blue-200 mt-0.5'
-                      : doc.categoria === 'colaborador'
-                        ? 'bg-amber-100 text-amber-800 border-amber-300 mt-0.5'
-                        : doc.categoria === 'visitante'
-                          ? 'bg-purple-100 text-purple-800 border-purple-300 mt-0.5'
-                          : doc.categoria === 'jdp'
-                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300 mt-0.5'
-                            : 'text-slate-500 mt-0.5'
-                  }
-                >
-                  {formatarRotuloCategoria(doc.categoria)}
-                </Badge>
-              </div>
+                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                  <Badge
+                    variant={doc.categoria ? 'secondary' : 'outline'}
+                    className={
+                      doc.categoria === 'permanente'
+                        ? 'bg-blue-100 text-blue-800 border-blue-200'
+                        : doc.categoria === 'colaborador'
+                          ? 'bg-amber-100 text-amber-800 border-amber-300'
+                          : doc.categoria === 'visitante'
+                            ? 'bg-purple-100 text-purple-800 border-purple-300'
+                            : doc.categoria === 'jdp'
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                              : 'text-slate-500'
+                    }
+                  >
+                    {formatarRotuloCategoria(doc.categoria)}
+                  </Badge>
+                  {doc.jdp && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px] font-semibold"
+                    >
+                      JDP ({doc.jdp_desde ? `desde ${doc.jdp_desde}` : 'marcado'})
+                    </Badge>
+                  )}
+                </div>
+              </div>{' '}
               <div>
                 <span className="text-slate-500 dark:text-neutral-400 font-medium block">
                   E-mail:

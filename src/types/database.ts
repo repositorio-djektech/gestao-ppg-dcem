@@ -24,6 +24,8 @@ export type Docente = {
   siape?: string
   email?: string
   orc_id?: string | null
+  jdp_desde?: number | null
+  ano_doutorado?: number | null
 }
 
 export type EstratoQualis = 'A1' | 'A2' | 'A3' | 'A4' | 'B1'
@@ -152,6 +154,8 @@ export type ProjetoPesquisa = {
   classificacao?: ProjetoPesquisaClassificacao | null
 }
 
+export type NivelDisciplina = 'graduacao' | 'pos_graduacao'
+
 export type Disciplina = {
   id: number
   nome: string
@@ -161,6 +165,23 @@ export type Disciplina = {
   link_comprovacao: string
   observacoes: string
   docente_id?: number | null
+  nivel?: NivelDisciplina | null
+}
+
+export type TipoIniciacaoCientifica = 'iniciacao_cientifica' | 'iniciacao_tecnologica'
+
+export type IniciacaoCientifica = {
+  id: number
+  discente_id?: number | null
+  discente_nome?: string | null
+  tipo: TipoIniciacaoCientifica
+  ano?: number | null
+  docente_orientador_id?: number | null
+  projeto_id?: number | null
+  titulo: string
+  observacoes?: string | null
+  created_at?: string
+  updated_at?: string
 }
 
 export type ProjetoParticipante = {
