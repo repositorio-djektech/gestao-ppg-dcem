@@ -7,7 +7,25 @@ import { projetosPesquisaService } from '@/services/projetos-pesquisa'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useRef } from 'react'
-import { Eye, Edit, Trash2, Upload, Loader2 } from 'lucide-react'
+import {
+  Eye,
+  Edit,
+  Trash2,
+  Upload,
+  Loader2,
+  FileCode,
+  FileArchive,
+  Info,
+  CheckCircle2,
+} from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import type { Discente, Docente, ProjetoPesquisa } from '@/types/database'
 import { formatarCpf } from '@/lib/utils'
@@ -44,7 +62,10 @@ export default function Discentes() {
   const [discenteParaVisualizar, setDiscenteParaVisualizar] = useState<Discente | null>(null)
   const [dialogoVisualizarAberto, setDialogoVisualizarAberto] = useState(false)
   const [importandoLattes, setImportandoLattes] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [dialogoLattesAberto, setDialogoLattesAberto] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [arquivoSelecionado, setArquivoSelecionado] = useState<File | null>(null)
+  const modalFileInputRef = useRef<HTMLInputElement>(null)
   const formStateRef = useRef<{
     isEditing: boolean
     formData: any
@@ -77,15 +98,13 @@ export default function Discentes() {
     setDialogoVisualizarAberto(true)
   }
 
-  const handleArquivoLattesSelecionado = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
+  const validarEProcessarArquivoLattes = async (arquivoParaProcessar: File) => {
     const context = formStateRef.current
     if (!context) return
 
     setImportandoLattes(true)
     try {
-      const arquivosLidos = await readLattesFiles(files)
+      const arquivosLidos = await readLattesFiles([arquivoParaProcessar])
       if (arquivosLidos.length === 0) {
         toast.error('Nenhum arquivo XML válido encontrado.')
         return
@@ -192,7 +211,9 @@ export default function Discentes() {
           atualizado.tipo_curso = tipoCursoExtraido
         }
         if (anoConclusaoExtraido) {
-          atualizado.ano_conclusao = anoConclusaoExtraido
+          // Extrai apenas os 4 dígitos do ano para alimentar o picker de ano
+          const matchAno = anoConclusaoExtraido.match(/\b(19\d{2}|20\d{2})\b/)
+          atualizado.ano_conclusao = matchAno ? matchAno[1] : anoConclusaoExtraido
         }
         if (nacionalidade && 'nacionalidade' in atualizado) {
           atualizado.nacionalidade = nacionalidade
@@ -204,14 +225,50 @@ export default function Discentes() {
       toast.success(
         `Dados do Lattes importados com sucesso! Revise e clique em Salvar para gravar.`,
       )
+      setDialogoLattesAberto(false)
+      setArquivoSelecionado(null)
     } catch (err: any) {
       console.error('Erro ao importar Lattes:', err)
       toast.error(`Falha ao ler arquivo Lattes: ${err?.message || 'erro desconhecido'}`)
     } finally {
       setImportandoLattes(false)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
+      if (modalFileInputRef.current) {
+        modalFileInputRef.current.value = ''
       }
+    }
+  }
+
+  const handleValidarArquivos = (files: FileList | File[]) => {
+    const list = Array.from(files)
+    const valid = list.find((f) => {
+      const ext = f.name.toLowerCase()
+      return ext.endsWith('.xml') || ext.endsWith('.zip')
+    })
+    if (!valid) {
+      toast.error('Selecione um arquivo .xml ou .zip válido exportado da Plataforma Lattes.')
+      return
+    }
+    setArquivoSelecionado(valid)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+      handleValidarArquivos(e.dataTransfer.files)
     }
   }
 
@@ -367,10 +424,11 @@ export default function Discentes() {
       },
       {
         key: 'data_ingresso',
-        label: 'Data de Ingresso',
-        type: 'date',
+        label: 'Ano de Ingresso',
+        type: 'year',
         required: true,
-        helperText: 'Data de matrícula inicial no programa',
+        placeholder: 'Selecione o ano de ingresso...',
+        helperText: 'Ano de matrícula inicial no programa',
       },
       {
         key: 'status',
@@ -387,8 +445,8 @@ export default function Discentes() {
       {
         key: 'ano_conclusao',
         label: 'Ano de Conclusão',
-        type: 'text',
-        placeholder: 'Ex: 2026',
+        type: 'year',
+        placeholder: 'Selecione o ano de conclusão...',
         helperText: 'Ano de defesa ou previsão de conclusão',
       },
       {
@@ -411,39 +469,16 @@ export default function Discentes() {
           label: d.nome,
         })),
         placeholder: 'Selecione o docente orientador...',
-        helperText: 'Ao escolher um docente, preenche automaticamente o campo texto abaixo',
+        helperText: 'Docente vinculado que orienta o discente',
         onValueChangeWithFormData: (val, currentData) => {
           const dId = val ? Number(val) : null
           const docente = dId ? docentes.find((d) => d.id === dId) : null
-          let novoOrientadorTexto = currentData.orientador || ''
-          if (docente) {
-            if (!novoOrientadorTexto.trim()) {
-              novoOrientadorTexto = docente.nome
-            } else if (novoOrientadorTexto.trim() !== docente.nome) {
-              const confirmar =
-                typeof window === 'undefined' ||
-                window.confirm(
-                  `Deseja atualizar o campo de texto do orientador para "${docente.nome}"? (Texto atual: "${novoOrientadorTexto}")`,
-                )
-              if (confirmar) {
-                novoOrientadorTexto = docente.nome
-              }
-            }
-          }
           return {
             ...currentData,
             docente_orientador_id: val,
-            orientador: novoOrientadorTexto,
+            orientador: docente ? docente.nome : currentData.orientador || '',
           }
         },
-      },
-      {
-        key: 'orientador',
-        label: 'Orientador (texto livre / fallback)',
-        type: 'text',
-        placeholder: 'Nome do orientador do discente',
-        helperText:
-          'Nome para exibição e histórico (preenchido automaticamente ao vincular docente)',
       },
       {
         key: 'projeto_id',
@@ -470,14 +505,6 @@ export default function Discentes() {
 
   return (
     <>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".xml,.zip"
-        className="hidden"
-        onChange={handleArquivoLattesSelecionado}
-      />
-
       <CrudPage
         title="Discentes"
         description="Gerencie os discentes do programa de pós-graduação."
@@ -501,17 +528,14 @@ export default function Discentes() {
               disabled={importandoLattes}
               onClick={() => {
                 formStateRef.current = ctx
-                fileInputRef.current?.click()
+                setArquivoSelecionado(null)
+                setDialogoLattesAberto(true)
               }}
               className="gap-1.5 h-8 text-xs font-medium border-primary/30 text-primary hover:bg-primary/10 hover:text-primary bg-white shadow-none"
               title="Importar dados do currículo Lattes (.xml ou .zip)"
             >
-              {importandoLattes ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Upload className="h-3.5 w-3.5" />
-              )}
-              <span>{importandoLattes ? 'Lendo...' : 'Importar Lattes'}</span>
+              <Upload className="h-3.5 w-3.5" />
+              <span>Importar Lattes</span>
             </Button>
           )
         }}
@@ -556,6 +580,162 @@ export default function Discentes() {
         docentes={docentes}
         projetos={projetos}
       />
+
+      {/* Modal de Importação Lattes com Drag-and-Drop (mesma estrutura de Docentes / ImportarLattesDialog) */}
+      <Dialog
+        open={dialogoLattesAberto}
+        onOpenChange={(aberto) => {
+          if (!importandoLattes) {
+            setDialogoLattesAberto(aberto)
+            if (!aberto) setArquivoSelecionado(null)
+          }
+        }}
+      >
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl text-primary font-bold">
+              <Upload className="h-5 w-5 text-primary" />
+              Importar Currículo Lattes do Discente (XML / ZIP)
+            </DialogTitle>
+            <DialogDescription className="text-slate-600">
+              Arraste ou selecione o arquivo <strong>.xml</strong> ou <strong>.zip</strong>{' '}
+              exportado da Plataforma Lattes. O sistema extrairá nome, ID Lattes, nível de curso e
+              ano de conclusão para pré-preencher o formulário do discente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Área Drag and Drop */}
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => modalFileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                isDragging
+                  ? 'border-primary bg-primary/5 scale-[0.99]'
+                  : 'border-slate-300 hover:border-primary/60 hover:bg-slate-50'
+              }`}
+            >
+              <input
+                ref={modalFileInputRef}
+                type="file"
+                accept=".xml,.zip"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    handleValidarArquivos(e.target.files)
+                  }
+                }}
+              />
+              <div className="flex flex-col items-center justify-center space-y-2">
+                <div className="p-3 bg-primary/10 rounded-full text-primary">
+                  <Upload className="h-6 w-6" />
+                </div>
+                <p className="text-sm font-medium text-slate-800">
+                  Arraste e solte o arquivo aqui ou{' '}
+                  <span className="text-primary underline">clique para procurar</span>
+                </p>
+                <p className="text-xs text-slate-500">
+                  Formatos aceitos: <strong>.xml</strong> ou <strong>.zip</strong> oficial do Lattes
+                  (CNPq).
+                </p>
+              </div>
+            </div>
+
+            {/* Aviso explicativo */}
+            <div className="flex items-start gap-2.5 p-3 rounded-md bg-amber-50 text-amber-900 border border-amber-200/70 text-xs">
+              <Info className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+              <div>
+                <p className="font-semibold text-amber-950">Aviso sobre o preenchimento:</p>
+                <p className="mt-0.5 text-amber-800">
+                  A importação apenas pré-preenche os campos do formulário atual (nome, ID Lattes,
+                  tipo de curso e ano de conclusão). A gravação no banco só ocorre ao clicar em{' '}
+                  <strong>Salvar</strong>.
+                </p>
+              </div>
+            </div>
+
+            {/* Arquivo selecionado */}
+            {arquivoSelecionado && (
+              <div className="space-y-1.5 border rounded-md p-3 bg-slate-50">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                    Arquivo selecionado
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setArquivoSelecionado(null)
+                      if (modalFileInputRef.current) modalFileInputRef.current.value = ''
+                    }}
+                    disabled={importandoLattes}
+                    className="text-xs text-rose-600 hover:underline disabled:opacity-40"
+                  >
+                    Trocar arquivo
+                  </button>
+                </div>
+                <div className="flex items-center justify-between p-2 rounded bg-white border border-slate-200 text-xs">
+                  <div className="flex items-center gap-2 overflow-hidden mr-2">
+                    {arquivoSelecionado.name.toLowerCase().endsWith('.zip') ? (
+                      <FileArchive className="h-4 w-4 text-amber-600 shrink-0" />
+                    ) : (
+                      <FileCode className="h-4 w-4 text-sky-600 shrink-0" />
+                    )}
+                    <span
+                      className="font-medium text-slate-800 truncate"
+                      title={arquivoSelecionado.name}
+                    >
+                      {arquivoSelecionado.name}
+                    </span>
+                    <span className="text-slate-400 text-[11px] shrink-0">
+                      ({(arquivoSelecionado.size / 1024).toFixed(1)} KB)
+                    </span>
+                  </div>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={importandoLattes}
+              onClick={() => {
+                setDialogoLattesAberto(false)
+                setArquivoSelecionado(null)
+              }}
+              className="bg-white hover:bg-slate-50"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={!arquivoSelecionado || importandoLattes}
+              onClick={() => {
+                if (arquivoSelecionado) {
+                  validarEProcessarArquivoLattes(arquivoSelecionado)
+                }
+              }}
+              className="gap-2 bg-primary hover:bg-primary/90"
+            >
+              {importandoLattes ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processando Lattes...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4" />
+                  Aplicar dados ao formulário
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

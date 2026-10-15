@@ -12,6 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { formatarCpf } from '@/lib/utils'
 import type { FieldDef } from './types'
 
@@ -71,6 +73,29 @@ export function CrudFormDialog({
           setFormData: setFormData as React.Dispatch<React.SetStateAction<any>>,
         })
       : headerActions
+
+  // Controle de página para campos de ano (grade de 12 anos por página)
+  const anoAtual = new Date().getFullYear()
+  const [paginaAnoPorCampo, setPaginaAnoPorCampo] = React.useState<Record<string, number>>({})
+
+  const obterAnoBase = (campoKey: string, valorAtual: any): number => {
+    if (paginaAnoPorCampo[campoKey] !== undefined) {
+      return paginaAnoPorCampo[campoKey]
+    }
+    const extraido = extrairAno(valorAtual)
+    const num = extraido ? parseInt(extraido, 10) : anoAtual
+    return isNaN(num) ? anoAtual : num
+  }
+
+  const extrairAno = (val: any): string => {
+    if (val === null || val === undefined) return ''
+    const str = String(val).trim()
+    if (!str) return ''
+    // Tenta capturar 4 dígitos contínuos
+    const match = str.match(/\b(19\d{2}|20\d{2})\b/)
+    if (match) return match[1]
+    return str
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -147,6 +172,162 @@ export function CrudFormDialog({
                     onCheckedChange={(c) => setFormData({ ...formData, [field.key]: c })}
                   />
                 </div>
+              ) : field.type === 'year' ? (
+                (() => {
+                  const valorAno = extrairAno(formData[field.key])
+                  const anoBase = obterAnoBase(field.key, formData[field.key])
+                  // Bloco de 12 anos alinhado (ex.: se anoBase=2024, de 2016 a 2027 ou centralizado)
+                  const decadaInicio = Math.floor(anoBase / 12) * 12
+                  const anos = Array.from({ length: 12 }, (_, i) => decadaInicio + i)
+
+                  return (
+                    <Popover>
+                      <div className="flex items-center gap-1.5">
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            id={field.key}
+                            className={`w-full justify-between text-left font-normal bg-white h-9 border-input hover:bg-slate-50 ${
+                              !valorAno ? 'text-muted-foreground' : 'text-slate-900'
+                            }`}
+                          >
+                            <span className="flex items-center gap-2">
+                              <CalendarIcon className="h-4 w-4 text-slate-500 shrink-0" />
+                              <span className="font-medium">
+                                {valorAno || field.placeholder || 'Selecione o ano...'}
+                              </span>
+                            </span>
+                            <span className="text-[11px] text-slate-400 font-mono">
+                              {valorAno ? 'Alterar' : 'Escolher'}
+                            </span>
+                          </Button>
+                        </PopoverTrigger>
+                        {valorAno && !field.required && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-slate-400 hover:text-slate-600 shrink-0"
+                            title="Limpar ano"
+                            onClick={() => {
+                              if (field.onValueChangeWithFormData) {
+                                setFormData(field.onValueChangeWithFormData('', formData))
+                              } else {
+                                setFormData({ ...formData, [field.key]: '' })
+                              }
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      <PopoverContent className="w-64 p-3 bg-white" align="start">
+                        <div className="flex items-center justify-between pb-2 mb-2 border-b">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-600 hover:bg-slate-100"
+                            onClick={() =>
+                              setPaginaAnoPorCampo((prev) => ({
+                                ...prev,
+                                [field.key]: decadaInicio - 12,
+                              }))
+                            }
+                            title="Anos anteriores"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <span className="text-xs font-semibold text-slate-700">
+                            {decadaInicio} – {decadaInicio + 11}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-600 hover:bg-slate-100"
+                            onClick={() =>
+                              setPaginaAnoPorCampo((prev) => ({
+                                ...prev,
+                                [field.key]: decadaInicio + 12,
+                              }))
+                            }
+                            title="Próximos anos"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {anos.map((ano) => {
+                            const selecionado = String(ano) === valorAno
+                            const isAtual = ano === anoAtual
+                            return (
+                              <Button
+                                key={ano}
+                                type="button"
+                                variant={selecionado ? 'default' : 'ghost'}
+                                size="sm"
+                                className={`h-8 text-xs font-medium ${
+                                  selecionado
+                                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                    : isAtual
+                                      ? 'border border-primary/40 text-primary hover:bg-primary/10 font-bold'
+                                      : 'hover:bg-slate-100 text-slate-800'
+                                }`}
+                                onClick={() => {
+                                  const strAno = String(ano)
+                                  if (field.onValueChangeWithFormData) {
+                                    setFormData(field.onValueChangeWithFormData(strAno, formData))
+                                  } else {
+                                    setFormData({ ...formData, [field.key]: strAno })
+                                  }
+                                }}
+                              >
+                                {ano}
+                              </Button>
+                            )
+                          })}
+                        </div>
+                        <div className="flex items-center justify-between pt-2 mt-2 border-t text-[11px]">
+                          <button
+                            type="button"
+                            className="text-primary hover:underline font-medium"
+                            onClick={() => {
+                              const strAno = String(anoAtual)
+                              setPaginaAnoPorCampo((prev) => ({
+                                ...prev,
+                                [field.key]: anoAtual,
+                              }))
+                              if (field.onValueChangeWithFormData) {
+                                setFormData(field.onValueChangeWithFormData(strAno, formData))
+                              } else {
+                                setFormData({ ...formData, [field.key]: strAno })
+                              }
+                            }}
+                          >
+                            Ano atual ({anoAtual})
+                          </button>
+                          {!field.required && valorAno && (
+                            <button
+                              type="button"
+                              className="text-slate-500 hover:underline"
+                              onClick={() => {
+                                if (field.onValueChangeWithFormData) {
+                                  setFormData(field.onValueChangeWithFormData('', formData))
+                                } else {
+                                  setFormData({ ...formData, [field.key]: '' })
+                                }
+                              }}
+                            >
+                              Limpar
+                            </button>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )
+                })()
               ) : (
                 <Input
                   id={field.key}

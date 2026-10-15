@@ -11,7 +11,7 @@ export interface ColumnDef<T> {
 export interface FieldDef {
   key: string
   label: string
-  type: 'text' | 'number' | 'textarea' | 'select' | 'switch' | 'date' | 'url' | 'email'
+  type: 'text' | 'number' | 'textarea' | 'select' | 'switch' | 'date' | 'url' | 'email' | 'year'
   options?: { value: string; label: string }[]
   optionsLoader?: () => Promise<{ value: string; label: string }[]>
   required?: boolean
