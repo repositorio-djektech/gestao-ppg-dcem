@@ -76,7 +76,7 @@ export type Discente = {
   nome: string
   cpf: string
   data_ingresso: string
-  status: 'ativo' | 'titulado' | 'desligado'
+  status: 'ativo' | 'concluido' | 'titulado' | 'desligado'
   link_lattes: string
   link_comprovacao: string
   observacoes: string
@@ -95,6 +95,12 @@ export type Egresso = {
   link_lattes: string
   link_comprovacao: string
   observacoes: string
+  ano_ingresso?: string | null
+  tipo_curso?: string | null
+  docente_orientador_id?: number | null
+  orientador?: string | null
+  lattes_id?: string | null
+  nacionalidade?: string | null
 }
 
 export type Banca = {
