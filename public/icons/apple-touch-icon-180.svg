@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180">
+  <defs>
+    <linearGradient id="bgApple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+    <filter id="shadowApple" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- iOS aplica máscara padrão de superelipse, fundo preenchido 100% -->
+  <rect width="180" height="180" fill="url(#bgApple)" />
+
+  <g filter="url(#shadowApple)">
+    <path d="M90 42 L138 65 L90 87 L42 65 Z" fill="#ffffff" />
+    <path d="M59 73 L59 90 C59 102 73 112 90 112 C107 112 121 102 121 90 L121 73 L90 87 Z" fill="#e9effc" />
+    <path d="M130 69 L130 95 C130 98 128 100 125 100 C123 100 121 98 121 95 L121 69" stroke="#93c5fd" stroke-width="3" stroke-linecap="round" fill="none" />
+    <circle cx="125" cy="101" r="3" fill="#93c5fd" />
+  </g>
+
+  <g text-anchor="middle">
+    <rect x="48" y="123" width="84" height="14" rx="7" fill="#ffffff" opacity="0.18" />
+    <text x="90" y="133.5" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif" font-size="8.5" font-weight="800" letter-spacing="1">PPG-DCEM</text>
+    <text x="90" y="148" fill="#e9effc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif" font-size="5" font-weight="600" letter-spacing="0.8" opacity="0.9">PÓS-GRADUAÇÃO · UFS</text>
+  </g>
+</svg>

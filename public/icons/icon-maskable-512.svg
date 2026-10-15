@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgMask" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+    <linearGradient id="accentMask" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60a5fa" />
+      <stop offset="100%" stop-color="#93c5fd" />
+    </linearGradient>
+    <filter id="shadowMask" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#0f172a" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Fundo 100% preenchido sem bordas arredondadas (o OS aplicará a máscara) -->
+  <rect width="512" height="512" fill="url(#bgMask)" />
+
+  <!-- Círculo sutil na zona segura central -->
+  <circle cx="256" cy="256" r="180" fill="#ffffff" opacity="0.05" />
+
+  <!-- Conteúdo concentrado dentro dos 80% centrais (zona segura R=204px ~ box 100..412) -->
+  <g transform="translate(256 256) scale(0.82) translate(-256 -256)">
+    <!-- Emblema central estilizado do PPG-DCEM -->
+    <g filter="url(#shadowMask)">
+      <!-- Chapéu de formatura / Pós-Graduação (PPG) -->
+      <path d="M256 120 L392 184 L256 248 L120 184 Z" fill="#ffffff" />
+      <!-- Borda inferior do capelo -->
+      <path d="M168 208 L168 256 C168 290 207 318 256 318 C305 318 344 290 344 256 L344 208 L256 248 Z" fill="#e9effc" />
+      <!-- Pingente / tassel lateral -->
+      <path d="M370 196 L370 270 C370 276 364 282 358 282 C352 282 346 276 346 270 L346 196" stroke="url(#accentMask)" stroke-width="8" stroke-linecap="round" fill="none" />
+      <circle cx="358" cy="286" r="8" fill="#93c5fd" />
+    </g>
+
+    <!-- Sigla / Tipografia PPG - DCEM -->
+    <g text-anchor="middle">
+      <rect x="136" y="348" width="240" height="40" rx="20" fill="#ffffff" opacity="0.18" />
+      <text x="256" y="375" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif" font-size="24" font-weight="800" letter-spacing="3">PPG-DCEM</text>
+      <text x="256" y="420" fill="#e9effc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif" font-size="14" font-weight="600" letter-spacing="2" opacity="0.95">PÓS-GRADUAÇÃO · UFS</text>
+    </g>
+  </g>
+</svg>

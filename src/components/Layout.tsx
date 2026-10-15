@@ -3,6 +3,7 @@ import { Outlet, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { AppSidebar } from './AppSidebar'
 import { AppHeader } from './AppHeader'
+import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt'
 import { Loader2 } from 'lucide-react'
 
 export function Layout() {
@@ -53,6 +54,8 @@ export function Layout() {
           <Outlet />
         </main>
       </div>
+      {/* Banner discreto e elegante de instalação PWA */}
+      <PwaInstallPrompt />
     </div>
   )
 }

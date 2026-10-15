@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="bg192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+    <filter id="shadow192" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <rect width="192" height="192" rx="42" fill="url(#bg192)" />
+
+  <g filter="url(#shadow192)">
+    <path d="M96 45 L147 69 L96 93 L45 69 Z" fill="#ffffff" />
+    <path d="M63 78 L63 96 C63 109 78 119 96 119 C114 119 129 109 129 96 L129 78 L96 93 Z" fill="#e9effc" />
+    <path d="M139 74 L139 101 C139 104 136 106 134 106 C132 106 129 104 129 101 L129 74" stroke="#93c5fd" stroke-width="3" stroke-linecap="round" fill="none" />
+    <circle cx="134" cy="108" r="3" fill="#93c5fd" />
+  </g>
+
+  <g text-anchor="middle">
+    <rect x="51" y="131" width="90" height="15" rx="7.5" fill="#ffffff" opacity="0.18" />
+    <text x="96" y="142" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif" font-size="9" font-weight="800" letter-spacing="1">PPG-DCEM</text>
+    <text x="96" y="158" fill="#e9effc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif" font-size="5.5" font-weight="600" letter-spacing="0.8" opacity="0.9">PÓS-GRADUAÇÃO · UFS</text>
+  </g>
+</svg>

@@ -19,6 +19,7 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import backImgSignin from '@/assets/back-img-signin-cc601.webp'
 import dcemLogo from '@/assets/dcem-logo-trans-3d28d.webp'
+import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt'
 
 // Tela de Login e Cadastro do PPG DCEM
 
@@ -292,6 +293,9 @@ export default function Login() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Prompt PWA também disponível na tela de Login */}
+      <PwaInstallPrompt />
     </div>
   )
 }
