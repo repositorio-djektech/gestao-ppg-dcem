@@ -131,6 +131,11 @@ const navSections: NavSection[] = [
         icon: <Users2 className="h-5 w-5 shrink-0" />,
       },
       {
+        label: 'Iniciação Científica',
+        href: '/iniciacao-cientifica',
+        icon: <FlaskConical className="h-5 w-5 shrink-0" />,
+      },
+      {
         label: 'Disciplinas',
         href: '/disciplinas',
         icon: <Library className="h-5 w-5 shrink-0" />,

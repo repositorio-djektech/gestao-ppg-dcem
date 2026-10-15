@@ -26,9 +26,9 @@ export default function IniciacaoCientificaPage() {
   const [projetos, setProjetos] = useState<ProjetoPesquisa[]>([])
 
   useEffect(() => {
-    docentesService.getAll().then(setDocentes).catch(console.error)
-    discentesService.getAll().then(setDiscentes).catch(console.error)
-    projetosPesquisaService.getAll().then(setProjetos).catch(console.error)
+    docentesService.list().then(setDocentes).catch(console.error)
+    discentesService.list().then(setDiscentes).catch(console.error)
+    projetosPesquisaService.list().then(setProjetos).catch(console.error)
   }, [])
 
   const columns: ColumnDef<IniciacaoCientifica>[] = [
@@ -167,10 +167,13 @@ export default function IniciacaoCientificaPage() {
       type: 'select',
       options: [
         { label: '— Sem vínculo com projeto específico —', value: '' },
-        ...projetos.map((p) => ({
-          label: `${p.ano ? `[${p.ano}] ` : ''}${p.titulo.slice(0, 80)}${p.titulo.length > 80 ? '...' : ''}`,
-          value: String(p.id),
-        })),
+        ...projetos.map((p) => {
+          const anoRef = p.inicio ? p.inicio.slice(0, 4) : ''
+          return {
+            label: `${anoRef ? `[${anoRef}] ` : ''}${p.titulo.slice(0, 80)}${p.titulo.length > 80 ? '...' : ''}`,
+            value: String(p.id),
+          }
+        }),
       ],
       placeholder: 'Selecione o projeto...',
     },

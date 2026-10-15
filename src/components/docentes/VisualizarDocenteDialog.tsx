@@ -520,6 +520,12 @@ export function VisualizarDocenteDialog({
 
     setSalvandoIdentificacao(true)
     try {
+      const categoriaValida = (
+        ['permanente', 'colaborador', 'visitante', 'jdp'].includes(formIdentificacao.categoria)
+          ? formIdentificacao.categoria
+          : null
+      ) as Docente['categoria']
+
       const payload: Partial<Docente> = {
         nome: formIdentificacao.nome.trim(),
         id_lattes: formIdentificacao.id_lattes.trim() || null,
@@ -528,7 +534,7 @@ export function VisualizarDocenteDialog({
         orc_id: formIdentificacao.orc_id.trim() || null,
         indice_h: Number(formIdentificacao.indice_h) || 0,
         bolsa_cnpq: formIdentificacao.bolsa_cnpq.trim() || '',
-        categoria: (formIdentificacao.categoria || null) as any,
+        categoria: categoriaValida,
         email: formIdentificacao.email.trim() || '',
         cpf: formIdentificacao.cpf.replace(/\D/g, '').slice(0, 11) || '',
         siape: formIdentificacao.siape.replace(/\D/g, '') || '',
@@ -541,8 +547,7 @@ export function VisualizarDocenteDialog({
           : null,
       }
 
-      const { data, error } = await supabase
-        .from('docentes')
+      const { data, error } = await (supabase.from('docentes') as any)
         .update(payload)
         .eq('id', doc.id)
         .select()
@@ -550,7 +555,7 @@ export function VisualizarDocenteDialog({
 
       if (error) throw error
 
-      const docAtualizado = (data as Docente) || { ...doc, ...payload }
+      const docAtualizado: Docente = (data as Docente) || { ...doc, ...payload }
       setDados((prev) => ({
         ...prev,
         docente: docAtualizado,
