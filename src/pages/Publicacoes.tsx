@@ -10,6 +10,7 @@ import { publicacoesDocentesService } from '@/services/publicacoes-docentes'
 import { SeletorCoautoria } from '@/components/publicacoes/SeletorCoautoria'
 import { SeletorDocentesAutores } from '@/components/publicacoes/SeletorDocentesAutores'
 import { VincularAutoresDocentesDialog } from '@/components/publicacoes/VincularAutoresDocentesDialog'
+import { SugerirQualisDialog } from '@/components/publicacoes/SugerirQualisDialog'
 import { DocenteNome } from '@/components/docentes/DocenteNome'
 import type {
   Publicacao,
@@ -64,7 +65,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Search, Plus, Edit, Trash2, Printer, Sparkles } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Printer, Sparkles, Award } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Pagination,
@@ -90,7 +91,11 @@ const emptyForm: Omit<Publicacao, 'id'> = {
   justificativa_indicacao: '',
 }
 
-function getQualisBadge(estrato?: EstratoQualis | null) {
+function getQualisBadge(
+  estrato?: EstratoQualis | null,
+  origem?: string | null,
+  justificativa?: string | null,
+) {
   if (!estrato) {
     return (
       <Badge
@@ -101,34 +106,63 @@ function getQualisBadge(estrato?: EstratoQualis | null) {
       </Badge>
     )
   }
+
+  const tooltipTitle = justificativa
+    ? `${origem === 'sugerido_confirmado' ? 'Sugerido (OpenAlex/Scopus)' : 'Manual'}: ${justificativa}`
+    : origem === 'sugerido_confirmado'
+      ? 'Sugerido e confirmado via OpenAlex/Scopus'
+      : 'Atribuído manualmente'
+
+  let badgeElement: React.ReactNode
   switch (estrato) {
     case 'A1':
     case 'A2':
-      return (
-        <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white font-mono text-[11px]">
+      badgeElement = (
+        <Badge
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-mono text-[11px] gap-1 cursor-help"
+          title={tooltipTitle}
+        >
           {estrato}
+          {origem === 'sugerido_confirmado' && <span className="text-[9px] opacity-80">★</span>}
         </Badge>
       )
+      break
     case 'A3':
     case 'A4':
-      return (
-        <Badge className="bg-blue-600 hover:bg-blue-700 text-white font-mono text-[11px]">
+      badgeElement = (
+        <Badge
+          className="bg-blue-600 hover:bg-blue-700 text-white font-mono text-[11px] gap-1 cursor-help"
+          title={tooltipTitle}
+        >
           {estrato}
+          {origem === 'sugerido_confirmado' && <span className="text-[9px] opacity-80">★</span>}
         </Badge>
       )
+      break
     case 'B1':
-      return (
-        <Badge className="bg-amber-500 hover:bg-amber-600 text-white font-mono text-[11px]">
+      badgeElement = (
+        <Badge
+          className="bg-amber-500 hover:bg-amber-600 text-white font-mono text-[11px] gap-1 cursor-help"
+          title={tooltipTitle}
+        >
           {estrato}
+          {origem === 'sugerido_confirmado' && <span className="text-[9px] opacity-80">★</span>}
         </Badge>
       )
+      break
     default:
-      return (
-        <Badge variant="outline" className="text-slate-600 font-mono text-[11px]">
+      badgeElement = (
+        <Badge
+          variant="outline"
+          className="text-slate-600 font-mono text-[11px] cursor-help"
+          title={tooltipTitle}
+        >
           {estrato}
         </Badge>
       )
   }
+
+  return badgeElement
 }
 
 export default function Publicacoes() {
@@ -141,6 +175,7 @@ export default function Publicacoes() {
   const [tipoProducaoFilter, setTipoProducaoFilter] = useState('all')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isVincularDocentesOpen, setIsVincularDocentesOpen] = useState(false)
+  const [isSugerirQualisOpen, setIsSugerirQualisOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | string | null>(null)
   const [page, setPage] = useState(1)
   const [submitting, setSubmitting] = useState(false)
@@ -289,6 +324,8 @@ export default function Publicacoes() {
       justificativa_indicacao: formData.indicacao_nivel
         ? formData.justificativa_indicacao || ''
         : null,
+      // Se definiu estrato manualmente no formulário, registra origem manual
+      ...(formData.estrato_qualis ? { qualis_origem: 'manual' as const } : {}),
     }
     try {
       let savedPubId = editingId
@@ -443,15 +480,26 @@ export default function Publicacoes() {
             <span className="hidden sm:inline">Imprimir / PDF</span>
           </Button>
           {canEdit && (
-            <Button
-              variant="outline"
-              onClick={() => setIsVincularDocentesOpen(true)}
-              className="gap-2 shrink-0 bg-white min-h-[44px] md:min-h-9 border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
-              title="Casamento Automático Autor → Docente (Etapa D1)"
-            >
-              <Sparkles className="h-4 w-4 text-blue-600" />
-              <span>Vincular autores a docentes</span>
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setIsSugerirQualisOpen(true)}
+                className="gap-2 shrink-0 bg-white min-h-[44px] md:min-h-9 border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                title="Sugerir Qualis automaticamente com base no OpenAlex e Scopus (Etapa D2)"
+              >
+                <Award className="h-4 w-4 text-emerald-600" />
+                <span>Sugerir Qualis (OpenAlex/Scopus)</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsVincularDocentesOpen(true)}
+                className="gap-2 shrink-0 bg-white min-h-[44px] md:min-h-9 border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+                title="Casamento Automático Autor → Docente (Etapa D1)"
+              >
+                <Sparkles className="h-4 w-4 text-blue-600" />
+                <span>Vincular autores a docentes</span>
+              </Button>
+            </>
           )}
           {canEdit && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -857,7 +905,13 @@ export default function Publicacoes() {
                         </div>
                         <div className="text-xs text-slate-500">{p.autores}</div>
                       </TableCell>
-                      <TableCell>{getQualisBadge(p.estrato_qualis)}</TableCell>
+                      <TableCell>
+                        {getQualisBadge(
+                          p.estrato_qualis,
+                          p.qualis_origem,
+                          p.qualis_sugestao_justificativa,
+                        )}
+                      </TableCell>
                       <TableCell>
                         {docentesVinculados.length > 0 ? (
                           <div className="flex flex-wrap gap-1 max-w-[160px]">
@@ -1023,7 +1077,13 @@ export default function Publicacoes() {
                       <h3 className="font-semibold text-slate-900 text-sm leading-snug break-words flex-1">
                         {normalizarTituloAcademico(p.titulo)}
                       </h3>
-                      <div className="shrink-0">{getQualisBadge(p.estrato_qualis)}</div>
+                      <div className="shrink-0">
+                        {getQualisBadge(
+                          p.estrato_qualis,
+                          p.qualis_origem,
+                          p.qualis_sugestao_justificativa,
+                        )}
+                      </div>
                     </div>
 
                     {p.autores && (
@@ -1217,14 +1277,31 @@ export default function Publicacoes() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Diálogo de Sugestão Automática de Estrato Qualis (Etapa D2) */}
+      <SugerirQualisDialog
+        open={isSugerirQualisOpen}
+        onOpenChange={setIsSugerirQualisOpen}
+        onSucesso={() => {
+          // Atualiza lista de publicações e seus badges imediatamente
+          if (publicacoesService?.list) {
+            publicacoesService.list().then((novas) => {
+              if (Array.isArray(novas)) {
+                // Atualiza via hook de crud ou recarregamento
+              }
+            })
+          }
+          window.location.reload()
+        }}
+      />
+
       {/* Diálogo de Casamento Automático Autor -> Docente (Etapa D1) */}
       <VincularAutoresDocentesDialog
         open={isVincularDocentesOpen}
         onOpenChange={setIsVincularDocentesOpen}
-        usuarioNome={profile?.name || profile?.email || 'Usuário'}
         onSucesso={() => {
           carregarRelacionados()
         }}
+        usuarioNome={profile?.name || profile?.email || 'Colegiado'}
       />
     </div>
   )

@@ -29,6 +29,7 @@ export type Docente = {
 }
 
 export type EstratoQualis = 'A1' | 'A2' | 'A3' | 'A4' | 'B1'
+export type QualisOrigem = 'manual' | 'sugerido_confirmado'
 export type TipoProducao = 'Artigo em periódico' | 'Trabalho em anais' | 'Capítulo'
 export type IndicacaoNivel = 2 | 3
 
@@ -47,6 +48,8 @@ export type Publicacao = {
   tipo_producao?: TipoProducao | null
   indicacao_nivel?: IndicacaoNivel | null
   justificativa_indicacao?: string | null
+  qualis_origem?: QualisOrigem | null
+  qualis_sugestao_justificativa?: string | null
 }
 
 export type Mobilidade = {

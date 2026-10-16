@@ -870,6 +870,8 @@ export type Database = {
           link_comprovacao: string
           observacoes: string
           periodico: string
+          qualis_origem: string | null
+          qualis_sugestao_justificativa: string | null
           tipo_producao: string | null
           titulo: string
         }
@@ -887,6 +889,8 @@ export type Database = {
           link_comprovacao?: string
           observacoes?: string
           periodico: string
+          qualis_origem?: string | null
+          qualis_sugestao_justificativa?: string | null
           tipo_producao?: string | null
           titulo: string
         }
@@ -904,6 +908,8 @@ export type Database = {
           link_comprovacao?: string
           observacoes?: string
           periodico?: string
+          qualis_origem?: string | null
+          qualis_sugestao_justificativa?: string | null
           tipo_producao?: string | null
           titulo?: string
         }
