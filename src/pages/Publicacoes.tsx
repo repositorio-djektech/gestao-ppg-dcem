@@ -192,6 +192,14 @@ export default function Publicacoes() {
   // Estado dos docentes vinculados na edição atual da publicação
   const [docentesAutoresSelecionados, setDocentesAutoresSelecionados] = useState<number[]>([])
 
+  const recarregarTudo = async () => {
+    try {
+      await Promise.all([publicacoesService.list(), carregarRelacionados()])
+    } catch (err) {
+      console.error('Erro ao recarregar dados de publicações:', err)
+    }
+  }
+
   const carregarRelacionados = async () => {
     try {
       const [disc, eg, docs, coaut, pubsDocs] = await Promise.all([
@@ -210,7 +218,6 @@ export default function Publicacoes() {
       console.error('Erro ao carregar dados para coautoria e docentes:', err)
     }
   }
-
   useEffect(() => {
     carregarRelacionados()
   }, [])
@@ -1280,16 +1287,13 @@ export default function Publicacoes() {
       {/* Diálogo de Sugestão Automática de Estrato Qualis (Etapa D2) */}
       <SugerirQualisDialog
         open={isSugerirQualisOpen}
-        onOpenChange={setIsSugerirQualisOpen}
-        onSucesso={() => {
-          // Atualiza lista de publicações e seus badges imediatamente
-          if (publicacoesService?.list) {
-            publicacoesService.list().then((novas) => {
-              if (Array.isArray(novas)) {
-                // Atualiza via hook de crud ou recarregamento
-              }
-            })
+        onOpenChange={(aberto) => {
+          setIsSugerirQualisOpen(aberto)
+          if (!aberto) {
+            recarregarTudo()
           }
+        }}
+        onSucesso={() => {
           window.location.reload()
         }}
       />

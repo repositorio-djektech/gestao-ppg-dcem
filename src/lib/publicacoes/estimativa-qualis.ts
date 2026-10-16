@@ -61,24 +61,49 @@ export interface SugestaoEstratoQualis {
 }
 
 /**
- * Converte percentil (0–100) em estrato Qualis (A1–B1)
- * Regra típica CAPES (Interdisciplinar / Engenharias / Ciências de Materiais):
- * - percentil >= 90: A1
- * - percentil 75 a 89.99: A2
- * - percentil 60 a 74.99: A3
- * - percentil 40 a 59.99: A4
- * - abaixo de 40: B1
+ * NOTA METODOLÓGICA (Etapa D2 - Acordo com usuário):
+ * Nem o OpenAlex nem o Scopus publicam o Qualis oficial da CAPES (que é regulamentado
+ * pela comissão de área da CAPES). Toda estimativa gerada por este motor é uma
+ * PROJEÇÃO PRELIMINAR baseada no quartil/percentil de citação do periódico ou da obra,
+ * rotulada obrigatoriamente como "sugestão" e que só entra na base mediante confirmação humana.
+ *
+ * MAPA DE CORRESPONDÊNCIA OFICIAL ADOTADO (Percentil da área de conhecimento):
+ * - Percentil ≥ 90: A1 (Quartil Superior Top 10%)
+ * - Percentil 75 a 89.99: A2 (Quartil 1 restante)
+ * - Percentil 50 a 74.99: A3 (Quartil 2)
+ * - Percentil 25 a 49.99: A4 (Quartil 3)
+ * - Percentil < 25: B1 (Quartil 4)
+ *
+ * ORDEM DE PRECEDÊNCIA DE MÉTRICAS (Decidida e Documentada):
+ * 1. Scopus CiteScore Percentile / SJR (precedência por métricas consolidadas indexadas e curadas)
+ * 2. OpenAlex Work Percentile (percentil de citação normalizado por ano/área do artigo)
+ * 3. OpenAlex Source 2yr Mean Citedness (média de citações da fonte)
+ * 4. JCR (Fator de Impacto previamente cadastrado pelo usuário)
+ * 5. Sem métrica disponível → "sem sugestão — sem métricas disponíveis" (nunca erro).
  */
+export const FAIXAS_PERCENTIL_QUALIS: {
+  min: number
+  max: number
+  estrato: EstratoQualis
+  rotulo: string
+}[] = [
+  { min: 90, max: 100, estrato: 'A1', rotulo: 'percentil ≥ 90 (Top 10%)' },
+  { min: 75, max: 89.99, estrato: 'A2', rotulo: 'percentil 75–89 (Q1)' },
+  { min: 50, max: 74.99, estrato: 'A3', rotulo: 'percentil 50–74 (Q2)' },
+  { min: 25, max: 49.99, estrato: 'A4', rotulo: 'percentil 25–49 (Q3)' },
+  { min: 0, max: 24.99, estrato: 'B1', rotulo: 'percentil < 25 (Q4)' },
+]
+
 export function mapearPercentilParaQualis(percentil: number): {
   estrato: EstratoQualis
   faixa: string
 } {
   const p = Math.max(0, Math.min(100, percentil))
   if (p >= 90) return { estrato: 'A1', faixa: 'percentil ≥ 90 (Top 10%)' }
-  if (p >= 75) return { estrato: 'A2', faixa: 'percentil 75–89' }
-  if (p >= 60) return { estrato: 'A3', faixa: 'percentil 60–74' }
-  if (p >= 40) return { estrato: 'A4', faixa: 'percentil 40–59' }
-  return { estrato: 'B1', faixa: 'percentil < 40' }
+  if (p >= 75) return { estrato: 'A2', faixa: 'percentil 75–89 (Q1)' }
+  if (p >= 50) return { estrato: 'A3', faixa: 'percentil 50–74 (Q2)' }
+  if (p >= 25) return { estrato: 'A4', faixa: 'percentil 25–49 (Q3)' }
+  return { estrato: 'B1', faixa: 'percentil < 25 (Q4)' }
 }
 
 /**
@@ -319,13 +344,12 @@ export function estimarEstratoQualis(
     }
   }
 
-  // 6. Sem métricas encontráveis: NUNCA inventa estrato
+  // 6. Sem métricas encontráveis: NUNCA inventa estrato (rotulado amigavelmente)
   return {
     ...base,
     estratoSugerido: null,
     grauConfianca: 'baixa',
-    justificativa:
-      'Nenhuma métrica de periódicos identificada no OpenAlex/Scopus — confirmar manualmente.',
-    metricasResumo: 'Sem métrica encontrada',
+    justificativa: 'Sem sugestão — sem métricas disponíveis (preenchimento manual).',
+    metricasResumo: 'Sem métricas disponíveis',
   }
 }

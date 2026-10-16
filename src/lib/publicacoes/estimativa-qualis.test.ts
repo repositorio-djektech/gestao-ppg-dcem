@@ -24,20 +24,20 @@ describe('Motor de Estimativa Qualis (Etapa D2)', () => {
       expect(mapearPercentilParaQualis(80).estrato).toBe('A2')
     })
 
-    it('deve mapear percentil 60 a 74.99 para A3', () => {
+    it('deve mapear percentil 50 a 74.99 para A3 (Quartil 2)', () => {
       expect(mapearPercentilParaQualis(74.9).estrato).toBe('A3')
-      expect(mapearPercentilParaQualis(60).estrato).toBe('A3')
+      expect(mapearPercentilParaQualis(50).estrato).toBe('A3')
       expect(mapearPercentilParaQualis(65).estrato).toBe('A3')
     })
 
-    it('deve mapear percentil 40 a 59.99 para A4', () => {
-      expect(mapearPercentilParaQualis(59.9).estrato).toBe('A4')
-      expect(mapearPercentilParaQualis(40).estrato).toBe('A4')
-      expect(mapearPercentilParaQualis(50).estrato).toBe('A4')
+    it('deve mapear percentil 25 a 49.99 para A4 (Quartil 3)', () => {
+      expect(mapearPercentilParaQualis(49.9).estrato).toBe('A4')
+      expect(mapearPercentilParaQualis(25).estrato).toBe('A4')
+      expect(mapearPercentilParaQualis(35).estrato).toBe('A4')
     })
 
-    it('deve mapear percentil abaixo de 40 para B1', () => {
-      expect(mapearPercentilParaQualis(39.9).estrato).toBe('B1')
+    it('deve mapear percentil abaixo de 25 para B1 (Quartil 4)', () => {
+      expect(mapearPercentilParaQualis(24.9).estrato).toBe('B1')
       expect(mapearPercentilParaQualis(20).estrato).toBe('B1')
       expect(mapearPercentilParaQualis(0).estrato).toBe('B1')
     })
@@ -220,7 +220,7 @@ describe('Motor de Estimativa Qualis (Etapa D2)', () => {
       const res = estimarEstratoQualis(pub, {})
       expect(res.estratoSugerido).toBeNull()
       expect(res.grauConfianca).toBe('baixa')
-      expect(res.justificativa).toContain('Nenhuma métrica de periódicos identificada')
+      expect(res.justificativa).toContain('sem métricas disponíveis')
     })
   })
 })

@@ -26,6 +26,12 @@ describe('Serviço de Estimativa Qualis (estimativaQualisService)', () => {
           ],
           error: null,
         }),
+        is: vi.fn().mockReturnValue({
+          order: vi.fn().mockResolvedValue({
+            data: [{ id: 11, estrato_qualis: null, qualis_origem: null }],
+            error: null,
+          }),
+        }),
       })
 
       const mockUpdate = vi.fn().mockReturnValue({
@@ -80,6 +86,12 @@ describe('Serviço de Estimativa Qualis (estimativaQualisService)', () => {
           data: [{ id: 12, estrato_qualis: null, qualis_origem: null }],
           error: null,
         }),
+        is: vi.fn().mockReturnValue({
+          order: vi.fn().mockResolvedValue({
+            data: [{ id: 12, estrato_qualis: null, qualis_origem: null }],
+            error: null,
+          }),
+        }),
       })
 
       const mockUpdate = vi.fn().mockReturnValue({
@@ -110,6 +122,39 @@ describe('Serviço de Estimativa Qualis (estimativaQualisService)', () => {
           qualis_sugestao_justificativa: 'Atribuição manual pelo coordenador',
         }),
       )
+    })
+
+    it('deve obter contagens de publicações do banco para exibição das métricas', async () => {
+      const mockSelectContagem = vi.fn().mockResolvedValue({
+        count: 54,
+        error: null,
+      })
+      const mockSelectComEstrato = vi.fn().mockReturnValue({
+        not: vi.fn().mockResolvedValue({
+          count: 14,
+          error: null,
+        }),
+      })
+
+      ;(supabase.from as any).mockImplementation((table: string) => {
+        if (table === 'publicacoes') {
+          return {
+            select: vi.fn().mockImplementation((_cols: any, opts: any) => {
+              if (opts?.count === 'exact') {
+                return {
+                  not: vi.fn().mockResolvedValue({ count: 14, error: null }),
+                  ...Promise.resolve({ count: 54, error: null }),
+                }
+              }
+              return mockSelectContagem
+            }),
+          }
+        }
+        return {}
+      })
+
+      const total = await estimativaQualisService.obterContagemTotalPublicacoes()
+      expect(typeof total.count).toBe('number')
     })
   })
 })

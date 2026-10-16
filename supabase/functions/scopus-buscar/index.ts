@@ -33,6 +33,130 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    const acao = typeof body.acao === 'string' ? body.acao : 'buscar-autor'
+
+    // ==========================================
+    // ROTA A: Consulta de métricas de periódico/serial (Serial Title Retrieval)
+    // Usado na Etapa D2 para enriquecer a estimativa de estrato Qualis
+    // ==========================================
+    if (acao === 'consultar-serial' || acao === 'metricas-serial') {
+      const issn = typeof body.issn === 'string' ? body.issn.trim().replace(/[^0-9X-]/gi, '') : ''
+      const title = typeof body.title === 'string' ? body.title.trim() : ''
+
+      const apiKey = Deno.env.get('SCOPUS_API_KEY')
+      if (!apiKey) {
+        return new Response(
+          JSON.stringify({
+            sucesso: false,
+            mensagemErro: 'SCOPUS_API_KEY não configurada no backend.',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        )
+      }
+
+      if (!issn && !title) {
+        return new Response(
+          JSON.stringify({
+            sucesso: true,
+            encontrado: false,
+            metricas: null,
+          }),
+          { headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        )
+      }
+
+      try {
+        const serialUrl = new URL('https://api.elsevier.com/content/serial/title')
+        if (issn) {
+          serialUrl.searchParams.set('issn', issn)
+        } else {
+          serialUrl.searchParams.set('title', title)
+        }
+        serialUrl.searchParams.set('view', 'STANDARD')
+
+        const serialController = new AbortController()
+        const serialTimer = setTimeout(() => serialController.abort(), 8000)
+
+        const sResp = await fetch(serialUrl.toString(), {
+          method: 'GET',
+          signal: serialController.signal,
+          headers: {
+            Accept: 'application/json',
+            'X-ELS-APIKey': apiKey,
+          },
+        })
+        clearTimeout(serialTimer)
+
+        if (!sResp.ok) {
+          return new Response(
+            JSON.stringify({
+              sucesso: false,
+              encontrado: false,
+              statusHttp: sResp.status,
+              metricas: null,
+            }),
+            { headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+          )
+        }
+
+        const sData = await sResp.json()
+        const entry = sData?.['serial-metadata-response']?.entry?.[0]
+        if (!entry) {
+          return new Response(
+            JSON.stringify({
+              sucesso: true,
+              encontrado: false,
+              metricas: null,
+            }),
+            { headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+          )
+        }
+
+        const sjrVal = entry['SJRList']?.['SJR']?.[0]?.['$'] ?? entry['SJRList']?.['SJR']?.['$']
+        const sjrNum = sjrVal !== undefined ? parseFloat(String(sjrVal)) : null
+        const snipVal =
+          entry['SNIPList']?.['SNIP']?.[0]?.['$'] ?? entry['SNIPList']?.['SNIP']?.['$']
+        const snipNum = snipVal !== undefined ? parseFloat(String(snipVal)) : null
+        const citeScoreVal = entry['citeScoreYearInfoList']?.['citeScoreCurrentMetric']
+        const citeScoreNum = citeScoreVal !== undefined ? parseFloat(String(citeScoreVal)) : null
+        const citeScorePercentile =
+          entry['citeScoreYearInfoList']?.['citeScoreCurrentMetricPercentile'] !== undefined
+            ? parseFloat(
+                String(entry['citeScoreYearInfoList']?.['citeScoreCurrentMetricPercentile']),
+              )
+            : null
+
+        const metricasSerial = {
+          sourceId: entry['source-id'] || null,
+          title: entry['dc:title'] || title || null,
+          issn: entry['prism:issn'] || issn || null,
+          eIssn: entry['prism:eIssn'] || null,
+          sjr: Number.isFinite(sjrNum) ? sjrNum : null,
+          snip: Number.isFinite(snipNum) ? snipNum : null,
+          citeScore: Number.isFinite(citeScoreNum) ? citeScoreNum : null,
+          percentileCiteScore: Number.isFinite(citeScorePercentile) ? citeScorePercentile : null,
+        }
+
+        return new Response(
+          JSON.stringify({
+            sucesso: true,
+            encontrado: true,
+            metricas: metricasSerial,
+          }),
+          { headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        )
+      } catch (serialErr: any) {
+        return new Response(
+          JSON.stringify({
+            sucesso: false,
+            encontrado: false,
+            mensagemErro: serialErr?.message || 'Falha ao consultar serial Scopus',
+          }),
+          { headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        )
+      }
+    }
+
     const termo = typeof body.termo === 'string' ? body.termo.trim() : ''
     const filtroAfiliacao =
       typeof body.filtroAfiliacao === 'string' ? body.filtroAfiliacao.trim() : undefined

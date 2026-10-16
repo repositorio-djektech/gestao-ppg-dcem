@@ -59,6 +59,25 @@ export function SugerirQualisDialog({ open, onOpenChange, onSucesso }: SugerirQu
 
   // Estratos manuais selecionados direto na linha para as publicações sem sugestão
   const [estratosManuais, setEstratosManuais] = useState<Map<number, EstratoQualis>>(new Map())
+  const [totalGeralBanco, setTotalGeralBanco] = useState<{
+    total: number
+    jaComEstrato: number
+  }>({ total: 0, jaComEstrato: 0 })
+
+  // Carrega contagens do banco e roda a estimativa
+  const carregarContagensBanco = async () => {
+    try {
+      const { count: totalPubs } = await estimativaQualisService.obterContagemTotalPublicacoes()
+      const { count: pubsComEstrato } =
+        await estimativaQualisService.obterContagemPublicacoesComEstrato()
+      setTotalGeralBanco({
+        total: totalPubs || 0,
+        jaComEstrato: pubsComEstrato || 0,
+      })
+    } catch (err) {
+      console.warn('Erro ao carregar contagens gerais de publicações:', err)
+    }
+  }
 
   // Carrega e roda a estimativa
   const carregarSugestoes = async () => {
@@ -96,6 +115,7 @@ export function SugerirQualisDialog({ open, onOpenChange, onSucesso }: SugerirQu
 
   useEffect(() => {
     if (open) {
+      carregarContagensBanco()
       carregarSugestoes()
     } else {
       setSugestoes([])
@@ -105,20 +125,28 @@ export function SugerirQualisDialog({ open, onOpenChange, onSucesso }: SugerirQu
     }
   }, [open])
 
-  // Métricas do topo
+  // Métricas do topo com contagens ao vivo exigidas pela especificação da D2:
+  // (analisadas, com sugestão, sem sugestão, já com estrato)
   const estatisticas = useMemo(() => {
-    const totalSemEstrato = sugestoes.length
+    const analisadas = sugestoes.length
     const comSugestao = sugestoes.filter((s) => Boolean(s.estratoSugerido)).length
-    const semMetrica = sugestoes.filter((s) => !s.estratoSugerido).length
+    const semSugestao = sugestoes.filter((s) => !s.estratoSugerido).length
+    const jaComEstrato = totalGeralBanco.jaComEstrato
     const altaConf = sugestoes.filter(
       (s) => s.grauConfianca === 'alta' && Boolean(s.estratoSugerido),
     ).length
     const mediaConf = sugestoes.filter(
       (s) => s.grauConfianca === 'media' && Boolean(s.estratoSugerido),
     ).length
-    return { totalSemEstrato, comSugestao, semMetrica, altaConf, mediaConf }
-  }, [sugestoes])
-
+    return {
+      analisadas,
+      comSugestao,
+      semSugestao,
+      jaComEstrato,
+      altaConf,
+      mediaConf,
+    }
+  }, [sugestoes, totalGeralBanco])
   // Filtragem dos itens exibidos
   const itensFiltrados = useMemo(() => {
     return sugestoes.filter((item) => {
@@ -395,20 +423,33 @@ export function SugerirQualisDialog({ open, onOpenChange, onSucesso }: SugerirQu
           </div>
         </DialogHeader>
 
-        {/* Barra de métricas ao vivo */}
+        {/* Barra de métricas ao vivo com contagens exigidas: analisadas, com sugestão, sem sugestão, já com estrato */}
         <div className="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 text-xs text-slate-700 shrink-0">
           <div className="flex items-center gap-3 flex-wrap">
-            <span>
-              <strong>{estatisticas.totalSemEstrato}</strong> sem estrato
+            <span title="Publicações analisadas nesta rodada (ainda sem estrato)">
+              <strong>{estatisticas.analisadas}</strong> analisadas
             </span>
             <span>•</span>
-            <span className="text-emerald-700 font-medium">
+            <span
+              className="text-emerald-700 font-medium"
+              title="Publicações com sugestão de estrato calculada"
+            >
               <strong>{estatisticas.comSugestao}</strong> com sugestão ({estatisticas.altaConf}{' '}
               alta, {estatisticas.mediaConf} média)
             </span>
             <span>•</span>
-            <span className="text-slate-500">
-              <strong>{estatisticas.semMetrica}</strong> sem métrica (manual)
+            <span
+              className="text-amber-700 font-medium"
+              title="Sem métricas disponíveis para sugestão automática"
+            >
+              <strong>{estatisticas.semSugestao}</strong> sem sugestão
+            </span>
+            <span>•</span>
+            <span
+              className="text-blue-700"
+              title="Publicações preservadas que já possuem estrato_qualis definido no banco"
+            >
+              <strong>{estatisticas.jaComEstrato}</strong> já com estrato
             </span>
           </div>
 
@@ -417,7 +458,10 @@ export function SugerirQualisDialog({ open, onOpenChange, onSucesso }: SugerirQu
               type="button"
               variant="ghost"
               size="sm"
-              onClick={carregarSugestoes}
+              onClick={() => {
+                carregarContagensBanco()
+                carregarSugestoes()
+              }}
               disabled={loading || processando}
               className="h-7 text-xs text-slate-600 gap-1 px-2"
               title="Recarregar estimativas"
@@ -635,9 +679,9 @@ export function SugerirQualisDialog({ open, onOpenChange, onSucesso }: SugerirQu
                             size="sm"
                             disabled={processando}
                             onClick={() => handleConfirmarIndividual(item)}
-                            className="h-7 text-[11px] gap-1 px-3 bg-blue-600 hover:bg-blue-700 min-h-[36px] sm:min-h-7"
+                            className="text-[11px] gap-1 px-3 bg-blue-600 hover:bg-blue-700 min-h-[44px] sm:min-h-7"
                           >
-                            <CheckCircle2 className="h-3 w-3" />
+                            <CheckCircle2 className="h-3.5 w-3.5" />
                             <span>Confirmar {item.estratoSugerido}</span>
                           </Button>
                         </div>
@@ -684,9 +728,9 @@ export function SugerirQualisDialog({ open, onOpenChange, onSucesso }: SugerirQu
                           onClick={() =>
                             handleGravarManualIndividual(item.publicacaoId, item.titulo)
                           }
-                          className="h-7 text-[11px] gap-1 bg-amber-600 hover:bg-amber-700 text-white min-h-[36px] sm:min-h-7"
+                          className="text-[11px] gap-1 bg-amber-600 hover:bg-amber-700 text-white min-h-[44px] sm:min-h-7"
                         >
-                          <CheckCheck className="h-3 w-3" />
+                          <CheckCheck className="h-3.5 w-3.5" />
                           <span>Gravar Manual</span>
                         </Button>
                       </div>

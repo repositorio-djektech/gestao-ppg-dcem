@@ -18,6 +18,48 @@ export interface ScopusServiceOptions extends BuscarAutoresScopusOpcoes {
   invokeFn?: (functionName: string, options?: { body?: any }) => Promise<{ data: any; error: any }>
 }
 
+export interface MetricasScopusSerialResultado {
+  sourceId?: string | null
+  title?: string | null
+  issn?: string | null
+  eIssn?: string | null
+  sjr?: number | null
+  snip?: number | null
+  citeScore?: number | null
+  percentileCiteScore?: number | null
+}
+
+/**
+ * Consulta métricas de um periódico/serial no Scopus através da Edge Function `scopus-buscar`.
+ * Usado na Etapa D2 para estimativa fundamentada de Qualis.
+ */
+export async function consultarSerialScopus(
+  params: { issn?: string; title?: string },
+  invokeFn?: (functionName: string, options?: { body?: any }) => Promise<{ data: any; error: any }>,
+): Promise<MetricasScopusSerialResultado | null> {
+  if (!params.issn && !params.title) return null
+
+  try {
+    const invoker = invokeFn ?? supabase.functions.invoke.bind(supabase.functions)
+    const { data, error } = await invoker('scopus-buscar', {
+      body: {
+        acao: 'consultar-serial',
+        issn: params.issn,
+        title: params.title,
+      },
+    })
+
+    if (error || !data || !data.sucesso || !data.encontrado) {
+      return null
+    }
+
+    return (data.metricas as MetricasScopusSerialResultado) || null
+  } catch (err) {
+    console.warn('[scopus.consultarSerialScopus] Erro ao consultar serial:', err)
+    return null
+  }
+}
+
 /**
  * Consulta a Edge Function `scopus-buscar` no Supabase.
  * Nunca faz chamadas diretas à API da Elsevier a partir do navegador para não expor a chave.

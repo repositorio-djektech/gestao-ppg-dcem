@@ -5,8 +5,10 @@ import {
   MetricasColetadas,
   MetricasFonteOpenAlex,
   MetricasWorkOpenAlex,
+  MetricasScopusSerial,
   SugestaoEstratoQualis,
 } from '@/lib/publicacoes/estimativa-qualis'
+import { consultarSerialScopus } from '@/services/scopus'
 
 export interface ItemGravacaoQualis {
   publicacaoId: number
@@ -25,6 +27,7 @@ export interface ResultadoGravacaoQualis {
 // Cache em memória durante a sessão para evitar requisições repetidas aos mesmos periódicos
 const cacheFontesOpenAlex = new Map<string, MetricasFonteOpenAlex | null>()
 const cacheWorksOpenAlex = new Map<string, MetricasWorkOpenAlex | null>()
+const cacheSeriaisScopus = new Map<string, MetricasScopusSerial | null>()
 
 function limparNomePeriodico(periodico: string): string {
   return periodico
@@ -147,6 +150,41 @@ export const estimativaQualisService = {
    * Obtém publicações que ainda NÃO têm estrato_qualis
    * REGRA DE OURO 2: publicaçoes com estrato_qualis preenchido NUNCA são processadas.
    */
+  /**
+   * Contagem total de publicações no banco
+   */
+  async obterContagemTotalPublicacoes(): Promise<{ count: number }> {
+    const { count, error } = await supabase
+      .from('publicacoes')
+      .select('*', { count: 'exact', head: true })
+
+    if (error) {
+      console.warn('Erro ao obter contagem total de publicações:', error)
+      return { count: 0 }
+    }
+    return { count: count || 0 }
+  },
+
+  /**
+   * Contagem de publicações que JÁ POSSUEM estrato definido no banco (preservadas)
+   */
+  async obterContagemPublicacoesComEstrato(): Promise<{ count: number }> {
+    const { count, error } = await supabase
+      .from('publicacoes')
+      .select('*', { count: 'exact', head: true })
+      .not('estrato_qualis', 'is', null)
+
+    if (error) {
+      console.warn('Erro ao obter contagem de publicações com estrato:', error)
+      return { count: 0 }
+    }
+    return { count: count || 0 }
+  },
+
+  /**
+   * Obtém publicações que ainda NÃO têm estrato_qualis
+   * REGRA DE OURO 2: publicações com estrato_qualis preenchido NUNCA são processadas.
+   */
   async obterPublicacoesSemEstrato(): Promise<Publicacao[]> {
     const { data, error } = await supabase
       .from('publicacoes')
@@ -185,9 +223,10 @@ export const estimativaQualisService = {
         continue
       }
 
-      // Coleta métricas do OpenAlex em paralelo para esta publicação
+      // Coleta métricas do OpenAlex e Scopus em paralelo com fallback elegante
       let workMet: MetricasWorkOpenAlex | null = null
       let fonteMet: MetricasFonteOpenAlex | null = null
+      let scopusMet: MetricasScopusSerial | null = null
 
       try {
         const promises: Promise<any>[] = []
@@ -201,6 +240,38 @@ export const estimativaQualisService = {
         if (promises.length > 0) {
           await Promise.all(promises)
         }
+
+        // Se encontrou ISSN na fonte OpenAlex ou título de periódico, consulta serial Scopus no cofre
+        const primeiroIssn = fonteMet?.issn?.[0] || workMet?.issn?.[0]
+        const nomePeriodicoParaScopus = fonteMet?.displayName || pub.periodico
+
+        const chaveCacheScopus = (primeiroIssn || nomePeriodicoParaScopus || '').toLowerCase()
+        if (chaveCacheScopus && cacheSeriaisScopus.has(chaveCacheScopus)) {
+          scopusMet = cacheSeriaisScopus.get(chaveCacheScopus) || null
+        } else if (primeiroIssn || nomePeriodicoParaScopus) {
+          try {
+            const resScopus = await consultarSerialScopus({
+              issn: primeiroIssn,
+              title: primeiroIssn ? undefined : nomePeriodicoParaScopus,
+            })
+            if (resScopus) {
+              scopusMet = {
+                sourceId: resScopus.sourceId || undefined,
+                title: resScopus.title || undefined,
+                issn: resScopus.issn || null,
+                sjr: resScopus.sjr,
+                snip: resScopus.snip,
+                citeScore: resScopus.citeScore,
+                percentileCiteScore: resScopus.percentileCiteScore,
+              }
+              cacheSeriaisScopus.set(chaveCacheScopus, scopusMet)
+            } else {
+              cacheSeriaisScopus.set(chaveCacheScopus, null)
+            }
+          } catch {
+            cacheSeriaisScopus.set(chaveCacheScopus, null)
+          }
+        }
       } catch (err) {
         console.warn(`Erro ao consultar métricas para "${pub.titulo}":`, err)
       }
@@ -208,6 +279,7 @@ export const estimativaQualisService = {
       const metricas: MetricasColetadas = {
         openalexWork: workMet,
         openalexSource: fonteMet,
+        scopusSerial: scopusMet,
       }
 
       sugestoes.push(estimarEstratoQualis(pub, metricas))
