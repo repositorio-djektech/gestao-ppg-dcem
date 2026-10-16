@@ -209,10 +209,18 @@ interface SidebarContentProps {
   onNavigate?: () => void
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  suporte: 'Suporte',
+  coordenador: 'Coordenador',
+  auxiliar: 'Auxiliar',
+  docente: 'Docente',
+  capes: 'CAPES',
+}
+
 function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
   const { open } = useSidebar()
   const location = useLocation()
-  const { profile, signOut } = useAuth()
+  const { profile, role, signOut } = useAuth()
   const [showLogoutModal, setShowLogoutModal] = useState(false)
 
   return (
@@ -285,9 +293,16 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
             </Avatar>
             {open && (
               <div className="flex flex-col overflow-hidden text-left min-w-0 flex-1">
-                <span className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate">
-                  {profile?.name ?? 'Usuário'}
-                </span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate">
+                    {profile?.name ?? 'Usuário'}
+                  </span>
+                  {role && (
+                    <span className="shrink-0 text-[9px] font-semibold uppercase px-1.5 py-0.2 rounded bg-primary/10 text-primary border border-primary/20">
+                      {ROLE_LABELS[role] || role}
+                    </span>
+                  )}
+                </div>
                 <span className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
                   {profile?.email ?? ''}
                 </span>

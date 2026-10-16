@@ -1,4 +1,6 @@
-export type Role = 'admin' | 'editor' | 'viewer'
+export type Role = 'suporte' | 'coordenador' | 'auxiliar' | 'docente' | 'capes'
+export type LegacyRole = 'admin' | 'editor' | 'viewer'
+export type AnyRole = Role | LegacyRole
 
 export type Profile = {
   id: number
@@ -6,6 +8,7 @@ export type Profile = {
   email: string
   name: string
   role: Role
+  docente_id?: number | null
 }
 
 export type Docente = {

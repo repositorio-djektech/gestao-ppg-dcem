@@ -15,7 +15,7 @@ import { AppHeader } from '@/components/AppHeader'
 vi.mock('@/hooks/use-auth', () => ({
   useAuth: () => ({
     session: { user: { id: 'test-user' } },
-    profile: { name: 'Prof. Teste', email: 'teste@ufs.br', role: 'admin' },
+    profile: { name: 'Prof. Teste', email: 'teste@ufs.br', role: 'suporte' },
     loading: false,
     signOut: vi.fn(),
   }),

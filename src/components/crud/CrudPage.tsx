@@ -85,7 +85,7 @@ export function CrudPage<T extends { id: number | string }>({
   formHeaderActions,
 }: CrudPageProps<T>) {
   const navigate = useNavigate()
-  const { profile } = useAuth()
+  const { role } = useAuth()
   const isMobile = useIsMobile()
   const { data, loading, create, update, remove } = useCrudData(service)
   const [searchTerm, setSearchTerm] = useState('')
@@ -99,8 +99,15 @@ export function CrudPage<T extends { id: number | string }>({
     Record<string, { value: string; label: string }[]>
   >({})
 
-  const canEdit = profile?.role === 'admin' || profile?.role === 'editor'
-  const canDelete = profile?.role === 'admin'
+  // Regras de papéis novos (suporte/coordenador/auxiliar/docente/capes)
+  // Capes: somente leitura, sem nenhum botão de escrita.
+  // Suporte/Coordenador/Auxiliar: escrita permitida.
+  // Docente: permitido se aplicável (o backend RLS valida o docente_id).
+  const isCapes = role === 'capes'
+  const canEdit =
+    !isCapes &&
+    (role === 'suporte' || role === 'coordenador' || role === 'auxiliar' || role === 'docente')
+  const canDelete = !isCapes && (role === 'suporte' || role === 'coordenador')
   const PER_PAGE = 20
 
   useEffect(() => {

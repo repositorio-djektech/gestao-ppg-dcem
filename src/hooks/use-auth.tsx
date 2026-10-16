@@ -1,13 +1,42 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
-import type { Profile, Role } from '@/types/database'
+import type { Profile, Role, AnyRole } from '@/types/database'
+
+/**
+ * Normaliza qualquer valor de papel (incluindo papéis legados da transição)
+ * para um dos 5 papéis oficiais: suporte, coordenador, auxiliar, docente, capes.
+ */
+export function normalizarPapel(role: AnyRole | string | null | undefined): Role {
+  if (!role) return 'capes'
+  const r = String(role).toLowerCase().trim()
+  if (r === 'suporte') return 'suporte'
+  if (r === 'coordenador') return 'coordenador'
+  if (r === 'auxiliar') return 'auxiliar'
+  if (r === 'docente') return 'docente'
+  if (r === 'capes') return 'capes'
+
+  // Mapeamento de legado:
+  if (r === 'admin') return 'suporte'
+  if (r === 'editor') return 'auxiliar'
+  if (r === 'viewer') return 'capes'
+
+  return 'capes'
+}
 
 interface AuthContextType {
   user: User | null
   session: Session | null
   profile: Profile | null
   role: Role | null
+  isSuporte: boolean
+  isCoordenador: boolean
+  isAuxiliar: boolean
+  isDocente: boolean
+  isCapes: boolean
+  isStaff: boolean
+  podeEditarGlobal: boolean
+  podeExcluirGlobal: boolean
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signUp: (email: string, password: string, name?: string) => Promise<{ error: any }>
   signOut: () => Promise<{ error: any }>
@@ -52,7 +81,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq('user_id', user.id)
         .single()
         .then(({ data }) => {
-          if (data) setProfile(data as unknown as Profile)
+          if (data) {
+            const rawProfile = data as any
+            const roleNormalizado = normalizarPapel(rawProfile.role)
+            setProfile({
+              ...rawProfile,
+              role: roleNormalizado,
+            } as Profile)
+          }
         })
     } else {
       setProfile(null)
@@ -82,13 +118,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error }
   }
 
+  const role = useMemo<Role | null>(() => {
+    return profile?.role ? normalizarPapel(profile.role) : null
+  }, [profile?.role])
+
+  const isSuporte = role === 'suporte'
+  const isCoordenador = role === 'coordenador'
+  const isAuxiliar = role === 'auxiliar'
+  const isDocente = role === 'docente'
+  const isCapes = role === 'capes'
+  const isStaff = isSuporte || isCoordenador || isAuxiliar
+  const podeEditarGlobal = isStaff
+  const podeExcluirGlobal = isSuporte || isCoordenador
+
   return (
     <AuthContext.Provider
       value={{
         user,
         session,
         profile,
-        role: profile?.role ?? null,
+        role,
+        isSuporte,
+        isCoordenador,
+        isAuxiliar,
+        isDocente,
+        isCapes,
+        isStaff,
+        podeEditarGlobal,
+        podeExcluirGlobal,
         signIn,
         signUp,
         signOut,

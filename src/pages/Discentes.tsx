@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { useAuth } from '@/hooks/use-auth'
 import { CrudPage } from '@/components/crud/CrudPage'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { discentesService } from '@/services/discentes'
@@ -6,7 +7,6 @@ import { docentesService } from '@/services/docentes'
 import { projetosPesquisaService } from '@/services/projetos-pesquisa'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { useRef } from 'react'
 import {
   Eye,
   Edit,
@@ -57,6 +57,9 @@ const statusColors: Record<string, string> = {
 }
 
 export default function Discentes() {
+  const { role } = useAuth()
+  const isCapes = role === 'capes'
+  const podeExcluir = !isCapes && (role === 'suporte' || role === 'coordenador')
   const [docentes, setDocentes] = useState<Docente[]>([])
   const [projetos, setProjetos] = useState<ProjetoPesquisa[]>([])
   const [discenteParaVisualizar, setDiscenteParaVisualizar] = useState<Discente | null>(null)
@@ -557,24 +560,28 @@ export default function Discentes() {
             >
               <Eye className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={openEdit}
-              className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-              title="Editar Discente"
-            >
-              <Edit className="h-4 w-4 text-primary" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-              onClick={openDelete}
-              title="Excluir Discente"
-            >
-              <Trash2 className="h-4 w-4 text-red-600" />
-            </Button>
+            {!isCapes && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={openEdit}
+                className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                title="Editar Discente"
+              >
+                <Edit className="h-4 w-4 text-primary" />
+              </Button>
+            )}
+            {podeExcluir && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={openDelete}
+                title="Excluir Discente"
+              >
+                <Trash2 className="h-4 w-4 text-red-600" />
+              </Button>
+            )}
           </div>
         )}
       />

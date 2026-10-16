@@ -152,8 +152,12 @@ export default function Docentes() {
     linhasPesquisaService.list().then(setTodasLinhas).catch(console.error)
   }, [])
 
-  const canEdit = profile?.role === 'admin' || profile?.role === 'editor'
-  const canDelete = profile?.role === 'admin'
+  const { role } = useAuth()
+  const isCapes = role === 'capes'
+  const canEdit =
+    !isCapes &&
+    (role === 'suporte' || role === 'coordenador' || role === 'auxiliar' || role === 'docente')
+  const canDelete = !isCapes && (role === 'suporte' || role === 'coordenador')
   const PER_PAGE = 20
 
   const filtered = docentes.filter((d) => d.nome.toLowerCase().includes(searchTerm.toLowerCase()))

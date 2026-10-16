@@ -222,8 +222,12 @@ export default function Publicacoes() {
     carregarRelacionados()
   }, [])
 
-  const canEdit = profile?.role === 'admin' || profile?.role === 'editor'
-  const canDelete = profile?.role === 'admin'
+  const { role } = useAuth()
+  const isCapes = role === 'capes'
+  const canEdit =
+    !isCapes &&
+    (role === 'suporte' || role === 'coordenador' || role === 'auxiliar' || role === 'docente')
+  const canDelete = !isCapes && (role === 'suporte' || role === 'coordenador')
   const PER_PAGE = 20
 
   const filtered = publicacoes.filter((p) => {

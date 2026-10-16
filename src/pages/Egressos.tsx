@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { useAuth } from '@/hooks/use-auth'
 import { CrudPage } from '@/components/crud/CrudPage'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { egressosService } from '@/services/egressos'
@@ -48,6 +49,9 @@ const emptyForm = {
 }
 
 export default function Egressos() {
+  const { role } = useAuth()
+  const isCapes = role === 'capes'
+  const podeExcluir = !isCapes && (role === 'suporte' || role === 'coordenador')
   const [docentes, setDocentes] = useState<Docente[]>([])
   const [egressosExistentes, setEgressosExistentes] = useState<Egresso[]>([])
   const [egressoParaVisualizar, setEgressoParaVisualizar] = useState<Egresso | null>(null)
@@ -492,24 +496,28 @@ export default function Egressos() {
               >
                 <Eye className="h-4 w-4 text-amber-500" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={openEdit}
-                className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                title="Editar Egresso"
-              >
-                <Edit className="h-4 w-4 text-primary" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                onClick={openDelete}
-                title="Excluir Egresso"
-              >
-                <Trash2 className="h-4 w-4 text-red-600" />
-              </Button>
+              {!isCapes && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={openEdit}
+                  className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                  title="Editar Egresso"
+                >
+                  <Edit className="h-4 w-4 text-primary" />
+                </Button>
+              )}
+              {podeExcluir && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={openDelete}
+                  title="Excluir Egresso"
+                >
+                  <Trash2 className="h-4 w-4 text-red-600" />
+                </Button>
+              )}
             </div>
           )
         }}
