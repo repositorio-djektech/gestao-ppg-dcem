@@ -9,6 +9,7 @@ import { coautoresProgramaService } from '@/services/coautores-programa'
 import { publicacoesDocentesService } from '@/services/publicacoes-docentes'
 import { SeletorCoautoria } from '@/components/publicacoes/SeletorCoautoria'
 import { SeletorDocentesAutores } from '@/components/publicacoes/SeletorDocentesAutores'
+import { VincularAutoresDocentesDialog } from '@/components/publicacoes/VincularAutoresDocentesDialog'
 import { DocenteNome } from '@/components/docentes/DocenteNome'
 import type {
   Publicacao,
@@ -63,7 +64,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Search, Plus, Edit, Trash2, Printer } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Printer, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Pagination,
@@ -139,6 +140,7 @@ export default function Publicacoes() {
   const [qualisFilter, setQualisFilter] = useState('all')
   const [tipoProducaoFilter, setTipoProducaoFilter] = useState('all')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isVincularDocentesOpen, setIsVincularDocentesOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | string | null>(null)
   const [page, setPage] = useState(1)
   const [submitting, setSubmitting] = useState(false)
@@ -434,12 +436,23 @@ export default function Publicacoes() {
           <Button
             variant="outline"
             onClick={() => navigate('/imprimir/publicacoes')}
-            className="gap-2 shrink-0 bg-white min-h-[44px] md:min-h-9"
+            className="gap-2 shrink-0 bg-white min-h-[44px] md:min-h-9 text-slate-700"
             title="Versão para Impressão / Exportar PDF"
           >
             <Printer className="h-4 w-4 text-slate-600" />
             <span className="hidden sm:inline">Imprimir / PDF</span>
           </Button>
+          {canEdit && (
+            <Button
+              variant="outline"
+              onClick={() => setIsVincularDocentesOpen(true)}
+              className="gap-2 shrink-0 bg-white min-h-[44px] md:min-h-9 border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+              title="Casamento Automático Autor → Docente (Etapa D1)"
+            >
+              <Sparkles className="h-4 w-4 text-blue-600" />
+              <span>Vincular autores a docentes</span>
+            </Button>
+          )}
           {canEdit && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
@@ -1203,6 +1216,16 @@ export default function Publicacoes() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Diálogo de Casamento Automático Autor -> Docente (Etapa D1) */}
+      <VincularAutoresDocentesDialog
+        open={isVincularDocentesOpen}
+        onOpenChange={setIsVincularDocentesOpen}
+        usuarioNome={profile?.name || profile?.email || 'Usuário'}
+        onSucesso={() => {
+          carregarRelacionados()
+        }}
+      />
     </div>
   )
 }
