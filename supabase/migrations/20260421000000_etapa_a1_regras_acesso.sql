@@ -1,8 +1,4 @@
--- ==============================================================================
--- Etapa A1: Novo Modelo de Regras de Acesso e Papéis - Gestão PPG-DCEM
--- ==============================================================================
-
--- 1. PRIMEIRO: Dropar todas as políticas existentes no schema public que referenciam get_user_role()
+-- Bloco 1: Dropar politicas antigas e criar o enum user_role
 DO $$
 DECLARE
   pol RECORD;
@@ -16,10 +12,8 @@ BEGIN
   END LOOP;
 END $$;
 
--- 2. Drop da função get_user_role antiga
 DROP FUNCTION IF EXISTS public.get_user_role() CASCADE;
 
--- 3. Criação do novo enum de papéis (5 papéis)
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
@@ -33,11 +27,10 @@ BEGIN
   END IF;
 END $$;
 
--- 4. Adicionar coluna docente_id em profiles (FK opcional/única para docentes)
+-- Bloco 2: Alterar profiles
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS docente_id bigint UNIQUE REFERENCES public.docentes(id) ON DELETE SET NULL;
 
--- 5. Alterar a coluna role de profiles para user_role com conversão dos valores existentes
 ALTER TABLE public.profiles
   ALTER COLUMN role DROP DEFAULT;
 
@@ -55,10 +48,9 @@ ALTER TABLE public.profiles
 ALTER TABLE public.profiles
   ALTER COLUMN role SET DEFAULT 'capes'::public.user_role;
 
--- 6. Remover tipo enum antigo se existir
 DROP TYPE IF EXISTS public.role_type CASCADE;
 
--- 7. Recriar função get_user_role() com o novo tipo user_role
+-- Bloco 3: Funções auxiliares
 CREATE OR REPLACE FUNCTION public.get_user_role()
 RETURNS public.user_role
 LANGUAGE plpgsql
@@ -73,7 +65,6 @@ BEGIN
 END;
 $$;
 
--- 8. Função auxiliar get_user_docente_id() para RLS do perfil docente
 CREATE OR REPLACE FUNCTION public.get_user_docente_id()
 RETURNS bigint
 LANGUAGE plpgsql
@@ -85,7 +76,6 @@ BEGIN
 END;
 $$;
 
--- 9. Atualizar trigger handle_new_user() para o novo default ('capes' - mais restritivo)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -105,13 +95,6 @@ BEGIN
 END;
 $$;
 
--- 10. Função da Cadeia de Promoção: alterar_papel(alvo_user_id uuid, novo_papel public.user_role)
--- Regras rígidas:
--- - suporte pode definir papel de qualquer usuário para suporte, coordenador, auxiliar, docente ou capes;
--- - coordenador pode transformar apenas docente -> auxiliar (nada mais; NUNCA pode criar/definir suporte);
--- - auxiliar, docente e capes não podem alterar papel de ninguém;
--- - ninguém altera o próprio papel;
--- - valida auth.uid() e lança exceções claras.
 CREATE OR REPLACE FUNCTION public.alterar_papel(alvo_user_id uuid, novo_papel public.user_role)
 RETURNS public.profiles
 LANGUAGE plpgsql
@@ -140,8 +123,7 @@ BEGIN
 
   v_caller_role := public.get_user_role();
 
-  IF v_caller_role::text = 'suporte' THEN
-    -- Suporte pode atribuir qualquer papel
+  IF v_caller_role = 'suporte'::public.user_role THEN
     UPDATE public.profiles
     SET role = novo_papel
     WHERE user_id = alvo_user_id
@@ -149,9 +131,8 @@ BEGIN
 
     RETURN v_updated_profile;
 
-  ELSIF v_caller_role::text = 'coordenador' THEN
-    -- Coordenador pode apenas transformar docente -> auxiliar
-    IF v_target_profile.role::text = 'docente' AND novo_papel::text = 'auxiliar' THEN
+  ELSIF v_caller_role = 'coordenador'::public.user_role THEN
+    IF v_target_profile.role = 'docente'::public.user_role AND novo_papel = 'auxiliar'::public.user_role THEN
       UPDATE public.profiles
       SET role = novo_papel
       WHERE user_id = alvo_user_id
@@ -168,7 +149,17 @@ BEGIN
 END;
 $$;
 
--- 11. Garantir que RLS esteja ativada em todas as tabelas
+CREATE OR REPLACE FUNCTION public.is_admin_staff()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.get_user_role() IN ('suporte'::public.user_role, 'coordenador'::public.user_role, 'auxiliar'::public.user_role);
+$$;
+
+-- Bloco 4: Habilitar RLS em todas as tabelas públicas
 DO $$
 DECLARE
   tbl RECORD;
@@ -182,22 +173,7 @@ BEGIN
   END LOOP;
 END $$;
 
--- Helper macro-like function para staff:
-CREATE OR REPLACE FUNCTION public.is_admin_staff()
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT public.get_user_role()::text IN ('suporte', 'coordenador', 'auxiliar');
-$$;
-
--- ==============================================================================
--- TABELA: profiles
--- Leitura: todos os autenticados
--- Atualização: o próprio usuário pode atualizar apenas seus próprios dados cadastrais
--- ==============================================================================
+-- profiles
 CREATE POLICY "profiles_select_all_authenticated"
   ON public.profiles FOR SELECT
   TO authenticated
@@ -213,12 +189,7 @@ CREATE POLICY "profiles_update_own_or_admin"
     user_id = auth.uid() OR public.is_admin_staff()
   );
 
--- ==============================================================================
--- TABELA: logs
--- Leitura: todos os autenticados
--- Inserção: qualquer autenticado pode registrar logs da sua ação
--- Edição/Remoção: apenas suporte/coordenador/auxiliar
--- ==============================================================================
+-- logs
 CREATE POLICY "logs_select_all"
   ON public.logs FOR SELECT
   TO authenticated
@@ -240,12 +211,7 @@ CREATE POLICY "logs_delete_staff"
   TO authenticated
   USING (public.is_admin_staff());
 
--- ==============================================================================
--- TABELA: docentes
--- Escrita:
---   - Staff (suporte, coordenador, auxiliar)
---   - Docente: UPDATE limitado ao seu próprio registro (id = get_user_docente_id())
--- ==============================================================================
+-- docentes
 CREATE POLICY "docentes_select_all"
   ON public.docentes FOR SELECT
   TO authenticated
@@ -261,11 +227,11 @@ CREATE POLICY "docentes_update_staff_or_owner"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   )
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
 CREATE POLICY "docentes_delete_staff"
@@ -273,10 +239,7 @@ CREATE POLICY "docentes_delete_staff"
   TO authenticated
   USING (public.is_admin_staff());
 
--- ==============================================================================
--- TABELA: orientacoes
--- Ligação com docente: orientacoes.docente_id
--- ==============================================================================
+-- orientacoes
 CREATE POLICY "orientacoes_select_all"
   ON public.orientacoes FOR SELECT
   TO authenticated
@@ -287,7 +250,7 @@ CREATE POLICY "orientacoes_insert"
   TO authenticated
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
 CREATE POLICY "orientacoes_update"
@@ -295,11 +258,11 @@ CREATE POLICY "orientacoes_update"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   )
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
 CREATE POLICY "orientacoes_delete"
@@ -307,13 +270,10 @@ CREATE POLICY "orientacoes_delete"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
--- ==============================================================================
--- TABELA: disciplinas
--- Ligação com docente: disciplinas.docente_id
--- ==============================================================================
+-- disciplinas
 CREATE POLICY "disciplinas_select_all"
   ON public.disciplinas FOR SELECT
   TO authenticated
@@ -324,7 +284,7 @@ CREATE POLICY "disciplinas_insert"
   TO authenticated
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
 CREATE POLICY "disciplinas_update"
@@ -332,11 +292,11 @@ CREATE POLICY "disciplinas_update"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   )
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
 CREATE POLICY "disciplinas_delete"
@@ -344,13 +304,10 @@ CREATE POLICY "disciplinas_delete"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
--- ==============================================================================
--- TABELA: publicacoes_docentes
--- Ligação com docente: publicacoes_docentes.docente_id
--- ==============================================================================
+-- publicacoes_docentes
 CREATE POLICY "publicacoes_docentes_select_all"
   ON public.publicacoes_docentes FOR SELECT
   TO authenticated
@@ -361,7 +318,7 @@ CREATE POLICY "publicacoes_docentes_insert"
   TO authenticated
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
 CREATE POLICY "publicacoes_docentes_update"
@@ -369,11 +326,11 @@ CREATE POLICY "publicacoes_docentes_update"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   )
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
 CREATE POLICY "publicacoes_docentes_delete"
@@ -381,13 +338,10 @@ CREATE POLICY "publicacoes_docentes_delete"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
--- ==============================================================================
--- TABELA: projetos_participantes
--- Ligação com docente: projetos_participantes.docente_id
--- ==============================================================================
+-- projetos_participantes
 CREATE POLICY "projetos_participantes_select_all"
   ON public.projetos_participantes FOR SELECT
   TO authenticated
@@ -398,7 +352,7 @@ CREATE POLICY "projetos_participantes_insert"
   TO authenticated
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
 CREATE POLICY "projetos_participantes_update"
@@ -406,11 +360,11 @@ CREATE POLICY "projetos_participantes_update"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   )
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
 CREATE POLICY "projetos_participantes_delete"
@@ -418,13 +372,10 @@ CREATE POLICY "projetos_participantes_delete"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
--- ==============================================================================
--- TABELA: projetos_pesquisa
--- Ligação com docente: coordenador_id ou via projetos_participantes
--- ==============================================================================
+-- projetos_pesquisa
 CREATE POLICY "projetos_pesquisa_select_all"
   ON public.projetos_pesquisa FOR SELECT
   TO authenticated
@@ -435,7 +386,7 @@ CREATE POLICY "projetos_pesquisa_insert"
   TO authenticated
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND coordenador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND coordenador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
 CREATE POLICY "projetos_pesquisa_update"
@@ -443,7 +394,7 @@ CREATE POLICY "projetos_pesquisa_update"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND (
+    (public.get_user_role() = 'docente'::public.user_role AND (
       (coordenador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL) OR
       EXISTS (
         SELECT 1 FROM public.projetos_participantes pp
@@ -453,7 +404,7 @@ CREATE POLICY "projetos_pesquisa_update"
   )
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND (
+    (public.get_user_role() = 'docente'::public.user_role AND (
       (coordenador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL) OR
       EXISTS (
         SELECT 1 FROM public.projetos_participantes pp
@@ -467,13 +418,10 @@ CREATE POLICY "projetos_pesquisa_delete"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND coordenador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND coordenador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
--- ==============================================================================
--- TABELA: publicacoes
--- Ligação com docente: publicacoes_docentes
--- ==============================================================================
+-- publicacoes
 CREATE POLICY "publicacoes_select_all"
   ON public.publicacoes FOR SELECT
   TO authenticated
@@ -484,7 +432,7 @@ CREATE POLICY "publicacoes_insert"
   TO authenticated
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND public.get_user_docente_id() IS NOT NULL)
   );
 
 CREATE POLICY "publicacoes_update"
@@ -492,14 +440,14 @@ CREATE POLICY "publicacoes_update"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND EXISTS (
+    (public.get_user_role() = 'docente'::public.user_role AND EXISTS (
       SELECT 1 FROM public.publicacoes_docentes pd
       WHERE pd.publicacao_id = publicacoes.id AND pd.docente_id = public.get_user_docente_id()
     ))
   )
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND EXISTS (
+    (public.get_user_role() = 'docente'::public.user_role AND EXISTS (
       SELECT 1 FROM public.publicacoes_docentes pd
       WHERE pd.publicacao_id = publicacoes.id AND pd.docente_id = public.get_user_docente_id()
     ))
@@ -510,15 +458,13 @@ CREATE POLICY "publicacoes_delete"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND EXISTS (
+    (public.get_user_role() = 'docente'::public.user_role AND EXISTS (
       SELECT 1 FROM public.publicacoes_docentes pd
       WHERE pd.publicacao_id = publicacoes.id AND pd.docente_id = public.get_user_docente_id()
     ))
   );
 
--- ==============================================================================
--- TABELA: publicacoes_coautores_programa
--- ==============================================================================
+-- publicacoes_coautores_programa
 CREATE POLICY "publicacoes_coautores_programa_select_all"
   ON public.publicacoes_coautores_programa FOR SELECT
   TO authenticated
@@ -529,7 +475,7 @@ CREATE POLICY "publicacoes_coautores_programa_insert"
   TO authenticated
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND EXISTS (
+    (public.get_user_role() = 'docente'::public.user_role AND EXISTS (
       SELECT 1 FROM public.publicacoes_docentes pd
       WHERE pd.publicacao_id = publicacoes_coautores_programa.publicacao_id AND pd.docente_id = public.get_user_docente_id()
     ))
@@ -540,14 +486,14 @@ CREATE POLICY "publicacoes_coautores_programa_update"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND EXISTS (
+    (public.get_user_role() = 'docente'::public.user_role AND EXISTS (
       SELECT 1 FROM public.publicacoes_docentes pd
       WHERE pd.publicacao_id = publicacoes_coautores_programa.publicacao_id AND pd.docente_id = public.get_user_docente_id()
     ))
   )
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND EXISTS (
+    (public.get_user_role() = 'docente'::public.user_role AND EXISTS (
       SELECT 1 FROM public.publicacoes_docentes pd
       WHERE pd.publicacao_id = publicacoes_coautores_programa.publicacao_id AND pd.docente_id = public.get_user_docente_id()
     ))
@@ -558,15 +504,13 @@ CREATE POLICY "publicacoes_coautores_programa_delete"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND EXISTS (
+    (public.get_user_role() = 'docente'::public.user_role AND EXISTS (
       SELECT 1 FROM public.publicacoes_docentes pd
       WHERE pd.publicacao_id = publicacoes_coautores_programa.publicacao_id AND pd.docente_id = public.get_user_docente_id()
     ))
   );
 
--- ==============================================================================
--- TABELA: iniciacao_cientifica
--- ==============================================================================
+-- iniciacao_cientifica
 CREATE POLICY "iniciacao_cientifica_select_all"
   ON public.iniciacao_cientifica FOR SELECT
   TO authenticated
@@ -577,7 +521,7 @@ CREATE POLICY "iniciacao_cientifica_insert"
   TO authenticated
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_orientador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_orientador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
 CREATE POLICY "iniciacao_cientifica_update"
@@ -585,11 +529,11 @@ CREATE POLICY "iniciacao_cientifica_update"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_orientador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_orientador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   )
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_orientador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_orientador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
 CREATE POLICY "iniciacao_cientifica_delete"
@@ -597,12 +541,10 @@ CREATE POLICY "iniciacao_cientifica_delete"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_orientador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_orientador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
--- ==============================================================================
--- TABELA: discentes
--- ==============================================================================
+-- discentes
 CREATE POLICY "discentes_select_all"
   ON public.discentes FOR SELECT
   TO authenticated
@@ -613,7 +555,7 @@ CREATE POLICY "discentes_insert"
   TO authenticated
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_orientador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_orientador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
 CREATE POLICY "discentes_update"
@@ -621,7 +563,7 @@ CREATE POLICY "discentes_update"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND (
+    (public.get_user_role() = 'docente'::public.user_role AND (
       (docente_orientador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL) OR
       EXISTS (
         SELECT 1 FROM public.orientacoes o
@@ -631,7 +573,7 @@ CREATE POLICY "discentes_update"
   )
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND (
+    (public.get_user_role() = 'docente'::public.user_role AND (
       (docente_orientador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL) OR
       EXISTS (
         SELECT 1 FROM public.orientacoes o
@@ -645,12 +587,10 @@ CREATE POLICY "discentes_delete"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_orientador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_orientador_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
--- ==============================================================================
--- TABELA: docentes_linhas
--- ==============================================================================
+-- docentes_linhas
 CREATE POLICY "docentes_linhas_select_all"
   ON public.docentes_linhas FOR SELECT
   TO authenticated
@@ -661,7 +601,7 @@ CREATE POLICY "docentes_linhas_insert"
   TO authenticated
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
 CREATE POLICY "docentes_linhas_update"
@@ -669,11 +609,11 @@ CREATE POLICY "docentes_linhas_update"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   )
   WITH CHECK (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
 
 CREATE POLICY "docentes_linhas_delete"
@@ -681,14 +621,8 @@ CREATE POLICY "docentes_linhas_delete"
   TO authenticated
   USING (
     public.is_admin_staff() OR
-    (public.get_user_role()::text = 'docente' AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
+    (public.get_user_role() = 'docente'::public.user_role AND docente_id = public.get_user_docente_id() AND public.get_user_docente_id() IS NOT NULL)
   );
-
--- ==============================================================================
--- TABELAS RESTANTES:
--- bancas, egressos, eventos, impacto_social, linhas_pesquisa, mobilidade_docente,
--- patentes, ppg, premiacoes, producao_tecnica, scopus_val_log, sugestoes_vinculos_rejeitadas
--- ==============================================================================
 
 -- bancas
 CREATE POLICY "bancas_select_all" ON public.bancas FOR SELECT TO authenticated USING (true);
