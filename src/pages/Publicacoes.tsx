@@ -434,7 +434,7 @@ export default function Publicacoes() {
           <Button
             variant="outline"
             onClick={() => navigate('/imprimir/publicacoes')}
-            className="gap-2 shrink-0 bg-white"
+            className="gap-2 shrink-0 bg-white min-h-[44px] md:min-h-9"
             title="Versão para Impressão / Exportar PDF"
           >
             <Printer className="h-4 w-4 text-slate-600" />
@@ -443,7 +443,7 @@ export default function Publicacoes() {
           {canEdit && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={() => handleOpen()} className="gap-2">
+                <Button onClick={() => handleOpen()} className="gap-2 min-h-[44px] md:min-h-9">
                   <Plus className="h-4 w-4" />
                   <span className="hidden sm:inline">Nova Publicação</span>
                 </Button>

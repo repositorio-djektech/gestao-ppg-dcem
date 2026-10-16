@@ -650,7 +650,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           {dataFormatada && (
             <span
               className="hidden sm:inline-flex items-center gap-1.5 text-xs text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-md"
@@ -669,7 +669,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
             variant="outline"
             onClick={carregarRelatorio}
             disabled={carregando || imprimindoGeral}
-            className="inline-flex items-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800"
+            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 min-h-[44px] md:min-h-9 flex-1 sm:flex-initial"
             data-testid="btn-atualizar-reconducao"
           >
             <RefreshCw className={`h-4 w-4 text-primary ${carregando ? 'animate-spin' : ''}`} />
@@ -680,7 +680,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
             type="button"
             onClick={handleImprimirRelatorio}
             disabled={carregando || !relatorio || imprimindoGeral}
-            className="inline-flex items-center gap-2 shadow-sm"
+            className="inline-flex items-center justify-center gap-2 shadow-sm min-h-[44px] md:min-h-9 flex-1 sm:flex-initial"
             data-testid="btn-imprimir-relatorio-reconducao"
           >
             <Printer className="h-4 w-4" />

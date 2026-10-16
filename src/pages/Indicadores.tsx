@@ -156,12 +156,12 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setModalNotaAberta(true)}
-            className="gap-1.5 text-xs"
+            className="gap-1.5 text-xs min-h-[44px] md:min-h-9 flex-1 sm:flex-initial justify-center"
           >
             <BookOpen className="h-4 w-4" />
             Nota Metodológica
@@ -172,7 +172,7 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
             size="sm"
             onClick={handleExportarCsv}
             disabled={!relatorio || carregando}
-            className="gap-1.5 text-xs text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border-emerald-300"
+            className="gap-1.5 text-xs text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border-emerald-300 min-h-[44px] md:min-h-9 flex-1 sm:flex-initial justify-center"
           >
             <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
             Exportar CSV
@@ -183,7 +183,7 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
             size="sm"
             onClick={handleExportarPdf}
             disabled={!relatorio || carregando || imprimindo}
-            className="gap-1.5 text-xs text-blue-700 hover:text-blue-800 hover:bg-blue-50 border-blue-300"
+            className="gap-1.5 text-xs text-blue-700 hover:text-blue-800 hover:bg-blue-50 border-blue-300 min-h-[44px] md:min-h-9 flex-1 sm:flex-initial justify-center"
           >
             <Printer className="h-4 w-4 text-blue-600" />
             {imprimindo ? 'Gerando...' : 'Exportar PDF'}
@@ -194,7 +194,7 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
             size="sm"
             onClick={carregar}
             disabled={carregando}
-            className="gap-1 text-xs"
+            className="gap-1 text-xs min-h-[44px] md:min-h-9 px-3 shrink-0"
             title="Recalcular indicadores"
           >
             <RefreshCw className={`h-4 w-4 ${carregando ? 'animate-spin' : ''}`} />
@@ -501,25 +501,28 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
         open={Boolean(indicadorModal)}
         onOpenChange={(open) => !open && setIndicadorModal(null)}
       >
-        <DialogContent className="max-w-xl">
+        <DialogContent
+          bottomSheetOnMobile
+          className="md:max-w-xl md:max-h-[90vh] flex flex-col p-0 overflow-hidden"
+        >
           {indicadorModal && (
             <>
-              <DialogHeader>
-                <div className="flex items-center gap-2">
+              <DialogHeader className="p-4 md:p-6 pb-2 md:pb-4 border-b border-slate-100 shrink-0 pr-12 md:pr-12 text-left">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge className="bg-primary text-white text-xs">{indicadorModal.codigo}</Badge>
                   <span className="text-xs text-muted-foreground">
                     Item {indicadorModal.itemFicha} • Peso {indicadorModal.pesoPercentual}%
                   </span>
                 </div>
-                <DialogTitle className="text-lg font-bold text-slate-900">
+                <DialogTitle className="text-lg font-bold text-slate-900 mt-1">
                   {indicadorModal.nome}
                 </DialogTitle>
-                <DialogDescription>
+                <DialogDescription className="text-xs">
                   Detalhamento dos termos, premissas da ficha CAPES e auditoria de insumos no banco.
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-4 text-xs text-slate-800 py-2">
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 text-xs text-slate-800 min-h-0">
                 {/* Fórmula */}
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
                   <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1">

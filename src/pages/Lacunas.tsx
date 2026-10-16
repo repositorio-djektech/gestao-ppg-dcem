@@ -930,7 +930,7 @@ export default function Lacunas({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
           {dataFormatada && (
             <span
               className="hidden sm:inline-flex items-center gap-1.5 text-xs text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-md"
@@ -949,7 +949,7 @@ export default function Lacunas({
             variant="outline"
             onClick={handleExportarCsv}
             disabled={carregando || !relatorio || lacunasFiltradas.length === 0}
-            className="inline-flex items-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800"
+            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 min-h-[44px] md:min-h-9 flex-1 sm:flex-initial"
             title="Exportar lista de lacunas atualmente filtrada em formato CSV (compatível com Excel)"
             data-testid="btn-exportar-csv-lacunas"
           >
@@ -962,7 +962,7 @@ export default function Lacunas({
             variant="outline"
             onClick={handleImprimir}
             disabled={carregando || imprimindo || !relatorio}
-            className="inline-flex items-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800"
+            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 min-h-[44px] md:min-h-9 flex-1 sm:flex-initial"
             title="Imprimir relatório de lacunas (PDF / ABNT) conforme filtros ativos"
             data-testid="btn-imprimir-lacunas"
           >
@@ -975,7 +975,7 @@ export default function Lacunas({
             variant="outline"
             onClick={carregarRelatorio}
             disabled={carregando}
-            className="inline-flex items-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800"
+            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 min-h-[44px] md:min-h-9 flex-1 sm:flex-initial"
           >
             <RefreshCw className={`h-4 w-4 text-primary ${carregando ? 'animate-spin' : ''}`} />
             {carregando ? 'Atualizando...' : 'Atualizar'}
