@@ -227,9 +227,9 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
   // Apenas 'suporte' e 'coordenador' têm acesso ao módulo administrativo de Gestão de Usuários
   const podeAcessarUsuarios = isSuporte || isCoordenador
 
-  // Clona as seções injetando condicionalmente a seção/item de Usuários
+  // Clona as seções injetando condicionalmente a seção/item de Usuários no grupo Pessoas
   const visibleSections = navSections.map((section) => {
-    if (section.title === 'Geral' && podeAcessarUsuarios) {
+    if (section.title === 'Pessoas' && podeAcessarUsuarios) {
       return {
         ...section,
         items: [

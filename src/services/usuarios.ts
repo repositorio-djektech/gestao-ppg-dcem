@@ -163,6 +163,59 @@ export const usuariosService = {
    * Cria um novo usuário no Auth e no Profiles via Edge Function `admin-usuarios`.
    * Disponível apenas para usuários com papel 'suporte'.
    */
+  /**
+   * Autocadastro de docente na tela de login/cadastro confrontando o CPF informado.
+   * Não requer autenticação prévia (público / self-service).
+   */
+  async signupDocente(
+    cpf: string,
+    email: string,
+    password: string,
+  ): Promise<{
+    sucesso: boolean
+    mensagem: string
+    docente_nome?: string
+    docente_id?: number
+    tipo?: string
+  }> {
+    const { data, error } = await supabase.functions.invoke('admin-usuarios', {
+      body: {
+        acao: 'signup-docente',
+        cpf: cpf.replace(/\D/g, ''),
+        email: email.trim().toLowerCase(),
+        password,
+      },
+    })
+
+    if (error) {
+      console.error('Erro ao invocar edge function admin-usuarios (signup-docente):', error)
+      let mensagemErro = error.message
+      let tipoErro = undefined
+
+      try {
+        if ((error as any).context && typeof (error as any).context.json === 'function') {
+          const body = await (error as any).context.json()
+          if (body?.mensagem) mensagemErro = body.mensagem
+          if (body?.tipo) tipoErro = body.tipo
+        }
+      } catch {
+        // ignora
+      }
+
+      const err = new Error(mensagemErro || 'Falha na comunicação com o servidor para cadastro.')
+      ;(err as any).tipo = tipoErro
+      throw err
+    }
+
+    if (!data?.sucesso) {
+      const err = new Error(data?.mensagem || 'Falha ao realizar cadastro.')
+      ;(err as any).tipo = data?.tipo
+      throw err
+    }
+
+    return data
+  },
+
   async criarUsuario(dados: CriarUsuarioInput): Promise<any> {
     const { data: sessionData } = await supabase.auth.getSession()
     const token = sessionData?.session?.access_token

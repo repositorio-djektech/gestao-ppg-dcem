@@ -37,9 +37,10 @@ interface AuthContextType {
   isStaff: boolean
   podeEditarGlobal: boolean
   podeExcluirGlobal: boolean
-  signIn: (email: string, password: string) => Promise<{ error: any }>
+  signIn: (email: string, password: string) => Promise<{ data?: any; error: any }>
   signUp: (email: string, password: string, name?: string) => Promise<{ error: any }>
   signOut: () => Promise<{ error: any }>
+  reloadProfile: (targetUser?: User | null) => Promise<Profile | null>
   loading: boolean
 }
 
@@ -96,8 +97,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user])
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    return { error }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    return { data, error }
   }
 
   const signUp = async (email: string, password: string, name?: string) => {
@@ -110,6 +111,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       },
     })
     return { error }
+  }
+
+  const reloadProfile = async (targetUser?: User | null) => {
+    const u = targetUser ?? user
+    if (!u) {
+      setProfile(null)
+      return null
+    }
+    const { data } = await supabase.from('profiles').select('*').eq('user_id', u.id).single()
+    if (data) {
+      const rawProfile = data as any
+      const roleNormalizado = normalizarPapel(rawProfile.role)
+      const p = {
+        ...rawProfile,
+        role: roleNormalizado,
+      } as Profile
+      setProfile(p)
+      return p
+    }
+    return null
   }
 
   const signOut = async () => {
@@ -149,6 +170,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signIn,
         signUp,
         signOut,
+        reloadProfile,
         loading,
       }}
     >

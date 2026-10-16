@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
+import { usuariosService } from '@/services/usuarios'
+import { formatarCpf } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,9 +26,9 @@ import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt'
 // Tela de Login e Cadastro do PPG DCEM
 
 export default function Login() {
-  const { signIn, signUp } = useAuth()
+  const { signIn, reloadProfile } = useAuth()
   const navigate = useNavigate()
-  const [name, setName] = useState('')
+  const [cpf, setCpf] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -38,11 +40,30 @@ export default function Login() {
   const [resetOpen, setResetOpen] = useState(false)
   const [resetEmail, setResetEmail] = useState('')
 
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Permite apenas números (bloqueia letras e caracteres especiais no input)
+    // e formata dinamicamente com máscara 000.000.000-00
+    const apenasNumeros = e.target.value.replace(/\D/g, '').slice(0, 11)
+    const mascarado = formatarCpf(apenasNumeros)
+    setCpf(mascarado)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
     if (mode === 'register') {
+      const cpfDigitos = cpf.replace(/\D/g, '')
+      if (cpfDigitos.length !== 11) {
+        setError('Por favor, informe um CPF completo com 11 dígitos.')
+        return
+      }
+
+      if (password.length < 6) {
+        setError('A senha deve conter no mínimo 6 caracteres.')
+        return
+      }
+
       if (password !== confirmPassword) {
         setError('As senhas não coincidem. Por favor, verifique e tente novamente.')
         return
@@ -59,16 +80,46 @@ export default function Login() {
         navigate('/')
       }
     } else {
-      const { error } = await signUp(email, password, name.trim())
-      if (error) {
-        setError(error.message || 'Erro ao cadastrar')
-        setLoading(false)
-      } else {
-        toast.success('Cadastro realizado! Verifique seu email.')
-        setMode('login')
-        setName('')
-        setPassword('')
-        setConfirmPassword('')
+      // Fluxo de criação de conta confrontando o CPF com a tabela docentes no servidor
+      try {
+        const resultado = await usuariosService.signupDocente(cpf, email, password)
+
+        if (!resultado.sucesso) {
+          toast.error(resultado.mensagem || 'Não foi possível concluir o cadastro.')
+          setError(resultado.mensagem)
+          setLoading(false)
+          return
+        }
+
+        // Caso o CPF conste na tabela docentes:
+        // Toast com o texto exato exigido:
+        // "Bem-vindo(a), <nome_do_docente>! Sua conta criada com sucesso."
+        const nomeDocente = resultado.docente_nome || 'Docente'
+        toast.success(`Bem-vindo(a), ${nomeDocente}! Sua conta criada com sucesso.`)
+
+        // Autentica o usuário recém-criado e redireciona para o dashboard
+        const { data: signInData, error: signInError } = await signIn(email, password)
+        if (signInError) {
+          console.warn('Conta criada com sucesso, mas o auto-login falhou:', signInError)
+          // Se o auto-login falhar, orienta a fazer o login com as credenciais criadas
+          setMode('login')
+          setPassword('')
+          setConfirmPassword('')
+          setLoading(false)
+          return
+        }
+
+        // Garante que o profile atualizado (com papel docente e docente_id) seja recarregado
+        if (signInData?.user) {
+          await reloadProfile(signInData.user)
+        }
+
+        navigate('/')
+      } catch (err: any) {
+        const mensagem =
+          err?.message || 'CPF não consta como registrado em nome de nenhum docente do PPG-DCEM.'
+        toast.error(mensagem)
+        setError(mensagem)
         setLoading(false)
       }
     }
@@ -127,16 +178,48 @@ export default function Login() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {mode === 'register' && (
                 <div className="space-y-1.5">
-                  <Label htmlFor="name">Nome</Label>
+                  <Label htmlFor="cpf">CPF</Label>
                   <Input
-                    id="name"
+                    id="cpf"
                     type="text"
-                    placeholder="Digite seu nome completo..."
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    inputMode="numeric"
+                    autoComplete="off"
+                    placeholder="000.000.000-00"
+                    maxLength={14}
+                    value={cpf}
+                    onChange={handleCpfChange}
+                    onKeyDown={(e) => {
+                      // Bloqueia letras e caracteres não numéricos diretamente no teclado
+                      // permitindo teclas de controle (Backspace, Tab, Delete, setas etc.)
+                      const allowedKeys = [
+                        'Backspace',
+                        'Tab',
+                        'ArrowLeft',
+                        'ArrowRight',
+                        'ArrowUp',
+                        'ArrowDown',
+                        'Delete',
+                        'Enter',
+                        'Home',
+                        'End',
+                      ]
+                      if (
+                        allowedKeys.includes(e.key) ||
+                        e.ctrlKey ||
+                        e.metaKey // atalhos Ctrl+C, Ctrl+V, etc.
+                      ) {
+                        return
+                      }
+                      if (!/^[0-9]$/.test(e.key)) {
+                        e.preventDefault()
+                      }
+                    }}
                     className="bg-white/95 border-slate-300/80 shadow-xs placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all"
                     required
                   />
+                  <p className="text-[11px] text-muted-foreground">
+                    Informe seu CPF para validação com o corpo docente do programa.
+                  </p>
                 </div>
               )}
               <div className="space-y-1.5">
@@ -240,6 +323,7 @@ export default function Login() {
                   type="button"
                   onClick={() => {
                     setError('')
+                    setCpf('')
                     setMode('register')
                   }}
                   className="text-xs text-slate-600 transition-colors hover:text-primary hover:underline focus:outline-none"
@@ -254,6 +338,7 @@ export default function Login() {
                   type="button"
                   onClick={() => {
                     setError('')
+                    setCpf('')
                     setMode('login')
                   }}
                   className="text-xs text-slate-600 transition-colors hover:text-primary hover:underline focus:outline-none"
