@@ -23,7 +23,16 @@ interface SignupDocentePayload {
   password: string
 }
 
-type AdminUsuariosPayload = CriarUsuarioPayload | ExcluirUsuarioPayload | SignupDocentePayload
+interface ResolverCpfPayload {
+  acao: 'resolver-cpf'
+  cpf: string
+}
+
+type AdminUsuariosPayload =
+  | CriarUsuarioPayload
+  | ExcluirUsuarioPayload
+  | SignupDocentePayload
+  | ResolverCpfPayload
 
 Deno.serve(async (req: Request) => {
   // Trata preflight CORS
@@ -67,6 +76,113 @@ Deno.serve(async (req: Request) => {
     })
 
     // ==========================================
+    // AÇÃO: RESOLVER CPF PARA LOGIN (público / self-service)
+    // ==========================================
+    if (payload.acao === 'resolver-cpf') {
+      const cpfDigitos = (payload.cpf || '').replace(/\D/g, '')
+
+      if (!cpfDigitos || cpfDigitos.length !== 11) {
+        return new Response(
+          JSON.stringify({
+            sucesso: false,
+            mensagem: 'CPF inválido. Informe os 11 dígitos do CPF.',
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        )
+      }
+
+      // 1. Procurar docente correspondente pelo CPF na tabela docentes
+      const { data: listaDocentes, error: docError } = await adminClient
+        .from('docentes')
+        .select('id, nome, cpf')
+
+      if (docError) {
+        console.error('[resolver-cpf] Erro ao consultar tabela docentes:', docError)
+        return new Response(
+          JSON.stringify({
+            sucesso: false,
+            mensagem: 'Erro interno ao consultar base de docentes.',
+          }),
+          { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        )
+      }
+
+      const docenteEncontrado = (listaDocentes || []).find(
+        (d: { id: number; nome: string; cpf?: string | null }) => {
+          const cpfLimpo = (d.cpf || '').replace(/\D/g, '')
+          return cpfLimpo === cpfDigitos
+        },
+      )
+
+      let perfilEncontrado: { id: number; email: string; user_id: string; name: string } | null =
+        null
+
+      if (docenteEncontrado) {
+        // Docente encontrado: verificar se existe perfil vinculado a esse docente_id
+        const { data: perfilPorDocente } = await adminClient
+          .from('profiles')
+          .select('id, email, user_id, name')
+          .eq('docente_id', docenteEncontrado.id)
+          .maybeSingle()
+
+        if (perfilPorDocente) {
+          perfilEncontrado = perfilPorDocente
+        }
+      }
+
+      // Se ainda não encontrou via docente_id, checar se algum auth.users tem o CPF nos metadados
+      if (!perfilEncontrado) {
+        // Listar usuários do Auth que possam ter o CPF em user_metadata
+        // Paginação básica no auth.admin.listUsers
+        const { data: usersData } = await adminClient.auth.admin.listUsers({
+          perPage: 1000,
+        })
+
+        const userMatch = (usersData?.users || []).find((u) => {
+          const uCpf = String(u.user_metadata?.cpf || '').replace(/\D/g, '')
+          return uCpf === cpfDigitos
+        })
+
+        if (userMatch) {
+          const { data: perfilPorUser } = await adminClient
+            .from('profiles')
+            .select('id, email, user_id, name')
+            .eq('user_id', userMatch.id)
+            .maybeSingle()
+
+          if (perfilPorUser) {
+            perfilEncontrado = perfilPorUser
+          } else if (userMatch.email) {
+            perfilEncontrado = {
+              id: 0,
+              email: userMatch.email,
+              user_id: userMatch.id,
+              name: (userMatch.user_metadata?.name as string) || '',
+            }
+          }
+        }
+      }
+
+      if (!perfilEncontrado || !perfilEncontrado.email) {
+        return new Response(
+          JSON.stringify({
+            sucesso: false,
+            mensagem: 'Nenhum usuário cadastrado foi encontrado para o CPF informado.',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        )
+      }
+
+      return new Response(
+        JSON.stringify({
+          sucesso: true,
+          email: perfilEncontrado.email,
+        }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+      )
+    }
+
+    // ==========================================
     // AÇÃO 3: AUTOCADASTRO DE DOCENTE VIA CPF (público / self-service)
     // ==========================================
     if (payload.acao === 'signup-docente') {
@@ -94,11 +210,11 @@ Deno.serve(async (req: Request) => {
         )
       }
 
-      if (password.length < 6) {
+      if (password.length < 8) {
         return new Response(
           JSON.stringify({
             sucesso: false,
-            mensagem: 'A senha deve conter no mínimo 6 caracteres.',
+            mensagem: 'A senha deve conter no mínimo 8 caracteres.',
           }),
           { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
         )

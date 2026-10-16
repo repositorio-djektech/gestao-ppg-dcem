@@ -30,6 +30,7 @@ export default function Login() {
   const navigate = useNavigate()
   const [cpf, setCpf] = useState('')
   const [email, setEmail] = useState('')
+  const [usuario, setUsuario] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
@@ -48,6 +49,21 @@ export default function Login() {
     setCpf(mascarado)
   }
 
+  const handleUsuarioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    // Se o usuário estiver digitando CPF (contém apenas dígitos, pontos, traço e não contém @)
+    const digitos = val.replace(/\D/g, '')
+    const temArroba = val.includes('@')
+
+    if (!temArroba && digitos.length > 0 && /^[0-9.\- ]*$/.test(val)) {
+      if (digitos.length <= 11) {
+        setUsuario(formatarCpf(digitos))
+        return
+      }
+    }
+    setUsuario(val)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -59,8 +75,8 @@ export default function Login() {
         return
       }
 
-      if (password.length < 6) {
-        setError('A senha deve conter no mínimo 6 caracteres.')
+      if (password.length < 8) {
+        setError('A senha deve conter no mínimo 8 caracteres.')
         return
       }
 
@@ -72,9 +88,34 @@ export default function Login() {
 
     setLoading(true)
     if (mode === 'login') {
-      const { error } = await signIn(email, password)
-      if (error) {
-        setError(error.message || 'Credenciais inválidas')
+      const entrada = usuario.trim()
+      let emailParaAutenticar = entrada
+
+      const digitosEntrada = entrada.replace(/\D/g, '')
+      const ehCpf = !entrada.includes('@') && digitosEntrada.length === 11
+
+      if (ehCpf) {
+        // Verificar no servidor se o CPF está vinculado a algum usuário
+        try {
+          const resCpf = await usuariosService.resolverEmailPorCpf(digitosEntrada)
+          if (!resCpf.sucesso || !resCpf.email) {
+            setError(
+              resCpf.mensagem || 'Nenhum usuário cadastrado foi encontrado para o CPF informado.',
+            )
+            setLoading(false)
+            return
+          }
+          emailParaAutenticar = resCpf.email
+        } catch (err: any) {
+          setError(err?.message || 'Nenhum usuário cadastrado foi encontrado para o CPF informado.')
+          setLoading(false)
+          return
+        }
+      }
+
+      const { error: signInError } = await signIn(emailParaAutenticar, password)
+      if (signInError) {
+        setError(signInError.message || 'Credenciais inválidas')
         setLoading(false)
       } else {
         navigate('/')
@@ -85,7 +126,6 @@ export default function Login() {
         const resultado = await usuariosService.signupDocente(cpf, email, password)
 
         if (!resultado.sucesso) {
-          toast.error(resultado.mensagem || 'Não foi possível concluir o cadastro.')
           setError(resultado.mensagem)
           setLoading(false)
           return
@@ -118,7 +158,6 @@ export default function Login() {
       } catch (err: any) {
         const mensagem =
           err?.message || 'CPF não consta como registrado em nome de nenhum docente do PPG-DCEM.'
-        toast.error(mensagem)
         setError(mensagem)
         setLoading(false)
       }
@@ -218,26 +257,39 @@ export default function Login() {
                     required
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    Informe seu CPF para validação com o corpo docente do programa.
+                    Informe seu CPF para validação junto ao corpo docente do programa.
                   </p>
                 </div>
               )}
-              <div className="space-y-1.5">
-                <Label htmlFor="email">E-mail</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder={
-                    mode === 'login'
-                      ? 'Digite seu e-mail acadêmico...'
-                      : 'Digite seu email acadêmico...'
-                  }
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-white/95 border-slate-300/80 shadow-xs placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all"
-                  required
-                />
-              </div>
+              {mode === 'login' ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="usuario">Usuário</Label>
+                  <Input
+                    id="usuario"
+                    type="text"
+                    autoComplete="username"
+                    placeholder="E-mail ou CPF..."
+                    value={usuario}
+                    onChange={handleUsuarioChange}
+                    className="bg-white/95 border-slate-300/80 shadow-xs placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all"
+                    required
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">E-mail</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="Insira um endereço de e-mail..."
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="bg-white/95 border-slate-300/80 shadow-xs placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-sm transition-all"
+                    required
+                  />
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="password">Senha</Label>
                 <div className="relative">

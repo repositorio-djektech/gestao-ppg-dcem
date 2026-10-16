@@ -167,6 +167,55 @@ export const usuariosService = {
    * Autocadastro de docente na tela de login/cadastro confrontando o CPF informado.
    * Não requer autenticação prévia (público / self-service).
    */
+  /**
+   * Resolve o e-mail cadastrado a partir de um CPF informado no login.
+   * Não requer autenticação prévia (público / self-service).
+   */
+  async resolverEmailPorCpf(cpf: string): Promise<{
+    sucesso: boolean
+    email?: string
+    mensagem?: string
+  }> {
+    const { data, error } = await supabase.functions.invoke('admin-usuarios', {
+      body: {
+        acao: 'resolver-cpf',
+        cpf: cpf.replace(/\D/g, ''),
+      },
+    })
+
+    if (error) {
+      console.error('Erro ao invocar edge function admin-usuarios (resolver-cpf):', error)
+      let mensagemErro = error.message
+
+      try {
+        if ((error as any).context && typeof (error as any).context.json === 'function') {
+          const body = await (error as any).context.json()
+          if (body?.mensagem) mensagemErro = body.mensagem
+        }
+      } catch {
+        // ignora
+      }
+
+      return {
+        sucesso: false,
+        mensagem: mensagemErro || 'Erro ao verificar CPF informado no servidor.',
+      }
+    }
+
+    if (!data?.sucesso) {
+      return {
+        sucesso: false,
+        mensagem:
+          data?.mensagem || 'Nenhum usuário cadastrado foi encontrado para o CPF informado.',
+      }
+    }
+
+    return {
+      sucesso: true,
+      email: data.email,
+    }
+  },
+
   async signupDocente(
     cpf: string,
     email: string,
