@@ -27,8 +27,33 @@ import Premiacoes from '@/pages/Premiacoes'
 import Lacunas from '@/pages/Lacunas'
 import Reconducao from '@/pages/Reconducao'
 import Indicadores from '@/pages/Indicadores'
+import Usuarios from '@/pages/Usuarios'
 import PrintView from '@/pages/PrintView'
 import NotFound from '@/pages/NotFound'
+import { useAuth } from '@/hooks/use-auth'
+import { Navigate } from 'react-router-dom'
+
+/**
+ * Route guard para tela de Usuários: apenas papéis 'suporte' e 'coordenador'.
+ * Usuários com outros papéis (ou não autenticados) são redirecionados para a raiz.
+ */
+function UsuariosRouteGuard() {
+  const { isSuporte, isCoordenador, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-8 text-slate-500">
+        Carregando permissões...
+      </div>
+    )
+  }
+
+  if (!isSuporte && !isCoordenador) {
+    return <Navigate to="/" replace />
+  }
+
+  return <Usuarios />
+}
 
 const App = () => {
   return (
@@ -42,6 +67,7 @@ const App = () => {
             <Route path="/login" element={<Login />} />
             <Route element={<Layout />}>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/usuarios" element={<UsuariosRouteGuard />} />
               <Route path="/lacunas" element={<Lacunas />} />
               <Route path="/reconducao" element={<Reconducao />} />
               <Route path="/indicadores" element={<Indicadores />} />

@@ -1,0 +1,1152 @@
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useAuth } from '@/hooks/use-auth'
+import {
+  usuariosService,
+  type UsuarioComDetalhes,
+  type CriarUsuarioInput,
+} from '@/services/usuarios'
+import { docentesService } from '@/services/docentes'
+import type { Docente, Role } from '@/types/database'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { toast } from '@/hooks/use-toast'
+import {
+  Users,
+  UserPlus,
+  ShieldAlert,
+  ShieldCheck,
+  Trash2,
+  Search,
+  RefreshCw,
+  GraduationCap,
+  Lock,
+  Mail,
+  User as UserIcon,
+  Link as LinkIcon,
+  KeyRound,
+  Check,
+} from 'lucide-react'
+
+const ROLE_INFO: Record<
+  Role,
+  { label: string; bg: string; text: string; border: string; desc: string }
+> = {
+  suporte: {
+    label: 'Suporte',
+    bg: 'bg-red-50 text-red-700 border-red-200',
+    text: 'text-red-700',
+    border: 'border-red-200',
+    desc: 'Acesso irrestrito a configurações, criação/exclusão de usuários e promoções',
+  },
+  coordenador: {
+    label: 'Coordenador',
+    bg: 'bg-purple-50 text-purple-700 border-purple-200',
+    text: 'text-purple-700',
+    border: 'border-purple-200',
+    desc: 'Gestão completa acadêmica, relatórios CAPES e promoção de docentes a auxiliares',
+  },
+  auxiliar: {
+    label: 'Auxiliar',
+    bg: 'bg-blue-50 text-blue-700 border-blue-200',
+    text: 'text-blue-700',
+    border: 'border-blue-200',
+    desc: 'Edição acadêmica e operacional ampla (antigo Editor)',
+  },
+  docente: {
+    label: 'Docente',
+    bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    text: 'text-emerald-700',
+    border: 'border-emerald-200',
+    desc: 'Edição estrita limitada aos seus próprios registros e orientações vinculadas',
+  },
+  capes: {
+    label: 'CAPES',
+    bg: 'bg-amber-50 text-amber-700 border-amber-200',
+    text: 'text-amber-700',
+    border: 'border-amber-200',
+    desc: 'Somente leitura para auditoria externa e visualização (antigo Viewer)',
+  },
+}
+
+export default function Usuarios() {
+  const { user: currentUser, role: currentRole, isSuporte, isCoordenador } = useAuth()
+
+  const [usuarios, setUsuarios] = useState<UsuarioComDetalhes[]>([])
+  const [docentes, setDocentes] = useState<Docente[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busca, setBusca] = useState('')
+  const [filtroPapel, setFiltroPapel] = useState<string>('todos')
+
+  // Modais de Criação
+  const [modalCriarAberto, setModalCriarAberto] = useState(false)
+  const [novoUsuario, setNovoUsuario] = useState<CriarUsuarioInput>({
+    nome: '',
+    email: '',
+    password: '',
+    role: 'capes',
+    docente_id: null,
+  })
+  const [criando, setCriando] = useState(false)
+
+  // Modais de Troca de Papel
+  const [usuarioParaTrocarPapel, setUsuarioParaTrocarPapel] = useState<UsuarioComDetalhes | null>(
+    null,
+  )
+  const [papelEscolhido, setPapelEscolhido] = useState<Role>('capes')
+  const [salvandoPapel, setSalvandoPapel] = useState(false)
+
+  // Modais de Vinculação Docente
+  const [usuarioParaVincularDocente, setUsuarioParaVincularDocente] =
+    useState<UsuarioComDetalhes | null>(null)
+  const [docenteIdEscolhido, setDocenteIdEscolhido] = useState<string>('nenhum')
+  const [salvandoVinculo, setSalvandoVinculo] = useState(false)
+
+  // Modal de Exclusão
+  const [usuarioParaExcluir, setUsuarioParaExcluir] = useState<UsuarioComDetalhes | null>(null)
+  const [excluindo, setExcluindo] = useState(false)
+
+  // Carregar dados
+  const carregarDados = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [listaUsuarios, listaDocentes] = await Promise.all([
+        usuariosService.listar(),
+        docentesService.list(),
+      ])
+      setUsuarios(listaUsuarios)
+      setDocentes(listaDocentes)
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao carregar usuários',
+        description: err.message || 'Não foi possível carregar a listagem de usuários.',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    carregarDados()
+  }, [carregarDados])
+
+  // Lista filtrada
+  const usuariosFiltrados = useMemo(() => {
+    return usuarios.filter((u) => {
+      if (filtroPapel !== 'todos' && u.role !== filtroPapel) {
+        return false
+      }
+      if (!busca.trim()) return true
+      const termo = busca.toLowerCase()
+      const matchNome = (u.name || '').toLowerCase().includes(termo)
+      const matchEmail = (u.email || '').toLowerCase().includes(termo)
+      const matchDocente = (u.docente_nome || '').toLowerCase().includes(termo)
+      return matchNome || matchEmail || matchDocente
+    })
+  }, [usuarios, busca, filtroPapel])
+
+  // Ações de Criação
+  const handleCriarUsuario = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!novoUsuario.nome.trim() || !novoUsuario.email.trim() || !novoUsuario.password) {
+      toast({
+        title: 'Campos obrigatórios',
+        description: 'Preencha o nome, e-mail e defina uma senha de acesso.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (novoUsuario.password.length < 6) {
+      toast({
+        title: 'Senha muito curta',
+        description: 'A senha provisória deve ter no mínimo 6 caracteres.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setCriando(true)
+    try {
+      await usuariosService.criarUsuario({
+        nome: novoUsuario.nome.trim(),
+        email: novoUsuario.email.trim(),
+        password: novoUsuario.password,
+        role: novoUsuario.role,
+        docente_id: novoUsuario.docente_id,
+      })
+
+      toast({
+        title: 'Usuário criado com sucesso!',
+        description: `A conta para ${novoUsuario.email} foi criada com papel ${ROLE_INFO[novoUsuario.role]?.label || novoUsuario.role}.`,
+      })
+
+      setModalCriarAberto(false)
+      setNovoUsuario({
+        nome: '',
+        email: '',
+        password: '',
+        role: 'capes',
+        docente_id: null,
+      })
+      await carregarDados()
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao criar usuário',
+        description: err.message || 'Falha ao registrar novo usuário.',
+        variant: 'destructive',
+      })
+    } finally {
+      setCriando(false)
+    }
+  }
+
+  // Ação de Troca de Papel
+  const handleAbrirTrocarPapel = (u: UsuarioComDetalhes) => {
+    setUsuarioParaTrocarPapel(u)
+    setPapelEscolhido(u.role)
+  }
+
+  const handleConfirmarTrocaPapel = async () => {
+    if (!usuarioParaTrocarPapel) return
+
+    setSalvandoPapel(true)
+    try {
+      await usuariosService.alterarPapel(usuarioParaTrocarPapel.user_id, papelEscolhido)
+      toast({
+        title: 'Papel atualizado com sucesso!',
+        description: `O papel de ${usuarioParaTrocarPapel.name || usuarioParaTrocarPapel.email} agora é ${ROLE_INFO[papelEscolhido]?.label}.`,
+      })
+      setUsuarioParaTrocarPapel(null)
+      await carregarDados()
+    } catch (err: any) {
+      toast({
+        title: 'Não foi possível alterar o papel',
+        description: err.message || 'Erro inesperado na promoção/rebaixamento.',
+        variant: 'destructive',
+      })
+    } finally {
+      setSalvandoPapel(false)
+    }
+  }
+
+  // Ação de Vinculação de Docente
+  const handleAbrirVincularDocente = (u: UsuarioComDetalhes) => {
+    setUsuarioParaVincularDocente(u)
+    setDocenteIdEscolhido(u.docente_id ? String(u.docente_id) : 'nenhum')
+  }
+
+  const handleConfirmarVinculoDocente = async () => {
+    if (!usuarioParaVincularDocente) return
+
+    setSalvandoVinculo(true)
+    try {
+      const docenteIdFinal = docenteIdEscolhido === 'nenhum' ? null : Number(docenteIdEscolhido)
+
+      await usuariosService.vincularDocente(usuarioParaVincularDocente.user_id, docenteIdFinal)
+
+      const docObj = docentes.find((d) => d.id === docenteIdFinal)
+      toast({
+        title: 'Vínculo atualizado!',
+        description: docenteIdFinal
+          ? `Usuário ${usuarioParaVincularDocente.name} vinculado ao docente ${docObj?.nome || 'selecionado'}.`
+          : `Vínculo de docente removido para ${usuarioParaVincularDocente.name}.`,
+      })
+      setUsuarioParaVincularDocente(null)
+      await carregarDados()
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao vincular docente',
+        description: err.message || 'Não foi possível atualizar o docente vinculado.',
+        variant: 'destructive',
+      })
+    } finally {
+      setSalvandoVinculo(false)
+    }
+  }
+
+  // Ação de Exclusão
+  const handleConfirmarExclusao = async () => {
+    if (!usuarioParaExcluir) return
+
+    setExcluindo(true)
+    try {
+      await usuariosService.excluirUsuario(usuarioParaExcluir.user_id)
+      toast({
+        title: 'Usuário excluído',
+        description: `A conta de ${usuarioParaExcluir.name || usuarioParaExcluir.email} foi removida com sucesso.`,
+      })
+      setUsuarioParaExcluir(null)
+      await carregarDados()
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao excluir usuário',
+        description: err.message || 'Falha ao remover o usuário.',
+        variant: 'destructive',
+      })
+    } finally {
+      setExcluindo(false)
+    }
+  }
+
+  // Permissões contextuais para troca de papel
+  const podeMudarPapelPara = (alvo: UsuarioComDetalhes, novoP: Role): boolean => {
+    if (currentUser?.id === alvo.user_id) return false // Ninguém altera o próprio papel
+    if (isSuporte) return true // Suporte tem permissão plena para os 5 papéis
+    if (isCoordenador) {
+      // Coordenador só pode transformar docente em auxiliar
+      return alvo.role === 'docente' && novoP === 'auxiliar'
+    }
+    return false
+  }
+
+  const podeGerenciarPapelDoUsuario = (alvo: UsuarioComDetalhes): boolean => {
+    if (currentUser?.id === alvo.user_id) return false
+    if (isSuporte) return true
+    if (isCoordenador) return alvo.role === 'docente'
+    return false
+  }
+
+  // Formatar data em PT-BR
+  const formatarData = (dataIso: string | null | undefined) => {
+    if (!dataIso) return '—'
+    try {
+      const d = new Date(dataIso)
+      return d.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      })
+    } catch {
+      return dataIso
+    }
+  }
+
+  return (
+    <div className="flex-1 flex flex-col p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full gap-6">
+      {/* Cabeçalho da Página com fundo suave #e9effc padrão PPG-DCEM */}
+      <div className="rounded-xl border border-blue-100 bg-[#e9effc] p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+              <Users className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                Gestão de Usuários
+              </h1>
+              <p className="text-sm text-slate-600">
+                Controle de perfis, concessão de papéis no PPG-DCEM e vinculação com docentes.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={carregarDados}
+            disabled={loading}
+            className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 min-h-[44px] md:min-h-9"
+          >
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Atualizar</span>
+          </Button>
+
+          {isSuporte && (
+            <Button
+              onClick={() => setModalCriarAberto(true)}
+              className="gap-2 shrink-0 min-h-[44px] md:min-h-9 px-4 shadow-xs"
+            >
+              <UserPlus className="h-4 w-4" />
+              <span>Novo Usuário</span>
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Regra de acesso informacional */}
+      <div className="bg-amber-50/70 border border-amber-200/80 rounded-lg p-3 sm:p-4 text-xs sm:text-sm text-amber-900 flex items-start gap-2.5">
+        <ShieldCheck className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <p className="font-semibold text-amber-950">
+            Regras de Governança de Papéis (Etapa A1 & A2):
+          </p>
+          <ul className="list-disc list-inside space-y-0.5 text-amber-900/90 text-xs sm:text-xs">
+            <li>
+              <strong>Suporte:</strong> Controle irrestrito (criação, exclusão e promoção para
+              qualquer um dos 5 papéis).
+            </li>
+            <li>
+              <strong>Coordenador:</strong> Pode promover usuários de <em>Docente</em> para{' '}
+              <em>Auxiliar</em> e vincular perfis a docentes.
+            </li>
+            <li>
+              <strong>Vínculo Docente:</strong> Usuários com papel <em>Docente</em> vinculados a um
+              registro de docente têm acesso de edição exclusivo aos seus próprios dados e
+              orientações (RLS por linha).
+            </li>
+            <li>
+              <strong>Autoproteção:</strong> Nenhum usuário pode alterar o próprio papel ou excluir
+              a si mesmo.
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Barra de Filtros e Busca */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar por nome, e-mail ou docente..."
+            className="pl-9 min-h-[44px] md:min-h-9 bg-white"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-slate-500 whitespace-nowrap hidden sm:inline">
+            Papel:
+          </span>
+          <Select value={filtroPapel} onValueChange={setFiltroPapel}>
+            <SelectTrigger className="w-full sm:w-[180px] min-h-[44px] md:min-h-9 bg-white">
+              <SelectValue placeholder="Filtrar papel" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os Papéis</SelectItem>
+              <SelectItem value="suporte">Suporte</SelectItem>
+              <SelectItem value="coordenador">Coordenador</SelectItem>
+              <SelectItem value="auxiliar">Auxiliar</SelectItem>
+              <SelectItem value="docente">Docente</SelectItem>
+              <SelectItem value="capes">CAPES</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Contêiner da Listagem */}
+      <div className="rounded-lg border border-slate-200 bg-white shadow-xs flex-1 flex flex-col overflow-hidden">
+        {/* DESKTOP (>= 768px): Tabela Clássica com visual limpo */}
+        <div className="hidden md:block flex-1 overflow-auto">
+          <Table>
+            <TableHeader className="bg-slate-50/80 sticky top-0 z-10">
+              <TableRow>
+                <TableHead className="font-semibold text-slate-700">Usuário</TableHead>
+                <TableHead className="font-semibold text-slate-700">Papel</TableHead>
+                <TableHead className="font-semibold text-slate-700">Docente Vinculado</TableHead>
+                <TableHead className="font-semibold text-slate-700">Criado em</TableHead>
+                <TableHead className="text-right font-semibold text-slate-700">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <TableRow key={i} className="h-16">
+                    <TableCell>
+                      <Skeleton className="h-5 w-48 mb-1" />
+                      <Skeleton className="h-4 w-32" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-6 w-24 rounded-full" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-36" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-20" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-8 w-28 ml-auto" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : usuariosFiltrados.length > 0 ? (
+                usuariosFiltrados.map((u) => {
+                  const roleCfg = ROLE_INFO[u.role] || {
+                    label: u.role,
+                    bg: 'bg-slate-100 text-slate-700 border-slate-200',
+                  }
+                  const isSelf = currentUser?.id === u.user_id
+
+                  return (
+                    <TableRow key={u.id} className="hover:bg-slate-50/50">
+                      <TableCell className="py-3">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-slate-900">
+                              {u.name || 'Sem nome'}
+                            </span>
+                            {isSelf && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] bg-slate-100 text-slate-600 border-slate-300"
+                              >
+                                Você
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="text-xs text-slate-500 font-mono">{u.email}</span>
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`${roleCfg.bg} font-medium tracking-wide shadow-2xs`}
+                        >
+                          {roleCfg.label}
+                        </Badge>
+                      </TableCell>
+
+                      <TableCell>
+                        {u.docente ? (
+                          <div className="flex items-center gap-1.5 text-sm text-slate-800">
+                            <GraduationCap className="h-4 w-4 text-emerald-600 shrink-0" />
+                            <span className="font-medium">{u.docente.nome}</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400 italic">Nenhum vinculado</span>
+                        )}
+                      </TableCell>
+
+                      <TableCell className="text-xs text-slate-600">
+                        {formatarData(u.created_at)}
+                      </TableCell>
+
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Botão Vincular Docente */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleAbrirVincularDocente(u)}
+                            className="h-8 px-2 text-xs text-slate-700 hover:text-primary hover:bg-primary/10"
+                            title="Vincular a um docente do programa"
+                          >
+                            <LinkIcon className="h-3.5 w-3.5 mr-1" />
+                            <span>Vincular Docente</span>
+                          </Button>
+
+                          {/* Botão Trocar Papel */}
+                          {podeGerenciarPapelDoUsuario(u) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleAbrirTrocarPapel(u)}
+                              className="h-8 px-2 text-xs text-purple-700 hover:text-purple-800 hover:bg-purple-50"
+                              title="Alterar papel de permissão"
+                            >
+                              <KeyRound className="h-3.5 w-3.5 mr-1" />
+                              <span>Trocar Papel</span>
+                            </Button>
+                          )}
+
+                          {/* Botão Excluir (apenas suporte, nunca a si mesmo) */}
+                          {isSuporte && !isSelf && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setUsuarioParaExcluir(u)}
+                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title="Excluir usuário permanentemente"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-36 text-center text-slate-500">
+                    <p className="font-medium text-slate-600">Nenhum usuário encontrado.</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Ajuste os filtros de busca ou cadastre um novo usuário.
+                    </p>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* MOBILE (< 768px): Cards elegantes com alvos de toque >= 44px */}
+        <div className="block md:hidden flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/50">
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i} className="border border-slate-200 bg-white min-h-[140px]">
+                <CardContent className="p-4 space-y-3">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <div className="pt-2 border-t border-slate-100 flex justify-between">
+                    <Skeleton className="h-5 w-20" />
+                    <Skeleton className="h-10 w-28 rounded-md" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : usuariosFiltrados.length > 0 ? (
+            usuariosFiltrados.map((u) => {
+              const roleCfg = ROLE_INFO[u.role] || {
+                label: u.role,
+                bg: 'bg-slate-100 text-slate-700 border-slate-200',
+              }
+              const isSelf = currentUser?.id === u.user_id
+
+              return (
+                <Card
+                  key={u.id}
+                  className="border border-slate-200 bg-white shadow-2xs hover:border-slate-300 transition-colors"
+                >
+                  <CardContent className="p-4 flex flex-col gap-3">
+                    {/* Linha Superior: Nome + Badges */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-slate-900 text-base leading-tight break-words">
+                            {u.name || 'Sem nome'}
+                          </span>
+                          {isSelf && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] bg-slate-100 text-slate-600 border-slate-300"
+                            >
+                              Você
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-xs text-slate-500 font-mono break-all mt-0.5 block">
+                          {u.email}
+                        </span>
+                      </div>
+
+                      <Badge
+                        variant="outline"
+                        className={`${roleCfg.bg} font-medium shrink-0 text-xs px-2 py-0.5`}
+                      >
+                        {roleCfg.label}
+                      </Badge>
+                    </div>
+
+                    {/* Dados Complementares */}
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                      <div>
+                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                          Docente Vinculado
+                        </span>
+                        <div className="text-slate-800 font-medium mt-0.5 flex items-center gap-1 truncate">
+                          {u.docente ? (
+                            <>
+                              <GraduationCap className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                              <span className="truncate">{u.docente.nome}</span>
+                            </>
+                          ) : (
+                            <span className="text-slate-400 italic">Nenhum</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                          Data de Cadastro
+                        </span>
+                        <span className="text-slate-700 mt-0.5 block">
+                          {formatarData(u.created_at)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Ações Mobile com toque >= 44px */}
+                    <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAbrirVincularDocente(u)}
+                          className="min-h-[44px] text-xs text-slate-700 border-slate-200 hover:bg-slate-50"
+                        >
+                          <LinkIcon className="h-3.5 w-3.5 mr-1" />
+                          <span>Vincular Docente</span>
+                        </Button>
+
+                        {podeGerenciarPapelDoUsuario(u) ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAbrirTrocarPapel(u)}
+                            className="min-h-[44px] text-xs text-purple-700 border-purple-200 hover:bg-purple-50"
+                          >
+                            <KeyRound className="h-3.5 w-3.5 mr-1" />
+                            <span>Trocar Papel</span>
+                          </Button>
+                        ) : (
+                          <div />
+                        )}
+                      </div>
+
+                      {isSuporte && !isSelf && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setUsuarioParaExcluir(u)}
+                          className="min-h-[44px] text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 w-full"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1.5" />
+                          <span>Excluir Usuário</span>
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })
+          ) : (
+            <div className="p-6 text-center text-slate-500 text-sm bg-white rounded-lg border border-dashed border-slate-200">
+              Nenhum usuário encontrado.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ========================================================= */}
+      {/* MODAL 1: CRIAR NOVO USUÁRIO (Apenas Suporte)             */}
+      {/* ========================================================= */}
+      <Dialog open={modalCriarAberto} onOpenChange={setModalCriarAberto}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-900">
+              <UserPlus className="h-5 w-5 text-primary" />
+              <span>Novo Usuário do Sistema</span>
+            </DialogTitle>
+            <DialogDescription>
+              Crie uma conta de acesso e atribua o perfil correspondente de acordo com as regras do
+              PPG-DCEM.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCriarUsuario} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="nome" className="text-xs font-semibold text-slate-700">
+                Nome Completo <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  id="nome"
+                  required
+                  placeholder="Ex: Profa. Maria Santos"
+                  value={novoUsuario.nome}
+                  onChange={(e) => setNovoUsuario({ ...novoUsuario, nome: e.target.value })}
+                  className="pl-9 min-h-[44px] md:min-h-9"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs font-semibold text-slate-700">
+                E-mail Institucional <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  required
+                  placeholder="usuario@ufs.br"
+                  value={novoUsuario.email}
+                  onChange={(e) => setNovoUsuario({ ...novoUsuario, email: e.target.value })}
+                  className="pl-9 min-h-[44px] md:min-h-9"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="senha" className="text-xs font-semibold text-slate-700">
+                Senha Provisória <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  id="senha"
+                  type="password"
+                  required
+                  placeholder="Mínimo de 6 caracteres"
+                  value={novoUsuario.password}
+                  onChange={(e) => setNovoUsuario({ ...novoUsuario, password: e.target.value })}
+                  className="pl-9 min-h-[44px] md:min-h-9"
+                />
+              </div>
+              <p className="text-[11px] text-slate-500">
+                O usuário poderá alterar sua senha após o primeiro acesso.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="papel" className="text-xs font-semibold text-slate-700">
+                Papel de Acesso Inicial <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={novoUsuario.role}
+                onValueChange={(val: Role) => setNovoUsuario({ ...novoUsuario, role: val })}
+              >
+                <SelectTrigger id="papel" className="min-h-[44px] md:min-h-9">
+                  <SelectValue placeholder="Selecione o papel" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="suporte">Suporte (Acesso Pleno)</SelectItem>
+                  <SelectItem value="coordenador">Coordenador (Gestão PPG)</SelectItem>
+                  <SelectItem value="auxiliar">Auxiliar (Operação/Editor)</SelectItem>
+                  <SelectItem value="docente">Docente (Edição Própria)</SelectItem>
+                  <SelectItem value="capes">CAPES (Somente Leitura)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-slate-500">{ROLE_INFO[novoUsuario.role]?.desc}</p>
+            </div>
+
+            {/* Vínculo de Docente opcional (recomendado se papel for docente) */}
+            <div className="space-y-1.5 pt-2 border-t border-slate-100">
+              <Label htmlFor="docente_vinculo" className="text-xs font-semibold text-slate-700">
+                Vincular Docente do Programa (Opcional)
+              </Label>
+              <Select
+                value={novoUsuario.docente_id ? String(novoUsuario.docente_id) : 'nenhum'}
+                onValueChange={(val) =>
+                  setNovoUsuario({
+                    ...novoUsuario,
+                    docente_id: val === 'nenhum' ? null : Number(val),
+                  })
+                }
+              >
+                <SelectTrigger id="docente_vinculo" className="min-h-[44px] md:min-h-9">
+                  <SelectValue placeholder="Nenhum docente vinculado" />
+                </SelectTrigger>
+                <SelectContent className="max-h-56">
+                  <SelectItem value="nenhum">Nenhum docente vinculado</SelectItem>
+                  {docentes.map((d) => (
+                    <SelectItem key={d.id} value={String(d.id)}>
+                      {d.nome} {d.categoria ? `(${d.categoria})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-slate-500">
+                {novoUsuario.role === 'docente'
+                  ? 'Recomendado selecionar o docente para liberar a edição por linha das suas publicações e orientações.'
+                  : 'Docente associado a esta conta para identificação institucional.'}
+              </p>
+            </div>
+
+            <DialogFooter className="pt-4 gap-2 flex-col-reverse sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setModalCriarAberto(false)}
+                disabled={criando}
+                className="min-h-[44px] md:min-h-9"
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={criando} className="min-h-[44px] md:min-h-9 gap-1.5">
+                {criando ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>Criando Usuário...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4" />
+                    <span>Criar Usuário</span>
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================= */}
+      {/* MODAL 2: TROCAR PAPEL                                    */}
+      {/* ========================================================= */}
+      <Dialog
+        open={usuarioParaTrocarPapel !== null}
+        onOpenChange={(open) => !open && setUsuarioParaTrocarPapel(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-900">
+              <KeyRound className="h-5 w-5 text-purple-600" />
+              <span>Trocar Papel de Permissão</span>
+            </DialogTitle>
+            <DialogDescription>
+              Altere o papel de acesso de{' '}
+              <strong>{usuarioParaTrocarPapel?.name || usuarioParaTrocarPapel?.email}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="rounded-lg bg-slate-50 p-3 text-xs space-y-1 border border-slate-200">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Papel Atual:</span>
+                <Badge
+                  variant="outline"
+                  className={ROLE_INFO[usuarioParaTrocarPapel?.role || 'capes']?.bg}
+                >
+                  {ROLE_INFO[usuarioParaTrocarPapel?.role || 'capes']?.label}
+                </Badge>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Seu papel logado:</span>
+                <span className="font-semibold text-slate-700 uppercase">{currentRole}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700">Novo Papel</Label>
+              <Select value={papelEscolhido} onValueChange={(val: Role) => setPapelEscolhido(val)}>
+                <SelectTrigger className="min-h-[44px] md:min-h-9">
+                  <SelectValue placeholder="Selecione o novo papel" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(['suporte', 'coordenador', 'auxiliar', 'docente', 'capes'] as Role[]).map(
+                    (p) => {
+                      const permitido =
+                        usuarioParaTrocarPapel && podeMudarPapelPara(usuarioParaTrocarPapel, p)
+                      return (
+                        <SelectItem
+                          key={p}
+                          value={p}
+                          disabled={!permitido}
+                          className={!permitido ? 'opacity-40' : ''}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span>{ROLE_INFO[p].label}</span>
+                            {!permitido && (
+                              <span className="text-[10px] text-slate-400 italic">
+                                (não permitido)
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      )
+                    },
+                  )}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-slate-500">{ROLE_INFO[papelEscolhido]?.desc}</p>
+            </div>
+
+            {isCoordenador && (
+              <p className="text-xs text-amber-700 bg-amber-50 p-2.5 rounded border border-amber-200">
+                Aviso: Como Coordenador, a cadeia de promoção do sistema permite apenas transformar
+                usuários de <strong>Docente</strong> para <strong>Auxiliar</strong>.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 flex-col-reverse sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setUsuarioParaTrocarPapel(null)}
+              disabled={salvandoPapel}
+              className="min-h-[44px] md:min-h-9"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmarTrocaPapel}
+              disabled={
+                salvandoPapel ||
+                !usuarioParaTrocarPapel ||
+                papelEscolhido === usuarioParaTrocarPapel.role ||
+                !podeMudarPapelPara(usuarioParaTrocarPapel, papelEscolhido)
+              }
+              className="min-h-[44px] md:min-h-9 gap-1.5 bg-purple-700 hover:bg-purple-800 text-white"
+            >
+              {salvandoPapel ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span>Salvando...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4" />
+                  <span>Confirmar Alteração</span>
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================= */}
+      {/* MODAL 3: VINCULAR DOCENTE                                 */}
+      {/* ========================================================= */}
+      <Dialog
+        open={usuarioParaVincularDocente !== null}
+        onOpenChange={(open) => !open && setUsuarioParaVincularDocente(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-900">
+              <GraduationCap className="h-5 w-5 text-emerald-600" />
+              <span>Vincular Docente do Programa</span>
+            </DialogTitle>
+            <DialogDescription>
+              Associe a conta de{' '}
+              <strong>
+                {usuarioParaVincularDocente?.name || usuarioParaVincularDocente?.email}
+              </strong>{' '}
+              a um dos 16 docentes cadastrados no PPG-DCEM.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700">Docente Cadastrado</Label>
+              <Select
+                value={docenteIdEscolhido}
+                onValueChange={(val) => setDocenteIdEscolhido(val)}
+              >
+                <SelectTrigger className="min-h-[44px] md:min-h-9">
+                  <SelectValue placeholder="Selecione um docente" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  <SelectItem value="nenhum">Nenhum docente (desvincular)</SelectItem>
+                  {docentes.map((d) => (
+                    <SelectItem key={d.id} value={String(d.id)}>
+                      {d.nome} {d.categoria ? `— ${d.categoria}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded p-3 text-xs text-blue-900 space-y-1">
+              <p className="font-semibold">Importância do vínculo para o papel Docente:</p>
+              <p>
+                Ao vincular um docente a este perfil, as políticas RLS do Supabase liberarão
+                automaticamente a edição das publicações, orientações e projetos associados a ele,
+                garantindo o isolamento estrito de dados.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 flex-col-reverse sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setUsuarioParaVincularDocente(null)}
+              disabled={salvandoVinculo}
+              className="min-h-[44px] md:min-h-9"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmarVinculoDocente}
+              disabled={salvandoVinculo}
+              className="min-h-[44px] md:min-h-9 gap-1.5"
+            >
+              {salvandoVinculo ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span>Salvando Vínculo...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4" />
+                  <span>Salvar Vínculo</span>
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================= */}
+      {/* MODAL 4: CONFIRMAÇÃO DE EXCLUSÃO (Apenas Suporte)        */}
+      {/* ========================================================= */}
+      <AlertDialog
+        open={usuarioParaExcluir !== null}
+        onOpenChange={(open) => !open && setUsuarioParaExcluir(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <ShieldAlert className="h-5 w-5" />
+              <span>Confirmar Exclusão de Usuário</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2 text-slate-700">
+              <p>
+                Tem certeza de que deseja remover permanentemente o usuário{' '}
+                <strong className="text-slate-900">
+                  {usuarioParaExcluir?.name} ({usuarioParaExcluir?.email})
+                </strong>
+                ?
+              </p>
+              <p className="text-xs text-red-600">
+                Esta ação revogará a conta no Supabase Auth e excluirá seu perfil de acesso. Os
+                dados acadêmicos do programa (docentes, publicações, orientações) permanecerão
+                intactos.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excluindo}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmarExclusao}
+              disabled={excluindo}
+              className="bg-red-600 hover:bg-red-700 text-white min-h-[44px] sm:min-h-9"
+            >
+              {excluindo ? 'Excluindo...' : 'Sim, excluir usuário'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}

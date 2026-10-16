@@ -22,6 +22,7 @@ import {
   Award,
   BarChart3,
   Users,
+  UserCog,
   GraduationCap,
   UserCheck,
   ClipboardList,
@@ -220,8 +221,29 @@ const ROLE_LABELS: Record<string, string> = {
 function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
   const { open } = useSidebar()
   const location = useLocation()
-  const { profile, role, signOut } = useAuth()
+  const { profile, role, isSuporte, isCoordenador, signOut } = useAuth()
   const [showLogoutModal, setShowLogoutModal] = useState(false)
+
+  // Apenas 'suporte' e 'coordenador' têm acesso ao módulo administrativo de Gestão de Usuários
+  const podeAcessarUsuarios = isSuporte || isCoordenador
+
+  // Clona as seções injetando condicionalmente a seção/item de Usuários
+  const visibleSections = navSections.map((section) => {
+    if (section.title === 'Geral' && podeAcessarUsuarios) {
+      return {
+        ...section,
+        items: [
+          ...section.items,
+          {
+            label: 'Usuários',
+            href: '/usuarios',
+            icon: <UserCog className="h-5 w-5 shrink-0" />,
+          },
+        ],
+      }
+    }
+    return section
+  })
 
   return (
     <div className="flex flex-col h-full justify-between">
@@ -241,7 +263,7 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
       <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden px-2 py-3 min-h-0 sidebar-scrollbar [scrollbar-gutter:auto]">
         {/* Grupos de navegação — gap-6 quando fechada (+50% vs gap-4 quando aberta) */}
         <div className={cn('flex flex-col transition-all duration-150', open ? 'gap-4' : 'gap-6')}>
-          {navSections.map((section) => (
+          {visibleSections.map((section) => (
             <div key={section.title} className="flex flex-col gap-1 items-stretch">
               {open && (
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/70 px-2 pt-1 truncate">
