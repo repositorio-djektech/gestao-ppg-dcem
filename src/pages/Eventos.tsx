@@ -91,6 +91,7 @@ export default function Eventos() {
       emptyForm={emptyForm}
       searchKey="evento"
       entityName="Evento"
+      tableName="eventos"
       printModule="eventos"
     />
   )

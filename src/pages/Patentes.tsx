@@ -89,6 +89,7 @@ export default function Patentes() {
       emptyForm={emptyForm}
       searchKey="titulo"
       entityName="Patente"
+      tableName="patentes"
       printModule="patentes"
     />
   )

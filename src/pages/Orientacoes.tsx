@@ -156,6 +156,7 @@ export default function Orientacoes() {
       emptyForm={emptyForm}
       searchKey="tipo"
       entityName="Orientação"
+      tableName="orientacoes"
       printModule="orientacoes"
     />
   )

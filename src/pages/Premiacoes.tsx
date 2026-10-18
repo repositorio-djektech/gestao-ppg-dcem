@@ -86,6 +86,7 @@ export default function Premiacoes() {
       emptyForm={emptyForm}
       searchKey="titulo"
       entityName="Premiação"
+      tableName="premiacoes"
       printModule="premiacoes"
     />
   )

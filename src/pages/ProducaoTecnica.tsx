@@ -96,6 +96,7 @@ export default function ProducaoTecnica() {
       emptyForm={emptyForm}
       searchKey="titulo"
       entityName="Produção Técnica"
+      tableName="producao_tecnica"
       printModule="producao-tecnica"
     />
   )

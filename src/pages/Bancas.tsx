@@ -115,6 +115,7 @@ export default function Bancas() {
       emptyForm={emptyForm}
       searchKey="titulo_trabalho"
       entityName="Banca"
+      tableName="bancas"
       printModule="bancas"
     />
   )

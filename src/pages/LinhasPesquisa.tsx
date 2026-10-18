@@ -55,6 +55,7 @@ export default function LinhasPesquisa() {
       emptyForm={emptyForm}
       searchKey="nome"
       entityName="Linha de Pesquisa"
+      tableName="linhas_pesquisa"
       printModule="linhas-pesquisa"
     />
   )

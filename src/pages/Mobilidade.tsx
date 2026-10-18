@@ -113,6 +113,7 @@ export default function Mobilidade() {
       emptyForm={emptyForm}
       searchKey="nome"
       entityName="Mobilidade"
+      tableName="mobilidade_docente"
       printModule="mobilidade"
     />
   )

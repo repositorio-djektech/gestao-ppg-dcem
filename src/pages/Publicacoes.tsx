@@ -232,6 +232,16 @@ export default function Publicacoes() {
   const hasActionsColumn = !isCapes && (isStaff || isDocente)
   const PER_PAGE = 20
 
+  const editingPub = editingId ? publicacoes.find((p) => p.id === editingId) : null
+  const editingCtx = {
+    publicacoesDocentesIds: editingId
+      ? todasPubsDocentes.filter((pd) => pd.publicacao_id === editingId).map((pd) => pd.docente_id)
+      : docentesAutoresSelecionados,
+  }
+  const canEditCurrent = editingId
+    ? podeEditarRegistro(role, docenteIdLogado, 'publicacoes', editingPub, editingCtx)
+    : canCreate
+
   const filtered = publicacoes.filter((p) => {
     const s =
       p.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -802,7 +812,7 @@ export default function Publicacoes() {
                         docentes={docentesLista}
                         docentesSelecionadosIds={docentesAutoresSelecionados}
                         onChangeDocentesIds={setDocentesAutoresSelecionados}
-                        canEdit={canEdit}
+                        canEdit={canEditCurrent}
                       />
                     </div>
 
@@ -815,7 +825,7 @@ export default function Publicacoes() {
                         discentes={discentesLista}
                         egressos={egressosLista}
                         usuarioNome={profile?.name || profile?.email || 'Colegiado'}
-                        canEdit={canEdit}
+                        canEdit={canEditCurrent}
                         onCoautoriaAtualizada={carregarRelacionados}
                       />
                     </div>

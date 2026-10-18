@@ -115,6 +115,7 @@ export default function Disciplinas() {
       emptyForm={emptyForm}
       searchKey="nome"
       entityName="Disciplina"
+      tableName="disciplinas"
       printModule="disciplinas"
     />
   )

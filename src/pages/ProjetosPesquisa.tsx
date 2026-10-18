@@ -5,6 +5,8 @@ import { projetosPesquisaService } from '@/services/projetos-pesquisa'
 import { docentesService } from '@/services/docentes'
 import { Badge } from '@/components/ui/badge'
 import type { ProjetoPesquisa } from '@/types/database'
+import { supabase } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/use-auth'
 
 const emptyForm = {
   titulo: '',
@@ -20,7 +22,9 @@ const emptyForm = {
 }
 
 export default function ProjetosPesquisa() {
+  const { profile } = useAuth()
   const [docenteMap, setDocenteMap] = useState<Record<string, string>>({})
+  const [projetosParticipantesIds, setProjetosParticipantesIds] = useState<number[]>([])
 
   useEffect(() => {
     docentesService.list().then((items) => {
@@ -31,6 +35,22 @@ export default function ProjetosPesquisa() {
       setDocenteMap(m)
     })
   }, [])
+
+  useEffect(() => {
+    if (profile?.docente_id) {
+      supabase
+        .from('projetos_participantes')
+        .select('projeto_id')
+        .eq('docente_id', profile.docente_id)
+        .then(({ data, error }) => {
+          if (!error && data) {
+            setProjetosParticipantesIds(data.map((r: any) => Number(r.projeto_id)))
+          }
+        })
+    } else {
+      setProjetosParticipantesIds([])
+    }
+  }, [profile?.docente_id])
 
   const docenteOptionsLoader = async () => {
     const items = await docentesService.list()
@@ -166,7 +186,11 @@ export default function ProjetosPesquisa() {
       emptyForm={emptyForm}
       searchKey="titulo"
       entityName="Projeto"
+      tableName="projetos_pesquisa"
       printModule="projetos-pesquisa"
+      getContextoItem={(item) => ({
+        isParticipanteProjeto: projetosParticipantesIds.includes(Number(item.id)),
+      })}
     />
   )
 }

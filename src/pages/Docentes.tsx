@@ -108,7 +108,7 @@ const emptyForm: Omit<Docente, 'id'> = {
 
 export default function Docentes() {
   const navigate = useNavigate()
-  const { profile } = useAuth()
+  const { role, profile } = useAuth()
   const { data: docentes, loading, create, update, remove } = useCrudData(docentesService)
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -152,8 +152,6 @@ export default function Docentes() {
   useEffect(() => {
     linhasPesquisaService.list().then(setTodasLinhas).catch(console.error)
   }, [])
-
-  const { role, profile } = useAuth()
   const isCapes = role === 'capes'
   const docenteIdLogado = profile?.docente_id
   const canCreate = podeCriarNaTabela(role, 'docentes', docenteIdLogado)

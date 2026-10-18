@@ -202,6 +202,7 @@ export default function IniciacaoCientificaPage() {
       emptyForm={emptyForm}
       searchKey="titulo"
       entityName="Iniciação Científica"
+      tableName="iniciacao_cientifica"
       tableHeaderClassName="bg-[#e9effc] sticky top-0 z-10"
     />
   )

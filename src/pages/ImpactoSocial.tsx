@@ -71,6 +71,7 @@ export default function ImpactoSocial() {
       emptyForm={emptyForm}
       searchKey="titulo"
       entityName="Impacto Social"
+      tableName="impacto_social"
       printModule="impacto-social"
     />
   )
