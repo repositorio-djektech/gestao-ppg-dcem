@@ -49,8 +49,8 @@ export function Layout() {
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
         />
-        {/* Área interna de conteúdo: fundo com contraste suave e sombra sutil para destaque, com safe-area padding */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 shadow-inner pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] md:pb-6 lg:pb-8">
+        {/* Área interna de conteúdo: fundo com contraste suave e sombra sutil para destaque */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 shadow-inner">
           <Outlet />
         </main>
       </div>

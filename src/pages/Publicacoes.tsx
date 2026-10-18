@@ -496,7 +496,7 @@ export default function Publicacoes() {
           <Button
             variant="outline"
             onClick={() => navigate('/imprimir/publicacoes')}
-            className="gap-2 shrink-0 bg-white min-h-[44px] md:min-h-9 text-slate-700"
+            className="gap-2 shrink-0 bg-white h-9 text-slate-700"
             title="Versão para Impressão / Exportar PDF"
           >
             <Printer className="h-4 w-4 text-slate-600" />
@@ -507,7 +507,7 @@ export default function Publicacoes() {
               <Button
                 variant="outline"
                 onClick={() => setIsSugerirQualisOpen(true)}
-                className="gap-2 shrink-0 bg-white min-h-[44px] md:min-h-9 border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                className="gap-2 shrink-0 bg-white h-9 border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
                 title="Sugerir Qualis automaticamente com base no OpenAlex e Scopus (Etapa D2)"
               >
                 <Award className="h-4 w-4 text-emerald-600" />
@@ -516,7 +516,7 @@ export default function Publicacoes() {
               <Button
                 variant="outline"
                 onClick={() => setIsVincularDocentesOpen(true)}
-                className="gap-2 shrink-0 bg-white min-h-[44px] md:min-h-9 border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+                className="gap-2 shrink-0 bg-white h-9 border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
                 title="Casamento Automático Autor → Docente (Etapa D1)"
               >
                 <Sparkles className="h-4 w-4 text-blue-600" />
@@ -527,17 +527,14 @@ export default function Publicacoes() {
           {canCreate && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={() => handleOpen()} className="gap-2 min-h-[44px] md:min-h-9">
+                <Button onClick={() => handleOpen()} className="gap-2 h-9">
                   <Plus className="h-4 w-4" />
                   <span className="hidden sm:inline">Nova Publicação</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent
-                bottomSheetOnMobile
-                className="md:max-w-[580px] md:max-h-[90vh] flex flex-col p-0 overflow-hidden"
-              >
-                <DialogHeader className="p-4 md:p-6 pb-2 md:pb-4 border-b border-slate-100 dark:border-neutral-800 shrink-0 pr-12 md:pr-12">
-                  <DialogTitle className="text-primary font-bold text-lg md:text-xl text-left">
+              <DialogContent className="max-w-[580px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+                <DialogHeader className="p-6 pb-4 border-b border-slate-100 dark:border-neutral-800 shrink-0 pr-12">
+                  <DialogTitle className="text-primary font-bold text-xl text-left">
                     {editingId ? 'Editar' : 'Registrar'} Publicação
                   </DialogTitle>
                 </DialogHeader>
@@ -545,15 +542,7 @@ export default function Publicacoes() {
                   onSubmit={handleSubmit}
                   className="flex flex-col flex-1 min-h-0 overflow-hidden"
                 >
-                  <div
-                    className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 min-h-0"
-                    onFocusCapture={(e) => {
-                      const target = e.target as HTMLElement
-                      if (target && typeof target.scrollIntoView === 'function') {
-                        target.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                      }
-                    }}
-                  >
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
                     <div className="space-y-2">
                       <Label htmlFor="pub-titulo">
                         Título do Artigo <span className="text-destructive">*</span>
@@ -830,21 +819,16 @@ export default function Publicacoes() {
                       />
                     </div>
                   </div>
-                  {/* Rodapé fixo no mobile com safe-area */}
-                  <div className="border-t border-slate-200 dark:border-neutral-800 bg-slate-50/90 dark:bg-neutral-900/90 p-3 md:p-4 flex items-center justify-end gap-2 md:gap-3 shrink-0 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] md:pb-4">
+                  <div className="border-t border-slate-200 dark:border-neutral-800 bg-slate-50/90 dark:bg-neutral-900/90 p-4 flex items-center justify-end gap-3 shrink-0">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setIsDialogOpen(false)}
-                      className="bg-white hover:bg-slate-50 min-h-[44px] md:min-h-9 px-4 text-xs md:text-sm flex-1 md:flex-initial"
+                      className="bg-white hover:bg-slate-50 h-9 px-4 text-sm"
                     >
                       Cancelar
                     </Button>
-                    <Button
-                      type="submit"
-                      disabled={submitting}
-                      className="min-h-[44px] md:min-h-9 px-5 text-xs md:text-sm flex-1 md:flex-initial"
-                    >
+                    <Button type="submit" disabled={submitting} className="h-9 px-5 text-sm">
                       {submitting ? 'Salvando...' : 'Salvar Publicação'}
                     </Button>
                   </div>
@@ -855,10 +839,9 @@ export default function Publicacoes() {
         </div>
       </div>
 
-      {/* Contêiner de Dados: Desktop (>= 768px) Tabela; Mobile (< 768px) Cards elegantes com ações mín. 44px */}
+      {/* Contêiner de Dados: Tabela única com overflow-auto */}
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden">
-        {/* DESKTOP TABLE: >= 768px */}
-        <div className="hidden md:block flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto">
           <Table>
             <TableHeader className="bg-slate-50/80 sticky top-0">
               <TableRow>
@@ -1089,210 +1072,6 @@ export default function Publicacoes() {
               )}
             </TableBody>
           </Table>
-        </div>
-
-        {/* MOBILE CARDS: < 768px (md:hidden) */}
-        <div className="block md:hidden flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/40">
-          {loading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="p-4 rounded-lg border border-slate-200 bg-white space-y-3 min-h-[160px]"
-              >
-                <Skeleton className="h-5 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                </div>
-                <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
-                  <Skeleton className="h-10 w-24 rounded-md" />
-                  <Skeleton className="h-10 w-16 rounded-md" />
-                </div>
-              </div>
-            ))
-          ) : paginated.length > 0 ? (
-            paginated.map((p) => {
-              const docentesVinculados = todasPubsDocentes
-                .filter((pd) => pd.publicacao_id === p.id)
-                .map((pd) => docentesLista.find((d) => d.id === pd.docente_id))
-                .filter(Boolean) as Docente[]
-
-              return (
-                <div
-                  key={p.id}
-                  className="rounded-lg border border-slate-200/90 bg-white p-4 shadow-xs space-y-3"
-                  data-testid={`mobile-publicacao-card-${p.id}`}
-                >
-                  {/* Topo do card: Título e Badges (Qualis, Nível, etc.) */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-semibold text-slate-900 text-sm leading-snug break-words flex-1">
-                        {normalizarTituloAcademico(p.titulo)}
-                      </h3>
-                      <div className="shrink-0">
-                        {getQualisBadge(
-                          p.estrato_qualis,
-                          p.qualis_origem,
-                          p.qualis_sugestao_justificativa,
-                        )}
-                      </div>
-                    </div>
-
-                    {p.autores && (
-                      <p className="text-xs text-slate-500 line-clamp-2 break-words">{p.autores}</p>
-                    )}
-
-                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                      {p.indicacao_nivel && (
-                        <Badge
-                          variant="outline"
-                          className={
-                            p.indicacao_nivel === 2
-                              ? 'border-indigo-300 bg-indigo-50 text-indigo-700 text-[10px]'
-                              : 'border-purple-300 bg-purple-50 text-purple-700 text-[10px]'
-                          }
-                        >
-                          Nível {p.indicacao_nivel}
-                        </Badge>
-                      )}
-                      {p.tipo_producao && (
-                        <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-                          {p.tipo_producao}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Campos de apoio em grid 2 colunas */}
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
-                    <div>
-                      <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
-                        Periódico
-                      </span>
-                      <span className="text-slate-700 line-clamp-2">{p.periodico || '—'}</span>
-                    </div>
-
-                    <div>
-                      <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
-                        Ano / JCR
-                      </span>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-semibold text-slate-900">{p.ano}</span>
-                        {p.fator_impacto_jcr !== null && p.fator_impacto_jcr !== undefined && (
-                          <span className="font-mono text-[11px] text-slate-600 bg-slate-100 px-1 rounded">
-                            JCR {Number(p.fator_impacto_jcr).toFixed(2)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="col-span-2">
-                      <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
-                        Docentes Autores
-                      </span>
-                      {docentesVinculados.length > 0 ? (
-                        <div className="flex flex-wrap gap-1 mt-0.5">
-                          {docentesVinculados.map((doc) => {
-                            const nomes = doc.nome.trim().split(' ')
-                            const primeiro = nomes[0]
-                            const ultimo = nomes.length > 1 ? nomes[nomes.length - 1] : ''
-                            const exibicao = ultimo ? `${primeiro[0]}. ${ultimo}` : primeiro
-                            return (
-                              <Badge
-                                key={doc.id}
-                                variant={doc.status === false ? 'outline' : 'secondary'}
-                                className={`text-[10px] px-1.5 py-0 font-normal ${
-                                  doc.status === false
-                                    ? 'border-orange-300 bg-orange-50 text-orange-600 font-medium'
-                                    : 'bg-slate-100 text-slate-700'
-                                }`}
-                              >
-                                <DocenteNome
-                                  nome={exibicao}
-                                  status={doc.status}
-                                  normalizar={false}
-                                />
-                              </Badge>
-                            )
-                          })}
-                        </div>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </div>
-
-                    {p.doi && (
-                      <div className="col-span-2">
-                        <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
-                          DOI
-                        </span>
-                        <span className="font-mono text-xs text-primary break-all">{p.doi}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Ações Mobile: alvos de toque com pelo menos 44px de altura */}
-                  {(() => {
-                    const idsDocentesPub = todasPubsDocentes
-                      .filter((pd) => pd.publicacao_id === p.id)
-                      .map((pd) => pd.docente_id)
-                    const ctx = { publicacoesDocentesIds: idsDocentesPub }
-                    const canEditThisPub = podeEditarRegistro(
-                      role,
-                      docenteIdLogado,
-                      'publicacoes',
-                      p,
-                      ctx,
-                    )
-                    const canDeleteThisPub = podeExcluirRegistro(
-                      role,
-                      docenteIdLogado,
-                      'publicacoes',
-                      p,
-                      ctx,
-                    )
-                    if (!canEditThisPub && !canDeleteThisPub) return null
-
-                    return (
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
-                        {canEditThisPub && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleOpen(p)}
-                            className="min-h-[44px] px-3.5 text-xs text-primary border-primary/30 hover:bg-primary/5 gap-1.5 flex-1"
-                            title="Editar Publicação"
-                            aria-label="Editar Publicação"
-                          >
-                            <Edit className="h-4 w-4" />
-                            <span>Editar</span>
-                          </Button>
-                        )}
-                        {canDeleteThisPub && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="min-h-[44px] px-3.5 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 gap-1.5"
-                            onClick={() => setIdParaExcluir(p.id)}
-                            title="Excluir Publicação"
-                            aria-label="Excluir Publicação"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span>Excluir</span>
-                          </Button>
-                        )}
-                      </div>
-                    )
-                  })()}
-                </div>
-              )
-            })
-          ) : (
-            <div className="p-8 text-center text-slate-500 text-sm bg-white rounded-lg border border-dashed border-slate-200">
-              Nenhuma publicação encontrada.
-            </div>
-          )}
         </div>
 
         {totalPages > 1 && (

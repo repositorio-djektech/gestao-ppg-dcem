@@ -147,12 +147,12 @@ export const MobileSidebar = ({ className, children, ...props }: React.Component
                 damping: 35,
               }}
               className={cn(
-                'fixed inset-y-0 left-0 max-w-[78vw] sm:max-w-[256px] w-full bg-white dark:bg-neutral-900 p-4 z-[100] flex flex-col justify-between shadow-2xl border-r border-neutral-200 dark:border-neutral-800 overflow-hidden pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pl-[calc(env(safe-area-inset-left,0px)+1rem)]',
+                'fixed inset-y-0 left-0 max-w-[78vw] sm:max-w-[256px] w-full bg-white dark:bg-neutral-900 p-4 z-[100] flex flex-col justify-between shadow-2xl border-r border-neutral-200 dark:border-neutral-800 overflow-hidden',
                 className,
               )}
             >
               <div
-                className="absolute right-3 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] z-50 text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white cursor-pointer p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                className="absolute right-3 top-3 z-50 text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white cursor-pointer p-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
                 onClick={() => setOpen(false)}
                 aria-label="Fechar menu"
                 role="button"

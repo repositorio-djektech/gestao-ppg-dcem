@@ -859,10 +859,9 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
         </div>
       </div>
 
-      {/* Tabela Principal de Docentes: Desktop (>= 768px) Tabela; Mobile (< 768px) Cards */}
+      {/* Tabela Principal de Docentes: Tabela única com overflow-x-auto */}
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
-        {/* DESKTOP TABLE: >= 768px */}
-        <div className="hidden md:block overflow-x-auto">
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-slate-50/80">
               <TableRow>
@@ -1023,201 +1022,43 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
             </TableBody>
           </Table>
         </div>
-
-        {/* MOBILE CARDS: < 768px (md:hidden) */}
-        <div className="block md:hidden p-3 space-y-3 bg-slate-50/50">
-          {carregando ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="p-4 rounded-lg border border-slate-200 bg-white space-y-3 min-h-[160px]"
-              >
-                <Skeleton className="h-5 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                </div>
-                <div className="pt-2 border-t border-slate-100 flex justify-end">
-                  <Skeleton className="h-10 w-24 rounded-md" />
-                </div>
-              </div>
-            ))
-          ) : docentesFiltrados.length > 0 ? (
-            docentesFiltrados.map((doc) => {
-              const pdq = doc.pdq_detalhes.pdq
-              const precondicaoAtendida = doc.pdq_detalhes.precondicao_atendida
-
-              return (
-                <div
-                  key={doc.docente_id}
-                  className="rounded-lg border border-slate-200/90 bg-white p-3.5 shadow-xs space-y-3"
-                  data-testid={`mobile-card-reconducao-${doc.docente_id}`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1 min-w-0 flex-1">
-                      <DocenteNome
-                        nome={doc.nome}
-                        status={doc.status}
-                        className="font-semibold text-slate-900 text-sm"
-                      />
-                      <div>{renderBadgeCategoria(doc.categoria)}</div>
-                    </div>
-                    <div className="shrink-0">{renderBadgeVeredito(doc.veredito)}</div>
-                  </div>
-
-                  {/* Grid com os 4 Critérios e PDQ */}
-                  <div className="grid grid-cols-4 gap-1.5 p-2 bg-slate-50 rounded border border-slate-100 text-center">
-                    <div className="flex flex-col items-center">
-                      <span className="text-[10px] text-slate-500 font-medium">Crit I</span>
-                      <div className="mt-0.5">
-                        {renderStatusCriterioIcon(doc.criterio_i.atendido)}
-                      </div>
-                      <span className="text-[9px] text-slate-400 mt-0.5">
-                        {doc.criterio_i.quantidade}p
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col items-center">
-                      <span className="text-[10px] text-slate-500 font-medium">Crit II</span>
-                      <div className="mt-0.5">
-                        {renderStatusCriterioIcon(doc.criterio_ii.atendido)}
-                      </div>
-                      <span className="text-[9px] text-slate-400 mt-0.5">
-                        {doc.criterio_ii.quantidade}d
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col items-center">
-                      <span className="text-[10px] text-slate-500 font-medium">Crit III</span>
-                      <div className="mt-0.5">
-                        {renderStatusCriterioIcon(doc.criterio_iii.atendido)}
-                      </div>
-                      <span className="text-[9px] text-slate-400 mt-0.5">
-                        {doc.criterio_iii.quantidade}f
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col items-center">
-                      <span className="text-[10px] text-slate-500 font-medium">PDQ</span>
-                      {precondicaoAtendida && pdq !== null ? (
-                        <span
-                          className={`font-mono font-bold text-xs mt-0.5 ${pdq >= 1.0 ? 'text-emerald-700' : 'text-amber-700'}`}
-                        >
-                          {pdq.toFixed(2)}
-                        </span>
-                      ) : (
-                        <span className="font-mono text-slate-400 text-xs mt-0.5">—</span>
-                      )}
-                      <span className="text-[9px] text-slate-400">NP {doc.pdq_detalhes.np}</span>
-                    </div>
-                  </div>
-
-                  {/* Botão de Evidências com área de toque mínima de 44px */}
-                  <div className="pt-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleAbrirDetalhes(doc)}
-                      className="min-h-[44px] w-full px-3 text-xs text-primary border-primary/30 hover:bg-primary/5 gap-1.5 font-medium"
-                      aria-label={`Ver evidências de ${doc.nome}`}
-                    >
-                      <Eye className="h-4 w-4" />
-                      <span>Ver Evidências e Dossiê</span>
-                    </Button>
-                  </div>
-                </div>
-              )
-            })
-          ) : (
-            <div className="p-8 text-center text-slate-500 text-sm bg-white rounded-lg border border-dashed border-slate-200">
-              Nenhum docente localizado com os filtros selecionados.
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* Drill-down de Evidências: Dialog para telas médias/grandes e Drawer para mobile */}
-      {!isMobile ? (
-        <Dialog open={dialogAberto} onOpenChange={setDialogAberto}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <DialogTitle className="flex items-center gap-2 text-lg text-primary font-bold">
-                    <Award className="h-5 w-5 text-primary" />
-                    Dossiê e Evidências de Recondução Docente
-                  </DialogTitle>
-                  <DialogDescription>
-                    Detalhamento dos 4 critérios normativos, cálculo do PDQ e composições do NP
-                    estrito vs. teto.
-                  </DialogDescription>
-                </div>
-                {docenteSelecionado && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleImprimirDocente(docenteSelecionado)}
-                    disabled={imprimindoDocente}
-                    className="inline-flex items-center gap-1.5 text-xs shrink-0"
-                    data-testid="btn-imprimir-dossie-docente"
-                  >
-                    <Printer className="h-3.5 w-3.5" />
-                    {imprimindoDocente ? 'Imprimindo...' : 'Imprimir Dossiê'}
-                  </Button>
-                )}
+      {/* Drill-down de Evidências: Dialog centralizado */}
+      <Dialog open={dialogAberto} onOpenChange={setDialogAberto}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <DialogTitle className="flex items-center gap-2 text-lg text-primary font-bold">
+                  <Award className="h-5 w-5 text-primary" />
+                  Dossiê e Evidências de Recondução Docente
+                </DialogTitle>
+                <DialogDescription>
+                  Detalhamento dos 4 critérios normativos, cálculo do PDQ e composições do NP
+                  estrito vs. teto.
+                </DialogDescription>
               </div>
-            </DialogHeader>
-
-            {docenteSelecionado && renderDrilldownConteudo(docenteSelecionado)}
-          </DialogContent>
-        </Dialog>
-      ) : (
-        <Drawer open={dialogAberto} onOpenChange={setDialogAberto}>
-          <DrawerContent className="max-h-[85vh]">
-            <DrawerHeader className="text-left border-b border-slate-100">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <DrawerTitle className="text-base flex items-center gap-2">
-                    <Award className="h-4 w-4 text-primary" />
-                    Evidências de Recondução
-                  </DrawerTitle>
-                  <DrawerDescription className="text-xs">
-                    Dossiê detalhado dos critérios de avaliação normativa
-                  </DrawerDescription>
-                </div>
-                {docenteSelecionado && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleImprimirDocente(docenteSelecionado)}
-                    disabled={imprimindoDocente}
-                    className="inline-flex items-center gap-1 text-xs shrink-0"
-                  >
-                    <Printer className="h-3 w-3" />
-                    Imprimir
-                  </Button>
-                )}
-              </div>
-            </DrawerHeader>
-
-            <div className="overflow-y-auto p-4 max-h-[70vh]">
-              {docenteSelecionado && renderDrilldownConteudo(docenteSelecionado)}
-            </div>
-
-            <DrawerFooter className="border-t border-slate-100 pt-2">
-              <DrawerClose asChild>
-                <Button variant="outline" className="w-full">
-                  Fechar
+              {docenteSelecionado && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleImprimirDocente(docenteSelecionado)}
+                  disabled={imprimindoDocente}
+                  className="inline-flex items-center gap-1.5 text-xs shrink-0"
+                  data-testid="btn-imprimir-dossie-docente"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  {imprimindoDocente ? 'Imprimindo...' : 'Imprimir Dossiê'}
                 </Button>
-              </DrawerClose>
-            </DrawerFooter>
-          </DrawerContent>
-        </Drawer>
-      )}
+              )}
+            </div>
+          </DialogHeader>
+
+          {docenteSelecionado && renderDrilldownConteudo(docenteSelecionado)}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

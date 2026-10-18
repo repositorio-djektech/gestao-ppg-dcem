@@ -50,8 +50,8 @@ describe('Responsividade Sidebar e Header (Mobile e Tablet Portrait)', () => {
     expect(html).toContain('fixed inset-y-0 left-0')
     expect(html).toContain('Itens do Menu Mobile')
     expect(html).toContain('bg-black/50') // backdrop
-    // Largura reduzida em 20%: max-w-[68vw] e sm:max-w-[256px]
-    expect(html).toContain('max-w-[68vw]')
+    // Largura max-w-[78vw] e sm:max-w-[256px]
+    expect(html).toContain('max-w-[78vw]')
     expect(html).toContain('sm:max-w-[256px]')
   })
 

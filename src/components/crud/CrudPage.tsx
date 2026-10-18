@@ -2,7 +2,6 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCrudData } from '@/hooks/use-crud-data'
 import { useAuth } from '@/hooks/use-auth'
-import { useIsMobile } from '@/hooks/use-mobile'
 import type { CrudService } from '@/services/crud'
 import {
   Table,
@@ -35,7 +34,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { formatarCpf } from '@/lib/utils'
-import { Card, CardContent } from '@/components/ui/card'
 import { CrudFormDialog } from './CrudFormDialog'
 import type { ColumnDef, FieldDef } from './types'
 export type { ColumnDef, FieldDef } from './types'
@@ -102,7 +100,6 @@ export function CrudPage<T extends { id: number | string }>({
 }: CrudPageProps<T>) {
   const navigate = useNavigate()
   const { role, profile } = useAuth()
-  const isMobile = useIsMobile()
   const { data, loading, create, update, remove } = useCrudData(service)
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -252,7 +249,7 @@ export function CrudPage<T extends { id: number | string }>({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             <Input
               placeholder="Buscar..."
-              className="pl-9 bg-white border-slate-200 min-h-[44px] md:min-h-9 text-sm"
+              className="pl-9 bg-white border-slate-200 h-9 text-sm"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value)
@@ -264,7 +261,7 @@ export function CrudPage<T extends { id: number | string }>({
             <Button
               variant="outline"
               onClick={() => navigate(`/imprimir/${printModule}`)}
-              className="gap-2 shrink-0 bg-white min-h-[44px] md:min-h-9 px-3.5"
+              className="gap-2 shrink-0 bg-white h-9 px-3.5"
               title="Versão para Impressão / Exportar PDF"
             >
               <Printer className="h-4 w-4 text-slate-600" />
@@ -272,20 +269,16 @@ export function CrudPage<T extends { id: number | string }>({
             </Button>
           )}
           {canCreate && (
-            <Button
-              onClick={() => handleOpen()}
-              className="gap-2 shrink-0 min-h-[44px] md:min-h-9 px-4"
-            >
+            <Button onClick={() => handleOpen()} className="gap-2 shrink-0 h-9 px-4">
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Novo {entityName}</span>
             </Button>
           )}
         </div>
       </div>
-      {/* Contêiner de Dados: Desktop (>= 768px) Tabela clássica intacta; Mobile (< 768px) Cards elegantes sem scroll horizontal */}
+      {/* Contêiner de Dados: Tabela única com overflow-auto */}
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden">
-        {/* VISUALIZAÇÃO DESKTOP: >= 768px (hidden md:block) */}
-        <div className="hidden md:block flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto">
           <Table>
             <TableHeader className={tableHeaderClassName ?? 'bg-slate-50/80 sticky top-0 z-10'}>
               <TableRow className={tableHeaderRowClassName}>
@@ -397,177 +390,6 @@ export function CrudPage<T extends { id: number | string }>({
               )}
             </TableBody>
           </Table>
-        </div>
-
-        {/* VISUALIZAÇÃO MOBILE: < 768px (md:hidden) — Lista de Cards sem scroll horizontal */}
-        <div className="block md:hidden flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/40">
-          {loading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i} className="border border-slate-200 shadow-xs bg-white min-h-[148px]">
-                <CardContent className="p-4 space-y-3">
-                  <Skeleton className="h-5 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-full" />
-                  </div>
-                  <div className="pt-2 border-t border-slate-100 flex justify-end">
-                    <Skeleton className="h-10 w-24 rounded-md" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          ) : paginated.length > 0 ? (
-            paginated.map((item) => {
-              // Resolução das colunas mobile:
-              // 1. Título principal: primeira coluna com mobileTitle===true, ou primeira coluna visível não desktopOnly
-              const mobileEligibleColumns = columns.filter((c) => !c.desktopOnly)
-              const titleCol =
-                mobileEligibleColumns.find((c) => c.mobileTitle) || mobileEligibleColumns[0]
-
-              // 2. Subtítulo (opcional)
-              const subtitleCol = mobileEligibleColumns.find(
-                (c) => c.mobileSubtitle && c !== titleCol,
-              )
-
-              // 3. Campos de apoio (3 a 4 colunas)
-              const explicitlyConfiguredSupport = mobileEligibleColumns.filter(
-                (c) => c.mobileSupport && c !== titleCol && c !== subtitleCol,
-              )
-              const supportCols =
-                explicitlyConfiguredSupport.length > 0
-                  ? explicitlyConfiguredSupport
-                  : mobileEligibleColumns
-                      .filter((c) => c !== titleCol && c !== subtitleCol)
-                      .slice(0, 4)
-
-              const renderCellValue = (col: ColumnDef<T>) => {
-                if (col.render) {
-                  return col.render(item)
-                }
-                const keyStr = String(col.key)
-                if (keyStr.toLowerCase().includes('cpf') && item[col.key]) {
-                  return (
-                    <span className="font-mono text-xs">{formatarCpf(String(item[col.key]))}</span>
-                  )
-                }
-                const rawVal = item[col.key]
-                if (rawVal === null || rawVal === undefined || rawVal === '') {
-                  return <span className="text-slate-400">—</span>
-                }
-                return String(rawVal)
-              }
-
-              return (
-                <Card
-                  key={item.id}
-                  className="border border-slate-200/90 shadow-xs bg-white hover:border-slate-300 transition-colors"
-                  data-testid={`mobile-card-${item.id}`}
-                >
-                  <CardContent className="p-4 flex flex-col gap-3">
-                    {/* Topo do Card: Título em destaque + Subtítulo */}
-                    {titleCol && (
-                      <div className="space-y-1">
-                        <div className="font-semibold text-slate-900 text-sm leading-snug break-words">
-                          {renderCellValue(titleCol)}
-                        </div>
-                        {subtitleCol && (
-                          <div className="text-xs text-slate-500 break-words">
-                            {renderCellValue(subtitleCol)}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Campos de apoio em grid com alinhamento limpo */}
-                    {supportCols.length > 0 && (
-                      <div className="grid grid-cols-2 gap-x-3 gap-y-2 pt-2 border-t border-slate-100 text-xs">
-                        {supportCols.map((sc) => (
-                          <div key={String(sc.key)} className="flex flex-col min-w-0">
-                            <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider truncate">
-                              {sc.label}
-                            </span>
-                            <div className="text-slate-700 mt-0.5 break-words">
-                              {renderCellValue(sc)}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Barra de Ações Mobile: botões com área de toque de pelo menos 44px de altura */}
-                    {(() => {
-                      const ctx = getContextoItem ? getContextoItem(item) : undefined
-                      const canEditThisItem = podeEditarRegistro(
-                        role,
-                        docenteIdLogado,
-                        tabelaEfetiva,
-                        item,
-                        ctx,
-                      )
-                      const canDeleteThisItem = podeExcluirRegistro(
-                        role,
-                        docenteIdLogado,
-                        tabelaEfetiva,
-                        item,
-                        ctx,
-                      )
-                      if (!canEditThisItem && !canDeleteThisItem && !renderCustomActions) {
-                        return null
-                      }
-                      return (
-                        <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 flex-wrap">
-                          {renderCustomActions ? (
-                            <div className="w-full flex items-center justify-end gap-2 flex-wrap [&_button]:min-h-[44px] [&_button]:min-w-[44px]">
-                              {renderCustomActions(item, {
-                                openEdit: () => handleOpen(item),
-                                openDelete: () => setIdParaExcluir(item.id),
-                                canEditItem: canEditThisItem,
-                                canDeleteItem: canDeleteThisItem,
-                              })}
-                            </div>
-                          ) : (
-                            <div className="w-full flex items-center justify-end gap-2">
-                              {canEditThisItem && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleOpen(item)}
-                                  className="min-h-[44px] px-3.5 text-xs text-primary border-primary/30 hover:bg-primary/5 gap-1.5 flex-1 sm:flex-initial"
-                                  title="Editar registro"
-                                  aria-label={`Editar ${entityName}`}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                  <span>Editar</span>
-                                </Button>
-                              )}
-                              {canDeleteThisItem && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setIdParaExcluir(item.id)}
-                                  className="min-h-[44px] px-3.5 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 gap-1.5"
-                                  title="Excluir registro"
-                                  aria-label={`Excluir ${entityName}`}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  <span className="hidden xs:inline">Excluir</span>
-                                </Button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })()}
-                  </CardContent>
-                </Card>
-              )
-            })
-          ) : (
-            <div className="p-8 text-center text-slate-500 text-sm bg-white rounded-lg border border-dashed border-slate-200">
-              Nenhum registro encontrado.
-            </div>
-          )}
         </div>
         {totalPages > 1 && (
           <div className="border-t p-3 bg-slate-50/50">

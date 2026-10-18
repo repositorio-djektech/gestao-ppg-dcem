@@ -99,12 +99,9 @@ export function CrudFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        bottomSheetOnMobile
-        className="md:max-w-[550px] md:max-h-[90vh] flex flex-col p-0 overflow-hidden"
-      >
-        <DialogHeader className="flex flex-row items-center justify-between gap-2 p-4 md:p-6 pb-2 md:pb-4 border-b border-slate-100 dark:border-neutral-800 shrink-0 pr-12 md:pr-12">
-          <DialogTitle className="text-primary font-bold text-lg md:text-xl text-left">
+      <DialogContent className="max-w-[550px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="flex flex-row items-center justify-between gap-2 p-6 pb-4 border-b border-slate-100 dark:border-neutral-800 shrink-0 pr-12">
+          <DialogTitle className="text-primary font-bold text-xl text-left">
             {editingId ? `Editar ${entityName}` : `Adicionar ${entityName}`}
           </DialogTitle>
           {renderedHeaderActions && (
@@ -112,17 +109,8 @@ export function CrudFormDialog({
           )}
         </DialogHeader>
         <form onSubmit={onSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-          {/* Área rolável dos campos: com foco automático mantido e scroll suave */}
-          <div
-            className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 min-h-0"
-            onFocusCapture={(e) => {
-              // Scroll suave para garantir que o campo focado fique visível ao abrir o teclado virtual
-              const target = e.target as HTMLElement
-              if (target && typeof target.scrollIntoView === 'function') {
-                target.scrollIntoView({ behavior: 'smooth', block: 'center' })
-              }
-            }}
-          >
+          {/* Área rolável dos campos */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
             {fields.map((field) => (
               <div key={field.key} className="space-y-1.5">
                 {field.type !== 'switch' && (
@@ -158,10 +146,7 @@ export function CrudFormDialog({
                       }
                     }}
                   >
-                    <SelectTrigger
-                      id={field.key}
-                      className="bg-white min-h-[44px] md:min-h-9 text-sm"
-                    >
+                    <SelectTrigger id={field.key} className="bg-white h-9 text-sm">
                       <SelectValue placeholder={field.placeholder ?? 'Selecione...'} />
                     </SelectTrigger>
                     <SelectContent>
@@ -204,7 +189,7 @@ export function CrudFormDialog({
                               type="button"
                               variant="outline"
                               id={field.key}
-                              className={`w-full justify-between text-left font-normal bg-white min-h-[44px] md:min-h-9 border-input hover:bg-slate-50 ${
+                              className={`w-full justify-between text-left font-normal bg-white h-9 border-input hover:bg-slate-50 ${
                                 !valorAno ? 'text-muted-foreground' : 'text-slate-900'
                               }`}
                             >
@@ -224,7 +209,7 @@ export function CrudFormDialog({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="min-h-[44px] min-w-[44px] md:h-9 md:w-9 text-slate-400 hover:text-slate-600 shrink-0"
+                              className="h-9 w-9 text-slate-400 hover:text-slate-600 shrink-0"
                               title="Limpar ano"
                               onClick={() => {
                                 if (field.onValueChangeWithFormData) {
@@ -244,7 +229,7 @@ export function CrudFormDialog({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="min-h-[36px] min-w-[36px] md:h-7 md:w-7 text-slate-600 hover:bg-slate-100"
+                              className="h-7 w-7 text-slate-600 hover:bg-slate-100"
                               onClick={() =>
                                 setPaginaAnoPorCampo((prev) => ({
                                   ...prev,
@@ -262,7 +247,7 @@ export function CrudFormDialog({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="min-h-[36px] min-w-[36px] md:h-7 md:w-7 text-slate-600 hover:bg-slate-100"
+                              className="h-7 w-7 text-slate-600 hover:bg-slate-100"
                               onClick={() =>
                                 setPaginaAnoPorCampo((prev) => ({
                                   ...prev,
@@ -284,7 +269,7 @@ export function CrudFormDialog({
                                   type="button"
                                   variant={selecionado ? 'default' : 'ghost'}
                                   size="sm"
-                                  className={`min-h-[40px] md:h-8 text-xs font-medium ${
+                                  className={`h-8 text-xs font-medium ${
                                     selecionado
                                       ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                                       : isAtual
@@ -308,7 +293,7 @@ export function CrudFormDialog({
                           <div className="flex items-center justify-between pt-2 mt-2 border-t text-[11px]">
                             <button
                               type="button"
-                              className="text-primary hover:underline font-medium min-h-[36px] flex items-center"
+                              className="text-primary hover:underline font-medium h-7 flex items-center"
                               onClick={() => {
                                 const strAno = String(anoAtual)
                                 setPaginaAnoPorCampo((prev) => ({
@@ -327,7 +312,7 @@ export function CrudFormDialog({
                             {!field.required && valorAno && (
                               <button
                                 type="button"
-                                className="text-slate-500 hover:underline min-h-[36px] flex items-center"
+                                className="text-slate-500 hover:underline h-7 flex items-center"
                                 onClick={() => {
                                   if (field.onValueChangeWithFormData) {
                                     setFormData(field.onValueChangeWithFormData('', formData))
@@ -381,7 +366,7 @@ export function CrudFormDialog({
                               : e.target.value,
                       })
                     }
-                    className="bg-white min-h-[44px] md:min-h-9 text-sm"
+                    className="bg-white h-9 text-sm"
                   />
                 )}
                 {field.helperText && <p className="text-xs text-slate-500">{field.helperText}</p>}
@@ -389,21 +374,17 @@ export function CrudFormDialog({
             ))}
           </div>
 
-          {/* Rodapé de Ações FIXO: sempre visível, com safe-area no mobile */}
-          <div className="border-t border-slate-200 dark:border-neutral-800 bg-slate-50/90 dark:bg-neutral-900/90 p-3 md:p-4 flex items-center justify-end gap-2 md:gap-3 shrink-0 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] md:pb-4">
+          {/* Rodapé de Ações */}
+          <div className="border-t border-slate-200 dark:border-neutral-800 bg-slate-50/90 dark:bg-neutral-900/90 p-4 flex items-center justify-end gap-3 shrink-0">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="bg-white hover:bg-slate-50 min-h-[44px] md:min-h-9 px-4 text-xs md:text-sm flex-1 md:flex-initial"
+              className="bg-white hover:bg-slate-50 h-9 px-4 text-sm"
             >
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="min-h-[44px] md:min-h-9 px-5 text-xs md:text-sm flex-1 md:flex-initial"
-            >
+            <Button type="submit" disabled={submitting} className="h-9 px-5 text-sm">
               {submitting ? 'Salvando...' : 'Salvar'}
             </Button>
           </div>
