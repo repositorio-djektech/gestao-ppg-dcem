@@ -74,6 +74,7 @@ import { normalizarNomePessoa } from '@/lib/normalizacao'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { DocenteNome } from '@/components/docentes/DocenteNome'
+import { podeCriarNaTabela, podeEditarRegistro, podeExcluirRegistro } from '@/services/permissoes'
 import { registrarLog } from '@/services/logs'
 import {
   avaliarStatusJdpDocente,
@@ -152,12 +153,11 @@ export default function Docentes() {
     linhasPesquisaService.list().then(setTodasLinhas).catch(console.error)
   }, [])
 
-  const { role } = useAuth()
+  const { role, profile } = useAuth()
   const isCapes = role === 'capes'
-  const canEdit =
-    !isCapes &&
-    (role === 'suporte' || role === 'coordenador' || role === 'auxiliar' || role === 'docente')
-  const canDelete = !isCapes && (role === 'suporte' || role === 'coordenador')
+  const docenteIdLogado = profile?.docente_id
+  const canCreate = podeCriarNaTabela(role, 'docentes', docenteIdLogado)
+  const canDeleteGlobal = !isCapes && (role === 'suporte' || role === 'coordenador')
   const PER_PAGE = 20
 
   const filtered = docentes.filter((d) => d.nome.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -571,7 +571,7 @@ export default function Docentes() {
             <Printer className="h-4 w-4 text-slate-600" />
             <span className="hidden sm:inline">Imprimir / PDF</span>
           </Button>
-          {canEdit && (
+          {canCreate && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={() => handleOpen()} className="gap-2 shrink-0">
@@ -1031,6 +1031,9 @@ export default function Docentes() {
                   const isInativo = isInativoLegado || isStatusFalse
                   const destacarOlhoLaranja = temLicenca || isInativo
 
+                  const podeEditarEste = podeEditarRegistro(role, docenteIdLogado, 'docentes', d)
+                  const podeExcluirEste = podeExcluirRegistro(role, docenteIdLogado, 'docentes', d)
+
                   return (
                     <TableRow key={d.id} className="hover:bg-slate-50/50">
                       <TableCell className="text-left font-medium text-slate-900">
@@ -1118,7 +1121,7 @@ export default function Docentes() {
                       <TableCell className="text-center">
                         <div className="flex justify-center items-center">
                           {d.scopus_id ? (
-                            canEdit ? (
+                            podeEditarEste ? (
                               <button
                                 type="button"
                                 onClick={() => handleAbrirVinculo(d, 'scopus')}
@@ -1142,7 +1145,7 @@ export default function Docentes() {
                                 {d.scopus_id}
                               </Badge>
                             )
-                          ) : canEdit ? (
+                          ) : podeEditarEste ? (
                             <Button
                               variant="outline"
                               size="sm"
@@ -1183,7 +1186,7 @@ export default function Docentes() {
                       <TableCell className="text-center">
                         <div className="flex justify-center items-center">
                           {d.openalex_id ? (
-                            canEdit ? (
+                            podeEditarEste ? (
                               <button
                                 type="button"
                                 onClick={() => handleAbrirVinculo(d, 'openalex')}
@@ -1205,7 +1208,7 @@ export default function Docentes() {
                                 {d.openalex_id}
                               </Badge>
                             )
-                          ) : canEdit ? (
+                          ) : podeEditarEste ? (
                             <Button
                               variant="outline"
                               size="sm"
@@ -1251,7 +1254,7 @@ export default function Docentes() {
                               }
                             />
                           </Button>
-                          {canEdit && (
+                          {podeEditarEste && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -1262,7 +1265,7 @@ export default function Docentes() {
                               <Edit className="h-4 w-4 text-primary" />
                             </Button>
                           )}
-                          {canDelete && (
+                          {podeExcluirEste && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -1322,6 +1325,9 @@ export default function Docentes() {
               const isStatusFalse = d.status === false
               const isInativo = isInativoLegado || isStatusFalse
               const destacarOlhoLaranja = temLicenca || isInativo
+
+              const podeEditarEste = podeEditarRegistro(role, docenteIdLogado, 'docentes', d)
+              const podeExcluirEste = podeExcluirRegistro(role, docenteIdLogado, 'docentes', d)
 
               return (
                 <div
@@ -1457,7 +1463,7 @@ export default function Docentes() {
                       <span>Visualizar</span>
                     </Button>
 
-                    {canEdit && (
+                    {podeEditarEste && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -1471,7 +1477,7 @@ export default function Docentes() {
                       </Button>
                     )}
 
-                    {canDelete && (
+                    {podeExcluirEste && (
                       <Button
                         variant="outline"
                         size="sm"

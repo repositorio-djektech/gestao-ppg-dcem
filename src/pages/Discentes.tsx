@@ -548,7 +548,8 @@ export default function Discentes() {
             </Button>
           )
         }}
-        renderCustomActions={(item, { openEdit, openDelete }) => (
+        tableName="discentes"
+        renderCustomActions={(item, { openEdit, openDelete, canEditItem, canDeleteItem }) => (
           <div className="flex items-center justify-center gap-1">
             <Button
               variant="ghost"
@@ -560,7 +561,7 @@ export default function Discentes() {
             >
               <Eye className="h-4 w-4" />
             </Button>
-            {!isCapes && (
+            {canEditItem && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -571,7 +572,7 @@ export default function Discentes() {
                 <Edit className="h-4 w-4 text-primary" />
               </Button>
             )}
-            {podeExcluir && (
+            {canDeleteItem && (
               <Button
                 variant="ghost"
                 size="icon"

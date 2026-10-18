@@ -25,6 +25,7 @@ import type {
 } from '@/types/database'
 import { ANO_INICIO, ANO_FIM } from '@/lib/lattes/quadrienio'
 import { useAuth } from '@/hooks/use-auth'
+import { podeCriarNaTabela, podeEditarRegistro, podeExcluirRegistro } from '@/services/permissoes'
 import { normalizarTituloAcademico } from '@/lib/normalizacao'
 import { Badge } from '@/components/ui/badge'
 import { registrarLog } from '@/services/logs'
@@ -224,10 +225,11 @@ export default function Publicacoes() {
 
   const { role } = useAuth()
   const isCapes = role === 'capes'
-  const canEdit =
-    !isCapes &&
-    (role === 'suporte' || role === 'coordenador' || role === 'auxiliar' || role === 'docente')
-  const canDelete = !isCapes && (role === 'suporte' || role === 'coordenador')
+  const docenteIdLogado = profile?.docente_id
+  const canCreate = podeCriarNaTabela(role, 'publicacoes', docenteIdLogado)
+  const isStaff = role === 'suporte' || role === 'coordenador' || role === 'auxiliar'
+  const isDocente = role === 'docente'
+  const hasActionsColumn = !isCapes && (isStaff || isDocente)
   const PER_PAGE = 20
 
   const filtered = publicacoes.filter((p) => {
@@ -490,7 +492,7 @@ export default function Publicacoes() {
             <Printer className="h-4 w-4 text-slate-600" />
             <span className="hidden sm:inline">Imprimir / PDF</span>
           </Button>
-          {canEdit && (
+          {isStaff && (
             <>
               <Button
                 variant="outline"
@@ -512,7 +514,7 @@ export default function Publicacoes() {
               </Button>
             </>
           )}
-          {canEdit && (
+          {canCreate && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={() => handleOpen()} className="gap-2 min-h-[44px] md:min-h-9">
@@ -862,12 +864,12 @@ export default function Publicacoes() {
                 </TableHead>
                 <TableHead className="font-semibold text-slate-700">Coautoria P²CEM</TableHead>
                 <TableHead className="font-semibold text-slate-700">DOI</TableHead>
-                <TableHead className="w-[12%] font-semibold text-slate-700">Impacto</TableHead>
-                {canEdit && (
+                <TableHead className="font-semibold text-slate-700">Justificativa</TableHead>
+                {hasActionsColumn && (
                   <TableHead className="text-right font-semibold text-slate-700">Ações</TableHead>
-                )}{' '}
+                )}
               </TableRow>
-            </TableHeader>
+            </TableHeader>{' '}
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
@@ -1011,28 +1013,55 @@ export default function Publicacoes() {
                       <TableCell className="text-xs text-slate-600 line-clamp-2">
                         {p.justificativa}
                       </TableCell>
-                      {canEdit && (
+                      {hasActionsColumn && (
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpen(p)}
-                            className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                            title="Editar"
-                          >
-                            <Edit className="h-4 w-4 text-primary" />
-                          </Button>
-                          {canDelete && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => setIdParaExcluir(p.id)}
-                              title="Excluir"
-                            >
-                              <Trash2 className="h-4 w-4 text-red-600" />
-                            </Button>
-                          )}
+                          {(() => {
+                            const idsDocentesPub = todasPubsDocentes
+                              .filter((pd) => pd.publicacao_id === p.id)
+                              .map((pd) => pd.docente_id)
+                            const ctx = { publicacoesDocentesIds: idsDocentesPub }
+                            const canEditThisPub = podeEditarRegistro(
+                              role,
+                              docenteIdLogado,
+                              'publicacoes',
+                              p,
+                              ctx,
+                            )
+                            const canDeleteThisPub = podeExcluirRegistro(
+                              role,
+                              docenteIdLogado,
+                              'publicacoes',
+                              p,
+                              ctx,
+                            )
+
+                            return (
+                              <div className="flex items-center justify-end gap-1">
+                                {canEditThisPub && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleOpen(p)}
+                                    className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                                    title="Editar"
+                                  >
+                                    <Edit className="h-4 w-4 text-primary" />
+                                  </Button>
+                                )}
+                                {canDeleteThisPub && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    onClick={() => setIdParaExcluir(p.id)}
+                                    title="Excluir"
+                                  >
+                                    <Trash2 className="h-4 w-4 text-red-600" />
+                                  </Button>
+                                )}
+                              </div>
+                            )
+                          })()}
                         </TableCell>
                       )}
                     </TableRow>
@@ -1040,7 +1069,10 @@ export default function Publicacoes() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={canEdit ? 9 : 8} className="h-32 text-center text-slate-500">
+                  <TableCell
+                    colSpan={hasActionsColumn ? 9 : 8}
+                    className="h-32 text-center text-slate-500"
+                  >
                     Nenhuma publicação encontrada.
                   </TableCell>
                 </TableRow>
@@ -1191,34 +1223,58 @@ export default function Publicacoes() {
                   </div>
 
                   {/* Ações Mobile: alvos de toque com pelo menos 44px de altura */}
-                  {canEdit && (
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpen(p)}
-                        className="min-h-[44px] px-3.5 text-xs text-primary border-primary/30 hover:bg-primary/5 gap-1.5 flex-1"
-                        title="Editar Publicação"
-                        aria-label="Editar Publicação"
-                      >
-                        <Edit className="h-4 w-4" />
-                        <span>Editar</span>
-                      </Button>
-                      {canDelete && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="min-h-[44px] px-3.5 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 gap-1.5"
-                          onClick={() => setIdParaExcluir(p.id)}
-                          title="Excluir Publicação"
-                          aria-label="Excluir Publicação"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span>Excluir</span>
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                  {(() => {
+                    const idsDocentesPub = todasPubsDocentes
+                      .filter((pd) => pd.publicacao_id === p.id)
+                      .map((pd) => pd.docente_id)
+                    const ctx = { publicacoesDocentesIds: idsDocentesPub }
+                    const canEditThisPub = podeEditarRegistro(
+                      role,
+                      docenteIdLogado,
+                      'publicacoes',
+                      p,
+                      ctx,
+                    )
+                    const canDeleteThisPub = podeExcluirRegistro(
+                      role,
+                      docenteIdLogado,
+                      'publicacoes',
+                      p,
+                      ctx,
+                    )
+                    if (!canEditThisPub && !canDeleteThisPub) return null
+
+                    return (
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+                        {canEditThisPub && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpen(p)}
+                            className="min-h-[44px] px-3.5 text-xs text-primary border-primary/30 hover:bg-primary/5 gap-1.5 flex-1"
+                            title="Editar Publicação"
+                            aria-label="Editar Publicação"
+                          >
+                            <Edit className="h-4 w-4" />
+                            <span>Editar</span>
+                          </Button>
+                        )}
+                        {canDeleteThisPub && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="min-h-[44px] px-3.5 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 gap-1.5"
+                            onClick={() => setIdParaExcluir(p.id)}
+                            title="Excluir Publicação"
+                            aria-label="Excluir Publicação"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span>Excluir</span>
+                          </Button>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             })

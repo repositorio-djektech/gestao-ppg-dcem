@@ -41,6 +41,13 @@ import type { ColumnDef, FieldDef } from './types'
 export type { ColumnDef, FieldDef } from './types'
 export { CrudPageTypes } from './types'
 import { registrarLog } from '@/services/logs'
+import {
+  podeCriarNaTabela,
+  podeEditarRegistro,
+  podeExcluirRegistro,
+  type TabelaMapeada,
+  type ContextoPermissaoRegistro,
+} from '@/services/permissoes'
 
 interface CrudPageProps<T extends { id: number | string }> {
   title: string
@@ -51,13 +58,19 @@ interface CrudPageProps<T extends { id: number | string }> {
   emptyForm: Record<string, any>
   searchKey: keyof T
   entityName: string
+  tableName?: TabelaMapeada
   printModule?: string
   tableHeaderClassName?: string
   tableHeaderRowClassName?: string
   actionsHeaderClassName?: string
   renderCustomActions?: (
     item: T,
-    defaultActions: { openEdit: () => void; openDelete: () => void },
+    defaultActions: {
+      openEdit: () => void
+      openDelete: () => void
+      canEditItem?: boolean
+      canDeleteItem?: boolean
+    },
   ) => ReactNode
   formHeaderActions?:
     | ReactNode
@@ -66,6 +79,7 @@ interface CrudPageProps<T extends { id: number | string }> {
         formData: any
         setFormData: React.Dispatch<React.SetStateAction<any>>
       }) => ReactNode)
+  getContextoItem?: (item: T) => ContextoPermissaoRegistro | undefined
 }
 
 export function CrudPage<T extends { id: number | string }>({
@@ -77,15 +91,17 @@ export function CrudPage<T extends { id: number | string }>({
   emptyForm,
   searchKey,
   entityName,
+  tableName,
   printModule,
   tableHeaderClassName,
   tableHeaderRowClassName,
   actionsHeaderClassName,
   renderCustomActions,
   formHeaderActions,
+  getContextoItem,
 }: CrudPageProps<T>) {
   const navigate = useNavigate()
-  const { role } = useAuth()
+  const { role, profile } = useAuth()
   const isMobile = useIsMobile()
   const { data, loading, create, update, remove } = useCrudData(service)
   const [searchTerm, setSearchTerm] = useState('')
@@ -99,14 +115,19 @@ export function CrudPage<T extends { id: number | string }>({
     Record<string, { value: string; label: string }[]>
   >({})
 
-  // Regras de papéis novos (suporte/coordenador/auxiliar/docente/capes)
-  // Capes: somente leitura, sem nenhum botão de escrita.
-  // Suporte/Coordenador/Auxiliar: escrita permitida.
-  // Docente: permitido se aplicável (o backend RLS valida o docente_id).
+  // Inferência ou tabela explícita
+  const tabelaEfetiva = tableName || entityName.toLowerCase().replace(/\s+/g, '_')
+  const docenteIdLogado = profile?.docente_id
+
+  // Permissão de criação na tabela
+  const canCreate = podeCriarNaTabela(role, tabelaEfetiva, docenteIdLogado)
+
+  // O usuário em geral tem direito a ver coluna de ações caso possa editar algo, excluir algo ou haja customActions
   const isCapes = role === 'capes'
-  const canEdit =
-    !isCapes &&
-    (role === 'suporte' || role === 'coordenador' || role === 'auxiliar' || role === 'docente')
+  const isStaff = role === 'suporte' || role === 'coordenador' || role === 'auxiliar'
+  const isDocente = role === 'docente'
+  // Flag geral para saber se a tabela/página deve exibir coluna de ações
+  const hasActionsColumn = !isCapes && (isStaff || isDocente || Boolean(renderCustomActions))
   const canDelete = !isCapes && (role === 'suporte' || role === 'coordenador')
   const PER_PAGE = 20
 
@@ -127,7 +148,7 @@ export function CrudPage<T extends { id: number | string }>({
   )
   const totalPages = Math.ceil(filtered.length / PER_PAGE)
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
-  const colCount = columns.length + (canEdit ? 1 : 0)
+  const colCount = columns.length + (hasActionsColumn ? 1 : 0)
 
   const handleOpen = (item?: T) => {
     setEditingId(item?.id ?? null)
@@ -250,7 +271,7 @@ export function CrudPage<T extends { id: number | string }>({
               <span className="hidden sm:inline">Imprimir / PDF</span>
             </Button>
           )}
-          {canEdit && (
+          {canCreate && (
             <Button
               onClick={() => handleOpen()}
               className="gap-2 shrink-0 min-h-[44px] md:min-h-9 px-4"
@@ -278,7 +299,7 @@ export function CrudPage<T extends { id: number | string }>({
                     {col.label}
                   </TableHead>
                 ))}
-                {canEdit && (
+                {hasActionsColumn && (
                   <TableHead
                     className={actionsHeaderClassName ?? 'text-right font-semibold text-slate-700'}
                   >
@@ -299,52 +320,74 @@ export function CrudPage<T extends { id: number | string }>({
                   </TableRow>
                 ))
               ) : paginated.length > 0 ? (
-                paginated.map((item) => (
-                  <TableRow key={item.id} className="hover:bg-slate-50/50">
-                    {columns.map((col) => (
-                      <TableCell key={String(col.key)} className={col.className}>
-                        {col.render
-                          ? col.render(item)
-                          : String(col.key).toLowerCase().includes('cpf') && item[col.key]
-                            ? formatarCpf(String(item[col.key]))
-                            : String(item[col.key] ?? '-')}
-                      </TableCell>
-                    ))}
-                    {canEdit && (
-                      <TableCell className={actionsHeaderClassName ?? 'text-right'}>
-                        {renderCustomActions ? (
-                          renderCustomActions(item, {
-                            openEdit: () => handleOpen(item),
-                            openDelete: () => setIdParaExcluir(item.id),
-                          })
-                        ) : (
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleOpen(item)}
-                              className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                              title="Editar"
-                            >
-                              <Edit className="h-4 w-4 text-primary" />
-                            </Button>
-                            {canDelete && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => setIdParaExcluir(item.id)}
-                                title="Excluir"
-                              >
-                                <Trash2 className="h-4 w-4 text-red-600" />
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))
+                paginated.map((item) => {
+                  const ctx = getContextoItem ? getContextoItem(item) : undefined
+                  const canEditThisItem = podeEditarRegistro(
+                    role,
+                    docenteIdLogado,
+                    tabelaEfetiva,
+                    item,
+                    ctx,
+                  )
+                  const canDeleteThisItem = podeExcluirRegistro(
+                    role,
+                    docenteIdLogado,
+                    tabelaEfetiva,
+                    item,
+                    ctx,
+                  )
+
+                  return (
+                    <TableRow key={item.id} className="hover:bg-slate-50/50">
+                      {columns.map((col) => (
+                        <TableCell key={String(col.key)} className={col.className}>
+                          {col.render
+                            ? col.render(item)
+                            : String(col.key).toLowerCase().includes('cpf') && item[col.key]
+                              ? formatarCpf(String(item[col.key]))
+                              : String(item[col.key] ?? '-')}
+                        </TableCell>
+                      ))}
+                      {hasActionsColumn && (
+                        <TableCell className={actionsHeaderClassName ?? 'text-right'}>
+                          {renderCustomActions ? (
+                            renderCustomActions(item, {
+                              openEdit: () => handleOpen(item),
+                              openDelete: () => setIdParaExcluir(item.id),
+                              canEditItem: canEditThisItem,
+                              canDeleteItem: canDeleteThisItem,
+                            })
+                          ) : (
+                            <div className="flex items-center justify-end gap-1">
+                              {canEditThisItem && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleOpen(item)}
+                                  className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                                  title="Editar"
+                                >
+                                  <Edit className="h-4 w-4 text-primary" />
+                                </Button>
+                              )}
+                              {canDeleteThisItem && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  onClick={() => setIdParaExcluir(item.id)}
+                                  title="Excluir"
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-600" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  )
+                })
               ) : (
                 <TableRow>
                   <TableCell colSpan={colCount} className="h-32 text-center text-slate-500">
@@ -453,45 +496,69 @@ export function CrudPage<T extends { id: number | string }>({
                     )}
 
                     {/* Barra de Ações Mobile: botões com área de toque de pelo menos 44px de altura */}
-                    {(canEdit || renderCustomActions) && (
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 flex-wrap">
-                        {renderCustomActions ? (
-                          <div className="w-full flex items-center justify-end gap-2 flex-wrap [&_button]:min-h-[44px] [&_button]:min-w-[44px]">
-                            {renderCustomActions(item, {
-                              openEdit: () => handleOpen(item),
-                              openDelete: () => setIdParaExcluir(item.id),
-                            })}
-                          </div>
-                        ) : (
-                          <div className="w-full flex items-center justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpen(item)}
-                              className="min-h-[44px] px-3.5 text-xs text-primary border-primary/30 hover:bg-primary/5 gap-1.5 flex-1 sm:flex-initial"
-                              title="Editar registro"
-                              aria-label={`Editar ${entityName}`}
-                            >
-                              <Edit className="h-4 w-4" />
-                              <span>Editar</span>
-                            </Button>
-                            {canDelete && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setIdParaExcluir(item.id)}
-                                className="min-h-[44px] px-3.5 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 gap-1.5"
-                                title="Excluir registro"
-                                aria-label={`Excluir ${entityName}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                <span className="hidden xs:inline">Excluir</span>
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    {(() => {
+                      const ctx = getContextoItem ? getContextoItem(item) : undefined
+                      const canEditThisItem = podeEditarRegistro(
+                        role,
+                        docenteIdLogado,
+                        tabelaEfetiva,
+                        item,
+                        ctx,
+                      )
+                      const canDeleteThisItem = podeExcluirRegistro(
+                        role,
+                        docenteIdLogado,
+                        tabelaEfetiva,
+                        item,
+                        ctx,
+                      )
+                      if (!canEditThisItem && !canDeleteThisItem && !renderCustomActions) {
+                        return null
+                      }
+                      return (
+                        <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 flex-wrap">
+                          {renderCustomActions ? (
+                            <div className="w-full flex items-center justify-end gap-2 flex-wrap [&_button]:min-h-[44px] [&_button]:min-w-[44px]">
+                              {renderCustomActions(item, {
+                                openEdit: () => handleOpen(item),
+                                openDelete: () => setIdParaExcluir(item.id),
+                                canEditItem: canEditThisItem,
+                                canDeleteItem: canDeleteThisItem,
+                              })}
+                            </div>
+                          ) : (
+                            <div className="w-full flex items-center justify-end gap-2">
+                              {canEditThisItem && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpen(item)}
+                                  className="min-h-[44px] px-3.5 text-xs text-primary border-primary/30 hover:bg-primary/5 gap-1.5 flex-1 sm:flex-initial"
+                                  title="Editar registro"
+                                  aria-label={`Editar ${entityName}`}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                  <span>Editar</span>
+                                </Button>
+                              )}
+                              {canDeleteThisItem && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setIdParaExcluir(item.id)}
+                                  className="min-h-[44px] px-3.5 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 gap-1.5"
+                                  title="Excluir registro"
+                                  aria-label={`Excluir ${entityName}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span className="hidden xs:inline">Excluir</span>
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </CardContent>
                 </Card>
               )
@@ -530,7 +597,7 @@ export function CrudPage<T extends { id: number | string }>({
           </div>
         )}
       </div>
-      {canEdit && (
+      {isDialogOpen && (
         <CrudFormDialog
           open={isDialogOpen}
           onOpenChange={setIsDialogOpen}

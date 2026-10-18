@@ -21,6 +21,8 @@ import type {
 } from '@/types/database'
 import { normalizarNomePessoa } from '@/lib/normalizacao'
 import { DocenteNome } from '@/components/docentes/DocenteNome'
+import { useAuth } from '@/hooks/use-auth'
+import { podeEditarRegistro } from '@/services/permissoes'
 
 export type EgressoTabKey = 'geral' | 'orientacoes' | 'publicacoes'
 
@@ -49,6 +51,8 @@ export function VisualizarEgressoDialog({
   docentes = [],
   onEditar,
 }: VisualizarEgressoDialogProps) {
+  const { role, profile } = useAuth()
+  const podeEditarEste = podeEditarRegistro(role, profile?.docente_id, 'egressos', egresso)
   const [abaAtiva, setAbaAtiva] = useState<EgressoTabKey>('geral')
   const [loading, setLoading] = useState(false)
   const [orientacoes, setOrientacoes] = useState<(Orientacao & { docente_nome?: string })[]>([])
@@ -611,7 +615,7 @@ export function VisualizarEgressoDialog({
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            {onEditar && (
+            {onEditar && podeEditarEste && (
               <Button
                 type="button"
                 variant="outline"

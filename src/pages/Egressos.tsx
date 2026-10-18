@@ -480,7 +480,8 @@ export default function Egressos() {
             </Button>
           )
         }}
-        renderCustomActions={(item, { openEdit, openDelete }) => {
+        tableName="egressos"
+        renderCustomActions={(item, { openEdit, openDelete, canEditItem, canDeleteItem }) => {
           // Salva referência do openEdit para o rodapé do modal de visualização
           edicaoRef.current = openEdit
 
@@ -496,7 +497,7 @@ export default function Egressos() {
               >
                 <Eye className="h-4 w-4 text-amber-500" />
               </Button>
-              {!isCapes && (
+              {canEditItem && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -507,7 +508,7 @@ export default function Egressos() {
                   <Edit className="h-4 w-4 text-primary" />
                 </Button>
               )}
-              {podeExcluir && (
+              {canDeleteItem && (
                 <Button
                   variant="ghost"
                   size="icon"
