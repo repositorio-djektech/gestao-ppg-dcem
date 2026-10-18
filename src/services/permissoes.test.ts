@@ -75,8 +75,9 @@ describe('Serviço de Permissões por Linha e Tabela (permissoes.ts)', () => {
   })
 
   describe('Papel Docente - Tabela "discentes"', () => {
-    it('NÃO pode criar novos discentes (discentes_insert_staff)', () => {
-      expect(podeCriarNaTabela('docente', 'discentes', DOCENTE_LOGADO_ID)).toBe(false)
+    it('pode criar novos discentes quando autenticado como docente com vínculo', () => {
+      expect(podeCriarNaTabela('docente', 'discentes', DOCENTE_LOGADO_ID)).toBe(true)
+      expect(podeCriarNaTabela('docente', 'discentes', null)).toBe(false)
     })
 
     it('só pode editar discentes dos quais é orientador direto ou por vínculo', () => {
@@ -119,6 +120,11 @@ describe('Serviço de Permissões por Linha e Tabela (permissoes.ts)', () => {
   })
 
   describe('Papel Docente - Tabela "egressos"', () => {
+    it('pode criar novos egressos quando autenticado como docente com vínculo', () => {
+      expect(podeCriarNaTabela('docente', 'egressos', DOCENTE_LOGADO_ID)).toBe(true)
+      expect(podeCriarNaTabela('docente', 'egressos', null)).toBe(false)
+    })
+
     it('só pode editar egressos que orientou', () => {
       // Positivo
       expect(

@@ -176,7 +176,10 @@ export type Disciplina = {
   nivel?: NivelDisciplina | null
 }
 
-export type TipoIniciacaoCientifica = 'iniciacao_cientifica' | 'iniciacao_tecnologica'
+export type TipoIniciacaoCientifica =
+  | 'iniciacao_cientifica'
+  | 'iniciacao_tecnologica'
+  | 'iniciacao_extensao'
 
 export type IniciacaoCientifica = {
   id: number
@@ -188,6 +191,7 @@ export type IniciacaoCientifica = {
   projeto_id?: number | null
   titulo: string
   observacoes?: string | null
+  bolsa_cnpq?: string | null
   created_at?: string
   updated_at?: string
 }

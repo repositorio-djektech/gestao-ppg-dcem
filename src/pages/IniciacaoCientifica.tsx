@@ -12,7 +12,8 @@ import { DocenteNome } from '@/components/docentes/DocenteNome'
 const emptyForm = {
   discente_id: '',
   discente_nome: '',
-  tipo: 'iniciacao_cientifica',
+  tipo: 'iniciacao_cientifica' as const,
+  bolsa_cnpq: '',
   ano: new Date().getFullYear(),
   docente_orientador_id: '',
   projeto_id: '',
@@ -48,17 +49,47 @@ export default function IniciacaoCientificaPage() {
       key: 'tipo',
       label: 'Tipo',
       render: (item) => {
-        const isIt = item.tipo === 'iniciacao_tecnologica'
+        if (item.tipo === 'iniciacao_extensao') {
+          return (
+            <Badge
+              variant="outline"
+              className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] font-semibold"
+            >
+              IE (Extensão)
+            </Badge>
+          )
+        }
+        if (item.tipo === 'iniciacao_tecnologica') {
+          return (
+            <Badge
+              variant="outline"
+              className="bg-purple-50 text-purple-700 border-purple-200 text-[11px] font-semibold"
+            >
+              IT (Tecnológica)
+            </Badge>
+          )
+        }
         return (
           <Badge
             variant="outline"
-            className={
-              isIt
-                ? 'bg-purple-50 text-purple-700 border-purple-200 text-[11px] font-semibold'
-                : 'bg-blue-50 text-blue-700 border-blue-200 text-[11px] font-semibold'
-            }
+            className="bg-blue-50 text-blue-700 border-blue-200 text-[11px] font-semibold"
           >
-            {isIt ? 'IT (Tecnológica)' : 'IC (Científica)'}
+            IC (Científica)
+          </Badge>
+        )
+      },
+    },
+    {
+      key: 'bolsa_cnpq' as any,
+      label: 'Bolsa CNPq',
+      render: (item) => {
+        if (!item.bolsa_cnpq) return <span className="text-slate-400">—</span>
+        return (
+          <Badge
+            variant="secondary"
+            className="bg-slate-100 text-slate-800 text-[11px] font-semibold"
+          >
+            {item.bolsa_cnpq}
           </Badge>
         )
       },
@@ -118,8 +149,28 @@ export default function IniciacaoCientificaPage() {
       options: [
         { label: 'Iniciação Científica (IC)', value: 'iniciacao_cientifica' },
         { label: 'Iniciação Tecnológica (IT)', value: 'iniciacao_tecnologica' },
+        { label: 'Iniciação em Extensão (IE)', value: 'iniciacao_extensao' },
       ],
       placeholder: 'Selecione o tipo...',
+    },
+    {
+      key: 'bolsa_cnpq',
+      label: 'Tipo de Bolsa CNPq',
+      type: 'select',
+      options: [
+        { label: '— Nenhuma Bolsa —', value: '' },
+        { label: 'PQ-SR', value: 'PQ-SR' },
+        { label: 'PQ 1A', value: 'PQ-1A' },
+        { label: 'PQ 1B', value: 'PQ-1B' },
+        { label: 'PQ 1C', value: 'PQ-1C' },
+        { label: 'PQ 1D', value: 'PQ-1D' },
+        { label: 'PQ 2', value: 'PQ-2' },
+        { label: 'DT 1A', value: 'DT-1A' },
+        { label: 'DT 1B', value: 'DT-1B' },
+        { label: 'DT 2', value: 'DT-2' },
+      ],
+      placeholder: 'Selecione o tipo de bolsa CNPq...',
+      helperText: 'Tipo de bolsa CNPq associada (ex: PQ-SR, PQ, DT)',
     },
     {
       key: 'ano',

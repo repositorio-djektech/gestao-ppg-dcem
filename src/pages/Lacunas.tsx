@@ -1814,6 +1814,7 @@ export default function Lacunas({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">— Nenhuma Bolsa —</SelectItem>
+                  <SelectItem value="PQ-SR">PQ-SR</SelectItem>
                   <SelectItem value="PQ-1A">PQ 1A</SelectItem>
                   <SelectItem value="PQ-1B">PQ 1B</SelectItem>
                   <SelectItem value="PQ-1C">PQ 1C</SelectItem>

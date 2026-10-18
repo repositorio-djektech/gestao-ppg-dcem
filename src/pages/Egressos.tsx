@@ -49,9 +49,11 @@ const emptyForm = {
 }
 
 export default function Egressos() {
-  const { role } = useAuth()
+  const { role, profile } = useAuth()
   const isCapes = role === 'capes'
   const podeExcluir = !isCapes && (role === 'suporte' || role === 'coordenador')
+  const isDocente = role === 'docente'
+  const docenteIdLogado = profile?.docente_id
   const [docentes, setDocentes] = useState<Docente[]>([])
   const [egressosExistentes, setEgressosExistentes] = useState<Egresso[]>([])
   const [egressoParaVisualizar, setEgressoParaVisualizar] = useState<Egresso | null>(null)
@@ -364,6 +366,33 @@ export default function Egressos() {
   // - Atuação profissional
   // - Links de comprovação
   // - Observações
+  const docentesOpcoes = useMemo(() => {
+    if (isDocente && docenteIdLogado) {
+      return docentes
+        .filter((d) => d.id === docenteIdLogado)
+        .map((d) => ({
+          value: String(d.id),
+          label: `${d.nome} (Você)`,
+        }))
+    }
+    return docentes.map((d) => ({
+      value: String(d.id),
+      label: d.nome,
+    }))
+  }, [docentes, isDocente, docenteIdLogado])
+
+  const initialEmptyForm = useMemo(() => {
+    if (isDocente && docenteIdLogado) {
+      const meuDocente = docentes.find((d) => d.id === docenteIdLogado)
+      return {
+        ...emptyForm,
+        docente_orientador_id: String(docenteIdLogado),
+        orientador: meuDocente ? meuDocente.nome : '',
+      }
+    }
+    return emptyForm
+  }, [isDocente, docenteIdLogado, docentes])
+
   const fields: FieldDef[] = useMemo(
     () => [
       {
@@ -400,20 +429,21 @@ export default function Egressos() {
       },
       {
         key: 'docente_orientador_id',
-        label: 'Orientador (docente)',
+        label: isDocente ? 'Orientador (Você)' : 'Orientador (docente)',
         type: 'select',
-        options: docentes.map((d) => ({
-          value: String(d.id),
-          label: d.nome,
-        })),
+        required: isDocente,
+        options: docentesOpcoes,
         placeholder: 'Selecione o docente orientador...',
-        helperText: 'Docente vinculado responsável pela orientação',
+        helperText: isDocente
+          ? 'Como docente, você só pode vincular orientações a si mesmo.'
+          : 'Docente vinculado responsável pela orientação',
         onValueChangeWithFormData: (val, currentData) => {
-          const dId = val ? Number(val) : null
+          const finalVal = isDocente && docenteIdLogado ? String(docenteIdLogado) : val
+          const dId = finalVal ? Number(finalVal) : null
           const docente = dId ? docentes.find((d) => d.id === dId) : null
           return {
             ...currentData,
-            docente_orientador_id: val,
+            docente_orientador_id: finalVal,
             orientador: docente ? docente.nome : '',
           }
         },
@@ -452,7 +482,7 @@ export default function Egressos() {
         service={egressosService}
         columns={columns}
         fields={fields}
-        emptyForm={emptyForm}
+        emptyForm={initialEmptyForm}
         searchKey="nome"
         entityName="Egresso"
         printModule="egressos"

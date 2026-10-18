@@ -50,6 +50,8 @@ export function podeCriarNaTabela(
   if (role === 'docente') {
     if (!docenteId) return false
     const tabelasCriacaoDocente: string[] = [
+      'discentes',
+      'egressos',
       'orientacoes',
       'disciplinas',
       'projetos_pesquisa',

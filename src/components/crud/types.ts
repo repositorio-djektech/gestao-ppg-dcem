@@ -41,4 +41,9 @@ export interface FieldDef {
     value: any,
     currentFormData: Record<string, any>,
   ) => Record<string, any>
+  customRender?: (props: {
+    formData: Record<string, any>
+    setFormData: React.Dispatch<React.SetStateAction<Record<string, any>>>
+    submitting: boolean
+  }) => React.ReactNode
 }
