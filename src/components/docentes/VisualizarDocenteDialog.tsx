@@ -1759,10 +1759,7 @@ export function VisualizarDocenteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        bottomSheetOnMobile
-        className="max-w-5xl md:w-[95vw] md:h-[92vh] md:max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden bg-white dark:bg-neutral-900"
-      >
+      <DialogContent className="max-w-5xl md:w-[95vw] md:h-[92vh] md:max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden bg-white dark:bg-neutral-900">
         {/* Cabeçalho */}
         <DialogHeader className="p-4 md:p-5 pb-3 border-b bg-slate-50/80 dark:bg-neutral-900/80 shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-6">
@@ -1935,8 +1932,8 @@ export function VisualizarDocenteDialog({
           )}
         </div>
 
-        {/* Rodapé Somente-Leitura com safe-area no mobile */}
-        <DialogFooter className="p-3 md:p-4 border-t bg-slate-50/80 dark:bg-neutral-900/80 shrink-0 flex flex-row items-center justify-between gap-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] md:pb-4">
+        {/* Rodapé Somente-Leitura */}
+        <DialogFooter className="p-3 md:p-4 border-t bg-slate-50/80 dark:bg-neutral-900/80 shrink-0 flex flex-row items-center justify-between gap-2">
           <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 dark:text-neutral-400">
             <span>Visualização de registros vinculados no banco de dados.</span>
           </div>
@@ -1947,7 +1944,7 @@ export function VisualizarDocenteDialog({
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="bg-white hover:bg-slate-50 min-h-[44px] md:min-h-8 flex-1 sm:flex-initial"
+              className="bg-white hover:bg-slate-50 h-8 px-3"
             >
               Fechar
             </Button>
@@ -1956,7 +1953,7 @@ export function VisualizarDocenteDialog({
               variant="default"
               size="sm"
               onClick={handleDispararImpressao}
-              className="gap-1.5 min-h-[44px] md:min-h-8 flex-1 sm:flex-initial"
+              className="gap-1.5 h-8 px-3"
             >
               <Printer className="h-4 w-4" />
               <span>Imprimir</span>

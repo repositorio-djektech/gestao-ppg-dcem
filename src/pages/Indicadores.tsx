@@ -160,43 +160,44 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setModalNotaAberta(true)}
-            className="gap-1.5 text-xs min-h-[44px] md:min-h-9 flex-1 sm:flex-initial justify-center"
+            onClick={carregarDados}
+            disabled={loading}
+            className="gap-1.5 text-xs h-9 flex-1 sm:flex-initial justify-center"
           >
-            <BookOpen className="h-4 w-4" />
-            Nota Metodológica
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Atualizar</span>
           </Button>
 
           <Button
             variant="outline"
             size="sm"
             onClick={handleExportarCsv}
-            disabled={!relatorio || carregando}
-            className="gap-1.5 text-xs text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border-emerald-300 min-h-[44px] md:min-h-9 flex-1 sm:flex-initial justify-center"
+            disabled={!dadosCompletos || exportando}
+            className="gap-1.5 text-xs text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border-emerald-300 h-9 flex-1 sm:flex-initial justify-center"
           >
-            <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-            Exportar CSV
+            <Download className="h-3.5 w-3.5" />
+            <span>CSV</span>
           </Button>
 
           <Button
             variant="outline"
             size="sm"
-            onClick={handleExportarPdf}
-            disabled={!relatorio || carregando || imprimindo}
-            className="gap-1.5 text-xs text-blue-700 hover:text-blue-800 hover:bg-blue-50 border-blue-300 min-h-[44px] md:min-h-9 flex-1 sm:flex-initial justify-center"
+            onClick={handleImprimirRelatorio}
+            disabled={!dadosCompletos || imprimindo}
+            className="gap-1.5 text-xs text-blue-700 hover:text-blue-800 hover:bg-blue-50 border-blue-300 h-9 flex-1 sm:flex-initial justify-center"
           >
-            <Printer className="h-4 w-4 text-blue-600" />
-            {imprimindo ? 'Gerando...' : 'Exportar PDF'}
+            <Printer className="h-3.5 w-3.5" />
+            <span>{imprimindo ? 'Gerando...' : 'PDF'}</span>
           </Button>
 
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            onClick={carregar}
-            disabled={carregando}
-            className="gap-1 text-xs min-h-[44px] md:min-h-9 px-3 shrink-0"
-            title="Recalcular indicadores"
+            onClick={() => setModalNotaAberta(true)}
+            className="gap-1 text-xs h-9 px-3 shrink-0"
+            title="Nota Metodológica da Ficha Engenharias II"
           >
+            {' '}
             <RefreshCw className={`h-4 w-4 ${carregando ? 'animate-spin' : ''}`} />
           </Button>
         </div>
@@ -501,13 +502,10 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
         open={Boolean(indicadorModal)}
         onOpenChange={(open) => !open && setIndicadorModal(null)}
       >
-        <DialogContent
-          bottomSheetOnMobile
-          className="md:max-w-xl md:max-h-[90vh] flex flex-col p-0 overflow-hidden"
-        >
+        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
           {indicadorModal && (
             <>
-              <DialogHeader className="p-4 md:p-6 pb-2 md:pb-4 border-b border-slate-100 shrink-0 pr-12 md:pr-12 text-left">
+              <DialogHeader className="p-6 pb-4 border-b border-slate-100 shrink-0 text-left">
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge className="bg-primary text-white text-xs">{indicadorModal.codigo}</Badge>
                   <span className="text-xs text-muted-foreground">
@@ -522,7 +520,7 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 text-xs text-slate-800 min-h-0">
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs text-slate-800 min-h-0">
                 {/* Fórmula */}
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
                   <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
@@ -608,54 +606,27 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
                     <h4 className="font-bold uppercase tracking-wider text-slate-700 text-[11px]">
                       Decomposição Completa dos Termos:
                     </h4>
-                    <div className="rounded border border-slate-200 overflow-hidden">
-                      {/* Desktop Table (>= 640px) */}
-                      <div className="hidden sm:block overflow-x-auto">
-                        <table className="w-full text-left text-xs">
-                          <thead className="bg-slate-100 text-slate-700 font-semibold border-b">
-                            <tr>
-                              <th className="p-2">Termo</th>
-                              <th className="p-2">Descrição</th>
-                              <th className="p-2 text-right">Valor</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {indicadorModal.decomposicao.map((d, i) => (
-                              <tr key={i} className="hover:bg-slate-50">
-                                <td className="p-2 font-mono font-semibold text-primary">
-                                  {d.termo}
-                                </td>
-                                <td className="p-2 text-slate-600">{d.descricao}</td>
-                                <td className="p-2 text-right font-bold text-slate-900">
-                                  {d.valor}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Mobile Cards (< 640px) */}
-                      <div className="block sm:hidden divide-y divide-slate-100 bg-white">
-                        {indicadorModal.decomposicao.map((d, i) => (
-                          <div
-                            key={i}
-                            className="p-2.5 flex items-start justify-between gap-2 text-xs"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <span className="font-mono font-semibold text-primary block">
+                    <div className="rounded border border-slate-200 overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-100 text-slate-700 font-semibold border-b">
+                          <tr>
+                            <th className="p-2">Termo</th>
+                            <th className="p-2">Descrição</th>
+                            <th className="p-2 text-right">Valor</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {indicadorModal.decomposicao.map((d, i) => (
+                            <tr key={i} className="hover:bg-slate-50">
+                              <td className="p-2 font-mono font-semibold text-primary">
                                 {d.termo}
-                              </span>
-                              <span className="text-slate-600 text-[11px] block mt-0.5">
-                                {d.descricao}
-                              </span>
-                            </div>
-                            <span className="font-bold text-slate-900 shrink-0 text-sm font-mono">
-                              {d.valor}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                              </td>
+                              <td className="p-2 text-slate-600">{d.descricao}</td>
+                              <td className="p-2 text-right font-bold text-slate-900">{d.valor}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 )}

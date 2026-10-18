@@ -518,10 +518,7 @@ export function VisualizarDiscenteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        bottomSheetOnMobile
-        className="max-w-4xl md:max-h-[90vh] md:h-[85vh] flex flex-col p-0 overflow-hidden bg-white"
-      >
+      <DialogContent className="max-w-4xl md:max-h-[90vh] md:h-[85vh] flex flex-col p-0 overflow-hidden bg-white">
         {/* Cabeçalho */}
         <DialogHeader className="p-4 md:p-5 pb-3 md:pb-4 border-b bg-slate-50/90 shrink-0">
           <div className="flex items-start justify-between gap-4">
@@ -626,8 +623,8 @@ export function VisualizarDiscenteDialog({
             </Tabs>
           )}
         </div>
-        {/* Rodapé com safe-area no mobile */}
-        <DialogFooter className="p-3 md:p-4 border-t bg-slate-50/80 dark:bg-neutral-900/80 shrink-0 flex flex-row items-center justify-between gap-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] md:pb-4">
+        {/* Rodapé */}
+        <DialogFooter className="p-3 md:p-4 border-t bg-slate-50/80 dark:bg-neutral-900/80 shrink-0 flex flex-row items-center justify-between gap-2">
           <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 dark:text-neutral-400">
             <span>Visualização de registros vinculados no banco de dados.</span>
           </div>
@@ -637,11 +634,11 @@ export function VisualizarDiscenteDialog({
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="bg-white hover:bg-slate-50 min-h-[44px] md:min-h-8 w-full sm:w-auto"
+            className="bg-white hover:bg-slate-50 h-8 px-3 w-full sm:w-auto"
           >
             Fechar
           </Button>
-        </DialogFooter>{' '}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

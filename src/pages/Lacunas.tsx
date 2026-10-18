@@ -949,7 +949,7 @@ export default function Lacunas({
             variant="outline"
             onClick={handleExportarCsv}
             disabled={carregando || !relatorio || lacunasFiltradas.length === 0}
-            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 min-h-[44px] md:min-h-9 flex-1 sm:flex-initial"
+            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 h-9 flex-1 sm:flex-initial"
             title="Exportar lista de lacunas atualmente filtrada em formato CSV (compatível com Excel)"
             data-testid="btn-exportar-csv-lacunas"
           >
@@ -962,7 +962,7 @@ export default function Lacunas({
             variant="outline"
             onClick={handleImprimir}
             disabled={carregando || imprimindo || !relatorio}
-            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 min-h-[44px] md:min-h-9 flex-1 sm:flex-initial"
+            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 h-9 flex-1 sm:flex-initial"
             title="Imprimir relatório de lacunas (PDF / ABNT) conforme filtros ativos"
             data-testid="btn-imprimir-lacunas"
           >
@@ -975,7 +975,7 @@ export default function Lacunas({
             variant="outline"
             onClick={carregarRelatorio}
             disabled={carregando}
-            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 min-h-[44px] md:min-h-9 flex-1 sm:flex-initial"
+            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 h-9 flex-1 sm:flex-initial"
           >
             <RefreshCw className={`h-4 w-4 text-primary ${carregando ? 'animate-spin' : ''}`} />
             {carregando ? 'Atualizando...' : 'Atualizar'}
@@ -1483,8 +1483,8 @@ export default function Lacunas({
             </div>
           ) : (
             <>
-              {/* DESKTOP TABLE: >= 768px */}
-              <div className="hidden md:block overflow-x-auto">
+              {/* Tabela Única de Lacunas */}
+              <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
@@ -1600,92 +1600,6 @@ export default function Lacunas({
                     })}
                   </tbody>
                 </table>
-              </div>
-
-              {/* MOBILE CARDS: < 768px (md:hidden) */}
-              <div className="block md:hidden p-3 space-y-3 bg-slate-50/50">
-                {lacunasFiltradas.map((item, idx) => {
-                  const configGrupo = GRUPOS_VISUAIS.find((g) => g.id === item.grupoVisualId)
-                  const badgeClass =
-                    configGrupo?.theme.badge || 'bg-slate-100 text-slate-800 border-slate-200'
-                  const isCritica = item.severidade === 'critica'
-
-                  return (
-                    <div
-                      key={`mobile-${item.regraId}-${item.idRegistro}-${idx}`}
-                      className="rounded-lg border border-slate-200/90 bg-white p-3.5 shadow-xs space-y-2.5"
-                      data-testid={`mobile-card-lacuna-${item.regraId}-${item.idRegistro}`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-start gap-2 min-w-0 flex-1">
-                          <span
-                            className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${
-                              isCritica ? 'bg-red-500' : 'bg-amber-500'
-                            }`}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <span className="font-semibold text-slate-900 text-sm block break-words">
-                              {item.nome}
-                            </span>
-                            <span className="text-[10px] text-slate-400 block">
-                              {item.tabela} #{item.idRegistro}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="shrink-0">
-                          {isCritica ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-800 border border-red-200">
-                              Crítica
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-                              Atenção
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="text-xs bg-slate-50 p-2.5 rounded border border-slate-100 space-y-1">
-                        <span className="font-medium text-slate-800 block break-words">
-                          {item.regraDescricao}
-                        </span>
-                        {item.motivo && item.motivo !== item.regraDescricao && (
-                          <span className="text-[11px] text-slate-500 block break-words">
-                            {item.motivo}
-                          </span>
-                        )}
-                        <div className="pt-1">
-                          <span
-                            className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium border ${badgeClass}`}
-                          >
-                            {item.grupoVisualLabel}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="pt-1 flex items-center justify-end">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={carregandoCorrecaoId === item.idRegistro}
-                          onClick={() => handleCorrigirLacuna(item)}
-                          className="min-h-[44px] w-full px-3 text-xs text-primary border-primary/30 hover:bg-primary/5 gap-1.5 font-medium"
-                          title={`Corrigir pendência de ${item.nome}`}
-                          aria-label={`Corrigir pendência de ${item.nome}`}
-                        >
-                          {carregandoCorrecaoId === item.idRegistro ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                          ) : (
-                            <Wrench className="h-4 w-4 text-primary" />
-                          )}
-                          <span>Corrigir Pendência</span>
-                        </Button>
-                      </div>
-                    </div>
-                  )
-                })}
               </div>
             </>
           )}

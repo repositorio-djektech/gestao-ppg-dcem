@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
+
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Dialog,
@@ -385,7 +385,7 @@ export default function Usuarios() {
             size="sm"
             onClick={carregarDados}
             disabled={loading}
-            className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 min-h-[44px] md:min-h-9"
+            className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 h-9"
           >
             <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Atualizar</span>
@@ -394,7 +394,7 @@ export default function Usuarios() {
           {isSuporte && (
             <Button
               onClick={() => setModalCriarAberto(true)}
-              className="gap-2 shrink-0 min-h-[44px] md:min-h-9 px-4 shadow-xs"
+              className="gap-2 shrink-0 h-9 px-4 shadow-xs"
             >
               <UserPlus className="h-4 w-4" />
               <span>Novo Usuário</span>
@@ -440,7 +440,7 @@ export default function Usuarios() {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar por nome, e-mail ou docente..."
-            className="pl-9 min-h-[44px] md:min-h-9 bg-white"
+            className="pl-9 h-9 bg-white"
           />
         </div>
 
@@ -449,7 +449,7 @@ export default function Usuarios() {
             Papel:
           </span>
           <Select value={filtroPapel} onValueChange={setFiltroPapel}>
-            <SelectTrigger className="w-full sm:w-[180px] min-h-[44px] md:min-h-9 bg-white">
+            <SelectTrigger className="w-full sm:w-[180px] h-9 bg-white">
               <SelectValue placeholder="Filtrar papel" />
             </SelectTrigger>
             <SelectContent>
@@ -466,8 +466,7 @@ export default function Usuarios() {
 
       {/* Contêiner da Listagem */}
       <div className="rounded-lg border border-slate-200 bg-white shadow-xs flex-1 flex flex-col overflow-hidden">
-        {/* DESKTOP (>= 768px): Tabela Clássica com visual limpo */}
-        <div className="hidden md:block flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto">
           <Table>
             <TableHeader className="bg-slate-50/80 sticky top-0 z-10">
               <TableRow>
@@ -611,143 +610,6 @@ export default function Usuarios() {
             </TableBody>
           </Table>
         </div>
-
-        {/* MOBILE (< 768px): Cards elegantes com alvos de toque >= 44px */}
-        <div className="block md:hidden flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/50">
-          {loading ? (
-            Array.from({ length: 3 }).map((_, i) => (
-              <Card key={i} className="border border-slate-200 bg-white min-h-[140px]">
-                <CardContent className="p-4 space-y-3">
-                  <Skeleton className="h-5 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
-                  <div className="pt-2 border-t border-slate-100 flex justify-between">
-                    <Skeleton className="h-5 w-20" />
-                    <Skeleton className="h-10 w-28 rounded-md" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          ) : usuariosFiltrados.length > 0 ? (
-            usuariosFiltrados.map((u) => {
-              const roleCfg = ROLE_INFO[u.role] || {
-                label: u.role,
-                bg: 'bg-slate-100 text-slate-700 border-slate-200',
-              }
-              const isSelf = currentUser?.id === u.user_id
-
-              return (
-                <Card
-                  key={u.id}
-                  className="border border-slate-200 bg-white shadow-2xs hover:border-slate-300 transition-colors"
-                >
-                  <CardContent className="p-4 flex flex-col gap-3">
-                    {/* Linha Superior: Nome + Badges */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-slate-900 text-base leading-tight break-words">
-                            {u.name || 'Sem nome'}
-                          </span>
-                          {isSelf && (
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] bg-slate-100 text-slate-600 border-slate-300"
-                            >
-                              Você
-                            </Badge>
-                          )}
-                        </div>
-                        <span className="text-xs text-slate-500 font-mono break-all mt-0.5 block">
-                          {u.email}
-                        </span>
-                      </div>
-
-                      <Badge
-                        variant="outline"
-                        className={`${roleCfg.bg} font-medium shrink-0 text-xs px-2 py-0.5`}
-                      >
-                        {roleCfg.label}
-                      </Badge>
-                    </div>
-
-                    {/* Dados Complementares */}
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
-                      <div>
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
-                          Docente Vinculado
-                        </span>
-                        <div className="text-slate-800 font-medium mt-0.5 flex items-center gap-1 truncate">
-                          {u.docente ? (
-                            <>
-                              <GraduationCap className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                              <span className="truncate">{u.docente.nome}</span>
-                            </>
-                          ) : (
-                            <span className="text-slate-400 italic">Nenhum</span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div>
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
-                          Data de Cadastro
-                        </span>
-                        <span className="text-slate-700 mt-0.5 block">
-                          {formatarData(u.created_at)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Ações Mobile com toque >= 44px */}
-                    <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleAbrirVincularDocente(u)}
-                          className="min-h-[44px] text-xs text-slate-700 border-slate-200 hover:bg-slate-50"
-                        >
-                          <LinkIcon className="h-3.5 w-3.5 mr-1" />
-                          <span>Vincular Docente</span>
-                        </Button>
-
-                        {podeGerenciarPapelDoUsuario(u) ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAbrirTrocarPapel(u)}
-                            className="min-h-[44px] text-xs text-purple-700 border-purple-200 hover:bg-purple-50"
-                          >
-                            <KeyRound className="h-3.5 w-3.5 mr-1" />
-                            <span>Trocar Papel</span>
-                          </Button>
-                        ) : (
-                          <div />
-                        )}
-                      </div>
-
-                      {isSuporte && !isSelf && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setUsuarioParaExcluir(u)}
-                          className="min-h-[44px] text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 w-full"
-                        >
-                          <Trash2 className="h-4 w-4 mr-1.5" />
-                          <span>Excluir Usuário</span>
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })
-          ) : (
-            <div className="p-6 text-center text-slate-500 text-sm bg-white rounded-lg border border-dashed border-slate-200">
-              Nenhum usuário encontrado.
-            </div>
-          )}
-        </div>
       </div>
 
       {/* ========================================================= */}
@@ -779,7 +641,7 @@ export default function Usuarios() {
                   placeholder="Ex: Profa. Maria Santos"
                   value={novoUsuario.nome}
                   onChange={(e) => setNovoUsuario({ ...novoUsuario, nome: e.target.value })}
-                  className="pl-9 min-h-[44px] md:min-h-9"
+                  className="pl-9 h-9"
                 />
               </div>
             </div>
@@ -797,7 +659,7 @@ export default function Usuarios() {
                   placeholder="usuario@ufs.br"
                   value={novoUsuario.email}
                   onChange={(e) => setNovoUsuario({ ...novoUsuario, email: e.target.value })}
-                  className="pl-9 min-h-[44px] md:min-h-9"
+                  className="pl-9 h-9"
                 />
               </div>
             </div>
@@ -815,7 +677,7 @@ export default function Usuarios() {
                   placeholder="Mínimo de 6 caracteres"
                   value={novoUsuario.password}
                   onChange={(e) => setNovoUsuario({ ...novoUsuario, password: e.target.value })}
-                  className="pl-9 min-h-[44px] md:min-h-9"
+                  className="pl-9 h-9"
                 />
               </div>
               <p className="text-[11px] text-slate-500">
@@ -831,7 +693,7 @@ export default function Usuarios() {
                 value={novoUsuario.role}
                 onValueChange={(val: Role) => setNovoUsuario({ ...novoUsuario, role: val })}
               >
-                <SelectTrigger id="papel" className="min-h-[44px] md:min-h-9">
+                <SelectTrigger id="papel" className="h-9">
                   <SelectValue placeholder="Selecione o papel" />
                 </SelectTrigger>
                 <SelectContent>
@@ -859,7 +721,7 @@ export default function Usuarios() {
                   })
                 }
               >
-                <SelectTrigger id="docente_vinculo" className="min-h-[44px] md:min-h-9">
+                <SelectTrigger id="docente_vinculo" className="h-9">
                   <SelectValue placeholder="Nenhum docente vinculado" />
                 </SelectTrigger>
                 <SelectContent className="max-h-56">
@@ -884,11 +746,11 @@ export default function Usuarios() {
                 variant="outline"
                 onClick={() => setModalCriarAberto(false)}
                 disabled={criando}
-                className="min-h-[44px] md:min-h-9"
+                className="h-9"
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={criando} className="min-h-[44px] md:min-h-9 gap-1.5">
+              <Button type="submit" disabled={criando} className="h-9 gap-1.5">
                 {criando ? (
                   <>
                     <RefreshCw className="h-4 w-4 animate-spin" />
@@ -945,7 +807,7 @@ export default function Usuarios() {
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-slate-700">Novo Papel</Label>
               <Select value={papelEscolhido} onValueChange={(val: Role) => setPapelEscolhido(val)}>
-                <SelectTrigger className="min-h-[44px] md:min-h-9">
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder="Selecione o novo papel" />
                 </SelectTrigger>
                 <SelectContent>
@@ -991,7 +853,7 @@ export default function Usuarios() {
               variant="outline"
               onClick={() => setUsuarioParaTrocarPapel(null)}
               disabled={salvandoPapel}
-              className="min-h-[44px] md:min-h-9"
+              className="h-9"
             >
               Cancelar
             </Button>
@@ -1004,7 +866,7 @@ export default function Usuarios() {
                 papelEscolhido === usuarioParaTrocarPapel.role ||
                 !podeMudarPapelPara(usuarioParaTrocarPapel, papelEscolhido)
               }
-              className="min-h-[44px] md:min-h-9 gap-1.5 bg-purple-700 hover:bg-purple-800 text-white"
+              className="h-9 gap-1.5 bg-purple-700 hover:bg-purple-800 text-white"
             >
               {salvandoPapel ? (
                 <>
@@ -1051,7 +913,7 @@ export default function Usuarios() {
                 value={docenteIdEscolhido}
                 onValueChange={(val) => setDocenteIdEscolhido(val)}
               >
-                <SelectTrigger className="min-h-[44px] md:min-h-9">
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder="Selecione um docente" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60">
@@ -1081,7 +943,7 @@ export default function Usuarios() {
               variant="outline"
               onClick={() => setUsuarioParaVincularDocente(null)}
               disabled={salvandoVinculo}
-              className="min-h-[44px] md:min-h-9"
+              className="h-9"
             >
               Cancelar
             </Button>
@@ -1089,7 +951,7 @@ export default function Usuarios() {
               type="button"
               onClick={handleConfirmarVinculoDocente}
               disabled={salvandoVinculo}
-              className="min-h-[44px] md:min-h-9 gap-1.5"
+              className="h-9 gap-1.5"
             >
               {salvandoVinculo ? (
                 <>
@@ -1140,7 +1002,7 @@ export default function Usuarios() {
             <AlertDialogAction
               onClick={handleConfirmarExclusao}
               disabled={excluindo}
-              className="bg-red-600 hover:bg-red-700 text-white min-h-[44px] sm:min-h-9"
+              className="bg-red-600 hover:bg-red-700 text-white h-9"
             >
               {excluindo ? 'Excluindo...' : 'Sim, excluir usuário'}
             </AlertDialogAction>
