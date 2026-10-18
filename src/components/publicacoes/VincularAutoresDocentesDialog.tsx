@@ -362,10 +362,8 @@ export function VincularAutoresDocentesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        bottomSheetOnMobile
-        className="md:max-w-[880px] md:max-h-[92vh] flex flex-col p-0 overflow-hidden"
-      >
+      <DialogContent className="max-w-4xl md:max-h-[90vh] md:h-[85vh] flex flex-col p-0 overflow-hidden bg-white">
+        {' '}
         {/* Cabeçalho no padrão do sistema (#e9effc / primary) */}
         <DialogHeader className="p-4 md:p-5 pb-3 border-b border-slate-200 bg-[#e9effc] dark:bg-slate-900 shrink-0 pr-12">
           <div className="flex items-center gap-2">
@@ -382,7 +380,6 @@ export function VincularAutoresDocentesDialog({
             </div>
           </div>
         </DialogHeader>
-
         {/* Barra de Estatísticas Resumidas */}
         {relatorio && (
           <div className="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 text-xs text-slate-700 shrink-0">
@@ -428,7 +425,6 @@ export function VincularAutoresDocentesDialog({
             </div>
           </div>
         )}
-
         {/* Filtros e Ações Rápidas de Seleção */}
         <div className="p-3 md:px-5 border-b border-slate-200 bg-white space-y-2.5 shrink-0">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
@@ -508,7 +504,6 @@ export function VincularAutoresDocentesDialog({
             </div>
           </div>
         </div>
-
         {/* Lista de Publicações e Sugestões (Scrollável) */}
         <div className="flex-1 overflow-y-auto p-3 md:p-5 space-y-3 min-h-0 bg-slate-50/50">
           {loading ? (
@@ -680,23 +675,24 @@ export function VincularAutoresDocentesDialog({
             </div>
           )}
         </div>
-
-        {/* Rodapé fixo com alvos de toque >= 44px e safe-area mobile */}
-        <div className="border-t border-slate-200 bg-white p-3 md:p-4 flex items-center justify-between gap-2 md:gap-3 shrink-0 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] md:pb-4">
+        {/* Rodapé fixo */}
+        <div className="border-t border-slate-200 bg-white p-3 md:p-4 flex items-center justify-between gap-2 md:gap-3 shrink-0">
           <Button
             type="button"
             variant="outline"
+            size="sm"
             onClick={() => onOpenChange(false)}
-            className="min-h-[44px] md:min-h-9 px-4 text-xs md:text-sm"
+            className="h-9 px-4 text-xs md:text-sm"
           >
             Fechar
           </Button>
 
           <Button
             type="button"
+            size="sm"
             disabled={selecionadas.size === 0 || processando}
             onClick={handleConfirmarEmLote}
-            className="min-h-[44px] md:min-h-9 px-5 text-xs md:text-sm bg-primary hover:bg-primary/90 gap-1.5 flex-1 sm:flex-initial"
+            className="h-9 px-5 text-xs md:text-sm bg-primary hover:bg-primary/90 gap-1.5"
           >
             {processando ? (
               <>

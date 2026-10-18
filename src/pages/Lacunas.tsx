@@ -1648,8 +1648,8 @@ export default function Lacunas({
             className="rounded-lg border border-slate-200 bg-white overflow-hidden shadow-xs"
             data-testid="tabela-historico-lacunas"
           >
-            {/* Desktop Table (>= 768px) */}
-            <div className="hidden md:block overflow-x-auto">
+            {/* Tabela única com overflow em todas as larguras */}
+            <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-semibold text-[11px]">
@@ -1726,54 +1726,6 @@ export default function Lacunas({
                   })}
                 </tbody>
               </table>
-            </div>
-
-            {/* Mobile Cards (< 768px) */}
-            <div className="block md:hidden divide-y divide-slate-100 bg-white">
-              {historico.map((item) => {
-                let dataTexto = item.timestamp
-                try {
-                  dataTexto = new Date(item.timestamp).toLocaleString('pt-BR', {
-                    dateStyle: 'short',
-                    timeStyle: 'short',
-                  })
-                } catch {
-                  // noop
-                }
-
-                const filtrosResumo = [
-                  item.filtros.grupo !== 'Todos os Grupos' && `Grupo: ${item.filtros.grupo}`,
-                  item.filtros.severidade !== 'Todas' && `Sev: ${item.filtros.severidade}`,
-                  item.filtros.regra !== 'Todas' && `Regra: ${item.filtros.regra}`,
-                  item.filtros.busca !== '—' && `Busca: "${item.filtros.busca}"`,
-                ]
-                  .filter(Boolean)
-                  .join(' | ')
-
-                return (
-                  <div
-                    key={`mob-hist-${item.id}`}
-                    className="p-3 space-y-2 text-xs"
-                    data-testid={`linha-historico-${item.id}`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold text-slate-800">{dataTexto}</span>
-                      <span className="inline-flex items-center gap-1 font-medium text-slate-600">
-                        <Download className="h-3 w-3 text-slate-500" />
-                        {item.nomeArquivo || 'Exportação CSV'}
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-slate-500 break-words">
-                      {filtrosResumo || 'Todos os registros'}
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
-                      <span className="text-red-600 font-semibold">{item.criticas} críticas</span>
-                      <span className="text-amber-600 font-medium">{item.atencao} atenção</span>
-                      <span className="text-slate-900 font-bold">Total: {item.total}</span>
-                    </div>
-                  </div>
-                )
-              })}
             </div>
           </div>
         )}{' '}

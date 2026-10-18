@@ -290,8 +290,9 @@ export default function Dashboard({ obterLacunasFn = obterRelatorioLacunas }: Da
           <Button
             type="button"
             variant="outline"
+            size="sm"
             onClick={handleAtualizarTudo}
-            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 min-h-[44px] md:min-h-9 flex-1 sm:flex-initial"
+            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 h-9 flex-1 sm:flex-initial"
             data-testid="btn-atualizar-dashboard"
           >
             <TrendingUp className="h-4 w-4 text-primary" />
@@ -300,8 +301,9 @@ export default function Dashboard({ obterLacunasFn = obterRelatorioLacunas }: Da
 
           <Button
             type="button"
+            size="sm"
             onClick={() => setLattesDialogOpen(true)}
-            className="inline-flex items-center justify-center gap-2 min-h-[44px] md:min-h-9 flex-1 sm:flex-initial"
+            className="inline-flex items-center justify-center gap-2 h-9 flex-1 sm:flex-initial"
           >
             <FileUp className="h-4 w-4" />
             Importar Lattes

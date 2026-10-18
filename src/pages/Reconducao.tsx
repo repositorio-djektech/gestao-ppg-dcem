@@ -667,9 +667,10 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
           <Button
             type="button"
             variant="outline"
+            size="sm"
             onClick={carregarRelatorio}
             disabled={carregando || imprimindoGeral}
-            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 min-h-[44px] md:min-h-9 flex-1 sm:flex-initial"
+            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 h-9 flex-1 sm:flex-initial"
             data-testid="btn-atualizar-reconducao"
           >
             <RefreshCw className={`h-4 w-4 text-primary ${carregando ? 'animate-spin' : ''}`} />
@@ -678,9 +679,10 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
 
           <Button
             type="button"
+            size="sm"
             onClick={handleImprimirRelatorio}
             disabled={carregando || !relatorio || imprimindoGeral}
-            className="inline-flex items-center justify-center gap-2 shadow-sm min-h-[44px] md:min-h-9 flex-1 sm:flex-initial"
+            className="inline-flex items-center justify-center gap-2 shadow-sm h-9 flex-1 sm:flex-initial"
             data-testid="btn-imprimir-relatorio-reconducao"
           >
             <Printer className="h-4 w-4" />

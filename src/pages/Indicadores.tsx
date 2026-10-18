@@ -160,11 +160,11 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
           <Button
             variant="outline"
             size="sm"
-            onClick={carregarDados}
-            disabled={loading}
+            onClick={carregar}
+            disabled={carregando}
             className="gap-1.5 text-xs h-9 flex-1 sm:flex-initial justify-center"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${carregando ? 'animate-spin' : ''}`} />
             <span>Atualizar</span>
           </Button>
 
@@ -172,22 +172,22 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
             variant="outline"
             size="sm"
             onClick={handleExportarCsv}
-            disabled={!dadosCompletos || exportando}
+            disabled={!relatorio || carregando}
             className="gap-1.5 text-xs text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border-emerald-300 h-9 flex-1 sm:flex-initial justify-center"
           >
-            <Download className="h-3.5 w-3.5" />
-            <span>CSV</span>
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            <span>Exportar CSV</span>
           </Button>
 
           <Button
             variant="outline"
             size="sm"
-            onClick={handleImprimirRelatorio}
-            disabled={!dadosCompletos || imprimindo}
+            onClick={handleExportarPdf}
+            disabled={!relatorio || imprimindo}
             className="gap-1.5 text-xs text-blue-700 hover:text-blue-800 hover:bg-blue-50 border-blue-300 h-9 flex-1 sm:flex-initial justify-center"
           >
             <Printer className="h-3.5 w-3.5" />
-            <span>{imprimindo ? 'Gerando...' : 'PDF'}</span>
+            <span>{imprimindo ? 'Gerando...' : 'Exportar PDF'}</span>
           </Button>
 
           <Button
@@ -197,8 +197,8 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
             className="gap-1 text-xs h-9 px-3 shrink-0"
             title="Nota Metodológica da Ficha Engenharias II"
           >
-            {' '}
-            <RefreshCw className={`h-4 w-4 ${carregando ? 'animate-spin' : ''}`} />
+            <BookOpen className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Nota Metodológica</span>
           </Button>
         </div>
       </div>

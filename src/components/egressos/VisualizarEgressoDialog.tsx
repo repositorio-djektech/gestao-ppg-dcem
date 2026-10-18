@@ -505,10 +505,7 @@ export function VisualizarEgressoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        bottomSheetOnMobile
-        className="max-w-4xl md:max-h-[90vh] md:h-[85vh] flex flex-col p-0 overflow-hidden bg-white"
-      >
+      <DialogContent className="max-w-4xl md:max-h-[90vh] md:h-[85vh] flex flex-col p-0 overflow-hidden bg-white">
         {/* Cabeçalho */}
         <DialogHeader className="p-4 md:p-5 pb-3 md:pb-4 border-b bg-slate-50/90 shrink-0">
           <div className="flex items-start justify-between gap-4">
@@ -608,8 +605,8 @@ export function VisualizarEgressoDialog({
           )}
         </div>
 
-        {/* Rodapé com ação Editar alinhado ao padrão e safe-area */}
-        <DialogFooter className="p-3 md:p-4 border-t bg-slate-50/80 shrink-0 flex flex-row items-center justify-between gap-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] md:pb-4">
+        {/* Rodapé com ação Editar alinhado ao padrão */}
+        <DialogFooter className="p-3 md:p-4 border-t bg-slate-50/80 shrink-0 flex flex-row items-center justify-between gap-2">
           <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
             <span>Visualização somente leitura dos registros do egresso.</span>
           </div>
@@ -624,7 +621,7 @@ export function VisualizarEgressoDialog({
                   onOpenChange(false)
                   onEditar(egresso)
                 }}
-                className="gap-1.5 bg-white text-primary border-primary/30 hover:bg-primary/10 min-h-[44px] md:min-h-8 flex-1 sm:flex-initial"
+                className="gap-1.5 bg-white text-primary border-primary/30 hover:bg-primary/10 h-8 px-3"
               >
                 <Edit className="h-3.5 w-3.5" />
                 <span>Editar Egresso</span>
@@ -635,7 +632,7 @@ export function VisualizarEgressoDialog({
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="bg-white hover:bg-slate-50 min-h-[44px] md:min-h-8 flex-1 sm:flex-initial"
+              className="bg-white hover:bg-slate-50 h-8 px-3"
             >
               Fechar
             </Button>
