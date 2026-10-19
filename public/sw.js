@@ -13,13 +13,14 @@
  *    Direto para a rede (Network-only).
  */
 
-const CACHE_NAME = 'ppg-dcem-shell-v1'
+const CACHE_NAME = 'ppg-dcem-shell-v2'
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
-  '/dcem-logo-trans-3d28d.webp',
+  '/p2cem-ufs.png',
+  '/logo-p2cem.png',
   '/favicon.ico',
   '/icons/icon-192.png',
   '/icons/icon-512.png',

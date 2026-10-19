@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import dcemLogo from '@/assets/dcem-logo-trans-3d28d.webp'
+import logoP2cem from '@/assets/logo-p2cem.png'
+import p2cemUfs from '@/assets/p2cem-ufs.png'
 import { Sidebar, SidebarBody, SidebarLink, useSidebar } from '@/components/ui/sidebar'
 import { useAuth } from '@/hooks/use-auth'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -44,16 +45,14 @@ export const Logo = () => {
   return (
     <Link
       to="/"
-      className="font-normal flex items-center gap-2 py-1 relative z-20 text-neutral-900 dark:text-neutral-100 min-w-0"
+      className="flex items-center justify-start py-1 relative z-20 min-w-0 w-full"
+      title="P²CEM / UFS"
     >
-      <img src={dcemLogo} alt="DCEM Logo" className="h-7 w-7 object-contain shrink-0" />
-      <motion.span
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="font-semibold text-primary text-sm whitespace-pre tracking-tight truncate"
-      >
-        Gestão PPG-DCEM
-      </motion.span>
+      <img
+        src={p2cemUfs}
+        alt="P²CEM - UFS"
+        className="h-10 max-h-11 w-auto max-w-full object-contain shrink-0"
+      />
     </Link>
   )
 }
@@ -62,10 +61,10 @@ export const LogoIcon = () => {
   return (
     <Link
       to="/"
-      className="font-normal flex items-center justify-center py-1 relative z-20"
-      title="Gestão PPG-DCEM"
+      className="flex items-center justify-center py-1 relative z-20 w-full"
+      title="P²CEM"
     >
-      <img src={dcemLogo} alt="DCEM Logo" className="h-7 w-7 object-contain shrink-0" />
+      <img src={logoP2cem} alt="P²CEM" className="h-9 w-9 object-contain shrink-0" />
     </Link>
   )
 }

@@ -99,7 +99,7 @@ describe('Responsividade Sidebar e Header (Mobile e Tablet Portrait)', () => {
     expect(html).toContain('Produção Técnica')
     expect(html).toContain('/producao-tecnica')
     expect(html).toContain('Docentes')
-    expect(html).toContain('Gestão PPG-DCEM')
+    expect(html).toContain('P²CEM - UFS')
   })
 
   it('7. AppSidebar renderiza botão de saída e modal de confirmação (AlertDialog)', () => {

@@ -20,7 +20,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import backImgSignin from '@/assets/back-img-signin-cc601.webp'
-import dcemLogo from '@/assets/dcem-logo-trans-3d28d.webp'
+import logoP2cem from '@/assets/logo-p2cem.png'
 import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt'
 
 // Tela de Login e Cadastro do PPG DCEM
@@ -190,23 +190,15 @@ export default function Login() {
       <div className="relative z-10 w-full max-w-md animate-fade-in-up">
         <Card className="border-0 shadow-2xl backdrop-blur-md bg-slate-200/95">
           <CardHeader className="space-y-4 pb-4">
-            <div className="flex items-center gap-3.5">
+            <div className="flex items-center justify-center">
               <img
-                src={dcemLogo}
-                alt="Logo DCEM"
-                className="h-14 w-14 shrink-0 object-contain drop-shadow-sm"
+                src={logoP2cem}
+                alt="P²CEM"
+                className="h-14 max-w-[200px] shrink-0 object-contain drop-shadow-sm"
               />
-              <div className="flex flex-col text-left">
-                <CardTitle className="text-xl font-bold tracking-tight text-slate-900 leading-tight">
-                  Gestão PPG-DCEM
-                </CardTitle>
-                <p className="text-xs text-muted-foreground font-medium leading-snug mt-0.5">
-                  Sistema de Avaliação para Engenharias
-                </p>
-              </div>
             </div>
 
-            <CardDescription className="text-xs text-muted-foreground text-left">
+            <CardDescription className="text-xs text-muted-foreground text-center">
               {mode === 'login'
                 ? 'Insira suas credenciais para continuar.'
                 : 'Preencha os dados para se cadastrar.'}
