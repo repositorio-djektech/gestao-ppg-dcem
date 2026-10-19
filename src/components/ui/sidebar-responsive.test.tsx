@@ -31,9 +31,9 @@ describe('Responsividade Sidebar e Header (Mobile e Tablet Portrait)', () => {
       </SidebarProvider>,
     )
 
-    // O MobileSidebar fechado deve renderizar o container responsivo md:hidden
+    // O MobileSidebar fechado deve renderizar o container responsivo lg:hidden
     // mas sem barra superior verde/cinza invasiva h-10 w-full com Menu duplicado
-    expect(html).toContain('md:hidden')
+    expect(html).toContain('lg:hidden')
     expect(html).not.toContain('h-10 px-4 py-4 flex flex-row')
     expect(html).not.toContain('Conteúdo Drawer')
   })
@@ -55,7 +55,7 @@ describe('Responsividade Sidebar e Header (Mobile e Tablet Portrait)', () => {
     expect(html).toContain('sm:max-w-[256px]')
   })
 
-  it('3. DesktopSidebar possui classe hidden md:flex garantindo que não colapse telas pequenas', () => {
+  it('3. DesktopSidebar possui classe hidden lg:flex garantindo que não colapse telas pequenas', () => {
     const html = renderToString(
       <SidebarProvider open={false}>
         <DesktopSidebar>
@@ -64,7 +64,7 @@ describe('Responsividade Sidebar e Header (Mobile e Tablet Portrait)', () => {
       </SidebarProvider>,
     )
 
-    expect(html).toContain('hidden md:flex')
+    expect(html).toContain('hidden lg:flex')
     expect(html).toContain('Menu Desktop')
   })
 
@@ -85,7 +85,7 @@ describe('Responsividade Sidebar e Header (Mobile e Tablet Portrait)', () => {
       </SidebarProvider>,
     )
 
-    expect(html).toContain('md:hidden')
+    expect(html).toContain('lg:hidden')
     expect(html).toContain('Alternar menu lateral')
   })
 
@@ -137,8 +137,8 @@ describe('Responsividade Sidebar e Header (Mobile e Tablet Portrait)', () => {
     expect(html).toContain('cursor-default')
   })
 
-  it('10. SidebarProvider e AppSidebar inicializam fechados no mobile (< 768px) e abertos no desktop (>= 768px)', () => {
-    // Simula viewport mobile (< 768px)
+  it('10. SidebarProvider e AppSidebar inicializam fechados no mobile (< 1024px) e abertos no desktop (>= 1024px)', () => {
+    // Simula viewport mobile (< 1024px)
     const originalInnerWidth = window.innerWidth
     try {
       window.innerWidth = 400
@@ -152,8 +152,8 @@ describe('Responsividade Sidebar e Header (Mobile e Tablet Portrait)', () => {
       // No mobile default inicial deve estar fechado (conteúdo do drawer não aparece sem clique)
       expect(htmlMobile).not.toContain('Mobile Fechado')
 
-      // Simula viewport desktop (>= 768px)
-      window.innerWidth = 1024
+      // Simula viewport desktop (>= 1024px)
+      window.innerWidth = 1200
       const htmlDesktop = renderToString(
         <SidebarProvider>
           <DesktopSidebar>

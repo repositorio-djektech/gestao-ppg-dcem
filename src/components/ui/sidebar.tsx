@@ -40,7 +40,7 @@ export const SidebarProvider = ({
 }) => {
   const [openState, setOpenState] = useState(() => {
     if (typeof window !== 'undefined') {
-      return window.innerWidth >= 768
+      return window.innerWidth >= 1024
     }
     return true
   })
@@ -77,7 +77,7 @@ export const SidebarTrigger = ({ className, ...props }: React.ComponentProps<typ
     <Button
       variant="ghost"
       size="icon"
-      className={cn('md:hidden h-9 w-9 text-neutral-700 dark:text-neutral-200 shrink-0', className)}
+      className={cn('lg:hidden h-9 w-9 text-neutral-700 dark:text-neutral-200 shrink-0', className)}
       onClick={() => setOpen(!open)}
       aria-label="Alternar menu lateral"
       {...props}
@@ -105,7 +105,7 @@ export const DesktopSidebar = ({
   return (
     <motion.div
       className={cn(
-        'h-full hidden md:flex md:flex-col bg-white dark:bg-neutral-900 w-[240px] flex-shrink-0',
+        'h-full hidden lg:flex lg:flex-col bg-white dark:bg-neutral-900 w-[240px] flex-shrink-0',
         className,
       )}
       animate={{
@@ -122,7 +122,7 @@ export const DesktopSidebar = ({
 export const MobileSidebar = ({ className, children, ...props }: React.ComponentProps<'div'>) => {
   const { open, setOpen } = useSidebar()
   return (
-    <div className="md:hidden" {...props}>
+    <div className="lg:hidden" {...props}>
       <AnimatePresence>
         {open && (
           <>

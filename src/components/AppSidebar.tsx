@@ -36,6 +36,7 @@ import {
   Calendar,
   Plane,
   HeartHandshake,
+  Trophy,
   LogOut,
 } from 'lucide-react'
 
@@ -200,7 +201,7 @@ const navSections: NavSection[] = [
       {
         label: 'Premiações',
         href: '/premiacoes',
-        icon: <Award className="h-5 w-5 shrink-0" />,
+        icon: <Trophy className="h-5 w-5 shrink-0" />,
       },
     ],
   },
@@ -381,7 +382,7 @@ interface AppSidebarProps {
 export function AppSidebar({ open: openProp, setOpen: setOpenProp }: AppSidebarProps = {}) {
   const [internalOpen, setInternalOpen] = useState(() => {
     if (typeof window !== 'undefined') {
-      return window.innerWidth >= 768
+      return window.innerWidth >= 1024
     }
     return true
   })
