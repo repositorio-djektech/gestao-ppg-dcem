@@ -910,13 +910,15 @@ export default function Lacunas({
         const nomeNorm = normalizar(item.nome)
         const motivoNorm = normalizar(item.motivo)
         const regraNorm = normalizar(item.regraDescricao)
-        const grupoNorm = normalizar(item.grupoId)
+        const grupoVisualIdNorm = normalizar(item.grupoVisualId)
+        const grupoVisualLabelNorm = normalizar(item.grupoVisualLabel)
 
         if (
           !nomeNorm.includes(buscaNorm) &&
           !motivoNorm.includes(buscaNorm) &&
           !regraNorm.includes(buscaNorm) &&
-          !grupoNorm.includes(buscaNorm)
+          !grupoVisualIdNorm.includes(buscaNorm) &&
+          !grupoVisualLabelNorm.includes(buscaNorm)
         ) {
           return false
         }

@@ -179,8 +179,8 @@ export default function Docentes() {
       const matchCpf = (d.cpf || '').replace(/\D/g, '').includes(termo.replace(/\D/g, ''))
       const matchSiape = (d.siape || '').replace(/\D/g, '').includes(termo.replace(/\D/g, ''))
       const matchCategoria = normalizar(d.categoria).includes(termo)
-      const matchLattes = (d.lattes_id || '').includes(termo)
-      const matchOrcid = (d.orcid || '').includes(termo)
+      const matchLattes = (d.id_lattes || '').includes(termo)
+      const matchOrcid = (d.orc_id || '').includes(termo)
       return (
         matchNome ||
         matchEmail ||
