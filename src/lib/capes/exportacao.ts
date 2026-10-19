@@ -41,6 +41,55 @@ export function gerarHtmlRelatorioIndicadores(
               ? `<span style="background-color: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; padding: 2px 6px; font-weight: bold; border-radius: 3px; font-size: 9pt;">CALCULADO</span>`
               : `<span style="background-color: #fffbeb; color: #92400e; border: 1px solid #fde68a; padding: 2px 6px; font-weight: bold; border-radius: 3px; font-size: 9pt;">AGUARDANDO INSUMO</span>`
 
+          let seriesAnualHtml = ''
+          if (ind.anos) {
+            const linhasAnos = [2025, 2026, 2027, 2028]
+              .map((ano) => {
+                const dadoAno = ind.anos?.[ano]
+                const valStr =
+                  dadoAno?.status === 'calculado' && dadoAno.valorCalculado !== null
+                    ? `${dadoAno.valorCalculado}${ind.unidade || ''}`
+                    : '<span style="color: #92400e;">Aguardando insumo</span>'
+                return `<td style="padding: 4px 8px; border: 1px solid #cbd5e1; text-align: center;">${valStr}</td>`
+              })
+              .join('')
+
+            const mmaStr =
+              ind.mma && ind.mma.valor !== null
+                ? `<strong>${ind.mma.valor}${ind.unidade || ''}</strong>`
+                : '—'
+
+            seriesAnualHtml = `
+            <div style="margin: 6px 0; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 3px; padding: 6px;">
+              <div style="font-size: 9pt; font-weight: bold; color: #334155; margin-bottom: 4px; text-transform: uppercase;">
+                Evolução Anual &amp; MMA (Média das Médias Anuais):
+              </div>
+              <table style="width: 100%; border-collapse: collapse; font-size: 9pt;">
+                <thead>
+                  <tr style="background-color: #f1f5f9; color: #475569;">
+                    <th style="padding: 4px; border: 1px solid #cbd5e1;">2025</th>
+                    <th style="padding: 4px; border: 1px solid #cbd5e1;">2026</th>
+                    <th style="padding: 4px; border: 1px solid #cbd5e1;">2027</th>
+                    <th style="padding: 4px; border: 1px solid #cbd5e1;">2028</th>
+                    <th style="padding: 4px; border: 1px solid #cbd5e1; background-color: #e0f2fe; color: #0369a1;">MMA Final</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    ${linhasAnos}
+                    <td style="padding: 4px 8px; border: 1px solid #cbd5e1; text-align: center; background-color: #f0f9ff; color: #0369a1;">
+                      ${mmaStr}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div style="font-size: 8pt; color: #64748b; margin-top: 4px;">
+                ${escaparHtml(ind.mma?.regra || '')}
+              </div>
+            </div>
+            `
+          }
+
           const decompHtml =
             ind.decomposicao.length > 0
               ? `
@@ -93,6 +142,7 @@ export function gerarHtmlRelatorioIndicadores(
               </div>
             </div>
 
+            ${seriesAnualHtml}
             ${decompHtml}
             ${motivoHtml}
           </div>
@@ -300,14 +350,30 @@ export function exportarIndicadoresCsv(relatorio: RelatorioIndicadoresCapes): vo
     'Item Ficha',
     'Código',
     'Indicador',
+    'Metodologia',
     'Peso (%)',
     'Fórmula',
     'Status',
-    'Valor Calculado',
+    'Valor Consolidado (MMA / Estoque)',
+    '2025',
+    '2026',
+    '2027',
+    '2028',
+    'MMA Completo (4 anos)',
+    'Regra MMA',
     'Unidade',
     'Motivo Indefinido',
     'Decomposição',
   ]
+
+  const formatarValorAnoCsv = (ind: ResultadoIndicador, ano: number): string => {
+    if (!ind.anos) return 'N/A (Estoque)'
+    const d = ind.anos[ano]
+    if (!d || d.status !== 'calculado' || d.valorCalculado === null) {
+      return 'Aguardando insumo'
+    }
+    return String(d.valorCalculado)
+  }
 
   const linhas: string[][] = [cabecalhos]
 
@@ -320,10 +386,17 @@ export function exportarIndicadoresCsv(relatorio: RelatorioIndicadoresCapes): vo
         ind.itemFicha,
         ind.codigo,
         ind.nome,
+        ind.metodologia || 'anual_mma',
         String(ind.pesoPercentual),
         ind.formulaTexto,
         ind.status === 'calculado' ? 'CALCULADO' : 'AGUARDANDO INSUMO',
         ind.valorCalculado !== null ? String(ind.valorCalculado) : '',
+        formatarValorAnoCsv(ind, 2025),
+        formatarValorAnoCsv(ind, 2026),
+        formatarValorAnoCsv(ind, 2027),
+        formatarValorAnoCsv(ind, 2028),
+        ind.mma ? (ind.mma.completo ? 'SIM' : 'NÃO') : 'N/A',
+        ind.mma?.regra || '',
         ind.unidade || '',
         ind.motivoIndefinido || '',
         decompStr,

@@ -88,7 +88,7 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
     expect(ati?.motivoIndefinido).toContain('aguardando insumo')
   })
 
-  it('calcula ORI = (M + 3D) / (DP - JDP) com titulações no quadriênio', () => {
+  it('calcula ORI com titulações anuais e consolidação pela MMA', () => {
     const dadosComOrientacoes: DadosEntradaIndicadores = {
       ...dadosMinimos,
       orientacoes: [
@@ -119,36 +119,43 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
       ],
     }
 
-    // M = 2, D = 1 => Numerador = 2 + 3*1 = 5
-    // Denominador = DP (4) - JDP (1) = 3
-    // ORI = 5 / 3 = 1.667
+    // 2025: M=1, D=1 => Numerador = 1 + 3 = 4; Denominador = 4 - 1 = 3 => 4/3 = 1.333
+    // 2026: M=1, D=0 => Numerador = 1; Denominador = 3 => 1/3 = 0.333
+    // 2027 e 2028: sem defesas cadastradas => status 'indefinido' (aguardando insumo), NÃO zeram
+    // MMA dos anos com insumo (2025 e 2026): (1.333 + 0.333) / 2 = 0.833
     const rel = calcularTodosIndicadores(dadosComOrientacoes)
     const ori = rel.todosIndicadores.find((i) => i.codigo === 'ORI')
 
     expect(ori?.status).toBe('calculado')
-    expect(ori?.valorCalculado).toBe(1.667)
+    expect(ori?.valorCalculado).toBe(0.833)
+    expect(ori?.anos?.[2025].status).toBe('calculado')
+    expect(ori?.anos?.[2025].valorCalculado).toBe(1.333)
+    expect(ori?.anos?.[2026].status).toBe('calculado')
+    expect(ori?.anos?.[2026].valorCalculado).toBe(0.333)
+    expect(ori?.anos?.[2027].status).toBe('indefinido')
+    expect(ori?.anos?.[2028].status).toBe('indefinido')
+    expect(ori?.mma?.completo).toBe(false)
   })
 
-  it('calcula DPI com fórmula com saturação em min(B1, DP) e pesos Qualis', () => {
+  it('calcula DPI ano a ano com MMA e saturação min(B1, DP)', () => {
     // DP = 4, JDP = 1 => DP - JDP = 3
-    // 2 artigos A1 (2 * 1.0 = 2)
-    // 1 artigo A2 (1 * 0.875 = 0.875)
-    // 1 artigo A3 (1 * 0.75 = 0.75)
-    // 1 artigo A4 (1 * 0.675 = 0.675)
-    // 6 artigos B1 => satura em min(6, 4) = 4 * 0.5 = 2.0
-    // Numerador = 2 + 0.875 + 0.75 + 0.675 + 2.0 = 6.3
-    // DPI = 6.3 / 3 = 2.1
+    // Em 2025: 2 A1 (2.0) + 2 B1 (sat: min(2,4)=2 => 1.0) = 3.0 => DPI 2025 = 3.0 / 3 = 1.0
+    // Em 2026: 1 A2 (0.875) + 1 A3 (0.75) + 2 B1 (1.0) = 2.625 => DPI 2026 = 2.625 / 3 = 0.875
+    // Em 2027: 1 A4 (0.675) + 2 B1 (1.0) = 1.675 => DPI 2027 = 1.675 / 3 = 0.558
+    // 2028: sem publicações => indefinido
+    // MMA (2025, 2026, 2027) = (1.0 + 0.875 + 0.558) / 3 = 0.811
     const pubs: any[] = [
       { id: 1, ano: 2025, estrato_qualis: 'A1', autores: 'Docente Um' },
       { id: 2, ano: 2025, estrato_qualis: 'A1', autores: 'Docente Um' },
-      { id: 3, ano: 2026, estrato_qualis: 'A2', autores: 'Docente Dois' },
-      { id: 4, ano: 2026, estrato_qualis: 'A3', autores: 'Docente Tres' },
-      { id: 5, ano: 2027, estrato_qualis: 'A4', autores: 'Docente Um' },
-      // 6 artigos B1
       { id: 6, ano: 2025, estrato_qualis: 'B1', autores: 'Docente Um' },
       { id: 7, ano: 2025, estrato_qualis: 'B1', autores: 'Docente Um' },
+
+      { id: 3, ano: 2026, estrato_qualis: 'A2', autores: 'Docente Dois' },
+      { id: 4, ano: 2026, estrato_qualis: 'A3', autores: 'Docente Tres' },
       { id: 8, ano: 2026, estrato_qualis: 'B1', autores: 'Docente Um' },
       { id: 9, ano: 2026, estrato_qualis: 'B1', autores: 'Docente Um' },
+
+      { id: 5, ano: 2027, estrato_qualis: 'A4', autores: 'Docente Um' },
       { id: 10, ano: 2027, estrato_qualis: 'B1', autores: 'Docente Um' },
       { id: 11, ano: 2027, estrato_qualis: 'B1', autores: 'Docente Um' },
     ]
@@ -162,25 +169,43 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
     const dpi = rel.todosIndicadores.find((i) => i.codigo === 'DPI')
 
     expect(dpi?.status).toBe('calculado')
-    expect(dpi?.valorCalculado).toBe(2.1)
+    expect(dpi?.anos?.[2025].valorCalculado).toBe(1.0)
+    expect(dpi?.anos?.[2026].valorCalculado).toBe(0.875)
+    expect(dpi?.anos?.[2027].valorCalculado).toBe(0.558)
+    expect(dpi?.anos?.[2028].status).toBe('indefinido')
+    expect(dpi?.mma?.valor).toBe(0.811)
   })
 
-  it('calcula ATD com coautorias confirmadas / (M + 2D)', () => {
-    // M = 1, D = 1 => M + 2D = 3
-    // 3 artigos A1 com coautoria de discente confirmada
+  it('calcula ATD ano a ano e agrega via MMA', () => {
+    // 2025: 1 artigo A1 c/ coautoria; Mestrado 2025: 1 => ATD 2025 = 1 / 1 = 1.0
+    // 2026: 1 artigo A2 c/ coautoria; Doutorado 2026: 1 => ATD 2026 = 1 / 2 = 0.5
+    // 2027 e 2028: sem titulações no ano => aguardando insumo
+    // MMA (2025, 2026) = (1.0 + 0.5) / 2 = 0.75
     const pubs: any[] = [
       { id: 1, ano: 2025, estrato_qualis: 'A1', autores: 'Docente Um' },
       { id: 2, ano: 2026, estrato_qualis: 'A2', autores: 'Docente Um' },
-      { id: 3, ano: 2027, estrato_qualis: 'A3', autores: 'Docente Um' },
     ]
     const coautores: any[] = [
       { publicacao_id: 1, tipo: 'orientando', nome_citado: 'Aluno 1' },
       { publicacao_id: 2, tipo: 'egresso', nome_citado: 'Egresso 1' },
-      { publicacao_id: 3, tipo: 'orientando', nome_citado: 'Aluno 2' },
     ]
     const oris: any[] = [
-      { id: 1, tipo: 'Mestrado', status: 'concluido', fim: '2025', docente_id: 1 },
-      { id: 2, tipo: 'Doutorado', status: 'concluido', fim: '2026', docente_id: 1 },
+      {
+        id: 1,
+        tipo: 'Mestrado',
+        status: 'concluido',
+        fim: '2025',
+        data_defesa: '2025-05-10',
+        docente_id: 1,
+      },
+      {
+        id: 2,
+        tipo: 'Doutorado',
+        status: 'concluido',
+        fim: '2026',
+        data_defesa: '2026-06-15',
+        docente_id: 1,
+      },
     ]
 
     const rel = calcularTodosIndicadores({
@@ -192,23 +217,29 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
 
     const atd = rel.todosIndicadores.find((i) => i.codigo === 'ATD')
     expect(atd?.status).toBe('calculado')
-    // 3 / 3 = 1.0
-    expect(atd?.valorCalculado).toBe(1.0)
+    expect(atd?.anos?.[2025].valorCalculado).toBe(1.0)
+    expect(atd?.anos?.[2026].valorCalculado).toBe(0.5)
+    expect(atd?.valorCalculado).toBe(0.75)
   })
 
-  it('calcula DPT com periódicos, anais e capítulos', () => {
+  it('calcula DPT ano a ano com MMA para periódicos, anais e capítulos', () => {
     // DP - JDP = 3
-    // 4 artigos em periódicos, 2 em anais, 3 capítulos = 9 produções
-    // DPT = 9 / 3 = 3.0
+    // 2025: 2 periódicos + 1 anais + 1 capítulo = 4 produções => DPT 2025 = 4 / 3 = 1.333
+    // 2026: 2 periódicos + 1 anais + 1 capítulo = 4 produções => DPT 2026 = 4 / 3 = 1.333
+    // 2027: 1 capítulo = 1 produção => DPT 2027 = 1 / 3 = 0.333
+    // 2028: sem produções => indefinido
+    // MMA (2025, 2026, 2027) = (1.333 + 1.333 + 0.333) / 3 = 1.0
     const pubs: any[] = [
       { id: 1, ano: 2025, tipo_producao: 'Artigo em periódico', autores: 'Docente Um' },
       { id: 2, ano: 2025, tipo_producao: 'Artigo em periódico', autores: 'Docente Dois' },
+      { id: 5, ano: 2025, tipo_producao: 'Trabalho em anais', autores: 'Docente Um' },
+      { id: 7, ano: 2025, tipo_producao: 'Capítulo', autores: 'Docente Um' },
+
       { id: 3, ano: 2026, tipo_producao: 'Artigo em periódico', autores: 'Docente Tres' },
       { id: 4, ano: 2026, tipo_producao: 'Artigo em periódico', autores: 'Docente Um' },
-      { id: 5, ano: 2025, tipo_producao: 'Trabalho em anais', autores: 'Docente Um' },
       { id: 6, ano: 2026, tipo_producao: 'Trabalho em anais', autores: 'Docente Dois' },
-      { id: 7, ano: 2025, tipo_producao: 'Capítulo', autores: 'Docente Um' },
       { id: 8, ano: 2026, tipo_producao: 'Capítulo', autores: 'Docente Um' },
+
       { id: 9, ano: 2027, tipo_producao: 'Capítulo', autores: 'Docente Tres' },
     ]
 
@@ -219,24 +250,45 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
 
     const dpt = rel.todosIndicadores.find((i) => i.codigo === 'DPT')
     expect(dpt?.status).toBe('calculado')
-    expect(dpt?.valorCalculado).toBe(3.0)
+    expect(dpt?.anos?.[2025].valorCalculado).toBe(1.333)
+    expect(dpt?.anos?.[2026].valorCalculado).toBe(1.333)
+    expect(dpt?.anos?.[2027].valorCalculado).toBe(0.333)
+    expect(dpt?.valorCalculado).toBe(1.0)
   })
 
-  it('calcula SO, PSA, DP4A, ATI, NICT e NDISC corretamente', () => {
+  it('calcula SO, PSA, DP4A, ATI, NICT e NDISC ano a ano com agregação MMA', () => {
     const dadosCompletos: DadosEntradaIndicadores = {
       ...dadosMinimos,
       orientacoes: [
-        { id: 1, status: 'ativo', docente_id: 1, tipo: 'Mestrado' } as any,
-        { id: 2, status: 'ativo', docente_id: 2, tipo: 'Doutorado' } as any,
+        { id: 1, status: 'ativo', docente_id: 1, tipo: 'Mestrado', inicio: '2025-01-01' } as any,
+        { id: 2, status: 'ativo', docente_id: 2, tipo: 'Doutorado', inicio: '2025-01-01' } as any,
       ],
       disciplinas: [
-        { id: 1, docente_id: 1, nivel: 'pos_graduacao', nome: 'Ciência dos Materiais' } as any,
-        { id: 2, docente_id: 2, nivel: 'pos_graduacao', nome: 'Termodinâmica' } as any,
-        { id: 3, docente_id: 1, nivel: 'graduacao', nome: 'Química Geral' } as any,
+        {
+          id: 1,
+          docente_id: 1,
+          nivel: 'pos_graduacao',
+          nome: 'Ciência dos Materiais',
+          ano_semestre: '2025.1',
+        } as any,
+        {
+          id: 2,
+          docente_id: 2,
+          nivel: 'pos_graduacao',
+          nome: 'Termodinâmica',
+          ano_semestre: '2025.2',
+        } as any,
+        {
+          id: 3,
+          docente_id: 1,
+          nivel: 'graduacao',
+          nome: 'Química Geral',
+          ano_semestre: '2025.1',
+        } as any,
       ],
       projetos: [
-        { id: 1, coordenador_id: 1, titulo: 'Projeto A' } as any,
-        { id: 2, coordenador_id: 2, titulo: 'Projeto B' } as any,
+        { id: 1, coordenador_id: 1, titulo: 'Projeto A', inicio: '2025-01-01' } as any,
+        { id: 2, coordenador_id: 2, titulo: 'Projeto B', inicio: '2025-01-01' } as any,
       ],
       projetosParticipantes: [],
       publicacoes: [
@@ -244,49 +296,71 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
         { id: 2, ano: 2026, autores: 'Docente Dois', estrato_qualis: 'A2' } as any,
       ],
       iniciacoesCientificas: [
-        { id: 1, tipo: 'iniciacao_cientifica', docente_orientador_id: 1 } as any,
-        { id: 2, tipo: 'iniciacao_tecnologica', docente_orientador_id: 2 } as any,
+        { id: 1, tipo: 'iniciacao_cientifica', docente_orientador_id: 1, ano: 2025 } as any,
+        { id: 2, tipo: 'iniciacao_tecnologica', docente_orientador_id: 2, ano: 2025 } as any,
       ],
     }
 
     const rel = calcularTodosIndicadores(dadosCompletos)
 
-    // SO: 2 de 4 DP com orientações ativas = 50%
+    // SO em 2025: 2 de 4 DP com orientações ativas = 50%
     const so = rel.todosIndicadores.find((i) => i.codigo === 'SO')
+    expect(so?.anos?.[2025].valorCalculado).toBe(50)
     expect(so?.valorCalculado).toBe(50)
 
-    // ATI: 2 disciplinas de PG / 4 DP = 0.5
+    // ATI em 2025: 2 disciplinas de PG / 4 DP = 0.5
     const ati = rel.todosIndicadores.find((i) => i.codigo === 'ATI')
+    expect(ati?.anos?.[2025].valorCalculado).toBe(0.5)
     expect(ati?.valorCalculado).toBe(0.5)
 
-    // NICT: (1 IC + 1 IT) / 4 DP = 2 / 4 = 0.5
+    // NICT em 2025: (1 IC + 1 IT) / 4 DP = 2 / 4 = 0.5
     const nict = rel.todosIndicadores.find((i) => i.codigo === 'NICT')
+    expect(nict?.anos?.[2025].valorCalculado).toBe(0.5)
     expect(nict?.valorCalculado).toBe(0.5)
 
-    // NDISC: Docente 1 tem graduação. Docentes 2, 3 e 4 não têm => 3 de 4 = 75%
+    // NDISC em 2025: Docente 1 tem graduação. Docentes 2, 3 e 4 não têm => 3 de 4 = 75%
     const ndisc = rel.todosIndicadores.find((i) => i.codigo === 'NDISC')
+    expect(ndisc?.anos?.[2025].valorCalculado).toBe(75)
     expect(ndisc?.valorCalculado).toBe(75)
 
-    // DP4A: Docentes 1 e 2 cumprem as 4 atividades (orientações ativas, PG, projeto, publicações)
-    // 2 de 4 DP = 50%
+    // DP4A em 2025: Docente 1 cumpre as 4 atividades simultâneas em 2025 (orientação, PG, projeto, pub 2025)
+    // 1 de 4 DP = 25%
     const dp4a = rel.todosIndicadores.find((i) => i.codigo === 'DP4A')
-    expect(dp4a?.valorCalculado).toBe(50)
+    expect(dp4a?.anos?.[2025].valorCalculado).toBe(25)
+    expect(dp4a?.valorCalculado).toBe(25)
   })
 
-  it('calcula Patentes (DPPn e DPPi) com pesos 1.0 (licenciada), 0.6 (concedida) e 0.3 (depositada)', () => {
+  it('calcula Patentes (DPPn e DPPi) com pesos e agregação MMA', () => {
     // DP - JDP = 3
-    // Patente Nacional 1: Concedida (0.6)
-    // Patente Nacional 2: Pendente (0.3)
-    // Pontos = 0.9 => DPPn = 0.9 / 3 = 0.3
+    // Patente Nacional 1: Concedida (0.6) em 2025
+    // Patente Nacional 2: Pendente (0.3) em 2026
+    // 2025: 0.6 / 3 = 0.2
+    // 2026: 0.3 / 3 = 0.1
+    // MMA (2025, 2026) = (0.2 + 0.1) / 2 = 0.15
     const patentes: any[] = [
-      { id: 1, titulo: 'Patente BR 1', status: 'Concessão', ambito: 'nacional', inpi: 'BR123' },
-      { id: 2, titulo: 'Patente BR 2', status: 'Pendente', ambito: 'nacional', inpi: 'BR456' },
+      {
+        id: 1,
+        titulo: 'Patente BR 1',
+        status: 'Concessão',
+        ambito: 'nacional',
+        inpi: 'BR123',
+        created_at: '2025-03-01',
+      },
+      {
+        id: 2,
+        titulo: 'Patente BR 2',
+        status: 'Pendente',
+        ambito: 'nacional',
+        inpi: 'BR456',
+        created_at: '2026-05-01',
+      },
       {
         id: 3,
         titulo: 'Patente US 1',
         status: 'Licenciamento',
         ambito: 'internacional',
         inpi: 'US789',
+        created_at: '2025-08-01',
       },
     ]
 
@@ -297,11 +371,14 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
 
     const dppn = rel.todosIndicadores.find((i) => i.codigo === 'DPPn')
     expect(dppn?.status).toBe('calculado')
-    expect(dppn?.valorCalculado).toBe(0.3)
+    expect(dppn?.anos?.[2025].valorCalculado).toBe(0.2)
+    expect(dppn?.anos?.[2026].valorCalculado).toBe(0.1)
+    expect(dppn?.valorCalculado).toBe(0.15)
 
-    // DPPi: 1 licenciada internacional = 1.0 / 3 = 0.333
+    // DPPi: 1 licenciada internacional em 2025 = 1.0 / 3 = 0.333
     const dppi = rel.todosIndicadores.find((i) => i.codigo === 'DPPi')
     expect(dppi?.status).toBe('calculado')
+    expect(dppi?.anos?.[2025].valorCalculado).toBe(0.333)
     expect(dppi?.valorCalculado).toBe(0.333)
   })
 
@@ -327,16 +404,20 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
     expect(termoMediano?.valor).toBe(13.5)
   })
 
-  it('calcula pesos dos estratos A1 a C no DPI e soma por docentes permanentes vinculados', () => {
+  it('calcula pesos dos estratos A1 a C no DPI e soma por docentes permanentes vinculados ano a ano', () => {
     // DP = 4, JDP = 1 => DP - JDP = 3
-    // Publicação 1: A1, vinculada a Docente 1 e Docente 2 (2 DPs) => soma 2 x 1.0 = 2.0
-    // Publicação 2: A2, vinculada a Docente 1 (1 DP) => soma 1 x 0.875 = 0.875
-    // Publicação 3: A3, vinculada a Docente 3 (1 DP) => soma 1 x 0.75 = 0.75
-    // Publicação 4: A4, vinculada a Docente 1 (1 DP) => soma 1 x 0.675 = 0.675
-    // Publicação 5: B1, vinculada a Docente 1 (1 DP) => soma 1 x 0.5 = 0.5 (sat: min(1, 4) = 1)
-    // Publicações 6 a 10: B2, B3, B4, C => pesos 0.0 na fórmula
-    // Numerador = 2.0 + 0.875 + 0.75 + 0.675 + 0.5 = 4.8
-    // DPI = 4.8 / 3 = 1.6
+    // 2025:
+    // Pub 101: A1, vinculada a Doc 1 e Doc 2 (2 DPs) => 2 * 1.0 = 2.0
+    // Pub 102: A2, vinculada a Doc 1 => 1 * 0.875 = 0.875
+    // Numerador 2025 = 2.875 => DPI 2025 = 2.875 / 3 = 0.958
+    // 2026:
+    // Pub 103: A3, vinculada a Doc 3 => 1 * 0.75 = 0.75
+    // Pub 104: A4, vinculada a Doc 1 => 1 * 0.675 = 0.675
+    // Numerador 2026 = 1.425 => DPI 2026 = 1.425 / 3 = 0.475
+    // 2027:
+    // Pub 105: B1, Doc 1 => 1 * 0.5 = 0.5; Pubs 106 a 109: B2-C => 0.0
+    // Numerador 2027 = 0.5 => DPI 2027 = 0.5 / 3 = 0.167
+    // MMA (2025, 2026, 2027) = (0.958 + 0.475 + 0.167) / 3 = 0.533
     const pubs: any[] = [
       { id: 101, ano: 2025, estrato_qualis: 'A1', tipo_producao: 'Artigo em periódico' },
       { id: 102, ano: 2025, estrato_qualis: 'A2', tipo_producao: 'Artigo em periódico' },
@@ -370,13 +451,22 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
 
     const dpi = rel.todosIndicadores.find((i) => i.codigo === 'DPI')
     expect(dpi?.status).toBe('calculado')
-    expect(dpi?.valorCalculado).toBe(1.6)
+    expect(dpi?.anos?.[2025].valorCalculado).toBe(0.958)
+    expect(dpi?.anos?.[2026].valorCalculado).toBe(0.475)
+    expect(dpi?.anos?.[2027].valorCalculado).toBe(0.167)
+    expect(dpi?.valorCalculado).toBe(0.533)
 
-    // DPT: soma por docente vinculado (pub 101 conta 2 vezes; outras 8 contam 1 vez = 10 produções)
-    // DPT = 10 / 3 = 3.333
+    // DPT anual:
+    // 2025: pub 101 (2 DPs) + pub 102 (1 DP) = 3 produções => 3 / 3 = 1.0
+    // 2026: pub 103 (1) + pub 104 (1) = 2 produções => 2 / 3 = 0.667
+    // 2027: 5 pubs = 5 produções => 5 / 3 = 1.667
+    // MMA = (1.0 + 0.667 + 1.667) / 3 = 1.111
     const dpt = rel.todosIndicadores.find((i) => i.codigo === 'DPT')
     expect(dpt?.status).toBe('calculado')
-    expect(dpt?.valorCalculado).toBe(3.333)
+    expect(dpt?.anos?.[2025].valorCalculado).toBe(1.0)
+    expect(dpt?.anos?.[2026].valorCalculado).toBe(0.667)
+    expect(dpt?.anos?.[2027].valorCalculado).toBe(1.667)
+    expect(dpt?.valorCalculado).toBe(1.111)
   })
 
   it('exibe "aguardando insumo" quando publicações não têm estrato Qualis definido, nunca zero', () => {
@@ -410,5 +500,80 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
     expect(dpi?.status).toBe('indefinido')
     expect(dpi?.motivoIndefinido).toContain('aguardando insumo')
     expect(dpi?.valorCalculado).toBeNull()
+  })
+
+  // Novos testes específicos da especificação MMA:
+  it('produção concentrada em 1 ano (10 publicações A1 em 2025, nada em 2026-2028): MMA não zera anos sem insumo', () => {
+    // DP = 4, JDP = 1 => DP - JDP = 3
+    // 10 publicações A1 em 2025 vinculadas ao Docente Um
+    // Pontuação 2025 = 10 * 1.0 = 10.0 => DPI 2025 = 10 / 3 = 3.333
+    // Anos 2026, 2027, 2028: sem publicações cadastradas => aguardando insumo (não entram como 0)
+    // MMA reflete os anos com insumo preenchido = 3.333
+    const pubs1Ano: any[] = Array.from({ length: 10 }, (_, i) => ({
+      id: 300 + i,
+      ano: 2025,
+      autores: 'Docente Um',
+      estrato_qualis: 'A1',
+      tipo_producao: 'Artigo em periódico',
+    }))
+
+    const rel = calcularTodosIndicadores({
+      ...dadosMinimos,
+      publicacoes: pubs1Ano,
+    })
+
+    const dpi = rel.todosIndicadores.find((i) => i.codigo === 'DPI')
+    expect(dpi?.status).toBe('calculado')
+    expect(dpi?.anos?.[2025].status).toBe('calculado')
+    expect(dpi?.anos?.[2025].valorCalculado).toBe(3.333)
+    expect(dpi?.anos?.[2026].status).toBe('indefinido')
+    expect(dpi?.anos?.[2027].status).toBe('indefinido')
+    expect(dpi?.anos?.[2028].status).toBe('indefinido')
+    // Não é dividido por 4 com zeros, é a média dos anos com insumo
+    expect(dpi?.valorCalculado).toBe(3.333)
+    expect(dpi?.mma?.completo).toBe(false)
+    expect(dpi?.mma?.anosConsiderados).toEqual([2025])
+    expect(dpi?.mma?.anosAguardando).toEqual([2026, 2027, 2028])
+  })
+
+  it('quadriênio 100% preenchido fecha MMA completa', () => {
+    // 1 publicação A1 em cada ano: 2025, 2026, 2027, 2028
+    // DP - JDP = 3
+    // Cada ano tem 1 A1 => DPI_ano = 1 / 3 = 0.333
+    // MMA = (0.333 * 4) / 4 = 0.333
+    const pubs4Anos: any[] = [
+      { id: 401, ano: 2025, autores: 'Docente Um', estrato_qualis: 'A1' },
+      { id: 402, ano: 2026, autores: 'Docente Um', estrato_qualis: 'A1' },
+      { id: 403, ano: 2027, autores: 'Docente Um', estrato_qualis: 'A1' },
+      { id: 404, ano: 2028, autores: 'Docente Um', estrato_qualis: 'A1' },
+    ]
+
+    const rel = calcularTodosIndicadores({
+      ...dadosMinimos,
+      publicacoes: pubs4Anos,
+    })
+
+    const dpi = rel.todosIndicadores.find((i) => i.codigo === 'DPI')
+    expect(dpi?.status).toBe('calculado')
+    expect(dpi?.mma?.completo).toBe(true)
+    expect(dpi?.mma?.anosConsiderados).toEqual([2025, 2026, 2027, 2028])
+    expect(dpi?.mma?.anosAguardando).toEqual([])
+    expect(dpi?.valorCalculado).toBe(0.333)
+  })
+
+  it('indicadores de estoque (ADE, H2) não possuem decomposição anual ou MMA', () => {
+    const rel = calcularTodosIndicadores(dadosMinimos)
+
+    const ade = rel.todosIndicadores.find((i) => i.codigo === 'ADE')
+    expect(ade?.metodologia).toBe('estoque')
+    expect(ade?.anos).toBeUndefined()
+    expect(ade?.mma).toBeUndefined()
+    expect(ade?.valorCalculado).toBe(80)
+
+    const h2 = rel.todosIndicadores.find((i) => i.codigo === 'H2')
+    expect(h2?.metodologia).toBe('estoque')
+    expect(h2?.anos).toBeUndefined()
+    expect(h2?.mma).toBeUndefined()
+    expect(h2?.valorCalculado).toBe(4)
   })
 })

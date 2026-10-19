@@ -105,5 +105,6 @@ describe('Página Indicadores', () => {
     expect(html).toContain('Nota Metodológica')
     expect(html).toContain('Exportar CSV')
     expect(html).toContain('Exportar PDF')
+    expect(html).toContain('Ano:')
   })
 })

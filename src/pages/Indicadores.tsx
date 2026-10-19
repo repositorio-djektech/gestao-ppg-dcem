@@ -55,6 +55,7 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
   const [busca, setBusca] = useState('')
   const [filtroQuesito, setFiltroQuesito] = useState<FiltroQuesito>('TODOS')
   const [filtroStatus, setFiltroStatus] = useState<'TODOS' | 'calculado' | 'indefinido'>('TODOS')
+  const [filtroAno, setFiltroAno] = useState<'TODOS' | '2025' | '2026' | '2027' | '2028'>('TODOS')
 
   // Modais de detalhe e nota metodológica
   const [indicadorModal, setIndicadorModal] = useState<ResultadoIndicador | null>(null)
@@ -319,13 +320,30 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-medium text-slate-600 shrink-0">Status:</span>
             <Select value={filtroStatus} onValueChange={(val) => setFiltroStatus(val as any)}>
-              <SelectTrigger className="w-[170px] bg-white h-9 text-xs">
+              <SelectTrigger className="w-[150px] bg-white h-9 text-xs">
                 <SelectValue placeholder="Status do Indicador" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="TODOS">Todos os Status</SelectItem>
                 <SelectItem value="calculado">Calculados</SelectItem>
                 <SelectItem value="indefinido">Aguardando Insumo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Filtro por Ano (Detalhamento Anual) */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-medium text-slate-600 shrink-0">Ano:</span>
+            <Select value={filtroAno} onValueChange={(val) => setFiltroAno(val as any)}>
+              <SelectTrigger className="w-[155px] bg-white h-9 text-xs">
+                <SelectValue placeholder="Ano de análise" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TODOS">Quadriênio (MMA)</SelectItem>
+                <SelectItem value="2025">Ano 2025</SelectItem>
+                <SelectItem value="2026">Ano 2026</SelectItem>
+                <SelectItem value="2027">Ano 2027</SelectItem>
+                <SelectItem value="2028">Ano 2028</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -418,27 +436,152 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
                             {ind.formulaTexto}
                           </div>
 
-                          {/* Valor Calculado ou Aguardando Insumo */}
-                          <div className="p-2.5 rounded-lg border bg-white flex items-center justify-between">
-                            <div className="text-xs font-medium text-slate-600">Resultado:</div>
-                            {ind.status === 'calculado' ? (
-                              <div className="text-xl font-bold text-primary flex items-baseline gap-1">
-                                <span>{ind.valorCalculado}</span>
-                                {ind.unidade && (
-                                  <span className="text-xs font-medium text-slate-500">
-                                    {ind.unidade}
+                          {/* Valor Calculado ou Aguardando Insumo (adaptado ao filtro de ano) */}
+                          {(() => {
+                            const isFiltroAnoEspecifico = filtroAno !== 'TODOS'
+                            const anoNum = isFiltroAnoEspecifico ? Number(filtroAno) : null
+                            const dadoAno = anoNum && ind.anos ? ind.anos[anoNum] : null
+
+                            if (isFiltroAnoEspecifico && ind.metodologia === 'estoque') {
+                              return (
+                                <div className="p-2.5 rounded-lg border bg-slate-50 flex items-center justify-between">
+                                  <div className="text-xs font-medium text-slate-600">
+                                    Resultado (Estoque):
+                                  </div>
+                                  <div className="text-lg font-bold text-primary flex items-baseline gap-1">
+                                    <span>{ind.valorCalculado}</span>
+                                    {ind.unidade && (
+                                      <span className="text-xs font-medium text-slate-500">
+                                        {ind.unidade}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            }
+
+                            if (isFiltroAnoEspecifico && ind.anos) {
+                              const calcNoAno =
+                                dadoAno?.status === 'calculado' && dadoAno.valorCalculado !== null
+                              return (
+                                <div className="p-2.5 rounded-lg border bg-white flex items-center justify-between">
+                                  <div>
+                                    <div className="text-xs font-medium text-slate-600">
+                                      Resultado em {filtroAno}:
+                                    </div>
+                                    <span className="text-[10px] text-slate-400">
+                                      MMA quadriênio: {ind.valorCalculado ?? '—'}
+                                    </span>
+                                  </div>
+                                  {calcNoAno ? (
+                                    <div className="text-xl font-bold text-primary flex items-baseline gap-1">
+                                      <span>{dadoAno.valorCalculado}</span>
+                                      {ind.unidade && (
+                                        <span className="text-xs font-medium text-slate-500">
+                                          {ind.unidade}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <Badge
+                                      variant="outline"
+                                      className="bg-amber-50 text-amber-800 border-amber-300 text-xs py-1"
+                                    >
+                                      Aguardando Insumo
+                                    </Badge>
+                                  )}
+                                </div>
+                              )
+                            }
+
+                            // Visão consolidada (MMA / Estoque)
+                            return (
+                              <div className="p-2.5 rounded-lg border bg-white flex items-center justify-between">
+                                <div className="text-xs font-medium text-slate-600">
+                                  {ind.metodologia === 'estoque'
+                                    ? 'Estoque Período:'
+                                    : 'Resultado MMA:'}
+                                </div>
+                                {ind.status === 'calculado' ? (
+                                  <div className="text-xl font-bold text-primary flex items-baseline gap-1">
+                                    <span>{ind.valorCalculado}</span>
+                                    {ind.unidade && (
+                                      <span className="text-xs font-medium text-slate-500">
+                                        {ind.unidade}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-amber-50 text-amber-800 border-amber-300 text-xs py-1"
+                                  >
+                                    Indefinido
+                                  </Badge>
+                                )}
+                              </div>
+                            )
+                          })()}
+
+                          {/* Decomposição Anual tipo "2025: X · 2026: Y · 2027: Z · 2028: W → MMA: M" */}
+                          {ind.anos && (
+                            <div className="p-2 bg-slate-50 border border-slate-200 rounded text-[11px] leading-relaxed text-slate-700">
+                              <div className="font-semibold text-slate-600 text-[10px] uppercase mb-1 flex items-center justify-between">
+                                <span>Série Anual &amp; MMA:</span>
+                                {ind.mma?.completo ? (
+                                  <span className="text-emerald-700 font-bold text-[9px] bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">
+                                    4/4 Anos
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-800 font-bold text-[9px] bg-amber-50 px-1 py-0.2 rounded border border-amber-200">
+                                    {ind.mma?.anosConsiderados.length || 0}/4 Anos
                                   </span>
                                 )}
                               </div>
-                            ) : (
-                              <Badge
-                                variant="outline"
-                                className="bg-amber-50 text-amber-800 border-amber-300 text-xs py-1"
-                              >
-                                Indefinido
-                              </Badge>
-                            )}
-                          </div>
+                              <div className="font-mono text-[11px] text-slate-800">
+                                {[2025, 2026, 2027, 2028].map((ano, idx) => {
+                                  const d = ind.anos?.[ano]
+                                  const temValor =
+                                    d?.status === 'calculado' && d.valorCalculado !== null
+                                  const isSel = filtroAno === String(ano)
+                                  return (
+                                    <span key={ano}>
+                                      {idx > 0 && <span className="text-slate-400 mx-1">·</span>}
+                                      <span
+                                        className={
+                                          isSel
+                                            ? 'bg-blue-100 text-primary font-bold px-0.5 rounded'
+                                            : ''
+                                        }
+                                      >
+                                        <span className="text-slate-500">{ano}: </span>
+                                        {temValor ? (
+                                          <span className="font-semibold text-slate-900">
+                                            {d.valorCalculado}
+                                          </span>
+                                        ) : (
+                                          <span className="text-amber-700 italic text-[10px]">
+                                            aguardando
+                                          </span>
+                                        )}
+                                      </span>
+                                    </span>
+                                  )
+                                })}
+                                <span className="text-primary font-bold ml-1.5">
+                                  → MMA: {ind.valorCalculado !== null ? ind.valorCalculado : '—'}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Indicador de estoque (sem anualização) */}
+                          {ind.metodologia === 'estoque' && (
+                            <div className="px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[10px] text-slate-600">
+                              <span className="font-semibold text-slate-700">Tipo Estoque:</span>{' '}
+                              Medido no período (sem anualização).
+                            </div>
+                          )}
 
                           {/* Motivo se indefinido */}
                           {ind.status === 'indefinido' && ind.motivoIndefinido && (
@@ -600,11 +743,85 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
                   </div>
                 </div>
 
+                {/* Tabela de Decomposição Anual detalhada se houver */}
+                {indicadorModal.anos && (
+                  <div className="space-y-2">
+                    <h4 className="font-bold uppercase tracking-wider text-slate-700 text-[11px]">
+                      Série Temporal Ano a Ano e MMA:
+                    </h4>
+                    <div className="rounded border border-slate-200 overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-100 text-slate-700 font-semibold border-b">
+                          <tr>
+                            <th className="p-2">Ano</th>
+                            <th className="p-2">Status</th>
+                            <th className="p-2 text-right">Resultado</th>
+                            <th className="p-2">Detalhamento</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {[2025, 2026, 2027, 2028].map((ano) => {
+                            const dadoAno = indicadorModal.anos?.[ano]
+                            const isCalc =
+                              dadoAno?.status === 'calculado' && dadoAno.valorCalculado !== null
+                            const termosStr = dadoAno?.decomposicao
+                              ? dadoAno.decomposicao
+                                  .map((t) => `${t.termo}: ${t.valor}`)
+                                  .join(' · ')
+                              : '—'
+                            return (
+                              <tr key={ano} className="hover:bg-slate-50">
+                                <td className="p-2 font-bold font-mono text-slate-900">{ano}</td>
+                                <td className="p-2">
+                                  {isCalc ? (
+                                    <span className="text-emerald-700 font-semibold">
+                                      Calculado
+                                    </span>
+                                  ) : (
+                                    <span className="text-amber-700 italic">Aguardando insumo</span>
+                                  )}
+                                </td>
+                                <td className="p-2 text-right font-bold text-primary">
+                                  {isCalc
+                                    ? `${dadoAno.valorCalculado}${indicadorModal.unidade || ''}`
+                                    : '—'}
+                                </td>
+                                <td
+                                  className="p-2 text-slate-500 text-[11px] truncate max-w-[200px]"
+                                  title={termosStr}
+                                >
+                                  {termosStr}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                          <tr className="bg-blue-50/50 font-bold">
+                            <td className="p-2 text-primary">MMA Final</td>
+                            <td className="p-2 text-slate-700">
+                              {indicadorModal.mma?.completo
+                                ? '4/4 anos completos'
+                                : `${indicadorModal.mma?.anosConsiderados.length || 0}/4 anos`}
+                            </td>
+                            <td className="p-2 text-right text-primary text-sm">
+                              {indicadorModal.valorCalculado !== null
+                                ? `${indicadorModal.valorCalculado}${indicadorModal.unidade || ''}`
+                                : '—'}
+                            </td>
+                            <td className="p-2 text-xs text-slate-600 font-normal">
+                              {indicadorModal.mma?.regra || ''}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
                 {/* Decomposição dos Termos */}
                 {indicadorModal.decomposicao.length > 0 && (
                   <div className="space-y-2">
                     <h4 className="font-bold uppercase tracking-wider text-slate-700 text-[11px]">
-                      Decomposição Completa dos Termos:
+                      Decomposição Geral dos Termos:
                     </h4>
                     <div className="rounded border border-slate-200 overflow-x-auto">
                       <table className="w-full text-left text-xs">
@@ -648,11 +865,51 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
               Critérios, pesos e regras de negócio implementados na Etapa Q4.
             </DialogDescription>
           </DialogHeader>
-
           <div className="space-y-4 text-xs text-slate-700 py-2 leading-relaxed">
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-900">
               <strong>Base Documental:</strong> Ficha de Avaliação CAPES Engenharias II 2025
-              (DAV/CAPES) e Documento de Área 2025–2028.
+              (DAV/CAPES) e Documento de Área 2025–2028, complementada pelas deliberações de cálculo
+              anual do Programa de Pós-Graduação em Ciência e Engenharia de Materiais (PPG-DCEM).
+            </div>
+
+            <div className="space-y-2 p-3 bg-amber-50/70 border border-amber-200 rounded-lg">
+              <h3 className="font-bold text-amber-950 text-sm">
+                ★ Decisão do Programa: Média das Médias Anuais (MMA) no Quadriênio
+              </h3>
+              <p className="text-amber-900">
+                A Ficha de Avaliação CAPES (Área Engenharias II) define formalmente dois blocos de
+                indicadores:
+              </p>
+              <ul className="list-disc pl-5 space-y-1 text-amber-900">
+                <li>
+                  <strong>
+                    Indicadores &quot;no ano&quot; (SO, PSA, DP4A, ATI, NICT, NDISC, DPD):
+                  </strong>{' '}
+                  calculados ano a ano (2025, 2026, 2027, 2028) e agregados pela média das médias
+                  anuais (MMA) diretamente conforme estipulado pela ficha CAPES.
+                </li>
+                <li>
+                  <strong>
+                    Indicadores de quadriênio (DPI, DPIDE1, DPIDE2, DPI2, DPT, ORI, ATD, DPPn,
+                    DPPi):
+                  </strong>{' '}
+                  embora a ficha de avaliação CAPES os defina como totais acumulados no quadriênio,{' '}
+                  <strong>o PPG-DCEM adotou formalmente a Média das Médias Anuais (MMA)</strong>{' '}
+                  para estes indicadores, permitindo auditoria contínua, detecção precoce de
+                  oscilações na produção/formação e acompanhamento ano a ano.
+                </li>
+                <li>
+                  <strong>Indicadores de estoque (ADE, H2, H médio, H mediano):</strong> mantêm-se
+                  sem anualização, sendo medidos diretamente pelo estado acumulado do período.
+                </li>
+                <li>
+                  <strong>Regra Anti-Zero Fictício para anos sem insumo:</strong> um ano sem insumos
+                  cadastrados permanece como &quot;aguardando insumo&quot; e{' '}
+                  <strong>não entra como zero na média</strong>. A MMA apenas considera anos com
+                  registros preenchidos e sinaliza se o quadriênio está completo (4/4 anos) ou
+                  parcial.
+                </li>
+              </ul>
             </div>
 
             <div className="space-y-2">
@@ -682,7 +939,8 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
               <h3 className="font-bold text-slate-900 text-sm">3. Patentes (DPPn e DPPi)</h3>
               <p>
                 Para patentes nacionais e internacionais, aplica-se a ponderação: Licenciada = 1.0;
-                Concedida = 0.6; Depositada = 0.3, dividida por <code>DP − JDP</code>.
+                Concedida = 0.6; Depositada = 0.3, dividida por <code>DP − JDP</code>, calculada ano
+                a ano e consolidada pela MMA.
               </p>
             </div>
 
@@ -693,8 +951,8 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
               <p>
                 O índice H2 do programa é formalmente definido no Documento de Área como o maior
                 valor H2 tal que existam pelo menos H2 docentes permanentes do programa com índice H
-                maior ou igual a H2. O cálculo inclui também o H médio, H mediano e % DP acima de
-                H2.
+                maior ou igual a H2. O cálculo inclui também o H médio, H mediano e % DP acima de H2
+                (estoque do período).
               </p>
             </div>
 
@@ -708,7 +966,7 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
                 desempenho nulo.
               </p>
             </div>
-          </div>
+          </div>{' '}
         </DialogContent>
       </Dialog>
     </div>

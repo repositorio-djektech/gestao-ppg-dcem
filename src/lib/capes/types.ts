@@ -28,6 +28,17 @@ export interface InsumoStatus {
 
 export type StatusIndicador = 'calculado' | 'indefinido'
 
+export type MetodologiaAgregacao = 'anual_mma' | 'quadrienio_mma' | 'estoque'
+
+export interface ResultadoAnoIndicador {
+  ano: number
+  status: StatusIndicador
+  motivoIndefinido?: string
+  valorCalculado: number | null
+  decomposicao: TermoDecomposicao[]
+  insumos?: InsumoStatus[]
+}
+
 export interface ResultadoIndicador {
   id: string
   codigo: string
@@ -44,6 +55,17 @@ export interface ResultadoIndicador {
   decomposicao: TermoDecomposicao[]
   insumos: InsumoStatus[]
   observacoes?: string
+
+  // Suporte a cálculo anual e MMA (Média das Médias Anuais)
+  metodologia?: MetodologiaAgregacao
+  anos?: Record<number, ResultadoAnoIndicador>
+  mma?: {
+    valor: number | null
+    anosConsiderados: number[]
+    anosAguardando: number[]
+    completo: boolean // true se todos os 4 anos (2025-2028) têm insumo
+    regra: string
+  }
 }
 
 export interface ResumoQuesito {

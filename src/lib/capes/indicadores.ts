@@ -1,19 +1,21 @@
 import { ANO_INICIO, ANO_FIM } from '../reconducao/types'
 import {
   extrairAnoDeData,
-  anoNoPeriodo,
   isMestradoConcluido,
   isDoutoradoConcluido,
   orientacaoNoPeriodo,
+  obterAnoOrientacaoDefesa,
 } from '../reconducao/calculo'
 import { calcularResumoJdpPrograma } from './jdp'
 import type { Docente, Orientacao, Disciplina, Publicacao, Patente } from '@/types/database'
 import type {
   DadosEntradaIndicadores,
   ResultadoIndicador,
+  ResultadoAnoIndicador,
   RelatorioIndicadoresCapes,
   ResumoQuesito,
   InsumoStatus,
+  TermoDecomposicao,
 } from './types'
 
 /**
@@ -42,11 +44,15 @@ function anoPublicacao(pub: Publicacao): number | null {
 }
 
 /**
- * Extrai ano de patente (a partir de created_at ou texto)
+ * Extrai ano de patente (a partir de created_at, observações ou inpi)
  */
 function anoPatente(pat: Patente): number | null {
   if (pat.created_at) {
     const a = extrairAnoDeData(pat.created_at)
+    if (a) return a
+  }
+  if (pat.observacoes) {
+    const a = extrairAnoDeData(pat.observacoes)
     if (a) return a
   }
   return null
@@ -78,6 +84,78 @@ function textoContemNome(texto: string | null | undefined, termos: string[]): bo
 }
 
 /**
+ * Agrega resultados anuais calculando a MMA (Média das Médias Anuais).
+ * Regras prescritivas:
+ * - Anos sem insumo ficam 'indefinido' e NÃO entram como 0 na média.
+ * - A MMA calcula a média aritmética dos anos válidos (com insumo calculado).
+ * - Se nenhum ano tiver insumo, MMA é nula e o indicador fica indefinido.
+ * - completo: true somente se todos os 4 anos (2025..2028) estiverem calculados.
+ */
+function agregarComMMA(
+  anosResultados: Record<number, ResultadoAnoIndicador>,
+  anosQuadrienio: number[],
+  metodologia: 'anual_mma' | 'quadrienio_mma',
+  baseIndicador: Omit<
+    ResultadoIndicador,
+    'status' | 'valorCalculado' | 'anos' | 'mma' | 'metodologia'
+  >,
+): ResultadoIndicador {
+  const anosCalculados = anosQuadrienio.filter((a) => anosResultados[a]?.status === 'calculado')
+  const anosAguardando = anosQuadrienio.filter((a) => anosResultados[a]?.status !== 'calculado')
+
+  const completo = anosCalculados.length === anosQuadrienio.length
+
+  let valorMMA: number | null = null
+  if (anosCalculados.length > 0) {
+    const soma = anosCalculados.reduce((acc, a) => acc + (anosResultados[a].valorCalculado ?? 0), 0)
+    valorMMA = Number((soma / anosCalculados.length).toFixed(3))
+  }
+
+  const regra =
+    anosCalculados.length === 0
+      ? 'Aguardando insumo em todos os anos do quadriênio'
+      : completo
+        ? `Média das 4 médias anuais (MMA 2025–2028: ${anosCalculados.join(', ')})`
+        : `Média parcial dos anos com insumo (${anosCalculados.join(', ')}); aguardando: ${anosAguardando.join(', ')}`
+
+  // Decomposição agregada trazendo a MMA e resumo dos anos
+  const decomposicaoAgregada: TermoDecomposicao[] = [
+    ...baseIndicador.decomposicao,
+    {
+      termo: 'MMA',
+      descricao: completo
+        ? 'Média das 4 médias anuais (2025-2028)'
+        : `Média parcial dos anos com insumo (${anosCalculados.length}/${anosQuadrienio.length} anos)`,
+      valor: valorMMA !== null ? valorMMA : '—',
+    },
+  ]
+
+  const status = valorMMA !== null ? 'calculado' : 'indefinido'
+  const motivoIndefinido =
+    status === 'indefinido'
+      ? baseIndicador.motivoIndefinido ||
+        `aguardando insumos no quadriênio (${anosQuadrienio.join(', ')})`
+      : undefined
+
+  return {
+    ...baseIndicador,
+    status,
+    valorCalculado: valorMMA,
+    motivoIndefinido,
+    metodologia,
+    decomposicao: decomposicaoAgregada,
+    anos: anosResultados,
+    mma: {
+      valor: valorMMA,
+      anosConsiderados: anosCalculados,
+      anosAguardando,
+      completo,
+      regra,
+    },
+  }
+}
+
+/**
  * Motor central de cálculo de indicadores CAPES - Ficha Engenharias II 2025
  * Totalmente puro (sem dependência de I/O ou banco).
  */
@@ -87,6 +165,11 @@ export function calcularTodosIndicadores(
   const anoReferencia = dados.anoReferencia ?? new Date().getFullYear()
   const anoInicio = dados.anoInicio ?? ANO_INICIO
   const anoFim = dados.anoFim ?? ANO_FIM
+
+  const anosQuadrienio: number[] = []
+  for (let a = anoInicio; a <= anoFim; a++) {
+    anosQuadrienio.push(a)
+  }
 
   // 1. Classificação do Corpo Docente
   const { docentes } = dados
@@ -126,7 +209,7 @@ export function calcularTodosIndicadores(
   const pubPertenceADocentePermanente = (
     pub: Publicacao,
   ): { pertence: boolean; docIds: number[] } => {
-    // Via vinculo estruturado
+    // Via vínculo estruturado
     if (mapaPubIdDocentes.has(pub.id)) {
       const docs = Array.from(mapaPubIdDocentes.get(pub.id)!).filter((id) =>
         idsPermanentesSet.has(id),
@@ -184,258 +267,10 @@ export function calcularTodosIndicadores(
   })
 
   // =========================================================================
-  // QUESITO 1: ADE
-  // ADE = DP / (DP + DC + DV)
-  // =========================================================================
-  const adeTotal = DP + DC + DV
-  const adeIndicador: ResultadoIndicador = (() => {
-    const insumos: InsumoStatus[] = [
-      {
-        totalExistente: totalDocentes,
-        descricao: `${totalDocentes} docentes cadastrados no sistema`,
-        atendido: totalDocentes > 0,
-      },
-      {
-        totalExistente: DP,
-        descricao: `${DP} docentes permanentes (DP, inclui ${JDP_validos} JDP válidos)`,
-        atendido: DP > 0,
-      },
-    ]
-
-    if (adeTotal === 0) {
-      return {
-        id: 'ade',
-        codigo: 'ADE',
-        nome: 'Adequação do Corpo Docente (% DP)',
-        quesito: '1',
-        itemFicha: '1.2.1',
-        pesoPercentual: 15,
-        pesoQuesitoGeral: '35%',
-        formulaTexto: 'ADE = DP / (DP + DC + DV)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de docentes cadastrados (DP+DC+DV = 0)',
-        valorCalculado: null,
-        unidade: '%',
-        decomposicao: [
-          { termo: 'DP', descricao: 'Docentes Permanentes (inclui JDP)', valor: DP },
-          { termo: 'DC', descricao: 'Docentes Colaboradores', valor: DC },
-          { termo: 'DV', descricao: 'Docentes Visitantes', valor: DV },
-        ],
-        insumos,
-      }
-    }
-
-    const valor = Number(((DP / adeTotal) * 100).toFixed(2))
-    return {
-      id: 'ade',
-      codigo: 'ADE',
-      nome: 'Adequação do Corpo Docente (% DP)',
-      quesito: '1',
-      itemFicha: '1.2.1',
-      pesoPercentual: 15,
-      pesoQuesitoGeral: '35%',
-      formulaTexto: 'ADE = DP / (DP + DC + DV)',
-      status: 'calculado',
-      valorCalculado: valor,
-      unidade: '%',
-      decomposicao: [
-        { termo: 'DP', descricao: 'Docentes Permanentes', valor: DP },
-        { termo: 'DC', descricao: 'Docentes Colaboradores', valor: DC },
-        { termo: 'DV', descricao: 'Docentes Visitantes', valor: DV },
-        {
-          termo: 'JDP_validos',
-          descricao: 'Jovens Doutores Pesquisadores válidos (integrados no DP)',
-          valor: JDP_validos,
-        },
-      ],
-      insumos,
-      observacoes:
-        'A ficha CAPES exige predomínio de DP no corpo docente (mínimo 50% para conceito MB/B).',
-    }
-  })()
-
-  // =========================================================================
-  // QUESITO 2: FORMAÇÃO E PRODUÇÃO
-  // =========================================================================
-
-  // M e D: dissertações de mestrado e teses de doutorado concluídas no quadriênio
-  const mestradosConcluidos = oriConcluidasNoQuadrienio.filter(isMestradoConcluido).length
-  const doutoradosConcluidos = oriConcluidasNoQuadrienio.filter(isDoutoradoConcluido).length
-  const M = mestradosConcluidos
-  const D = doutoradosConcluidos
-
-  // --- ORI: (M + 3D) / (DP - JDP) ---
-  const oriIndicador: ResultadoIndicador = (() => {
-    const insumos: InsumoStatus[] = [
-      {
-        totalExistente: DP,
-        descricao: `${DP} docentes permanentes (${JDP_validos} JDP válidos)`,
-        atendido: DP > 0,
-      },
-      {
-        totalExistente: M + D,
-        descricao: `${M} mestrados e ${D} doutorados concluídos no quadriênio (${anoInicio}–${anoFim})`,
-        atendido: true,
-      },
-    ]
-
-    if (denominadorEfetivo === 0) {
-      return {
-        id: 'ori',
-        codigo: 'ORI',
-        nome: 'Taxa de Titulações Concluídas por Docente Permanente',
-        quesito: '2',
-        itemFicha: '2.1.1',
-        pesoPercentual: 10,
-        pesoQuesitoGeral: '30%',
-        formulaTexto: 'ORI = (M + 3D) / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de docentes permanentes regulares (DP - JDP = 0)',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [
-          { termo: 'M', descricao: 'Mestrados concluídos no quadriênio', valor: M },
-          { termo: 'D', descricao: 'Doutorados concluídos no quadriênio', valor: D },
-          { termo: 'DP', descricao: 'Docentes Permanentes', valor: DP },
-          {
-            termo: 'JDP',
-            descricao: 'JDP válidos (subtraídos do denominador)',
-            valor: JDP_validos,
-          },
-        ],
-        insumos,
-      }
-    }
-
-    // Se não há nenhuma orientação concluída registrada no quadriênio, apontar aguardando insumo
-    if (M === 0 && D === 0) {
-      return {
-        id: 'ori',
-        codigo: 'ORI',
-        nome: 'Taxa de Titulações Concluídas por Docente Permanente',
-        quesito: '2',
-        itemFicha: '2.1.1',
-        pesoPercentual: 10,
-        pesoQuesitoGeral: '30%',
-        formulaTexto: 'ORI = (M + 3D) / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido:
-          'aguardando insumo de defesas/titulações concluídas no quadriênio (M=0 e D=0 registrados)',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [
-          { termo: 'M', descricao: 'Mestrados concluídos', valor: 0 },
-          { termo: 'D', descricao: 'Doutorados concluídos', valor: 0 },
-          { termo: 'DP - JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
-        ],
-        insumos,
-      }
-    }
-
-    const valor = Number(((M + 3 * D) / denominadorEfetivo).toFixed(3))
-    return {
-      id: 'ori',
-      codigo: 'ORI',
-      nome: 'Taxa de Titulações Concluídas por Docente Permanente',
-      quesito: '2',
-      itemFicha: '2.1.1',
-      pesoPercentual: 10,
-      pesoQuesitoGeral: '30%',
-      formulaTexto: 'ORI = (M + 3D) / (DP − JDP)',
-      status: 'calculado',
-      valorCalculado: valor,
-      unidade: '',
-      decomposicao: [
-        { termo: 'M', descricao: 'Mestrados concluídos', valor: M },
-        { termo: 'D', descricao: 'Doutorados concluídos', valor: D },
-        { termo: 'M + 3D', descricao: 'Numerador ponderado', valor: M + 3 * D },
-        { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
-      ],
-      insumos,
-    }
-  })()
-
-  // --- ATD: artigos A1-A4 com coautoria confirmada discente/egresso / (M + 2D) ---
-  // Publicações A1-A4 no quadriênio com coautoria de discente ou egresso
-  const pubsA1A4ComCoautoria = pubsNoQuadrienio.filter((p) => {
-    const estrato = (p.estrato_qualis || '').toUpperCase()
-    const isA1A4 = ['A1', 'A2', 'A3', 'A4'].includes(estrato)
-    const temCoautoria = mapaCoautoriaPub.get(p.id)?.temDiscenteOuEgresso === true
-    return isA1A4 && temCoautoria
-  })
-
-  const atdIndicador: ResultadoIndicador = (() => {
-    const denAtd = M + 2 * D
-    const insumos: InsumoStatus[] = [
-      {
-        totalExistente: pubsA1A4ComCoautoria.length,
-        descricao: `${pubsA1A4ComCoautoria.length} artigos A1–A4 com coautoria confirmada de discente/egresso`,
-        atendido: pubsA1A4ComCoautoria.length > 0,
-      },
-      {
-        totalExistente: denAtd,
-        descricao: `Denominador M + 2D: ${M} mestrados e ${D} doutorados (${denAtd})`,
-        atendido: denAtd > 0,
-      },
-    ]
-
-    if (denAtd === 0) {
-      return {
-        id: 'atd',
-        codigo: 'ATD',
-        nome: 'Artigos A1–A4 com Discentes/Egressos por Titulação',
-        quesito: '2',
-        itemFicha: '2.1.2',
-        pesoPercentual: 10,
-        pesoQuesitoGeral: '30%',
-        formulaTexto: 'ATD = (artigos A1–A4 c/ coautoria discente/egresso) / (M + 2D)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de titulações concluídas no quadriênio (M + 2D = 0)',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [
-          {
-            termo: 'Artigos A1-A4 c/ coautoria',
-            descricao: 'Publicações qualificadas com discente/egresso',
-            valor: pubsA1A4ComCoautoria.length,
-          },
-          { termo: 'M + 2D', descricao: 'Denominador de titulações', valor: 0 },
-        ],
-        insumos,
-      }
-    }
-
-    const valor = Number((pubsA1A4ComCoautoria.length / denAtd).toFixed(3))
-    return {
-      id: 'atd',
-      codigo: 'ATD',
-      nome: 'Artigos A1–A4 com Discentes/Egressos por Titulação',
-      quesito: '2',
-      itemFicha: '2.1.2',
-      pesoPercentual: 10,
-      pesoQuesitoGeral: '30%',
-      formulaTexto: 'ATD = (artigos A1–A4 c/ coautoria discente/egresso) / (M + 2D)',
-      status: 'calculado',
-      valorCalculado: valor,
-      unidade: '',
-      decomposicao: [
-        {
-          termo: 'Artigos A1-A4 c/ coautoria',
-          descricao: 'Publicações qualificadas com discente/egresso',
-          valor: pubsA1A4ComCoautoria.length,
-        },
-        { termo: 'M', descricao: 'Mestrados concluídos', valor: M },
-        { termo: 'D', descricao: 'Doutorados concluídos', valor: D },
-        { termo: 'M + 2D', descricao: 'Denominador de titulações', valor: denAtd },
-      ],
-      insumos,
-    }
-  })()
-
-  // --- Função auxiliar de contagem de Qualis e pontuação com saturação em B1 ---
+  // HELPER: Pontuação Qualis com saturação em B1
   // DPI / DPIDE1 / DPIDE2 / DPI2
-  // Pesos Ficha CAPES: A1=1.0, A2=0.875, A3=0.75, A4=0.675, B1=0.5 (com saturação min(B1, DP)), B2..C = 0.0
-  // Para indicadores agregados do programa com múltiplos docentes vinculados, soma a pontuação por docente vinculado.
+  // Pesos: A1=1.0, A2=0.875, A3=0.75, A4=0.675, B1=0.5 (sat: min(B1, DP)), B2..C=0.0
+  // =========================================================================
   function calcularPontuacaoQualisComSaturacao(
     publicacoesSubset: Publicacao[],
     somarPorDocentePermanente = false,
@@ -487,1359 +322,10 @@ export function calcularTodosIndicadores(
     return { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador }
   }
 
-  // Identificação de publicações de Docentes Permanentes em periódicos no quadriênio
-  const pubsDpPeriodicosQuadrienio = pubsNoQuadrienio.filter((p) => {
-    // Tipo de produção: periódico
-    const tp = normStr(p.tipo_producao)
-    const isPeriodico = tp === '' || tp === 'artigo em periódico' || Boolean(p.periodico)
-    if (!isPeriodico) return false
-    // Pertence a algum DP
-    return pubPertenceADocentePermanente(p).pertence
-  })
-
-  // Quantidade de publicações com estrato Qualis preenchido
-  const totalPubsComQualis = pubsNoQuadrienio.filter((p) => Boolean(p.estrato_qualis)).length
-
-  // --- DPI (item 2.4.1): Produção dos DPs no quadriênio ---
-  const dpiIndicador: ResultadoIndicador = (() => {
-    const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
-      calcularPontuacaoQualisComSaturacao(pubsDpPeriodicosQuadrienio, true)
-
-    const pubsDpComQualis = pubsDpPeriodicosQuadrienio.filter((p) =>
-      Boolean((p.estrato_qualis || '').trim()),
-    ).length
-
-    const insumos: InsumoStatus[] = [
-      {
-        totalExistente: pubsDpPeriodicosQuadrienio.length,
-        descricao: `${pubsDpPeriodicosQuadrienio.length} publicações de docentes permanentes no quadriênio`,
-        atendido: pubsDpPeriodicosQuadrienio.length > 0,
-      },
-      {
-        totalExistente: pubsDpComQualis,
-        descricao: `${pubsDpComQualis} publicações com estrato Qualis definido no banco`,
-        atendido: pubsDpComQualis > 0,
-      },
-      {
-        totalExistente: denominadorEfetivo,
-        descricao: `Denominador DP − JDP: ${denominadorEfetivo}`,
-        atendido: denominadorEfetivo > 0,
-      },
-    ]
-
-    if (denominadorEfetivo === 0) {
-      return {
-        id: 'dpi',
-        codigo: 'DPI',
-        nome: 'Índice de Produção Docente Ponderada (DPI)',
-        quesito: '2',
-        itemFicha: '2.4.1',
-        pesoPercentual: 6,
-        pesoQuesitoGeral: '25%',
-        formulaTexto: 'DPI = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de docentes permanentes (DP - JDP = 0)',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [
-          { termo: 'A1', descricao: 'Artigos A1', valor: a1 },
-          { termo: 'A2', descricao: 'Artigos A2', valor: a2 },
-          { termo: 'A3', descricao: 'Artigos A3', valor: a3 },
-          { termo: 'A4', descricao: 'Artigos A4', valor: a4 },
-          { termo: 'B1', descricao: 'Artigos B1 brutos (sat: min(B1, DP))', valor: b1Bruto },
-          { termo: 'B2..C', descricao: 'Artigos B2 a C (peso 0)', valor: b2 + b3 + b4 + c },
-        ],
-        insumos,
-      }
-    }
-
-    if (pubsDpPeriodicosQuadrienio.length === 0) {
-      return {
-        id: 'dpi',
-        codigo: 'DPI',
-        nome: 'Índice de Produção Docente Ponderada (DPI)',
-        quesito: '2',
-        itemFicha: '2.4.1',
-        pesoPercentual: 6,
-        pesoQuesitoGeral: '25%',
-        formulaTexto: 'DPI = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de publicações de docentes permanentes no quadriênio',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [
-          { termo: 'A1..A4, B1', descricao: 'Artigos classificados', valor: 0 },
-          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
-        ],
-        insumos,
-      }
-    }
-
-    if (pubsDpComQualis === 0) {
-      return {
-        id: 'dpi',
-        codigo: 'DPI',
-        nome: 'Índice de Produção Docente Ponderada (DPI)',
-        quesito: '2',
-        itemFicha: '2.4.1',
-        pesoPercentual: 6,
-        pesoQuesitoGeral: '25%',
-        formulaTexto: 'DPI = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido:
-          'aguardando insumo de estrato Qualis nas publicações (0 artigos classificados)',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [
-          { termo: 'A1..A4, B1', descricao: 'Artigos classificados', valor: 0 },
-          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
-        ],
-        insumos,
-      }
-    }
-
-    const valor = Number((pontosNumerador / denominadorEfetivo).toFixed(3))
-    return {
-      id: 'dpi',
-      codigo: 'DPI',
-      nome: 'Índice de Produção Docente Ponderada (DPI)',
-      quesito: '2',
-      itemFicha: '2.4.1',
-      pesoPercentual: 6,
-      pesoQuesitoGeral: '25%',
-      formulaTexto: 'DPI = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
-      status: 'calculado',
-      valorCalculado: valor,
-      unidade: '',
-      decomposicao: [
-        {
-          termo: 'A1 (peso 1.0)',
-          descricao: 'Artigos A1 somados por docente permanente',
-          valor: a1,
-        },
-        {
-          termo: 'A2 (peso 0.875)',
-          descricao: 'Artigos A2 somados por docente permanente',
-          valor: a2,
-        },
-        {
-          termo: 'A3 (peso 0.75)',
-          descricao: 'Artigos A3 somados por docente permanente',
-          valor: a3,
-        },
-        {
-          termo: 'A4 (peso 0.675)',
-          descricao: 'Artigos A4 somados por docente permanente',
-          valor: a4,
-        },
-        {
-          termo: 'min(B1, DP) (peso 0.5)',
-          descricao: `Artigos B1 saturados (${b1Bruto} brutos, teto ${DP})`,
-          valor: b1Saturado,
-        },
-        {
-          termo: 'B2..C (peso 0.0)',
-          descricao: `Artigos em estratos sem pontuação (B2=${b2}, B3=${b3}, B4=${b4}, C=${c})`,
-          valor: b2 + b3 + b4 + c,
-        },
-        { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontosNumerador },
-        { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
-      ],
-      insumos,
-      observacoes: 'Aplica saturação min(B1, DP) e pesos Qualis conforme Ficha CAPES.',
-    }
-  })()
-
-  // --- DPT (item 2.4.1): artigos completos (periódicos + anais) + capítulos / (DP − JDP) ---
-  const pubsDpTotais = pubsNoQuadrienio.filter((p) => pubPertenceADocentePermanente(p).pertence)
-  const dptIndicador: ResultadoIndicador = (() => {
-    let periodicos = 0
-    let anais = 0
-    let capitulos = 0
-
-    for (const p of pubsDpTotais) {
-      const docsVinculadosQtd = Math.max(1, pubPertenceADocentePermanente(p).docIds.length)
-      const tp = normStr(p.tipo_producao)
-      if (tp === 'artigo em periódico' || tp === '' || Boolean(p.periodico)) {
-        periodicos += docsVinculadosQtd
-      } else if (tp === 'trabalho em anais') {
-        anais += docsVinculadosQtd
-      } else if (tp === 'capítulo') {
-        capitulos += docsVinculadosQtd
-      } else {
-        periodicos += docsVinculadosQtd
-      }
-    }
-
-    const totalItens = periodicos + anais + capitulos
-    const insumos: InsumoStatus[] = [
-      {
-        totalExistente: totalItens,
-        descricao: `${totalItens} produções completas identificadas (${periodicos} periódicos, ${anais} anais, ${capitulos} capítulos)`,
-        atendido: totalItens > 0,
-      },
-      {
-        totalExistente: denominadorEfetivo,
-        descricao: `Denominador DP − JDP: ${denominadorEfetivo}`,
-        atendido: denominadorEfetivo > 0,
-      },
-    ]
-
-    if (denominadorEfetivo === 0) {
-      return {
-        id: 'dpt',
-        codigo: 'DPT',
-        nome: 'Índice de Produção Total dos Docentes (DPT)',
-        quesito: '2',
-        itemFicha: '2.4.1',
-        pesoPercentual: 2,
-        pesoQuesitoGeral: '25%',
-        formulaTexto: 'DPT = (artigos completos + anais + capítulos) / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de docentes permanentes (DP - JDP = 0)',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [
-          { termo: 'Periódicos', descricao: 'Artigos em periódicos', valor: periodicos },
-          { termo: 'Anais', descricao: 'Trabalhos em anais', valor: anais },
-          { termo: 'Capítulos', descricao: 'Capítulos de livros', valor: capitulos },
-        ],
-        insumos,
-      }
-    }
-
-    if (totalItens === 0) {
-      return {
-        id: 'dpt',
-        codigo: 'DPT',
-        nome: 'Índice de Produção Total dos Docentes (DPT)',
-        quesito: '2',
-        itemFicha: '2.4.1',
-        pesoPercentual: 2,
-        pesoQuesitoGeral: '25%',
-        formulaTexto: 'DPT = (artigos completos + anais + capítulos) / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido:
-          'aguardando insumo de publicações registradas vinculadas a docentes permanentes',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [
-          { termo: 'Produções totais', descricao: 'Itens no período', valor: 0 },
-          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
-        ],
-        insumos,
-      }
-    }
-
-    const valor = Number((totalItens / denominadorEfetivo).toFixed(3))
-    return {
-      id: 'dpt',
-      codigo: 'DPT',
-      nome: 'Índice de Produção Total dos Docentes (DPT)',
-      quesito: '2',
-      itemFicha: '2.4.1',
-      pesoPercentual: 2,
-      pesoQuesitoGeral: '25%',
-      formulaTexto: 'DPT = (artigos completos + anais + capítulos) / (DP − JDP)',
-      status: 'calculado',
-      valorCalculado: valor,
-      unidade: '',
-      decomposicao: [
-        { termo: 'Periódicos', descricao: 'Artigos em periódicos', valor: periodicos },
-        { termo: 'Anais', descricao: 'Trabalhos em anais', valor: anais },
-        { termo: 'Capítulos', descricao: 'Capítulos de livros', valor: capitulos },
-        { termo: 'Total', descricao: 'Soma de produções', valor: totalItens },
-        { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
-      ],
-      insumos,
-    }
-  })()
-
-  // --- DPIDE1 (item 2.2.1): fórmula do DPI apenas com coautoria discente/egresso ---
-  const pubsComCoautoria = pubsNoQuadrienio.filter(
-    (p) => mapaCoautoriaPub.get(p.id)?.temDiscenteOuEgresso === true,
-  )
-  const dpide1Indicador: ResultadoIndicador = (() => {
-    const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
-      calcularPontuacaoQualisComSaturacao(pubsComCoautoria, true)
-
-    const pubsCoautoriaComQualis = pubsComCoautoria.filter((p) =>
-      Boolean((p.estrato_qualis || '').trim()),
-    ).length
-
-    const insumos: InsumoStatus[] = [
-      {
-        totalExistente: pubsComCoautoria.length,
-        descricao: `${pubsComCoautoria.length} publicações com coautoria confirmada de discente/egresso`,
-        atendido: pubsComCoautoria.length > 0,
-      },
-      {
-        totalExistente: pubsCoautoriaComQualis,
-        descricao: `${pubsCoautoriaComQualis} publicações com coautoria e estrato Qualis definido`,
-        atendido: pubsCoautoriaComQualis > 0,
-      },
-      {
-        totalExistente: denominadorEfetivo,
-        descricao: `Denominador DP − JDP: ${denominadorEfetivo}`,
-        atendido: denominadorEfetivo > 0,
-      },
-    ]
-
-    if (denominadorEfetivo === 0) {
-      return {
-        id: 'dpide1',
-        codigo: 'DPIDE1',
-        nome: 'DPI com Coautoria de Discentes e Egressos (Nível 1)',
-        quesito: '2',
-        itemFicha: '2.2.1',
-        pesoPercentual: 10,
-        pesoQuesitoGeral: '25%',
-        formulaTexto:
-          'DPIDE1 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de docentes permanentes (DP - JDP = 0)',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [],
-        insumos,
-      }
-    }
-
-    if (pubsComCoautoria.length === 0) {
-      return {
-        id: 'dpide1',
-        codigo: 'DPIDE1',
-        nome: 'DPI com Coautoria de Discentes e Egressos (Nível 1)',
-        quesito: '2',
-        itemFicha: '2.2.1',
-        pesoPercentual: 10,
-        pesoQuesitoGeral: '25%',
-        formulaTexto:
-          'DPIDE1 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando confirmação de coautorias com discentes/egressos no sistema',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [
-          {
-            termo: 'Coautorias confirmadas',
-            descricao: 'Vínculos discente/egresso em publicações',
-            valor: 0,
-          },
-          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
-        ],
-        insumos,
-      }
-    }
-
-    if (pubsCoautoriaComQualis === 0) {
-      return {
-        id: 'dpide1',
-        codigo: 'DPIDE1',
-        nome: 'DPI com Coautoria de Discentes e Egressos (Nível 1)',
-        quesito: '2',
-        itemFicha: '2.2.1',
-        pesoPercentual: 10,
-        pesoQuesitoGeral: '25%',
-        formulaTexto:
-          'DPIDE1 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido:
-          'aguardando insumo de estrato Qualis nas publicações com coautoria discente/egresso',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [
-          {
-            termo: 'Coautorias c/ Qualis',
-            descricao: 'Publicações com coautoria e estrato atribuído',
-            valor: 0,
-          },
-          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
-        ],
-        insumos,
-      }
-    }
-
-    const valor = Number((pontosNumerador / denominadorEfetivo).toFixed(3))
-    return {
-      id: 'dpide1',
-      codigo: 'DPIDE1',
-      nome: 'DPI com Coautoria de Discentes e Egressos (Nível 1)',
-      quesito: '2',
-      itemFicha: '2.2.1',
-      pesoPercentual: 10,
-      pesoQuesitoGeral: '25%',
-      formulaTexto: 'DPIDE1 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
-      status: 'calculado',
-      valorCalculado: valor,
-      unidade: '',
-      decomposicao: [
-        { termo: 'A1', descricao: 'Artigos A1 c/ discente somados por docente', valor: a1 },
-        { termo: 'A2', descricao: 'Artigos A2 c/ discente somados por docente', valor: a2 },
-        { termo: 'A3', descricao: 'Artigos A3 c/ discente somados por docente', valor: a3 },
-        { termo: 'A4', descricao: 'Artigos A4 c/ discente somados por docente', valor: a4 },
-        { termo: 'min(B1, DP)', descricao: `B1 saturado (${b1Bruto} brutos)`, valor: b1Saturado },
-        { termo: 'B2..C', descricao: `Artigos B2 a C (peso 0)`, valor: b2 + b3 + b4 + c },
-        { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontosNumerador },
-        { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
-      ],
-      insumos,
-    }
-  })()
-
-  // --- DPIDE2 (item 2.2.2): fórmula do DPI apenas com coautoria de discentes do Nível 2 ---
-  const pubsNivel2ComCoautoria = pubsNoQuadrienio.filter((p) => {
-    const isNivel2 = p.indicacao_nivel === 2
-    const temCoautoria = mapaCoautoriaPub.get(p.id)?.temDiscenteOuEgresso === true
-    return isNivel2 && temCoautoria
-  })
-
-  const dpide2Indicador: ResultadoIndicador = (() => {
-    const totalNivel2 = pubsNoQuadrienio.filter((p) => p.indicacao_nivel === 2).length
-    const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
-      calcularPontuacaoQualisComSaturacao(pubsNivel2ComCoautoria, true)
-
-    const pubsN2CoautComQualis = pubsNivel2ComCoautoria.filter((p) =>
-      Boolean((p.estrato_qualis || '').trim()),
-    ).length
-
-    const insumos: InsumoStatus[] = [
-      {
-        totalExistente: totalNivel2,
-        descricao: `${totalNivel2} publicações indicadas no Nível 2 pelo programa`,
-        atendido: totalNivel2 > 0,
-      },
-      {
-        totalExistente: pubsNivel2ComCoautoria.length,
-        descricao: `${pubsNivel2ComCoautoria.length} publicações Nível 2 com coautoria de discente/egresso`,
-        atendido: pubsNivel2ComCoautoria.length > 0,
-      },
-      {
-        totalExistente: pubsN2CoautComQualis,
-        descricao: `${pubsN2CoautComQualis} publicações Nível 2 com coautoria e Qualis definido`,
-        atendido: pubsN2CoautComQualis > 0,
-      },
-      {
-        totalExistente: denominadorEfetivo,
-        descricao: `Denominador DP − JDP: ${denominadorEfetivo}`,
-        atendido: denominadorEfetivo > 0,
-      },
-    ]
-
-    if (totalNivel2 === 0) {
-      return {
-        id: 'dpide2',
-        codigo: 'DPIDE2',
-        nome: 'DPI de Publicações Melhores com Discentes (Nível 2)',
-        quesito: '2',
-        itemFicha: '2.2.2',
-        pesoPercentual: 12,
-        pesoQuesitoGeral: '25%',
-        formulaTexto:
-          'DPIDE2 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido:
-          'aguardando indicação de publicações Nível 2 pelo programa (indicacao_nivel=2)',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [{ termo: 'Publicações Nível 2', descricao: 'Total indicadas', valor: 0 }],
-        insumos,
-      }
-    }
-
-    if (pubsNivel2ComCoautoria.length === 0) {
-      return {
-        id: 'dpide2',
-        codigo: 'DPIDE2',
-        nome: 'DPI de Publicações Melhores com Discentes (Nível 2)',
-        quesito: '2',
-        itemFicha: '2.2.2',
-        pesoPercentual: 12,
-        pesoQuesitoGeral: '25%',
-        formulaTexto:
-          'DPIDE2 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido:
-          'aguardando confirmação de coautoria em publicações Nível 2 pelo programa',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [
-          {
-            termo: 'Publicações N2 c/ Coautoria',
-            descricao: 'Total com discente/egresso',
-            valor: 0,
-          },
-        ],
-        insumos,
-      }
-    }
-
-    if (pubsN2CoautComQualis === 0) {
-      return {
-        id: 'dpide2',
-        codigo: 'DPIDE2',
-        nome: 'DPI de Publicações Melhores com Discentes (Nível 2)',
-        quesito: '2',
-        itemFicha: '2.2.2',
-        pesoPercentual: 12,
-        pesoQuesitoGeral: '25%',
-        formulaTexto:
-          'DPIDE2 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido:
-          'aguardando insumo de estrato Qualis nas publicações Nível 2 com coautoria',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [
-          { termo: 'Publicações N2 c/ Qualis', descricao: 'Classificadas no Qualis', valor: 0 },
-        ],
-        insumos,
-      }
-    }
-
-    if (denominadorEfetivo === 0) {
-      return {
-        id: 'dpide2',
-        codigo: 'DPIDE2',
-        nome: 'DPI de Publicações Melhores com Discentes (Nível 2)',
-        quesito: '2',
-        itemFicha: '2.2.2',
-        pesoPercentual: 12,
-        pesoQuesitoGeral: '25%',
-        formulaTexto:
-          'DPIDE2 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de docentes permanentes regulares (DP - JDP = 0)',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [],
-        insumos,
-      }
-    }
-
-    const valor = Number((pontosNumerador / denominadorEfetivo).toFixed(3))
-    return {
-      id: 'dpide2',
-      codigo: 'DPIDE2',
-      nome: 'DPI de Publicações Melhores com Discentes (Nível 2)',
-      quesito: '2',
-      itemFicha: '2.2.2',
-      pesoPercentual: 12,
-      pesoQuesitoGeral: '25%',
-      formulaTexto: 'DPIDE2 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
-      status: 'calculado',
-      valorCalculado: valor,
-      unidade: '',
-      decomposicao: [
-        { termo: 'A1 N2', descricao: 'Artigos A1 no Nível 2 somados por docente', valor: a1 },
-        { termo: 'A2 N2', descricao: 'Artigos A2 no Nível 2 somados por docente', valor: a2 },
-        { termo: 'A3 N2', descricao: 'Artigos A3 no Nível 2 somados por docente', valor: a3 },
-        { termo: 'A4 N2', descricao: 'Artigos A4 no Nível 2 somados por docente', valor: a4 },
-        {
-          termo: 'min(B1, DP)',
-          descricao: `B1 N2 saturado (${b1Bruto} brutos)`,
-          valor: b1Saturado,
-        },
-        { termo: 'B2..C', descricao: `Artigos B2 a C Nível 2 (peso 0)`, valor: b2 + b3 + b4 + c },
-        { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontosNumerador },
-        { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
-      ],
-      insumos,
-    }
-  })()
-
-  // --- DPI2 (item 2.4.3): todas as publicações Nível 2 dos DPs ---
-  const pubsNivel2Geral = pubsNoQuadrienio.filter((p) => p.indicacao_nivel === 2)
-  const dpi2Indicador: ResultadoIndicador = (() => {
-    const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
-      calcularPontuacaoQualisComSaturacao(pubsNivel2Geral, true)
-
-    const pubsN2ComQualis = pubsNivel2Geral.filter((p) =>
-      Boolean((p.estrato_qualis || '').trim()),
-    ).length
-
-    const insumos: InsumoStatus[] = [
-      {
-        totalExistente: pubsNivel2Geral.length,
-        descricao: `${pubsNivel2Geral.length} publicações Nível 2 indicadas pelo programa`,
-        atendido: pubsNivel2Geral.length > 0,
-      },
-      {
-        totalExistente: pubsN2ComQualis,
-        descricao: `${pubsN2ComQualis} publicações Nível 2 com estrato Qualis definido`,
-        atendido: pubsN2ComQualis > 0,
-      },
-      {
-        totalExistente: denominadorEfetivo,
-        descricao: `Denominador DP − JDP: ${denominadorEfetivo}`,
-        atendido: denominadorEfetivo > 0,
-      },
-    ]
-
-    if (pubsNivel2Geral.length === 0) {
-      return {
-        id: 'dpi2',
-        codigo: 'DPI2',
-        nome: 'DPI das Melhores Publicações do Programa (Nível 2)',
-        quesito: '2',
-        itemFicha: '2.4.3',
-        pesoPercentual: 6,
-        pesoQuesitoGeral: '25%',
-        formulaTexto: 'DPI2 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando indicação de publicações Nível 2 pelo programa',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [],
-        insumos,
-      }
-    }
-
-    if (pubsN2ComQualis === 0) {
-      return {
-        id: 'dpi2',
-        codigo: 'DPI2',
-        nome: 'DPI das Melhores Publicações do Programa (Nível 2)',
-        quesito: '2',
-        itemFicha: '2.4.3',
-        pesoPercentual: 6,
-        pesoQuesitoGeral: '25%',
-        formulaTexto: 'DPI2 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido:
-          'aguardando insumo de estrato Qualis nas publicações Nível 2 indicadas pelo programa',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [],
-        insumos,
-      }
-    }
-
-    if (denominadorEfetivo === 0) {
-      return {
-        id: 'dpi2',
-        codigo: 'DPI2',
-        nome: 'DPI das Melhores Publicações do Programa (Nível 2)',
-        quesito: '2',
-        itemFicha: '2.4.3',
-        pesoPercentual: 6,
-        pesoQuesitoGeral: '25%',
-        formulaTexto: 'DPI2 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de docentes permanentes regulares (DP - JDP = 0)',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [],
-        insumos,
-      }
-    }
-
-    const valor = Number((pontosNumerador / denominadorEfetivo).toFixed(3))
-    return {
-      id: 'dpi2',
-      codigo: 'DPI2',
-      nome: 'DPI das Melhores Publicações do Programa (Nível 2)',
-      quesito: '2',
-      itemFicha: '2.4.3',
-      pesoPercentual: 6,
-      pesoQuesitoGeral: '25%',
-      formulaTexto: 'DPI2 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
-      status: 'calculado',
-      valorCalculado: valor,
-      unidade: '',
-      decomposicao: [
-        { termo: 'A1 N2', descricao: 'Artigos A1 no Nível 2 somados por docente', valor: a1 },
-        { termo: 'A2 N2', descricao: 'Artigos A2 no Nível 2 somados por docente', valor: a2 },
-        { termo: 'A3 N2', descricao: 'Artigos A3 no Nível 2 somados por docente', valor: a3 },
-        { termo: 'A4 N2', descricao: 'Artigos A4 no Nível 2 somados por docente', valor: a4 },
-        {
-          termo: 'min(B1, DP)',
-          descricao: `B1 N2 saturado (${b1Bruto} brutos)`,
-          valor: b1Saturado,
-        },
-        { termo: 'B2..C', descricao: `Artigos B2 a C Nível 2 (peso 0)`, valor: b2 + b3 + b4 + c },
-        { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontosNumerador },
-        { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
-      ],
-      insumos,
-    }
-  })()
-
-  // --- DPD (item 2.4.2): % DP com publicações A1 até A4 no ano/período ---
-  const dpdIndicador: ResultadoIndicador = (() => {
-    // Contar docentes permanentes que possuem ao menos 1 publicação A1-A4 no quadriênio
-    const dpComPubsA1A4 = new Set<number>()
-
-    for (const pub of pubsNoQuadrienio) {
-      const e = (pub.estrato_qualis || '').toUpperCase().trim()
-      if (['A1', 'A2', 'A3', 'A4'].includes(e)) {
-        const info = pubPertenceADocentePermanente(pub)
-        if (info.pertence) {
-          for (const docId of info.docIds) {
-            dpComPubsA1A4.add(docId)
-          }
-        }
-      }
-    }
-
-    const totalComA1A4 = dpComPubsA1A4.size
-    const insumos: InsumoStatus[] = [
-      {
-        totalEsperado: DP,
-        totalExistente: totalComA1A4,
-        descricao: `${totalComA1A4} de ${DP} docentes permanentes com publicação A1–A4 vinculada`,
-        atendido: totalComA1A4 > 0,
-      },
-    ]
-
-    if (DP === 0) {
-      return {
-        id: 'dpd',
-        codigo: 'DPD',
-        nome: 'Distribuição de Publicações Qualificadas no Corpo Docente',
-        quesito: '2',
-        itemFicha: '2.4.2',
-        pesoPercentual: 3,
-        pesoQuesitoGeral: '25%',
-        formulaTexto: 'DPD = (% dos DP com publicações A1–A4)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de docentes permanentes cadastrados',
-        valorCalculado: null,
-        unidade: '%',
-        decomposicao: [
-          { termo: 'DP com A1–A4', descricao: 'Docentes com artigos A1–A4', valor: 0 },
-          { termo: 'DP Total', descricao: 'Total de permanentes (inclui JDP)', valor: 0 },
-        ],
-        insumos,
-      }
-    }
-
-    const valor = Number(((totalComA1A4 / DP) * 100).toFixed(2))
-    return {
-      id: 'dpd',
-      codigo: 'DPD',
-      nome: 'Distribuição de Publicações Qualificadas no Corpo Docente',
-      quesito: '2',
-      itemFicha: '2.4.2',
-      pesoPercentual: 3,
-      pesoQuesitoGeral: '25%',
-      formulaTexto: 'DPD = (% dos DP com publicações A1–A4)',
-      status: 'calculado',
-      valorCalculado: valor,
-      unidade: '%',
-      decomposicao: [
-        { termo: 'DP com A1–A4', descricao: 'Docentes com artigos A1–A4', valor: totalComA1A4 },
-        { termo: 'DP Total', descricao: 'Total de permanentes (inclui JDP)', valor: DP },
-      ],
-      insumos,
-    }
-  })()
-
-  // --- SO (item 2.5.1): % DP que tem orientações ativas no programa ---
-  const soIndicador: ResultadoIndicador = (() => {
-    // Orientações com status 'ativo' vinculadas a DP
-    const idsDpComOriAtiva = new Set<number>()
-    for (const ori of dados.orientacoes) {
-      if (
-        normStr(ori.status) === 'ativo' &&
-        ori.docente_id &&
-        idsPermanentesSet.has(ori.docente_id)
-      ) {
-        idsDpComOriAtiva.add(ori.docente_id)
-      }
-    }
-
-    const qtd = idsDpComOriAtiva.size
-    const insumos: InsumoStatus[] = [
-      {
-        totalEsperado: DP,
-        totalExistente: qtd,
-        descricao: `${qtd} de ${DP} docentes permanentes com orientações ativas no sistema`,
-        atendido: qtd > 0,
-      },
-    ]
-
-    if (DP === 0) {
-      return {
-        id: 'so',
-        codigo: 'SO',
-        nome: 'Distribuição de Orientações Ativas (% DP com orientações)',
-        quesito: '2',
-        itemFicha: '2.5.1',
-        pesoPercentual: 2,
-        pesoQuesitoGeral: '10%',
-        formulaTexto: 'SO = (% DP com orientações ativas no ano)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de docentes permanentes cadastrados',
-        valorCalculado: null,
-        unidade: '%',
-        decomposicao: [],
-        insumos,
-      }
-    }
-
-    const valor = Number(((qtd / DP) * 100).toFixed(2))
-    return {
-      id: 'so',
-      codigo: 'SO',
-      nome: 'Distribuição de Orientações Ativas (% DP com orientações)',
-      quesito: '2',
-      itemFicha: '2.5.1',
-      pesoPercentual: 2,
-      pesoQuesitoGeral: '10%',
-      formulaTexto: 'SO = (% DP com orientações ativas no ano)',
-      status: 'calculado',
-      valorCalculado: valor,
-      unidade: '%',
-      decomposicao: [
-        {
-          termo: 'DP com orientações ativas',
-          descricao: 'Permanentes orientando discentes',
-          valor: qtd,
-        },
-        { termo: 'DP Total', descricao: 'Total de permanentes', valor: DP },
-      ],
-      insumos,
-    }
-  })()
-
-  // --- PSA (item 2.5.2): % DP SEM titulações M ou D no ano (exclui JDP) ---
-  const psaIndicador: ResultadoIndicador = (() => {
-    // Docentes permanentes REGULARES (excluindo JDP válidos)
-    const permanentesRegulares = permanentes.filter(
-      (d) => !resumoJdp.jdpValidos.some((j) => j.id === d.id),
-    )
-    const totalRegulares = permanentesRegulares.length
-
-    // Docentes regulares com titulação no quadriênio
-    const docsComTitulacao = new Set<number>()
-    for (const ori of oriConcluidasNoQuadrienio) {
-      if (isMestradoConcluido(ori) || isDoutoradoConcluido(ori)) {
-        if (ori.docente_id) docsComTitulacao.add(ori.docente_id)
-      }
-    }
-
-    const docsRegularesSemTitulacao = permanentesRegulares.filter(
-      (d) => !docsComTitulacao.has(d.id),
-    ).length
-
-    const insumos: InsumoStatus[] = [
-      {
-        totalEsperado: totalRegulares,
-        totalExistente: docsRegularesSemTitulacao,
-        descricao: `${docsRegularesSemTitulacao} de ${totalRegulares} DP regulares sem titulação concluída no período`,
-        atendido: true,
-      },
-    ]
-
-    if (totalRegulares === 0) {
-      return {
-        id: 'psa',
-        codigo: 'PSA',
-        nome: 'Percentual de DP Sem Titulações (% DP sem defesas M/D)',
-        quesito: '2',
-        itemFicha: '2.5.2',
-        pesoPercentual: 2,
-        pesoQuesitoGeral: '10%',
-        formulaTexto: 'PSA = (% DP sem titulações M ou D no período, exclui JDP)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de docentes permanentes regulares cadastrados',
-        valorCalculado: null,
-        unidade: '%',
-        decomposicao: [],
-        insumos,
-      }
-    }
-
-    // Se não há nenhuma defesa concluída registrada no banco para ninguém
-    if (M === 0 && D === 0) {
-      return {
-        id: 'psa',
-        codigo: 'PSA',
-        nome: 'Percentual de DP Sem Titulações (% DP sem defesas M/D)',
-        quesito: '2',
-        itemFicha: '2.5.2',
-        pesoPercentual: 2,
-        pesoQuesitoGeral: '10%',
-        formulaTexto: 'PSA = (% DP sem titulações M ou D no período, exclui JDP)',
-        status: 'indefinido',
-        motivoIndefinido:
-          'aguardando insumo de defesas concluídas registradas no sistema (M=0 e D=0 no banco)',
-        valorCalculado: null,
-        unidade: '%',
-        decomposicao: [
-          {
-            termo: 'DP sem defesas',
-            descricao: 'Permanentes regulares sem conclusão',
-            valor: docsRegularesSemTitulacao,
-          },
-          { termo: 'DP regulares', descricao: 'Permanentes excluindo JDP', valor: totalRegulares },
-        ],
-        insumos,
-      }
-    }
-
-    const valor = Number(((docsRegularesSemTitulacao / totalRegulares) * 100).toFixed(2))
-    return {
-      id: 'psa',
-      codigo: 'PSA',
-      nome: 'Percentual de DP Sem Titulações (% DP sem defesas M/D)',
-      quesito: '2',
-      itemFicha: '2.5.2',
-      pesoPercentual: 2,
-      pesoQuesitoGeral: '10%',
-      formulaTexto: 'PSA = (% DP sem titulações M ou D no período, exclui JDP)',
-      status: 'calculado',
-      valorCalculado: valor,
-      unidade: '%',
-      decomposicao: [
-        {
-          termo: 'DP sem defesas',
-          descricao: 'Docentes regulares sem titulações',
-          valor: docsRegularesSemTitulacao,
-        },
-        {
-          termo: 'DP regulares',
-          descricao: 'Docentes permanentes regulares',
-          valor: totalRegulares,
-        },
-        {
-          termo: 'JDP excluídos',
-          descricao: 'Jovens Doutores excluídos desta métrica',
-          valor: JDP_validos,
-        },
-      ],
-      insumos,
-    }
-  })()
-
-  // --- DP4A (item 2.5.3): % DP com as 4 atividades ---
-  // (1: orientações ativas + 2: aulas PG + 3: projetos pesquisa + 4: publicações em periódicos)
-  const dp4aIndicador: ResultadoIndicador = (() => {
-    // 1. Docentes com orientações ativas
-    const docsComOriAtiva = new Set<number>()
-    for (const o of dados.orientacoes) {
-      if (normStr(o.status) === 'ativo' && o.docente_id) {
-        docsComOriAtiva.add(o.docente_id)
-      }
-    }
-
-    // 2. Docentes com aulas de PG (disciplinas nível 'pos_graduacao' ou sem nível como pos)
-    const docsComAulasPg = new Set<number>()
-    for (const d of dados.disciplinas) {
-      const niv = normStr(d.nivel)
-      if (d.docente_id && (niv === 'pos_graduacao' || niv === '')) {
-        docsComAulasPg.add(d.docente_id)
-      }
-    }
-
-    // 3. Docentes com projetos de pesquisa (coordenador ou participante)
-    const docsComProjetos = new Set<number>()
-    for (const p of dados.projetos) {
-      if (p.coordenador_id) docsComProjetos.add(p.coordenador_id)
-    }
-    for (const part of dados.projetosParticipantes) {
-      if (part.docente_id) docsComProjetos.add(part.docente_id)
-    }
-
-    // 4. Docentes com publicações em periódicos
-    const docsComPublicacoes = new Set<number>()
-    for (const pub of pubsNoQuadrienio) {
-      const info = pubPertenceADocentePermanente(pub)
-      if (info.pertence) {
-        for (const docId of info.docIds) {
-          docsComPublicacoes.add(docId)
-        }
-      }
-    }
-
-    let dpCom4Atividades = 0
-    for (const doc of permanentes) {
-      const tem1 = docsComOriAtiva.has(doc.id)
-      const tem2 = docsComAulasPg.has(doc.id)
-      const tem3 = docsComProjetos.has(doc.id)
-      const tem4 = docsComPublicacoes.has(doc.id)
-      if (tem1 && tem2 && tem3 && tem4) {
-        dpCom4Atividades++
-      }
-    }
-
-    const insumos: InsumoStatus[] = [
-      {
-        totalEsperado: DP,
-        totalExistente: dpCom4Atividades,
-        descricao: `${dpCom4Atividades} de ${DP} permanentes com as 4 atividades simultâneas`,
-        atendido: dpCom4Atividades > 0,
-      },
-      {
-        totalExistente: docsComOriAtiva.size,
-        descricao: `${docsComOriAtiva.size} docentes com orientações ativas`,
-        atendido: docsComOriAtiva.size > 0,
-      },
-      {
-        totalExistente: docsComAulasPg.size,
-        descricao: `${docsComAulasPg.size} docentes com disciplinas de pós`,
-        atendido: docsComAulasPg.size > 0,
-      },
-      {
-        totalExistente: docsComProjetos.size,
-        descricao: `${docsComProjetos.size} docentes com projetos de pesquisa`,
-        atendido: docsComProjetos.size > 0,
-      },
-      {
-        totalExistente: docsComPublicacoes.size,
-        descricao: `${docsComPublicacoes.size} docentes com publicações`,
-        atendido: docsComPublicacoes.size > 0,
-      },
-    ]
-
-    if (DP === 0) {
-      return {
-        id: 'dp4a',
-        codigo: 'DP4A',
-        nome: 'Equilíbrio nas 4 Atividades Principais (DP4A)',
-        quesito: '2',
-        itemFicha: '2.5.3',
-        pesoPercentual: 2,
-        pesoQuesitoGeral: '10%',
-        formulaTexto: 'DP4A = (% DP com orientações + aulas PG + projetos + periódicos)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de docentes permanentes cadastrados',
-        valorCalculado: null,
-        unidade: '%',
-        decomposicao: [],
-        insumos,
-      }
-    }
-
-    const valor = Number(((dpCom4Atividades / DP) * 100).toFixed(2))
-    return {
-      id: 'dp4a',
-      codigo: 'DP4A',
-      nome: 'Equilíbrio nas 4 Atividades Principais (DP4A)',
-      quesito: '2',
-      itemFicha: '2.5.3',
-      pesoPercentual: 2,
-      pesoQuesitoGeral: '10%',
-      formulaTexto: 'DP4A = (% DP com orientações + aulas PG + projetos + periódicos)',
-      status: 'calculado',
-      valorCalculado: valor,
-      unidade: '%',
-      decomposicao: [
-        {
-          termo: 'DP 4 Atividades',
-          descricao: 'Permanentes que cumprem as 4 dimensões',
-          valor: dpCom4Atividades,
-        },
-        { termo: 'DP Total', descricao: 'Total de docentes permanentes', valor: DP },
-        {
-          termo: 'Docentes c/ Orientações',
-          descricao: 'Dimensão 1 atendida',
-          valor: docsComOriAtiva.size,
-        },
-        {
-          termo: 'Docentes c/ Disciplinas PG',
-          descricao: 'Dimensão 2 atendida',
-          valor: docsComAulasPg.size,
-        },
-        {
-          termo: 'Docentes c/ Projetos',
-          descricao: 'Dimensão 3 atendida',
-          valor: docsComProjetos.size,
-        },
-        {
-          termo: 'Docentes c/ Publicações',
-          descricao: 'Dimensão 4 atendida',
-          valor: docsComPublicacoes.size,
-        },
-      ],
-      insumos,
-    }
-  })()
-
-  // --- ATI (item 2.5.4): (número de disciplinas de pós-graduação ministradas no ano) / DP ---
-  const atiIndicador: ResultadoIndicador = (() => {
-    // Disciplinas com nível 'pos_graduacao' vinculadas a DP
-    const disciplinasPos = dados.disciplinas.filter((d) => {
-      const niv = normStr(d.nivel)
-      const vinculado = d.docente_id ? idsPermanentesSet.has(d.docente_id) : true
-      return niv === 'pos_graduacao' && vinculado
-    })
-
-    const totalPos = disciplinasPos.length
-    const insumos: InsumoStatus[] = [
-      {
-        totalExistente: totalPos,
-        descricao: `${totalPos} disciplinas de pós-graduação com nível 'pos_graduacao' registradas`,
-        atendido: totalPos > 0,
-      },
-      {
-        totalExistente: DP,
-        descricao: `Denominador DP: ${DP}`,
-        atendido: DP > 0,
-      },
-    ]
-
-    if (DP === 0) {
-      return {
-        id: 'ati',
-        codigo: 'ATI',
-        nome: 'Participação em Disciplinas de Pós-Graduação (ATI)',
-        quesito: '2',
-        itemFicha: '2.5.4',
-        pesoPercentual: 2,
-        pesoQuesitoGeral: '10%',
-        formulaTexto: 'ATI = (número de disciplinas PG ministradas no ano) / DP',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de docentes permanentes cadastrados',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [],
-        insumos,
-      }
-    }
-
-    if (totalPos === 0) {
-      return {
-        id: 'ati',
-        codigo: 'ATI',
-        nome: 'Participação em Disciplinas de Pós-Graduação (ATI)',
-        quesito: '2',
-        itemFicha: '2.5.4',
-        pesoPercentual: 2,
-        pesoQuesitoGeral: '10%',
-        formulaTexto: 'ATI = (número de disciplinas PG ministradas no ano) / DP',
-        status: 'indefinido',
-        motivoIndefinido:
-          "aguardando insumo de disciplinas classificadas com nível='pos_graduacao'",
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [
-          { termo: 'Disciplinas PG', descricao: "Disciplinas com nível='pos_graduacao'", valor: 0 },
-          { termo: 'DP', descricao: 'Docentes Permanentes', valor: DP },
-        ],
-        insumos,
-      }
-    }
-
-    const valor = Number((totalPos / DP).toFixed(3))
-    return {
-      id: 'ati',
-      codigo: 'ATI',
-      nome: 'Participação em Disciplinas de Pós-Graduação (ATI)',
-      quesito: '2',
-      itemFicha: '2.5.4',
-      pesoPercentual: 2,
-      pesoQuesitoGeral: '10%',
-      formulaTexto: 'ATI = (número de disciplinas PG ministradas no ano) / DP',
-      status: 'calculado',
-      valorCalculado: valor,
-      unidade: '',
-      decomposicao: [
-        {
-          termo: 'Disciplinas PG',
-          descricao: 'Disciplinas de pós-graduação ministradas',
-          valor: totalPos,
-        },
-        { termo: 'DP', descricao: 'Docentes Permanentes', valor: DP },
-      ],
-      insumos,
-    }
-  })()
-
-  // --- NICT (item 2.5.5): (IC + IT) / DP da tabela iniciacao_cientifica ---
-  const nictIndicador: ResultadoIndicador = (() => {
-    const ics = dados.iniciacoesCientificas || []
-    const totalIcIt = ics.length
-
-    let icCont = 0
-    let itCont = 0
-    for (const item of ics) {
-      if (item.tipo === 'iniciacao_cientifica') icCont++
-      else if (item.tipo === 'iniciacao_tecnologica') itCont++
-    }
-
-    const insumos: InsumoStatus[] = [
-      {
-        totalExistente: totalIcIt,
-        descricao: `${totalIcIt} registros de IC/IT cadastrados na tabela iniciacao_cientifica (${icCont} IC, ${itCont} IT)`,
-        atendido: totalIcIt > 0,
-      },
-      {
-        totalExistente: DP,
-        descricao: `Denominador DP: ${DP}`,
-        atendido: DP > 0,
-      },
-    ]
-
-    if (DP === 0) {
-      return {
-        id: 'nict',
-        codigo: 'NICT',
-        nome: 'Alunos de Iniciação Científica e Tecnológica por Docente (NICT)',
-        quesito: '2',
-        itemFicha: '2.5.5',
-        pesoPercentual: 1,
-        pesoQuesitoGeral: '10%',
-        formulaTexto: 'NICT = (IC + IT) / DP',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de docentes permanentes cadastrados',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [],
-        insumos,
-      }
-    }
-
-    if (totalIcIt === 0) {
-      return {
-        id: 'nict',
-        codigo: 'NICT',
-        nome: 'Alunos de Iniciação Científica e Tecnológica por Docente (NICT)',
-        quesito: '2',
-        itemFicha: '2.5.5',
-        pesoPercentual: 1,
-        pesoQuesitoGeral: '10%',
-        formulaTexto: 'NICT = (IC + IT) / DP',
-        status: 'indefinido',
-        motivoIndefinido:
-          'aguardando insumo na tabela de Iniciação Científica (iniciacao_cientifica vazia)',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [
-          { termo: 'IC + IT', descricao: 'Registros na tabela iniciacao_cientifica', valor: 0 },
-          { termo: 'DP', descricao: 'Docentes Permanentes', valor: DP },
-        ],
-        insumos,
-      }
-    }
-
-    const valor = Number((totalIcIt / DP).toFixed(3))
-    return {
-      id: 'nict',
-      codigo: 'NICT',
-      nome: 'Alunos de Iniciação Científica e Tecnológica por Docente (NICT)',
-      quesito: '2',
-      itemFicha: '2.5.5',
-      pesoPercentual: 1,
-      pesoQuesitoGeral: '10%',
-      formulaTexto: 'NICT = (IC + IT) / DP',
-      status: 'calculado',
-      valorCalculado: valor,
-      unidade: '',
-      decomposicao: [
-        { termo: 'IC', descricao: 'Iniciação Científica', valor: icCont },
-        { termo: 'IT', descricao: 'Iniciação Tecnológica', valor: itCont },
-        { termo: 'IC + IT', descricao: 'Total de orientações de graduação', valor: totalIcIt },
-        { termo: 'DP', descricao: 'Docentes Permanentes', valor: DP },
-      ],
-      insumos,
-    }
-  })()
-
-  // --- NDISC (item 2.5.5): % DP que não ministraram aulas de graduação no ano ---
-  const ndiscIndicador: ResultadoIndicador = (() => {
-    // Disciplinas de graduação vinculadas a DP
-    const disciplinasGrad = dados.disciplinas.filter((d) => normStr(d.nivel) === 'graduacao')
-    const docsComGrad = new Set<number>()
-    for (const d of disciplinasGrad) {
-      if (d.docente_id && idsPermanentesSet.has(d.docente_id)) {
-        docsComGrad.add(d.docente_id)
-      }
-    }
-
-    const docsSemGrad = permanentes.filter((d) => !docsComGrad.has(d.id)).length
-    const insumos: InsumoStatus[] = [
-      {
-        totalExistente: disciplinasGrad.length,
-        descricao: `${disciplinasGrad.length} disciplinas classificadas com nível='graduacao'`,
-        atendido: disciplinasGrad.length > 0,
-      },
-      {
-        totalEsperado: DP,
-        totalExistente: docsSemGrad,
-        descricao: `${docsSemGrad} de ${DP} docentes permanentes sem disciplina de graduação cadastrada`,
-        atendido: true,
-      },
-    ]
-
-    if (DP === 0) {
-      return {
-        id: 'ndisc',
-        codigo: 'NDISC',
-        nome: 'Percentual de DP Sem Aulas de Graduação (NDISC)',
-        quesito: '2',
-        itemFicha: '2.5.5',
-        pesoPercentual: 1,
-        pesoQuesitoGeral: '10%',
-        formulaTexto: 'NDISC = (% DP que não ministraram aulas de graduação no ano)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de docentes permanentes cadastrados',
-        valorCalculado: null,
-        unidade: '%',
-        decomposicao: [],
-        insumos,
-      }
-    }
-
-    if (disciplinasGrad.length === 0) {
-      return {
-        id: 'ndisc',
-        codigo: 'NDISC',
-        nome: 'Percentual de DP Sem Aulas de Graduação (NDISC)',
-        quesito: '2',
-        itemFicha: '2.5.5',
-        pesoPercentual: 1,
-        pesoQuesitoGeral: '10%',
-        formulaTexto: 'NDISC = (% DP que não ministraram aulas de graduação no ano)',
-        status: 'indefinido',
-        motivoIndefinido: "aguardando insumo de disciplinas classificadas com nível='graduacao'",
-        valorCalculado: null,
-        unidade: '%',
-        decomposicao: [
-          { termo: 'Disciplinas Graduação', descricao: 'Disciplinas cadastradas', valor: 0 },
-          { termo: 'DP Total', descricao: 'Docentes Permanentes', valor: DP },
-        ],
-        insumos,
-      }
-    }
-
-    const valor = Number(((docsSemGrad / DP) * 100).toFixed(2))
-    return {
-      id: 'ndisc',
-      codigo: 'NDISC',
-      nome: 'Percentual de DP Sem Aulas de Graduação (NDISC)',
-      quesito: '2',
-      itemFicha: '2.5.5',
-      pesoPercentual: 1,
-      pesoQuesitoGeral: '10%',
-      formulaTexto: 'NDISC = (% DP que não ministraram aulas de graduação no ano)',
-      status: 'calculado',
-      valorCalculado: valor,
-      unidade: '%',
-      decomposicao: [
-        {
-          termo: 'DP sem graduação',
-          descricao: 'Docentes permanentes sem aulas de graduação',
-          valor: docsSemGrad,
-        },
-        {
-          termo: 'DP com graduação',
-          descricao: 'Docentes atuando na graduação',
-          valor: docsComGrad.size,
-        },
-        { termo: 'DP Total', descricao: 'Docentes Permanentes', valor: DP },
-      ],
-      insumos,
-    }
-  })()
-
   // =========================================================================
-  // QUESITO 3.1: IMPACTO, PATENTES E BIBLIOMETRIA (ÍNDICE-H)
-  // =========================================================================
-
-  // Helper de pontuação de patentes:
+  // HELPER: Pontuação de patentes
   // [N(licenciadas) + 0,6*N(concedidas) + 0,3*N(depositadas)] / (DP - JDP)
+  // =========================================================================
   function calcularPontuacaoPatentes(patentesSubset: Patente[]): {
     licenciadas: number
     concedidas: number
@@ -1872,232 +358,1413 @@ export function calcularTodosIndicadores(
     return { licenciadas, concedidas, depositadas, pontos }
   }
 
-  // --- DPPn: Patentes Nacionais (item 3.1.1) ---
-  const dppnIndicador: ResultadoIndicador = (() => {
-    // Patentes nacionais: com campo ambito='nacional' ou inpi começando com 'BR' ou padrão nacional
-    const patentesNacionais = dados.patentes.filter((p) => {
-      const amb = normStr((p as any).ambito)
-      if (amb === 'nacional') return true
-      if (amb === 'internacional') return false
-      // Se não tem coluna preenchida, verificar INPI com prefixo BR
-      const inpi = (p.inpi || '').toUpperCase().trim()
-      return inpi.startsWith('BR') || inpi.length > 0
-    })
-
-    const { licenciadas, concedidas, depositadas, pontos } =
-      calcularPontuacaoPatentes(patentesNacionais)
-
+  // =========================================================================
+  // QUESITO 1: ADE (ESTOQUE)
+  // ADE = DP / (DP + DC + DV) — sem anualização
+  // =========================================================================
+  const adeTotal = DP + DC + DV
+  const adeIndicador: ResultadoIndicador = (() => {
     const insumos: InsumoStatus[] = [
       {
-        totalExistente: patentesNacionais.length,
-        descricao: `${patentesNacionais.length} patentes nacionais cadastradas (${depositadas} dep., ${concedidas} conc., ${licenciadas} lic.)`,
-        atendido: patentesNacionais.length > 0,
+        totalExistente: totalDocentes,
+        descricao: `${totalDocentes} docentes cadastrados no sistema`,
+        atendido: totalDocentes > 0,
       },
       {
-        totalExistente: denominadorEfetivo,
-        descricao: `Denominador DP − JDP: ${denominadorEfetivo}`,
-        atendido: denominadorEfetivo > 0,
+        totalExistente: DP,
+        descricao: `${DP} docentes permanentes (DP, inclui ${JDP_validos} JDP válidos)`,
+        atendido: DP > 0,
       },
     ]
 
-    if (denominadorEfetivo === 0) {
+    if (adeTotal === 0) {
       return {
-        id: 'dppn',
-        codigo: 'DPPn',
-        nome: 'Índice de Patentes Nacionais (DPPn)',
-        quesito: '3.1',
-        itemFicha: '3.1.1',
-        pesoPercentual: 8,
-        pesoQuesitoGeral: '30%',
-        formulaTexto:
-          'DPPn = [N(licenciadas) + 0,6·N(concedidas) + 0,3·N(depositadas)] / (DP − JDP)',
+        id: 'ade',
+        codigo: 'ADE',
+        nome: 'Adequação do Corpo Docente (% DP)',
+        quesito: '1',
+        itemFicha: '1.2.1',
+        pesoPercentual: 15,
+        pesoQuesitoGeral: '35%',
+        formulaTexto: 'ADE = DP / (DP + DC + DV)',
         status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de docentes permanentes regulares (DP - JDP = 0)',
+        motivoIndefinido: 'aguardando insumo de docentes cadastrados (DP+DC+DV = 0)',
         valorCalculado: null,
-        unidade: '',
-        decomposicao: [],
-        insumos,
-      }
-    }
-
-    if (patentesNacionais.length === 0) {
-      return {
-        id: 'dppn',
-        codigo: 'DPPn',
-        nome: 'Índice de Patentes Nacionais (DPPn)',
-        quesito: '3.1',
-        itemFicha: '3.1.1',
-        pesoPercentual: 8,
-        pesoQuesitoGeral: '30%',
-        formulaTexto:
-          'DPPn = [N(licenciadas) + 0,6·N(concedidas) + 0,3·N(depositadas)] / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de patentes nacionais cadastradas na base',
-        valorCalculado: null,
-        unidade: '',
+        unidade: '%',
+        metodologia: 'estoque',
         decomposicao: [
-          { termo: 'Patentes Nacionais', descricao: 'Total cadastradas', valor: 0 },
-          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+          { termo: 'DP', descricao: 'Docentes Permanentes (inclui JDP)', valor: DP },
+          { termo: 'DC', descricao: 'Docentes Colaboradores', valor: DC },
+          { termo: 'DV', descricao: 'Docentes Visitantes', valor: DV },
         ],
         insumos,
       }
     }
 
-    const valor = Number((pontos / denominadorEfetivo).toFixed(3))
+    const valor = Number(((DP / adeTotal) * 100).toFixed(2))
     return {
-      id: 'dppn',
-      codigo: 'DPPn',
-      nome: 'Índice de Patentes Nacionais (DPPn)',
-      quesito: '3.1',
-      itemFicha: '3.1.1',
-      pesoPercentual: 8,
-      pesoQuesitoGeral: '30%',
-      formulaTexto: 'DPPn = [N(licenciadas) + 0,6·N(concedidas) + 0,3·N(depositadas)] / (DP − JDP)',
+      id: 'ade',
+      codigo: 'ADE',
+      nome: 'Adequação do Corpo Docente (% DP)',
+      quesito: '1',
+      itemFicha: '1.2.1',
+      pesoPercentual: 15,
+      pesoQuesitoGeral: '35%',
+      formulaTexto: 'ADE = DP / (DP + DC + DV)',
       status: 'calculado',
       valorCalculado: valor,
-      unidade: '',
+      unidade: '%',
+      metodologia: 'estoque',
       decomposicao: [
+        { termo: 'DP', descricao: 'Docentes Permanentes', valor: DP },
+        { termo: 'DC', descricao: 'Docentes Colaboradores', valor: DC },
+        { termo: 'DV', descricao: 'Docentes Visitantes', valor: DV },
         {
-          termo: 'Depositadas (peso 0.3)',
-          descricao: 'Patentes depositadas/pendentes',
-          valor: depositadas,
+          termo: 'JDP_validos',
+          descricao: 'Jovens Doutores Pesquisadores válidos (integrados no DP)',
+          valor: JDP_validos,
         },
-        { termo: 'Concedidas (peso 0.6)', descricao: 'Patentes com concessão', valor: concedidas },
-        { termo: 'Licenciadas (peso 1.0)', descricao: 'Patentes licenciadas', valor: licenciadas },
-        { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontos },
-        { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
       ],
       insumos,
+      observacoes:
+        'Indicador de estoque (sem anualização): a ficha CAPES avalia a proporção estrutural de DP no corpo docente (mínimo 50% para conceito MB/B).',
     }
   })()
 
-  // --- DPPi: Patentes Internacionais (item 3.1.1) ---
-  const dppiIndicador: ResultadoIndicador = (() => {
-    // Patentes internacionais: com campo ambito='internacional' ou inpi PCT/US/EP/WO
-    const patentesInternacionais = dados.patentes.filter((p) => {
-      const amb = normStr((p as any).ambito)
-      if (amb === 'internacional') return true
-      if (amb === 'nacional') return false
-      const inpi = (p.inpi || '').toUpperCase().trim()
-      return (
-        inpi.startsWith('PCT') ||
-        inpi.startsWith('US') ||
-        inpi.startsWith('EP') ||
-        inpi.startsWith('WO')
-      )
+  // =========================================================================
+  // QUESITO 2: INDICADORES "NO ANO" (SO, PSA, DP4A, ATI, NICT, NDISC, DPD)
+  // Regra 1: calcular ANO a ANO (2025, 2026, 2027, 2028) e agregar pela MMA.
+  // Regra 4: ano sem insumo fica indefinido e NÃO entra como 0 na média.
+  // =========================================================================
+
+  // Docentes permanentes regulares (para PSA)
+  const permanentesRegulares = permanentes.filter(
+    (d) => !resumoJdp.jdpValidos.some((j) => j.id === d.id),
+  )
+  const totalRegulares = permanentesRegulares.length
+
+  // Helper para verificar se uma disciplina pertence ao ano informado
+  const discNoAno = (d: Disciplina, ano: number): boolean => {
+    const a = extrairAnoDeData(d.ano_semestre)
+    return a === ano
+  }
+
+  // Helper para verificar se IC/IT pertence ao ano informado
+  const icNoAno = (ic: any, ano: number): boolean => {
+    if (typeof ic.ano === 'number' && !isNaN(ic.ano)) return ic.ano === ano
+    const a = extrairAnoDeData(ic.ano)
+    return a === ano
+  }
+
+  // --- DPD: % DP com publicações A1 até A4 no ano ---
+  const dpdAnos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    const pubsAno = dados.publicacoes.filter((p) => anoPublicacao(p) === ano)
+    const pubsAnoComQualis = pubsAno.filter((p) => Boolean((p.estrato_qualis || '').trim()))
+
+    if (DP === 0) {
+      dpdAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes',
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else if (pubsAno.length === 0 || pubsAnoComQualis.length === 0) {
+      dpdAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando insumo de publicações com Qualis no ano ${ano}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      const dpComA1A4 = new Set<number>()
+      for (const pub of pubsAno) {
+        const e = (pub.estrato_qualis || '').toUpperCase().trim()
+        if (['A1', 'A2', 'A3', 'A4'].includes(e)) {
+          const info = pubPertenceADocentePermanente(pub)
+          if (info.pertence) {
+            for (const docId of info.docIds) dpComA1A4.add(docId)
+          }
+        }
+      }
+      const val = Number(((dpComA1A4.size / DP) * 100).toFixed(2))
+      dpdAnos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          {
+            termo: 'DP com A1–A4',
+            descricao: `Docentes com A1-A4 em ${ano}`,
+            valor: dpComA1A4.size,
+          },
+          { termo: 'DP Total', descricao: 'Total de permanentes', valor: DP },
+        ],
+      }
+    }
+  }
+
+  const dpdIndicador = agregarComMMA(dpdAnos, anosQuadrienio, 'anual_mma', {
+    id: 'dpd',
+    codigo: 'DPD',
+    nome: 'Distribuição de Publicações Qualificadas no Corpo Docente (DPD)',
+    quesito: '2',
+    itemFicha: '2.4.2',
+    pesoPercentual: 3,
+    pesoQuesitoGeral: '25%',
+    formulaTexto: 'DPD = (% dos DP com publicações A1–A4 no ano) → MMA do quadriênio',
+    unidade: '%',
+    decomposicao: [{ termo: 'DP Total', descricao: 'Total de permanentes', valor: DP }],
+    insumos: [
+      {
+        totalExistente: DP,
+        descricao: `${DP} docentes permanentes (DP, inclui JDP)`,
+        atendido: DP > 0,
+      },
+    ],
+    observacoes:
+      'Calculado ano a ano pela ficha CAPES; a agregação do quadriênio é obtida pela Média das Médias Anuais (MMA). Anos sem insumo cadastrado não entram como zero.',
+  })
+
+  // --- SO: % DP que tem orientações ativas no programa no ano ---
+  const soAnos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    if (DP === 0) {
+      soAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes',
+        valorCalculado: null,
+        decomposicao: [],
+      }
+      continue
+    }
+
+    // Orientações ativas no ano (seja por status 'ativo' ou vigência temporal)
+    const ativasAno = dados.orientacoes.filter((ori) => {
+      if (normStr(ori.status) !== 'ativo') return false
+      const ini = extrairAnoDeData(ori.inicio)
+      const fim = extrairAnoDeData(ori.fim) || extrairAnoDeData(ori.data_defesa)
+      if (ini !== null && fim !== null) {
+        return ano >= ini && ano <= fim
+      }
+      if (ini !== null) return ano >= ini
+      return true
     })
 
-    const { licenciadas, concedidas, depositadas, pontos } =
-      calcularPontuacaoPatentes(patentesInternacionais)
+    const dpComOri = new Set<number>()
+    for (const ori of ativasAno) {
+      if (ori.docente_id && idsPermanentesSet.has(ori.docente_id)) {
+        dpComOri.add(ori.docente_id)
+      }
+    }
 
-    const insumos: InsumoStatus[] = [
+    // Se nenhuma orientação ativa cadastrada em geral no sistema para o ano
+    if (ativasAno.length === 0) {
+      soAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando insumo de orientações ativas cadastradas em ${ano}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      const val = Number(((dpComOri.size / DP) * 100).toFixed(2))
+      soAnos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          {
+            termo: 'DP com orientações ativas',
+            descricao: `Docentes orientando em ${ano}`,
+            valor: dpComOri.size,
+          },
+          { termo: 'DP Total', descricao: 'Total de permanentes', valor: DP },
+        ],
+      }
+    }
+  }
+
+  const soIndicador = agregarComMMA(soAnos, anosQuadrienio, 'anual_mma', {
+    id: 'so',
+    codigo: 'SO',
+    nome: 'Distribuição de Orientações Ativas (% DP com orientações)',
+    quesito: '2',
+    itemFicha: '2.5.1',
+    pesoPercentual: 2,
+    pesoQuesitoGeral: '10%',
+    formulaTexto: 'SO = (% DP com orientações ativas no ano) → MMA do quadriênio',
+    unidade: '%',
+    decomposicao: [{ termo: 'DP Total', descricao: 'Total de permanentes', valor: DP }],
+    insumos: [
+      {
+        totalExistente: DP,
+        descricao: `${DP} docentes permanentes`,
+        atendido: DP > 0,
+      },
+    ],
+    observacoes:
+      'Calculado ano a ano conforme a Ficha CAPES; a agregação final segue a MMA das taxas anuais.',
+  })
+
+  // --- PSA: % DP SEM titulações M ou D no ano (exclui JDP) ---
+  const psaAnos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    if (totalRegulares === 0) {
+      psaAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes regulares',
+        valorCalculado: null,
+        decomposicao: [],
+      }
+      continue
+    }
+
+    // Defesas M ou D concluídas exatamente no ano
+    const defesasAno = dados.orientacoes.filter((ori) => {
+      const a = obterAnoOrientacaoDefesa(ori)
+      const concluida =
+        normStr(ori.status) === 'concluido' ||
+        normStr(ori.status) === 'titulado' ||
+        Boolean(ori.data_defesa)
+      return a === ano && concluida && (isMestradoConcluido(ori) || isDoutoradoConcluido(ori))
+    })
+
+    if (defesasAno.length === 0) {
+      // Ano sem defesas cadastradas no banco
+      psaAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando insumo de defesas concluídas em ${ano}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      const docsComDefesa = new Set<number>()
+      for (const ori of defesasAno) {
+        if (ori.docente_id) docsComDefesa.add(ori.docente_id)
+      }
+      const docsSemDefesa = permanentesRegulares.filter((d) => !docsComDefesa.has(d.id)).length
+      const val = Number(((docsSemDefesa / totalRegulares) * 100).toFixed(2))
+
+      psaAnos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          {
+            termo: 'DP sem defesas',
+            descricao: `Permanentes regulares sem titulação em ${ano}`,
+            valor: docsSemDefesa,
+          },
+          { termo: 'DP regulares', descricao: 'Permanentes excluindo JDP', valor: totalRegulares },
+        ],
+      }
+    }
+  }
+
+  const psaIndicador = agregarComMMA(psaAnos, anosQuadrienio, 'anual_mma', {
+    id: 'psa',
+    codigo: 'PSA',
+    nome: 'Percentual de DP Sem Titulações (% DP sem defesas M/D)',
+    quesito: '2',
+    itemFicha: '2.5.2',
+    pesoPercentual: 2,
+    pesoQuesitoGeral: '10%',
+    formulaTexto: 'PSA = (% DP sem titulações M ou D no ano, exclui JDP) → MMA do quadriênio',
+    unidade: '%',
+    decomposicao: [
+      { termo: 'DP regulares', descricao: 'Permanentes excluindo JDP', valor: totalRegulares },
+    ],
+    insumos: [
+      {
+        totalExistente: totalRegulares,
+        descricao: `${totalRegulares} docentes permanentes regulares cadastrados`,
+        atendido: totalRegulares > 0,
+      },
+    ],
+    observacoes:
+      'Calculado ano a ano e agregado pela MMA. Exclui Jovens Doutores Pesquisadores (JDP) conforme item 2.5.2 da ficha.',
+  })
+
+  // --- DP4A: % DP com as 4 atividades simultâneas no ano ---
+  // (1: orientações ativas + 2: aulas PG + 3: projetos de pesquisa + 4: publicações em periódicos)
+  const dp4aAnos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    if (DP === 0) {
+      dp4aAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes',
+        valorCalculado: null,
+        decomposicao: [],
+      }
+      continue
+    }
+
+    // 1. Orientações ativas no ano
+    const docsOri = new Set<number>()
+    for (const o of dados.orientacoes) {
+      if (normStr(o.status) === 'ativo' && o.docente_id) {
+        const ini = extrairAnoDeData(o.inicio)
+        const fim = extrairAnoDeData(o.fim) || extrairAnoDeData(o.data_defesa)
+        const noAno =
+          ini !== null && fim !== null ? ano >= ini && ano <= fim : ini !== null ? ano >= ini : true
+        if (noAno) docsOri.add(o.docente_id)
+      }
+    }
+
+    // 2. Disciplinas de pós no ano
+    const docsPg = new Set<number>()
+    for (const d of dados.disciplinas) {
+      const niv = normStr(d.nivel)
+      if (d.docente_id && (niv === 'pos_graduacao' || niv === '')) {
+        if (discNoAno(d, ano)) {
+          docsPg.add(d.docente_id)
+        }
+      }
+    }
+
+    // 3. Projetos de pesquisa no ano
+    const docsProj = new Set<number>()
+    for (const p of dados.projetos) {
+      const ini = extrairAnoDeData(p.inicio)
+      const fim = extrairAnoDeData(p.fim)
+      const noAno =
+        ini !== null && fim !== null ? ano >= ini && ano <= fim : ini !== null ? ano <= ano : true
+      if (noAno) {
+        if (p.coordenador_id) docsProj.add(p.coordenador_id)
+      }
+    }
+    for (const part of dados.projetosParticipantes) {
+      if (part.docente_id) docsProj.add(part.docente_id)
+    }
+
+    // 4. Publicações em periódicos no ano
+    const docsPub = new Set<number>()
+    const pubsAno = dados.publicacoes.filter((p) => anoPublicacao(p) === ano)
+    for (const pub of pubsAno) {
+      const info = pubPertenceADocentePermanente(pub)
+      if (info.pertence) {
+        for (const docId of info.docIds) docsPub.add(docId)
+      }
+    }
+
+    // Verificação de insumo no ano: pelo menos uma atividade registrada no ano
+    const insumosPresentes = docsOri.size > 0 || docsPg.size > 0 || docsPub.size > 0
+    if (!insumosPresentes) {
+      dp4aAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando insumo de atividades cadastradas para o ano ${ano}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      let com4 = 0
+      for (const doc of permanentes) {
+        if (
+          docsOri.has(doc.id) &&
+          docsPg.has(doc.id) &&
+          docsProj.has(doc.id) &&
+          docsPub.has(doc.id)
+        ) {
+          com4++
+        }
+      }
+      const val = Number(((com4 / DP) * 100).toFixed(2))
+      dp4aAnos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          {
+            termo: 'DP 4 Atividades',
+            descricao: `Permanentes nas 4 atividades em ${ano}`,
+            valor: com4,
+          },
+          { termo: 'DP Total', descricao: 'Total de permanentes', valor: DP },
+        ],
+      }
+    }
+  }
+
+  const dp4aIndicador = agregarComMMA(dp4aAnos, anosQuadrienio, 'anual_mma', {
+    id: 'dp4a',
+    codigo: 'DP4A',
+    nome: 'Equilíbrio nas 4 Atividades Principais (DP4A)',
+    quesito: '2',
+    itemFicha: '2.5.3',
+    pesoPercentual: 2,
+    pesoQuesitoGeral: '10%',
+    formulaTexto: 'DP4A = (% DP com orientações + aulas PG + projetos + periódicos no ano) → MMA',
+    unidade: '%',
+    decomposicao: [{ termo: 'DP Total', descricao: 'Total de permanentes', valor: DP }],
+    insumos: [
+      {
+        totalExistente: DP,
+        descricao: `${DP} docentes permanentes cadastrados`,
+        atendido: DP > 0,
+      },
+    ],
+    observacoes:
+      'Calculado ano a ano e agregado pela MMA. Avalia os permanentes com atuação simultânea nas 4 dimensões no ano.',
+  })
+
+  // --- ATI: (número de disciplinas de pós-graduação ministradas no ano) / DP ---
+  const atiAnos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    if (DP === 0) {
+      atiAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes',
+        valorCalculado: null,
+        decomposicao: [],
+      }
+      continue
+    }
+
+    const disciplinasPosAno = dados.disciplinas.filter((d) => {
+      const niv = normStr(d.nivel)
+      const vinculado = d.docente_id ? idsPermanentesSet.has(d.docente_id) : true
+      return (niv === 'pos_graduacao' || niv === '') && vinculado && discNoAno(d, ano)
+    })
+
+    if (disciplinasPosAno.length === 0) {
+      atiAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando insumo de disciplinas de pós-graduação ministradas em ${ano}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      const val = Number((disciplinasPosAno.length / DP).toFixed(3))
+      atiAnos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          {
+            termo: 'Disciplinas PG',
+            descricao: `Disciplinas de pós em ${ano}`,
+            valor: disciplinasPosAno.length,
+          },
+          { termo: 'DP', descricao: 'Docentes Permanentes', valor: DP },
+        ],
+      }
+    }
+  }
+
+  const atiIndicador = agregarComMMA(atiAnos, anosQuadrienio, 'anual_mma', {
+    id: 'ati',
+    codigo: 'ATI',
+    nome: 'Participação em Disciplinas de Pós-Graduação (ATI)',
+    quesito: '2',
+    itemFicha: '2.5.4',
+    pesoPercentual: 2,
+    pesoQuesitoGeral: '10%',
+    formulaTexto: 'ATI = (disciplinas PG ministradas no ano) / DP → MMA do quadriênio',
+    unidade: '',
+    decomposicao: [{ termo: 'DP', descricao: 'Docentes Permanentes', valor: DP }],
+    insumos: [
+      {
+        totalExistente: DP,
+        descricao: `${DP} docentes permanentes cadastrados`,
+        atendido: DP > 0,
+      },
+    ],
+    observacoes:
+      'Calculado ano a ano e consolidado via MMA conforme a ficha de avaliação da área Engenharias II.',
+  })
+
+  // --- NICT: (IC + IT no ano) / DP ---
+  const nictAnos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    if (DP === 0) {
+      nictAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes',
+        valorCalculado: null,
+        decomposicao: [],
+      }
+      continue
+    }
+
+    const icsAno = (dados.iniciacoesCientificas || []).filter((ic) => icNoAno(ic, ano))
+
+    if (icsAno.length === 0) {
+      nictAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando insumo de IC/IT cadastrados no ano ${ano}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      const icCont = icsAno.filter((i) => i.tipo === 'iniciacao_cientifica').length
+      const itCont = icsAno.filter((i) => i.tipo === 'iniciacao_tecnologica').length
+      const val = Number((icsAno.length / DP).toFixed(3))
+
+      nictAnos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          { termo: 'IC', descricao: `Iniciação Científica em ${ano}`, valor: icCont },
+          { termo: 'IT', descricao: `Iniciação Tecnológica em ${ano}`, valor: itCont },
+          { termo: 'IC + IT', descricao: `Total de IC/IT em ${ano}`, valor: icsAno.length },
+          { termo: 'DP', descricao: 'Docentes Permanentes', valor: DP },
+        ],
+      }
+    }
+  }
+
+  const nictIndicador = agregarComMMA(nictAnos, anosQuadrienio, 'anual_mma', {
+    id: 'nict',
+    codigo: 'NICT',
+    nome: 'Alunos de Iniciação Científica e Tecnológica por Docente (NICT)',
+    quesito: '2',
+    itemFicha: '2.5.5',
+    pesoPercentual: 1,
+    pesoQuesitoGeral: '10%',
+    formulaTexto: 'NICT = (IC + IT no ano) / DP → MMA do quadriênio',
+    unidade: '',
+    decomposicao: [{ termo: 'DP', descricao: 'Docentes Permanentes', valor: DP }],
+    insumos: [
+      {
+        totalExistente: DP,
+        descricao: `${DP} docentes permanentes cadastrados`,
+        atendido: DP > 0,
+      },
+    ],
+    observacoes: 'Calculado ano a ano e consolidado via MMA conforme item 2.5.5 da Ficha CAPES.',
+  })
+
+  // --- NDISC: % DP que não ministraram aulas de graduação no ano ---
+  const ndiscAnos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    if (DP === 0) {
+      ndiscAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes',
+        valorCalculado: null,
+        decomposicao: [],
+      }
+      continue
+    }
+
+    const disciplinasGradAno = dados.disciplinas.filter(
+      (d) => normStr(d.nivel) === 'graduacao' && discNoAno(d, ano),
+    )
+
+    if (disciplinasGradAno.length === 0) {
+      ndiscAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando insumo de disciplinas de graduação ministradas em ${ano}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      const docsComGrad = new Set<number>()
+      for (const d of disciplinasGradAno) {
+        if (d.docente_id && idsPermanentesSet.has(d.docente_id)) {
+          docsComGrad.add(d.docente_id)
+        }
+      }
+      const docsSemGrad = permanentes.filter((d) => !docsComGrad.has(d.id)).length
+      const val = Number(((docsSemGrad / DP) * 100).toFixed(2))
+
+      ndiscAnos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          {
+            termo: 'DP sem graduação',
+            descricao: `Permanentes sem graduação em ${ano}`,
+            valor: docsSemGrad,
+          },
+          {
+            termo: 'DP com graduação',
+            descricao: `Permanentes na graduação em ${ano}`,
+            valor: docsComGrad.size,
+          },
+          { termo: 'DP Total', descricao: 'Docentes Permanentes', valor: DP },
+        ],
+      }
+    }
+  }
+
+  const ndiscIndicador = agregarComMMA(ndiscAnos, anosQuadrienio, 'anual_mma', {
+    id: 'ndisc',
+    codigo: 'NDISC',
+    nome: 'Percentual de DP Sem Aulas de Graduação (NDISC)',
+    quesito: '2',
+    itemFicha: '2.5.5',
+    pesoPercentual: 1,
+    pesoQuesitoGeral: '10%',
+    formulaTexto: 'NDISC = (% DP que não ministraram aulas de graduação no ano) → MMA',
+    unidade: '%',
+    decomposicao: [{ termo: 'DP Total', descricao: 'Docentes Permanentes', valor: DP }],
+    insumos: [
+      {
+        totalExistente: DP,
+        descricao: `${DP} docentes permanentes cadastrados`,
+        atendido: DP > 0,
+      },
+    ],
+    observacoes: 'Calculado ano a ano e consolidado via MMA conforme item 2.5.5 da Ficha CAPES.',
+  })
+
+  // =========================================================================
+  // QUESITO 2 & 3.1: INDICADORES DE QUADRIÊNIO COM DECISÃO DE MMA DO PROGRAMA
+  // Regra 2: ORI, ATD, DPI, DPT, DPIDE1, DPIDE2, DPI2, DPPn, DPPi também com MMA
+  // (média das 4 médias anuais) — decisão formal do PPG-DCEM documentada nas notas.
+  // =========================================================================
+
+  // --- ORI: (M + 3D) / (DP − JDP) ---
+  const oriAnos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    if (denominadorEfetivo === 0) {
+      oriAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes regulares (DP - JDP = 0)',
+        valorCalculado: null,
+        decomposicao: [],
+      }
+      continue
+    }
+
+    const orisAno = oriConcluidasNoQuadrienio.filter((o) => obterAnoOrientacaoDefesa(o) === ano)
+    const mAno = orisAno.filter(isMestradoConcluido).length
+    const dAno = orisAno.filter(isDoutoradoConcluido).length
+
+    if (mAno === 0 && dAno === 0) {
+      oriAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando insumo de titulações concluídas no ano ${ano}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      const val = Number(((mAno + 3 * dAno) / denominadorEfetivo).toFixed(3))
+      oriAnos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          { termo: 'M', descricao: `Mestrados em ${ano}`, valor: mAno },
+          { termo: 'D', descricao: `Doutorados em ${ano}`, valor: dAno },
+          { termo: 'M + 3D', descricao: 'Numerador ponderado', valor: mAno + 3 * dAno },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+        ],
+      }
+    }
+  }
+
+  const oriIndicador = agregarComMMA(oriAnos, anosQuadrienio, 'quadrienio_mma', {
+    id: 'ori',
+    codigo: 'ORI',
+    nome: 'Taxa de Titulações Concluídas por Docente Permanente (ORI)',
+    quesito: '2',
+    itemFicha: '2.1.1',
+    pesoPercentual: 10,
+    pesoQuesitoGeral: '30%',
+    formulaTexto: 'ORI = (M + 3D) / (DP − JDP) [Fórmula anual → MMA do quadriênio]',
+    unidade: '',
+    decomposicao: [
+      { termo: 'DP', descricao: 'Docentes Permanentes', valor: DP },
+      { termo: 'JDP', descricao: 'JDP válidos (subtraídos do denominador)', valor: JDP_validos },
+      { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+    ],
+    insumos: [
+      {
+        totalExistente: DP,
+        descricao: `${DP} docentes permanentes (${JDP_validos} JDP válidos)`,
+        atendido: DP > 0,
+      },
+    ],
+    observacoes:
+      'A ficha CAPES define ORI originalmente como total do quadriênio. Por decisão formal do PPG-DCEM, adota-se o cálculo anual com consolidação via MMA (Média das Médias Anuais) para acompanhamento da evolução temporal do programa.',
+  })
+
+  // --- ATD: artigos A1-A4 com coautoria confirmada discente/egresso / (M + 2D) ---
+  const atdAnos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    const orisAno = oriConcluidasNoQuadrienio.filter((o) => obterAnoOrientacaoDefesa(o) === ano)
+    const mAno = orisAno.filter(isMestradoConcluido).length
+    const dAno = orisAno.filter(isDoutoradoConcluido).length
+    const denAtdAno = mAno + 2 * dAno
+
+    const pubsAno = pubsNoQuadrienio.filter((p) => {
+      if (anoPublicacao(p) !== ano) return false
+      const estrato = (p.estrato_qualis || '').toUpperCase()
+      const isA1A4 = ['A1', 'A2', 'A3', 'A4'].includes(estrato)
+      const temCoautoria = mapaCoautoriaPub.get(p.id)?.temDiscenteOuEgresso === true
+      return isA1A4 && temCoautoria
+    })
+
+    if (denAtdAno === 0) {
+      atdAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando insumo de titulações concluídas no ano ${ano} (M+2D=0)`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      const val = Number((pubsAno.length / denAtdAno).toFixed(3))
+      atdAnos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          {
+            termo: 'Artigos A1-A4 c/ coautoria',
+            descricao: `Artigos qualificados em ${ano}`,
+            valor: pubsAno.length,
+          },
+          { termo: 'M', descricao: `Mestrados em ${ano}`, valor: mAno },
+          { termo: 'D', descricao: `Doutorados em ${ano}`, valor: dAno },
+          { termo: 'M + 2D', descricao: 'Denominador de titulações', valor: denAtdAno },
+        ],
+      }
+    }
+  }
+
+  const atdIndicador = agregarComMMA(atdAnos, anosQuadrienio, 'quadrienio_mma', {
+    id: 'atd',
+    codigo: 'ATD',
+    nome: 'Artigos A1–A4 com Discentes/Egressos por Titulação (ATD)',
+    quesito: '2',
+    itemFicha: '2.1.2',
+    pesoPercentual: 10,
+    pesoQuesitoGeral: '30%',
+    formulaTexto: 'ATD = (artigos A1–A4 c/ coautoria discente/egresso) / (M + 2D) [Anual → MMA]',
+    unidade: '',
+    decomposicao: [],
+    insumos: [
+      {
+        totalExistente: pubsNoQuadrienio.length,
+        descricao: `${pubsNoQuadrienio.length} publicações no quadriênio`,
+        atendido: pubsNoQuadrienio.length > 0,
+      },
+    ],
+    observacoes:
+      'A ficha CAPES define ATD originalmente como total do quadriênio. Por decisão formal do PPG-DCEM, adota-se o cálculo anual com agregação MMA para monitoramento contínuo.',
+  })
+
+  // --- DPI: Produção dos DPs no ano ---
+  const dpiAnos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    if (denominadorEfetivo === 0) {
+      dpiAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes (DP - JDP = 0)',
+        valorCalculado: null,
+        decomposicao: [],
+      }
+      continue
+    }
+
+    const pubsAno = pubsNoQuadrienio.filter((p) => {
+      if (anoPublicacao(p) !== ano) return false
+      const tp = normStr(p.tipo_producao)
+      const isPeriodico = tp === '' || tp === 'artigo em periódico' || Boolean(p.periodico)
+      if (!isPeriodico) return false
+      return pubPertenceADocentePermanente(p).pertence
+    })
+
+    const pubsAnoComQualis = pubsAno.filter((p) => Boolean((p.estrato_qualis || '').trim()))
+
+    if (pubsAno.length === 0 || pubsAnoComQualis.length === 0) {
+      dpiAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando insumo de artigos com Qualis em periódicos em ${ano}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
+        calcularPontuacaoQualisComSaturacao(pubsAno, true)
+      const val = Number((pontosNumerador / denominadorEfetivo).toFixed(3))
+
+      dpiAnos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          { termo: 'A1 (peso 1.0)', descricao: 'Artigos A1 somados por docente', valor: a1 },
+          { termo: 'A2 (peso 0.875)', descricao: 'Artigos A2 somados por docente', valor: a2 },
+          { termo: 'A3 (peso 0.75)', descricao: 'Artigos A3 somados por docente', valor: a3 },
+          { termo: 'A4 (peso 0.675)', descricao: 'Artigos A4 somados por docente', valor: a4 },
+          {
+            termo: 'min(B1, DP) (peso 0.5)',
+            descricao: `B1 saturado (${b1Bruto} brutos, teto ${DP})`,
+            valor: b1Saturado,
+          },
+          { termo: 'B2..C', descricao: 'Artigos sem pontuação', valor: b2 + b3 + b4 + c },
+          { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontosNumerador },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+        ],
+      }
+    }
+  }
+
+  const dpiIndicador = agregarComMMA(dpiAnos, anosQuadrienio, 'quadrienio_mma', {
+    id: 'dpi',
+    codigo: 'DPI',
+    nome: 'Índice de Produção Docente Ponderada (DPI)',
+    quesito: '2',
+    itemFicha: '2.4.1',
+    pesoPercentual: 6,
+    pesoQuesitoGeral: '25%',
+    formulaTexto: 'DPI = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP) [MMA]',
+    unidade: '',
+    decomposicao: [
+      { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+    ],
+    insumos: [
+      {
+        totalExistente: denominadorEfetivo,
+        descricao: `Denominador DP − JDP: ${denominadorEfetivo}`,
+        atendido: denominadorEfetivo > 0,
+      },
+    ],
+    observacoes:
+      'A ficha CAPES define DPI originalmente como total do quadriênio. Por decisão formal do programa PPG-DCEM, calcula-se anualmente com consolidação via MMA (Média das Médias Anuais), aplicando saturação em B1 e pesos oficiais.',
+  })
+
+  // --- DPT: artigos completos (periódicos + anais) + capítulos / (DP − JDP) ---
+  const dptAnos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    if (denominadorEfetivo === 0) {
+      dptAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes (DP - JDP = 0)',
+        valorCalculado: null,
+        decomposicao: [],
+      }
+      continue
+    }
+
+    const pubsAno = pubsNoQuadrienio.filter((p) => {
+      if (anoPublicacao(p) !== ano) return false
+      return pubPertenceADocentePermanente(p).pertence
+    })
+
+    if (pubsAno.length === 0) {
+      dptAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando insumo de produções vinculadas a DP no ano ${ano}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      let periodicos = 0
+      let anais = 0
+      let capitulos = 0
+      for (const p of pubsAno) {
+        const docsVinculadosQtd = Math.max(1, pubPertenceADocentePermanente(p).docIds.length)
+        const tp = normStr(p.tipo_producao)
+        if (tp === 'artigo em periódico' || tp === '' || Boolean(p.periodico)) {
+          periodicos += docsVinculadosQtd
+        } else if (tp === 'trabalho em anais') {
+          anais += docsVinculadosQtd
+        } else if (tp === 'capítulo') {
+          capitulos += docsVinculadosQtd
+        } else {
+          periodicos += docsVinculadosQtd
+        }
+      }
+      const totalItens = periodicos + anais + capitulos
+      const val = Number((totalItens / denominadorEfetivo).toFixed(3))
+
+      dptAnos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          { termo: 'Periódicos', descricao: `Periódicos em ${ano}`, valor: periodicos },
+          { termo: 'Anais', descricao: `Anais em ${ano}`, valor: anais },
+          { termo: 'Capítulos', descricao: `Capítulos em ${ano}`, valor: capitulos },
+          { termo: 'Total', descricao: 'Soma ponderada por docente', valor: totalItens },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+        ],
+      }
+    }
+  }
+
+  const dptIndicador = agregarComMMA(dptAnos, anosQuadrienio, 'quadrienio_mma', {
+    id: 'dpt',
+    codigo: 'DPT',
+    nome: 'Índice de Produção Total dos Docentes (DPT)',
+    quesito: '2',
+    itemFicha: '2.4.1',
+    pesoPercentual: 2,
+    pesoQuesitoGeral: '25%',
+    formulaTexto: 'DPT = (artigos completos + anais + capítulos) / (DP − JDP) [Anual → MMA]',
+    unidade: '',
+    decomposicao: [
+      { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+    ],
+    insumos: [
+      {
+        totalExistente: denominadorEfetivo,
+        descricao: `Denominador DP − JDP: ${denominadorEfetivo}`,
+        atendido: denominadorEfetivo > 0,
+      },
+    ],
+    observacoes:
+      'A ficha CAPES define DPT originalmente como total do quadriênio. Por decisão formal do PPG-DCEM, calcula-se anualmente com agregação MMA.',
+  })
+
+  // --- DPIDE1: DPI apenas com coautoria discente/egresso ---
+  const dpide1Anos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    if (denominadorEfetivo === 0) {
+      dpide1Anos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes (DP - JDP = 0)',
+        valorCalculado: null,
+        decomposicao: [],
+      }
+      continue
+    }
+
+    const pubsAno = pubsNoQuadrienio.filter((p) => {
+      if (anoPublicacao(p) !== ano) return false
+      return mapaCoautoriaPub.get(p.id)?.temDiscenteOuEgresso === true
+    })
+    const pubsAnoComQualis = pubsAno.filter((p) => Boolean((p.estrato_qualis || '').trim()))
+
+    if (pubsAno.length === 0 || pubsAnoComQualis.length === 0) {
+      dpide1Anos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando coautorias com discentes/egressos e Qualis em ${ano}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
+        calcularPontuacaoQualisComSaturacao(pubsAno, true)
+      const val = Number((pontosNumerador / denominadorEfetivo).toFixed(3))
+
+      dpide1Anos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          { termo: 'A1 c/ discente', descricao: `Artigos A1 em ${ano}`, valor: a1 },
+          { termo: 'A2 c/ discente', descricao: `Artigos A2 em ${ano}`, valor: a2 },
+          { termo: 'A3 c/ discente', descricao: `Artigos A3 em ${ano}`, valor: a3 },
+          { termo: 'A4 c/ discente', descricao: `Artigos A4 em ${ano}`, valor: a4 },
+          { termo: 'min(B1, DP)', descricao: `B1 saturado (${b1Bruto} brutos)`, valor: b1Saturado },
+          { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontosNumerador },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+        ],
+      }
+    }
+  }
+
+  const dpide1Indicador = agregarComMMA(dpide1Anos, anosQuadrienio, 'quadrienio_mma', {
+    id: 'dpide1',
+    codigo: 'DPIDE1',
+    nome: 'DPI com Coautoria de Discentes e Egressos (Nível 1)',
+    quesito: '2',
+    itemFicha: '2.2.1',
+    pesoPercentual: 10,
+    pesoQuesitoGeral: '25%',
+    formulaTexto:
+      'DPIDE1 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP) [MMA]',
+    unidade: '',
+    decomposicao: [
+      { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+    ],
+    insumos: [
+      {
+        totalExistente: denominadorEfetivo,
+        descricao: `Denominador DP − JDP: ${denominadorEfetivo}`,
+        atendido: denominadorEfetivo > 0,
+      },
+    ],
+    observacoes:
+      'A ficha CAPES define DPIDE1 originalmente como total do quadriênio. Por decisão formal do programa PPG-DCEM, adota-se o cálculo anual com MMA.',
+  })
+
+  // --- DPIDE2: DPI de publicações Nível 2 com discentes ---
+  const dpide2Anos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    if (denominadorEfetivo === 0) {
+      dpide2Anos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes regulares',
+        valorCalculado: null,
+        decomposicao: [],
+      }
+      continue
+    }
+
+    const pubsAnoN2 = pubsNoQuadrienio.filter((p) => {
+      if (anoPublicacao(p) !== ano) return false
+      const isNivel2 = p.indicacao_nivel === 2
+      const temCoautoria = mapaCoautoriaPub.get(p.id)?.temDiscenteOuEgresso === true
+      return isNivel2 && temCoautoria
+    })
+    const pubsAnoN2ComQualis = pubsAnoN2.filter((p) => Boolean((p.estrato_qualis || '').trim()))
+
+    if (pubsAnoN2.length === 0 || pubsAnoN2ComQualis.length === 0) {
+      dpide2Anos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando indicação Nível 2 com coautoria e Qualis em ${ano}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
+        calcularPontuacaoQualisComSaturacao(pubsAnoN2, true)
+      const val = Number((pontosNumerador / denominadorEfetivo).toFixed(3))
+
+      dpide2Anos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          { termo: 'A1 N2', descricao: `Artigos A1 Nível 2 em ${ano}`, valor: a1 },
+          { termo: 'A2 N2', descricao: `Artigos A2 Nível 2 em ${ano}`, valor: a2 },
+          { termo: 'A3 N2', descricao: `Artigos A3 Nível 2 em ${ano}`, valor: a3 },
+          { termo: 'A4 N2', descricao: `Artigos A4 Nível 2 em ${ano}`, valor: a4 },
+          {
+            termo: 'min(B1, DP)',
+            descricao: `B1 N2 saturado (${b1Bruto} brutos)`,
+            valor: b1Saturado,
+          },
+          { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontosNumerador },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+        ],
+      }
+    }
+  }
+
+  const dpide2Indicador = agregarComMMA(dpide2Anos, anosQuadrienio, 'quadrienio_mma', {
+    id: 'dpide2',
+    codigo: 'DPIDE2',
+    nome: 'DPI de Publicações Melhores com Discentes (Nível 2)',
+    quesito: '2',
+    itemFicha: '2.2.2',
+    pesoPercentual: 12,
+    pesoQuesitoGeral: '25%',
+    formulaTexto:
+      'DPIDE2 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP) [MMA]',
+    unidade: '',
+    decomposicao: [
+      { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+    ],
+    insumos: [
+      {
+        totalExistente: denominadorEfetivo,
+        descricao: `Denominador DP − JDP: ${denominadorEfetivo}`,
+        atendido: denominadorEfetivo > 0,
+      },
+    ],
+    observacoes:
+      'A ficha CAPES define DPIDE2 originalmente como total do quadriênio. Por decisão formal do PPG-DCEM, adota-se o cálculo anual com MMA.',
+  })
+
+  // --- DPI2: todas as publicações Nível 2 dos DPs ---
+  const dpi2Anos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    if (denominadorEfetivo === 0) {
+      dpi2Anos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes regulares',
+        valorCalculado: null,
+        decomposicao: [],
+      }
+      continue
+    }
+
+    const pubsAnoN2 = pubsNoQuadrienio.filter((p) => {
+      if (anoPublicacao(p) !== ano) return false
+      return p.indicacao_nivel === 2
+    })
+    const pubsAnoN2ComQualis = pubsAnoN2.filter((p) => Boolean((p.estrato_qualis || '').trim()))
+
+    if (pubsAnoN2.length === 0 || pubsAnoN2ComQualis.length === 0) {
+      dpi2Anos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando indicação de publicações Nível 2 com Qualis em ${ano}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
+        calcularPontuacaoQualisComSaturacao(pubsAnoN2, true)
+      const val = Number((pontosNumerador / denominadorEfetivo).toFixed(3))
+
+      dpi2Anos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          { termo: 'A1 N2', descricao: `Artigos A1 Nível 2 em ${ano}`, valor: a1 },
+          { termo: 'A2 N2', descricao: `Artigos A2 Nível 2 em ${ano}`, valor: a2 },
+          { termo: 'A3 N2', descricao: `Artigos A3 Nível 2 em ${ano}`, valor: a3 },
+          { termo: 'A4 N2', descricao: `Artigos A4 Nível 2 em ${ano}`, valor: a4 },
+          {
+            termo: 'min(B1, DP)',
+            descricao: `B1 N2 saturado (${b1Bruto} brutos)`,
+            valor: b1Saturado,
+          },
+          { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontosNumerador },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+        ],
+      }
+    }
+  }
+
+  const dpi2Indicador = agregarComMMA(dpi2Anos, anosQuadrienio, 'quadrienio_mma', {
+    id: 'dpi2',
+    codigo: 'DPI2',
+    nome: 'DPI das Melhores Publicações do Programa (Nível 2)',
+    quesito: '2',
+    itemFicha: '2.4.3',
+    pesoPercentual: 6,
+    pesoQuesitoGeral: '25%',
+    formulaTexto:
+      'DPI2 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP) [MMA]',
+    unidade: '',
+    decomposicao: [
+      { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+    ],
+    insumos: [
+      {
+        totalExistente: denominadorEfetivo,
+        descricao: `Denominador DP − JDP: ${denominadorEfetivo}`,
+        atendido: denominadorEfetivo > 0,
+      },
+    ],
+    observacoes:
+      'A ficha CAPES define DPI2 originalmente como total do quadriênio. Por decisão formal do PPG-DCEM, adota-se o cálculo anual com MMA.',
+  })
+
+  // =========================================================================
+  // QUESITO 3.1: PATENTES (DPPn e DPPi) — com MMA por decisão do programa
+  // =========================================================================
+  const patentesNacionais = dados.patentes.filter((p) => {
+    const amb = normStr((p as any).ambito)
+    if (amb === 'nacional') return true
+    if (amb === 'internacional') return false
+    const inpi = (p.inpi || '').toUpperCase().trim()
+    return inpi.startsWith('BR') || inpi.length > 0
+  })
+
+  const patentesInternacionais = dados.patentes.filter((p) => {
+    const amb = normStr((p as any).ambito)
+    if (amb === 'internacional') return true
+    if (amb === 'nacional') return false
+    const inpi = (p.inpi || '').toUpperCase().trim()
+    return (
+      inpi.startsWith('PCT') ||
+      inpi.startsWith('US') ||
+      inpi.startsWith('EP') ||
+      inpi.startsWith('WO')
+    )
+  })
+
+  // --- DPPn: Patentes Nacionais ---
+  const dppnAnos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    if (denominadorEfetivo === 0) {
+      dppnAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes regulares',
+        valorCalculado: null,
+        decomposicao: [],
+      }
+      continue
+    }
+
+    const patsAno = patentesNacionais.filter((p) => {
+      const a = anoPatente(p)
+      // Se não tem ano inferível na patente, só associa ao primeiro ano caso seja anoReferencia
+      return a === ano
+    })
+
+    if (patsAno.length === 0) {
+      dppnAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando insumo de patentes nacionais em ${ano}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      const { licenciadas, concedidas, depositadas, pontos } = calcularPontuacaoPatentes(patsAno)
+      const val = Number((pontos / denominadorEfetivo).toFixed(3))
+      dppnAnos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          {
+            termo: 'Depositadas (peso 0.3)',
+            descricao: `Depositadas em ${ano}`,
+            valor: depositadas,
+          },
+          { termo: 'Concedidas (peso 0.6)', descricao: `Concedidas em ${ano}`, valor: concedidas },
+          {
+            termo: 'Licenciadas (peso 1.0)',
+            descricao: `Licenciadas em ${ano}`,
+            valor: licenciadas,
+          },
+          { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontos },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+        ],
+      }
+    }
+  }
+
+  const dppnIndicador = agregarComMMA(dppnAnos, anosQuadrienio, 'quadrienio_mma', {
+    id: 'dppn',
+    codigo: 'DPPn',
+    nome: 'Índice de Patentes Nacionais (DPPn)',
+    quesito: '3.1',
+    itemFicha: '3.1.1',
+    pesoPercentual: 8,
+    pesoQuesitoGeral: '30%',
+    formulaTexto:
+      'DPPn = [N(licenciadas) + 0,6·N(concedidas) + 0,3·N(depositadas)] / (DP − JDP) [MMA]',
+    unidade: '',
+    decomposicao: [
+      { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+    ],
+    insumos: [
+      {
+        totalExistente: patentesNacionais.length,
+        descricao: `${patentesNacionais.length} patentes nacionais cadastradas`,
+        atendido: patentesNacionais.length > 0,
+      },
+    ],
+    observacoes:
+      'A ficha CAPES define o índice de patentes para o quadriênio como um todo. Por decisão formal do PPG-DCEM, aplica-se o cálculo anual e a agregação via MMA.',
+  })
+
+  // --- DPPi: Patentes Internacionais ---
+  const dppiAnos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    if (denominadorEfetivo === 0) {
+      dppiAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes regulares',
+        valorCalculado: null,
+        decomposicao: [],
+      }
+      continue
+    }
+
+    const patsAno = patentesInternacionais.filter((p) => {
+      const a = anoPatente(p)
+      return a === ano
+    })
+
+    if (patsAno.length === 0) {
+      dppiAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando insumo de patentes internacionais em ${ano}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      const { licenciadas, concedidas, depositadas, pontos } = calcularPontuacaoPatentes(patsAno)
+      const val = Number((pontos / denominadorEfetivo).toFixed(3))
+      dppiAnos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          {
+            termo: 'Depositadas (peso 0.3)',
+            descricao: `Depositadas internacionais em ${ano}`,
+            valor: depositadas,
+          },
+          {
+            termo: 'Concedidas (peso 0.6)',
+            descricao: `Concedidas internacionais em ${ano}`,
+            valor: concedidas,
+          },
+          {
+            termo: 'Licenciadas (peso 1.0)',
+            descricao: `Licenciadas internacionais em ${ano}`,
+            valor: licenciadas,
+          },
+          { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontos },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+        ],
+      }
+    }
+  }
+
+  const dppiIndicador = agregarComMMA(dppiAnos, anosQuadrienio, 'quadrienio_mma', {
+    id: 'dppi',
+    codigo: 'DPPi',
+    nome: 'Índice de Patentes Internacionais (DPPi)',
+    quesito: '3.1',
+    itemFicha: '3.1.1',
+    pesoPercentual: 10,
+    pesoQuesitoGeral: '30%',
+    formulaTexto:
+      'DPPi = [N(licenciadas) + 0,6·N(concedidas) + 0,3·N(depositadas)] / (DP − JDP) [MMA]',
+    unidade: '',
+    decomposicao: [
+      { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+    ],
+    insumos: [
       {
         totalExistente: patentesInternacionais.length,
         descricao: `${patentesInternacionais.length} patentes internacionais cadastradas`,
         atendido: patentesInternacionais.length > 0,
       },
-      {
-        totalExistente: denominadorEfetivo,
-        descricao: `Denominador DP − JDP: ${denominadorEfetivo}`,
-        atendido: denominadorEfetivo > 0,
-      },
-    ]
+    ],
+    observacoes:
+      'A ficha CAPES define o índice de patentes para o quadriênio como um todo. Por decisão formal do PPG-DCEM, adota-se cálculo anual com agregação MMA.',
+  })
 
-    if (denominadorEfetivo === 0) {
-      return {
-        id: 'dppi',
-        codigo: 'DPPi',
-        nome: 'Índice de Patentes Internacionais (DPPi)',
-        quesito: '3.1',
-        itemFicha: '3.1.1',
-        pesoPercentual: 10,
-        pesoQuesitoGeral: '30%',
-        formulaTexto:
-          'DPPi = [N(licenciadas) + 0,6·N(concedidas) + 0,3·N(depositadas)] / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido: 'aguardando insumo de docentes permanentes regulares (DP - JDP = 0)',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [],
-        insumos,
-      }
-    }
-
-    if (patentesInternacionais.length === 0) {
-      return {
-        id: 'dppi',
-        codigo: 'DPPi',
-        nome: 'Índice de Patentes Internacionais (DPPi)',
-        quesito: '3.1',
-        itemFicha: '3.1.1',
-        pesoPercentual: 10,
-        pesoQuesitoGeral: '30%',
-        formulaTexto:
-          'DPPi = [N(licenciadas) + 0,6·N(concedidas) + 0,3·N(depositadas)] / (DP − JDP)',
-        status: 'indefinido',
-        motivoIndefinido:
-          'aguardando insumo de patentes internacionais cadastradas (âmbito internacional vazio)',
-        valorCalculado: null,
-        unidade: '',
-        decomposicao: [
-          { termo: 'Patentes Internacionais', descricao: 'Total cadastradas', valor: 0 },
-          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
-        ],
-        insumos,
-      }
-    }
-
-    const valor = Number((pontos / denominadorEfetivo).toFixed(3))
-    return {
-      id: 'dppi',
-      codigo: 'DPPi',
-      nome: 'Índice de Patentes Internacionais (DPPi)',
-      quesito: '3.1',
-      itemFicha: '3.1.1',
-      pesoPercentual: 10,
-      pesoQuesitoGeral: '30%',
-      formulaTexto: 'DPPi = [N(licenciadas) + 0,6·N(concedidas) + 0,3·N(depositadas)] / (DP − JDP)',
-      status: 'calculado',
-      valorCalculado: valor,
-      unidade: '',
-      decomposicao: [
-        {
-          termo: 'Depositadas (peso 0.3)',
-          descricao: 'Patentes internacionais depositadas',
-          valor: depositadas,
-        },
-        {
-          termo: 'Concedidas (peso 0.6)',
-          descricao: 'Patentes internacionais concedidas',
-          valor: concedidas,
-        },
-        {
-          termo: 'Licenciadas (peso 1.0)',
-          descricao: 'Patentes internacionais licenciadas',
-          valor: licenciadas,
-        },
-        { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontos },
-        { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
-      ],
-      insumos,
-    }
-  })()
-
-  // --- BLOCO BIBLIOMÉTRICO: ÍNDICE-H DO CORPO DOCENTE (Scopus) ---
-  // Docentes permanentes com índice H do Scopus
-  // Indicadores:
-  // - H2 do programa: número H2 de docentes permanentes com H >= H2 (equivalente ao índice h do grupo)
-  // - Hmédio: média aritmética dos índices H dos DP
-  // - Hmediano: mediana dos índices H dos DP
-  // - % DP acima de H2: percentual de DP com índice H estritamente acima de H2 (ou >= H2 conforme decomposição)
+  // =========================================================================
+  // BLOCO BIBLIOMÉTRICO (ESTOQUE): ÍNDICE-H DO CORPO DOCENTE (Scopus)
+  // Regra 3: Indicadores de estoque (ADE, H2, H médio, H mediano, JDP) SEM anualização.
+  // =========================================================================
   const dpIndicesH: number[] = permanentes
     .map((d) => (typeof d.indice_h === 'number' && !isNaN(d.indice_h) ? d.indice_h : 0))
     .sort((a, b) => b - a) // ordem decrescente
 
   const totalDpComHPositivo = dpIndicesH.filter((h) => h > 0).length
 
-  // Cálculo do índice H2 do programa:
-  // Maior valor inteiro H2 tal que existam pelo menos H2 docentes permanentes com indice_h >= H2
+  // H2 do programa: maior valor inteiro H2 tal que existam >= H2 permanentes com indice_h >= H2
   let h2Programa = 0
   for (let i = 0; i < dpIndicesH.length; i++) {
     const rank = i + 1
@@ -2108,13 +1775,11 @@ export function calcularTodosIndicadores(
     }
   }
 
-  // Média
   const hMedio =
     dpIndicesH.length > 0
       ? Number((dpIndicesH.reduce((acc, v) => acc + v, 0) / dpIndicesH.length).toFixed(2))
       : 0
 
-  // Mediana
   const hMediano = (() => {
     if (dpIndicesH.length === 0) return 0
     const meio = Math.floor(dpIndicesH.length / 2)
@@ -2124,7 +1789,6 @@ export function calcularTodosIndicadores(
     return Number(((dpIndicesH[meio - 1] + dpIndicesH[meio]) / 2).toFixed(1))
   })()
 
-  // % DP acima de H2 (H > H2)
   const dpAcimaH2 = dpIndicesH.filter((h) => h > h2Programa).length
   const percAcimaH2 = DP > 0 ? Number(((dpAcimaH2 / DP) * 100).toFixed(2)) : 0
 
@@ -2152,6 +1816,7 @@ export function calcularTodosIndicadores(
         motivoIndefinido: 'aguardando insumo de docentes permanentes cadastrados',
         valorCalculado: null,
         unidade: '',
+        metodologia: 'estoque',
         decomposicao: [],
         insumos,
       }
@@ -2172,6 +1837,7 @@ export function calcularTodosIndicadores(
           'aguardando insumo de índice-h dos docentes (0 docentes com índice-h > 0)',
         valorCalculado: null,
         unidade: '',
+        metodologia: 'estoque',
         decomposicao: [
           { termo: 'DP com H cadastrado', descricao: 'Docentes com Scopus/OpenAlex ID', valor: 0 },
           { termo: 'DP Total', descricao: 'Docentes Permanentes', valor: DP },
@@ -2192,6 +1858,7 @@ export function calcularTodosIndicadores(
       status: 'calculado',
       valorCalculado: h2Programa,
       unidade: '',
+      metodologia: 'estoque',
       decomposicao: [
         {
           termo: 'H2 do Programa',
@@ -2213,7 +1880,7 @@ export function calcularTodosIndicadores(
       ],
       insumos,
       observacoes:
-        'Definição oficial do Documento de Área Engenharias II (CAPES): número H2 de docentes permanentes com índice H >= H2.',
+        'Indicador de estoque (sem anualização): valor medido no período conforme base Scopus oficial da área Engenharias II (CAPES).',
     }
   })()
 
