@@ -2,14 +2,13 @@
   "name": "gestao-ppg-dcem",
   "description": "Sistema de Avaliação para Engenharias PPG-DCEM",
   "private": true,
-  "version": "0.0.146",
+  "version": "0.0.147",
   "type": "module",
   "scripts": {
     "start": "vite dev",
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-
     "lint": "oxlint src",
     "lint:fix": "oxlint src --fix",
     "format": "oxfmt",
