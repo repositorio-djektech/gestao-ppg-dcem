@@ -22,7 +22,9 @@ import type {
   EstratoQualis,
   TipoProducao,
   IndicacaoNivel,
+  Qualis,
 } from '@/types/database'
+import { qualisService } from '@/services/qualis'
 import { ANO_INICIO, ANO_FIM } from '@/lib/lattes/quadrienio'
 import { useAuth } from '@/hooks/use-auth'
 import { podeCriarNaTabela, podeEditarRegistro, podeExcluirRegistro } from '@/services/permissoes'
@@ -183,6 +185,9 @@ export default function Publicacoes() {
   const [formData, setFormData] = useState<Omit<Publicacao, 'id'>>(emptyForm)
   const [idParaExcluir, setIdParaExcluir] = useState<number | string | null>(null)
 
+  // Estratos Qualis vindos da tabela qualis
+  const [qualisTabelaLista, setQualisTabelaLista] = useState<Qualis[]>([])
+
   // Discentes e Egressos para coautoria
   const [discentesLista, setDiscentesLista] = useState<Discente[]>([])
   const [egressosLista, setEgressosLista] = useState<Egresso[]>([])
@@ -203,18 +208,20 @@ export default function Publicacoes() {
 
   const carregarRelacionados = async () => {
     try {
-      const [disc, eg, docs, coaut, pubsDocs] = await Promise.all([
+      const [disc, eg, docs, coaut, pubsDocs, qualisItens] = await Promise.all([
         discentesService.list(),
         egressosService.list(),
         docentesService.list(),
         coautoresProgramaService.listarTodos(),
         publicacoesDocentesService.listarTodos(),
+        qualisService.list(),
       ])
       setDiscentesLista(disc)
       setEgressosLista(eg)
       setDocentesLista(docs)
       setTodosCoautores(coaut)
       setTodasPubsDocentes(pubsDocs)
+      setQualisTabelaLista(qualisItens)
     } catch (err) {
       console.error('Erro ao carregar dados para coautoria e docentes:', err)
     }
@@ -455,11 +462,25 @@ export default function Publicacoes() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos Qualis</SelectItem>
-              <SelectItem value="A1">A1</SelectItem>
-              <SelectItem value="A2">A2</SelectItem>
-              <SelectItem value="A3">A3</SelectItem>
-              <SelectItem value="A4">A4</SelectItem>
-              <SelectItem value="B1">B1</SelectItem>
+              {qualisTabelaLista.length > 0 ? (
+                qualisTabelaLista.map((q) => (
+                  <SelectItem key={q.id} value={q.estrato}>
+                    {q.estrato}
+                  </SelectItem>
+                ))
+              ) : (
+                <>
+                  <SelectItem value="A1">A1</SelectItem>
+                  <SelectItem value="A2">A2</SelectItem>
+                  <SelectItem value="A3">A3</SelectItem>
+                  <SelectItem value="A4">A4</SelectItem>
+                  <SelectItem value="B1">B1</SelectItem>
+                  <SelectItem value="B2">B2</SelectItem>
+                  <SelectItem value="B3">B3</SelectItem>
+                  <SelectItem value="B4">B4</SelectItem>
+                  <SelectItem value="C">C</SelectItem>
+                </>
+              )}
               <SelectItem value="nenhum">Sem estrato</SelectItem>
             </SelectContent>
           </Select>
@@ -660,11 +681,25 @@ export default function Publicacoes() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="sem_estrato">Sem estrato</SelectItem>
-                            <SelectItem value="A1">A1</SelectItem>
-                            <SelectItem value="A2">A2</SelectItem>
-                            <SelectItem value="A3">A3</SelectItem>
-                            <SelectItem value="A4">A4</SelectItem>
-                            <SelectItem value="B1">B1</SelectItem>
+                            {qualisTabelaLista.length > 0 ? (
+                              qualisTabelaLista.map((q) => (
+                                <SelectItem key={q.id} value={q.estrato}>
+                                  {q.estrato} - {q.nome}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <>
+                                <SelectItem value="A1">A1</SelectItem>
+                                <SelectItem value="A2">A2</SelectItem>
+                                <SelectItem value="A3">A3</SelectItem>
+                                <SelectItem value="A4">A4</SelectItem>
+                                <SelectItem value="B1">B1</SelectItem>
+                                <SelectItem value="B2">B2</SelectItem>
+                                <SelectItem value="B3">B3</SelectItem>
+                                <SelectItem value="B4">B4</SelectItem>
+                                <SelectItem value="C">C</SelectItem>
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                       </div>

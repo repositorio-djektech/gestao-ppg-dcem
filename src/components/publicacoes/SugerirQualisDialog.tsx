@@ -26,9 +26,10 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { EstratoQualis, Publicacao } from '@/types/database'
+import { EstratoQualis, Publicacao, Qualis } from '@/types/database'
 import { SugestaoEstratoQualis, GrauConfiancaSugestao } from '@/lib/publicacoes/estimativa-qualis'
 import { estimativaQualisService, ItemGravacaoQualis } from '@/services/estimativa-qualis'
+import { qualisService } from '@/services/qualis'
 
 export interface SugerirQualisDialogProps {
   open: boolean
@@ -53,6 +54,7 @@ export function SugerirQualisDialog({ open, onOpenChange, onSucesso }: SugerirQu
     'todos' | 'com_sugestao' | 'sem_sugestao'
   >('todos')
   const [filtroTipo, setFiltroTipo] = useState<string>('todos')
+  const [qualisTabelaLista, setQualisTabelaLista] = useState<Qualis[]>([])
 
   // Chaves selecionadas para confirmação em lote: Set de publicacaoId
   const [selecionadas, setSelecionadas] = useState<Set<number>>(new Set())
@@ -117,6 +119,10 @@ export function SugerirQualisDialog({ open, onOpenChange, onSucesso }: SugerirQu
     if (open) {
       carregarContagensBanco()
       carregarSugestoes()
+      qualisService
+        .list()
+        .then(setQualisTabelaLista)
+        .catch(() => {})
     } else {
       setSugestoes([])
       setSelecionadas(new Set())
@@ -707,11 +713,25 @@ export function SugerirQualisDialog({ open, onOpenChange, onSucesso }: SugerirQu
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="nenhum">Selecione</SelectItem>
-                              <SelectItem value="A1">A1</SelectItem>
-                              <SelectItem value="A2">A2</SelectItem>
-                              <SelectItem value="A3">A3</SelectItem>
-                              <SelectItem value="A4">A4</SelectItem>
-                              <SelectItem value="B1">B1</SelectItem>
+                              {qualisTabelaLista.length > 0 ? (
+                                qualisTabelaLista.map((q) => (
+                                  <SelectItem key={q.id} value={q.estrato}>
+                                    {q.estrato}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <>
+                                  <SelectItem value="A1">A1</SelectItem>
+                                  <SelectItem value="A2">A2</SelectItem>
+                                  <SelectItem value="A3">A3</SelectItem>
+                                  <SelectItem value="A4">A4</SelectItem>
+                                  <SelectItem value="B1">B1</SelectItem>
+                                  <SelectItem value="B2">B2</SelectItem>
+                                  <SelectItem value="B3">B3</SelectItem>
+                                  <SelectItem value="B4">B4</SelectItem>
+                                  <SelectItem value="C">C</SelectItem>
+                                </>
+                              )}
                             </SelectContent>
                           </Select>
                         </div>

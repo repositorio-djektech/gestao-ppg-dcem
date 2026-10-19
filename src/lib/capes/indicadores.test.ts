@@ -326,4 +326,89 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
     const termoMediano = h2?.decomposicao.find((d) => d.termo === 'H Mediano')
     expect(termoMediano?.valor).toBe(13.5)
   })
+
+  it('calcula pesos dos estratos A1 a C no DPI e soma por docentes permanentes vinculados', () => {
+    // DP = 4, JDP = 1 => DP - JDP = 3
+    // Publicação 1: A1, vinculada a Docente 1 e Docente 2 (2 DPs) => soma 2 x 1.0 = 2.0
+    // Publicação 2: A2, vinculada a Docente 1 (1 DP) => soma 1 x 0.875 = 0.875
+    // Publicação 3: A3, vinculada a Docente 3 (1 DP) => soma 1 x 0.75 = 0.75
+    // Publicação 4: A4, vinculada a Docente 1 (1 DP) => soma 1 x 0.675 = 0.675
+    // Publicação 5: B1, vinculada a Docente 1 (1 DP) => soma 1 x 0.5 = 0.5 (sat: min(1, 4) = 1)
+    // Publicações 6 a 10: B2, B3, B4, C => pesos 0.0 na fórmula
+    // Numerador = 2.0 + 0.875 + 0.75 + 0.675 + 0.5 = 4.8
+    // DPI = 4.8 / 3 = 1.6
+    const pubs: any[] = [
+      { id: 101, ano: 2025, estrato_qualis: 'A1', tipo_producao: 'Artigo em periódico' },
+      { id: 102, ano: 2025, estrato_qualis: 'A2', tipo_producao: 'Artigo em periódico' },
+      { id: 103, ano: 2026, estrato_qualis: 'A3', tipo_producao: 'Artigo em periódico' },
+      { id: 104, ano: 2026, estrato_qualis: 'A4', tipo_producao: 'Artigo em periódico' },
+      { id: 105, ano: 2027, estrato_qualis: 'B1', tipo_producao: 'Artigo em periódico' },
+      { id: 106, ano: 2027, estrato_qualis: 'B2', tipo_producao: 'Artigo em periódico' },
+      { id: 107, ano: 2027, estrato_qualis: 'B3', tipo_producao: 'Artigo em periódico' },
+      { id: 108, ano: 2027, estrato_qualis: 'B4', tipo_producao: 'Artigo em periódico' },
+      { id: 109, ano: 2027, estrato_qualis: 'C', tipo_producao: 'Artigo em periódico' },
+    ]
+
+    const pubsDocentes: any[] = [
+      { publicacao_id: 101, docente_id: 1 },
+      { publicacao_id: 101, docente_id: 2 }, // 2 permanentes vinculados na pub 101
+      { publicacao_id: 102, docente_id: 1 },
+      { publicacao_id: 103, docente_id: 3 },
+      { publicacao_id: 104, docente_id: 1 },
+      { publicacao_id: 105, docente_id: 1 },
+      { publicacao_id: 106, docente_id: 1 },
+      { publicacao_id: 107, docente_id: 1 },
+      { publicacao_id: 108, docente_id: 1 },
+      { publicacao_id: 109, docente_id: 1 },
+    ]
+
+    const rel = calcularTodosIndicadores({
+      ...dadosMinimos,
+      publicacoes: pubs,
+      publicacoesDocentes: pubsDocentes,
+    })
+
+    const dpi = rel.todosIndicadores.find((i) => i.codigo === 'DPI')
+    expect(dpi?.status).toBe('calculado')
+    expect(dpi?.valorCalculado).toBe(1.6)
+
+    // DPT: soma por docente vinculado (pub 101 conta 2 vezes; outras 8 contam 1 vez = 10 produções)
+    // DPT = 10 / 3 = 3.333
+    const dpt = rel.todosIndicadores.find((i) => i.codigo === 'DPT')
+    expect(dpt?.status).toBe('calculado')
+    expect(dpt?.valorCalculado).toBe(3.333)
+  })
+
+  it('exibe "aguardando insumo" quando publicações não têm estrato Qualis definido, nunca zero', () => {
+    const pubsSemQualis: any[] = [
+      {
+        id: 201,
+        ano: 2025,
+        autores: 'Docente Um',
+        estrato_qualis: null,
+        tipo_producao: 'Artigo em periódico',
+      },
+      {
+        id: 202,
+        ano: 2026,
+        autores: 'Docente Dois',
+        estrato_qualis: '',
+        tipo_producao: 'Artigo em periódico',
+      },
+    ]
+
+    const rel = calcularTodosIndicadores({
+      ...dadosMinimos,
+      publicacoes: pubsSemQualis,
+      publicacoesDocentes: [
+        { publicacao_id: 201, docente_id: 1 },
+        { publicacao_id: 202, docente_id: 2 },
+      ],
+    })
+
+    const dpi = rel.todosIndicadores.find((i) => i.codigo === 'DPI')
+    expect(dpi?.status).toBe('indefinido')
+    expect(dpi?.motivoIndefinido).toContain('aguardando insumo')
+    expect(dpi?.valorCalculado).toBeNull()
+  })
 })

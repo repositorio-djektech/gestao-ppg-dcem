@@ -434,14 +434,22 @@ export function calcularTodosIndicadores(
 
   // --- Função auxiliar de contagem de Qualis e pontuação com saturação em B1 ---
   // DPI / DPIDE1 / DPIDE2 / DPI2
-  // Fórmula padrão: [A1 + 0.875*A2 + 0.75*A3 + 0.675*A4 + 0.5*min(B1, DP)] / (DP - JDP)
-  function calcularPontuacaoQualisComSaturacao(publicacoesSubset: Publicacao[]): {
+  // Pesos Ficha CAPES: A1=1.0, A2=0.875, A3=0.75, A4=0.675, B1=0.5 (com saturação min(B1, DP)), B2..C = 0.0
+  // Para indicadores agregados do programa com múltiplos docentes vinculados, soma a pontuação por docente vinculado.
+  function calcularPontuacaoQualisComSaturacao(
+    publicacoesSubset: Publicacao[],
+    somarPorDocentePermanente = false,
+  ): {
     a1: number
     a2: number
     a3: number
     a4: number
     b1Bruto: number
     b1Saturado: number
+    b2: number
+    b3: number
+    b4: number
+    c: number
     pontosNumerador: number
   } {
     let a1 = 0
@@ -449,14 +457,26 @@ export function calcularTodosIndicadores(
     let a3 = 0
     let a4 = 0
     let b1Bruto = 0
+    let b2 = 0
+    let b3 = 0
+    let b4 = 0
+    let c = 0
 
     for (const p of publicacoesSubset) {
       const e = (p.estrato_qualis || '').toUpperCase().trim()
-      if (e === 'A1') a1++
-      else if (e === 'A2') a2++
-      else if (e === 'A3') a3++
-      else if (e === 'A4') a4++
-      else if (e === 'B1') b1Bruto++
+      const fatorMultiplicador = somarPorDocentePermanente
+        ? Math.max(1, pubPertenceADocentePermanente(p).docIds.length)
+        : 1
+
+      if (e === 'A1') a1 += fatorMultiplicador
+      else if (e === 'A2') a2 += fatorMultiplicador
+      else if (e === 'A3') a3 += fatorMultiplicador
+      else if (e === 'A4') a4 += fatorMultiplicador
+      else if (e === 'B1') b1Bruto += fatorMultiplicador
+      else if (e === 'B2') b2 += fatorMultiplicador
+      else if (e === 'B3') b3 += fatorMultiplicador
+      else if (e === 'B4') b4 += fatorMultiplicador
+      else if (e === 'C') c += fatorMultiplicador
     }
 
     const b1Saturado = Math.min(b1Bruto, DP)
@@ -464,7 +484,7 @@ export function calcularTodosIndicadores(
       (a1 + 0.875 * a2 + 0.75 * a3 + 0.675 * a4 + 0.5 * b1Saturado).toFixed(3),
     )
 
-    return { a1, a2, a3, a4, b1Bruto, b1Saturado, pontosNumerador }
+    return { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador }
   }
 
   // Identificação de publicações de Docentes Permanentes em periódicos no quadriênio
@@ -482,8 +502,12 @@ export function calcularTodosIndicadores(
 
   // --- DPI (item 2.4.1): Produção dos DPs no quadriênio ---
   const dpiIndicador: ResultadoIndicador = (() => {
-    const { a1, a2, a3, a4, b1Bruto, b1Saturado, pontosNumerador } =
-      calcularPontuacaoQualisComSaturacao(pubsDpPeriodicosQuadrienio)
+    const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
+      calcularPontuacaoQualisComSaturacao(pubsDpPeriodicosQuadrienio, true)
+
+    const pubsDpComQualis = pubsDpPeriodicosQuadrienio.filter((p) =>
+      Boolean((p.estrato_qualis || '').trim()),
+    ).length
 
     const insumos: InsumoStatus[] = [
       {
@@ -492,9 +516,9 @@ export function calcularTodosIndicadores(
         atendido: pubsDpPeriodicosQuadrienio.length > 0,
       },
       {
-        totalExistente: totalPubsComQualis,
-        descricao: `${totalPubsComQualis} publicações com estrato Qualis definido no banco`,
-        atendido: totalPubsComQualis > 0,
+        totalExistente: pubsDpComQualis,
+        descricao: `${pubsDpComQualis} publicações com estrato Qualis definido no banco`,
+        atendido: pubsDpComQualis > 0,
       },
       {
         totalExistente: denominadorEfetivo,
@@ -523,12 +547,35 @@ export function calcularTodosIndicadores(
           { termo: 'A3', descricao: 'Artigos A3', valor: a3 },
           { termo: 'A4', descricao: 'Artigos A4', valor: a4 },
           { termo: 'B1', descricao: 'Artigos B1 brutos (sat: min(B1, DP))', valor: b1Bruto },
+          { termo: 'B2..C', descricao: 'Artigos B2 a C (peso 0)', valor: b2 + b3 + b4 + c },
         ],
         insumos,
       }
     }
 
-    if (totalPubsComQualis === 0) {
+    if (pubsDpPeriodicosQuadrienio.length === 0) {
+      return {
+        id: 'dpi',
+        codigo: 'DPI',
+        nome: 'Índice de Produção Docente Ponderada (DPI)',
+        quesito: '2',
+        itemFicha: '2.4.1',
+        pesoPercentual: 6,
+        pesoQuesitoGeral: '25%',
+        formulaTexto: 'DPI = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de publicações de docentes permanentes no quadriênio',
+        valorCalculado: null,
+        unidade: '',
+        decomposicao: [
+          { termo: 'A1..A4, B1', descricao: 'Artigos classificados', valor: 0 },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+        ],
+        insumos,
+      }
+    }
+
+    if (pubsDpComQualis === 0) {
       return {
         id: 'dpi',
         codigo: 'DPI',
@@ -565,20 +612,41 @@ export function calcularTodosIndicadores(
       valorCalculado: valor,
       unidade: '',
       decomposicao: [
-        { termo: 'A1 (peso 1.0)', descricao: 'Artigos A1', valor: a1 },
-        { termo: 'A2 (peso 0.875)', descricao: 'Artigos A2', valor: a2 },
-        { termo: 'A3 (peso 0.75)', descricao: 'Artigos A3', valor: a3 },
-        { termo: 'A4 (peso 0.675)', descricao: 'Artigos A4', valor: a4 },
+        {
+          termo: 'A1 (peso 1.0)',
+          descricao: 'Artigos A1 somados por docente permanente',
+          valor: a1,
+        },
+        {
+          termo: 'A2 (peso 0.875)',
+          descricao: 'Artigos A2 somados por docente permanente',
+          valor: a2,
+        },
+        {
+          termo: 'A3 (peso 0.75)',
+          descricao: 'Artigos A3 somados por docente permanente',
+          valor: a3,
+        },
+        {
+          termo: 'A4 (peso 0.675)',
+          descricao: 'Artigos A4 somados por docente permanente',
+          valor: a4,
+        },
         {
           termo: 'min(B1, DP) (peso 0.5)',
           descricao: `Artigos B1 saturados (${b1Bruto} brutos, teto ${DP})`,
           valor: b1Saturado,
         },
+        {
+          termo: 'B2..C (peso 0.0)',
+          descricao: `Artigos em estratos sem pontuação (B2=${b2}, B3=${b3}, B4=${b4}, C=${c})`,
+          valor: b2 + b3 + b4 + c,
+        },
         { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontosNumerador },
         { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
       ],
       insumos,
-      observacoes: 'Aplica saturação min(B1, DP) conforme especificado pela Ficha CAPES.',
+      observacoes: 'Aplica saturação min(B1, DP) e pesos Qualis conforme Ficha CAPES.',
     }
   })()
 
@@ -590,15 +658,16 @@ export function calcularTodosIndicadores(
     let capitulos = 0
 
     for (const p of pubsDpTotais) {
+      const docsVinculadosQtd = Math.max(1, pubPertenceADocentePermanente(p).docIds.length)
       const tp = normStr(p.tipo_producao)
       if (tp === 'artigo em periódico' || tp === '' || Boolean(p.periodico)) {
-        periodicos++
+        periodicos += docsVinculadosQtd
       } else if (tp === 'trabalho em anais') {
-        anais++
+        anais += docsVinculadosQtd
       } else if (tp === 'capítulo') {
-        capitulos++
+        capitulos += docsVinculadosQtd
       } else {
-        periodicos++
+        periodicos += docsVinculadosQtd
       }
     }
 
@@ -691,14 +760,23 @@ export function calcularTodosIndicadores(
     (p) => mapaCoautoriaPub.get(p.id)?.temDiscenteOuEgresso === true,
   )
   const dpide1Indicador: ResultadoIndicador = (() => {
-    const { a1, a2, a3, a4, b1Bruto, b1Saturado, pontosNumerador } =
-      calcularPontuacaoQualisComSaturacao(pubsComCoautoria)
+    const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
+      calcularPontuacaoQualisComSaturacao(pubsComCoautoria, true)
+
+    const pubsCoautoriaComQualis = pubsComCoautoria.filter((p) =>
+      Boolean((p.estrato_qualis || '').trim()),
+    ).length
 
     const insumos: InsumoStatus[] = [
       {
         totalExistente: pubsComCoautoria.length,
         descricao: `${pubsComCoautoria.length} publicações com coautoria confirmada de discente/egresso`,
         atendido: pubsComCoautoria.length > 0,
+      },
+      {
+        totalExistente: pubsCoautoriaComQualis,
+        descricao: `${pubsCoautoriaComQualis} publicações com coautoria e estrato Qualis definido`,
+        atendido: pubsCoautoriaComQualis > 0,
       },
       {
         totalExistente: denominadorEfetivo,
@@ -754,6 +832,34 @@ export function calcularTodosIndicadores(
       }
     }
 
+    if (pubsCoautoriaComQualis === 0) {
+      return {
+        id: 'dpide1',
+        codigo: 'DPIDE1',
+        nome: 'DPI com Coautoria de Discentes e Egressos (Nível 1)',
+        quesito: '2',
+        itemFicha: '2.2.1',
+        pesoPercentual: 10,
+        pesoQuesitoGeral: '25%',
+        formulaTexto:
+          'DPIDE1 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
+        status: 'indefinido',
+        motivoIndefinido:
+          'aguardando insumo de estrato Qualis nas publicações com coautoria discente/egresso',
+        valorCalculado: null,
+        unidade: '',
+        decomposicao: [
+          {
+            termo: 'Coautorias c/ Qualis',
+            descricao: 'Publicações com coautoria e estrato atribuído',
+            valor: 0,
+          },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+        ],
+        insumos,
+      }
+    }
+
     const valor = Number((pontosNumerador / denominadorEfetivo).toFixed(3))
     return {
       id: 'dpide1',
@@ -768,11 +874,12 @@ export function calcularTodosIndicadores(
       valorCalculado: valor,
       unidade: '',
       decomposicao: [
-        { termo: 'A1', descricao: 'Artigos A1 c/ discente', valor: a1 },
-        { termo: 'A2', descricao: 'Artigos A2 c/ discente', valor: a2 },
-        { termo: 'A3', descricao: 'Artigos A3 c/ discente', valor: a3 },
-        { termo: 'A4', descricao: 'Artigos A4 c/ discente', valor: a4 },
+        { termo: 'A1', descricao: 'Artigos A1 c/ discente somados por docente', valor: a1 },
+        { termo: 'A2', descricao: 'Artigos A2 c/ discente somados por docente', valor: a2 },
+        { termo: 'A3', descricao: 'Artigos A3 c/ discente somados por docente', valor: a3 },
+        { termo: 'A4', descricao: 'Artigos A4 c/ discente somados por docente', valor: a4 },
         { termo: 'min(B1, DP)', descricao: `B1 saturado (${b1Bruto} brutos)`, valor: b1Saturado },
+        { termo: 'B2..C', descricao: `Artigos B2 a C (peso 0)`, valor: b2 + b3 + b4 + c },
         { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontosNumerador },
         { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
       ],
@@ -789,8 +896,12 @@ export function calcularTodosIndicadores(
 
   const dpide2Indicador: ResultadoIndicador = (() => {
     const totalNivel2 = pubsNoQuadrienio.filter((p) => p.indicacao_nivel === 2).length
-    const { a1, a2, a3, a4, b1Bruto, b1Saturado, pontosNumerador } =
-      calcularPontuacaoQualisComSaturacao(pubsNivel2ComCoautoria)
+    const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
+      calcularPontuacaoQualisComSaturacao(pubsNivel2ComCoautoria, true)
+
+    const pubsN2CoautComQualis = pubsNivel2ComCoautoria.filter((p) =>
+      Boolean((p.estrato_qualis || '').trim()),
+    ).length
 
     const insumos: InsumoStatus[] = [
       {
@@ -802,6 +913,16 @@ export function calcularTodosIndicadores(
         totalExistente: pubsNivel2ComCoautoria.length,
         descricao: `${pubsNivel2ComCoautoria.length} publicações Nível 2 com coautoria de discente/egresso`,
         atendido: pubsNivel2ComCoautoria.length > 0,
+      },
+      {
+        totalExistente: pubsN2CoautComQualis,
+        descricao: `${pubsN2CoautComQualis} publicações Nível 2 com coautoria e Qualis definido`,
+        atendido: pubsN2CoautComQualis > 0,
+      },
+      {
+        totalExistente: denominadorEfetivo,
+        descricao: `Denominador DP − JDP: ${denominadorEfetivo}`,
+        atendido: denominadorEfetivo > 0,
       },
     ]
 
@@ -822,6 +943,56 @@ export function calcularTodosIndicadores(
         valorCalculado: null,
         unidade: '',
         decomposicao: [{ termo: 'Publicações Nível 2', descricao: 'Total indicadas', valor: 0 }],
+        insumos,
+      }
+    }
+
+    if (pubsNivel2ComCoautoria.length === 0) {
+      return {
+        id: 'dpide2',
+        codigo: 'DPIDE2',
+        nome: 'DPI de Publicações Melhores com Discentes (Nível 2)',
+        quesito: '2',
+        itemFicha: '2.2.2',
+        pesoPercentual: 12,
+        pesoQuesitoGeral: '25%',
+        formulaTexto:
+          'DPIDE2 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
+        status: 'indefinido',
+        motivoIndefinido:
+          'aguardando confirmação de coautoria em publicações Nível 2 pelo programa',
+        valorCalculado: null,
+        unidade: '',
+        decomposicao: [
+          {
+            termo: 'Publicações N2 c/ Coautoria',
+            descricao: 'Total com discente/egresso',
+            valor: 0,
+          },
+        ],
+        insumos,
+      }
+    }
+
+    if (pubsN2CoautComQualis === 0) {
+      return {
+        id: 'dpide2',
+        codigo: 'DPIDE2',
+        nome: 'DPI de Publicações Melhores com Discentes (Nível 2)',
+        quesito: '2',
+        itemFicha: '2.2.2',
+        pesoPercentual: 12,
+        pesoQuesitoGeral: '25%',
+        formulaTexto:
+          'DPIDE2 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
+        status: 'indefinido',
+        motivoIndefinido:
+          'aguardando insumo de estrato Qualis nas publicações Nível 2 com coautoria',
+        valorCalculado: null,
+        unidade: '',
+        decomposicao: [
+          { termo: 'Publicações N2 c/ Qualis', descricao: 'Classificadas no Qualis', valor: 0 },
+        ],
         insumos,
       }
     }
@@ -860,15 +1031,16 @@ export function calcularTodosIndicadores(
       valorCalculado: valor,
       unidade: '',
       decomposicao: [
-        { termo: 'A1 N2', descricao: 'Artigos A1 no Nível 2', valor: a1 },
-        { termo: 'A2 N2', descricao: 'Artigos A2 no Nível 2', valor: a2 },
-        { termo: 'A3 N2', descricao: 'Artigos A3 no Nível 2', valor: a3 },
-        { termo: 'A4 N2', descricao: 'Artigos A4 no Nível 2', valor: a4 },
+        { termo: 'A1 N2', descricao: 'Artigos A1 no Nível 2 somados por docente', valor: a1 },
+        { termo: 'A2 N2', descricao: 'Artigos A2 no Nível 2 somados por docente', valor: a2 },
+        { termo: 'A3 N2', descricao: 'Artigos A3 no Nível 2 somados por docente', valor: a3 },
+        { termo: 'A4 N2', descricao: 'Artigos A4 no Nível 2 somados por docente', valor: a4 },
         {
           termo: 'min(B1, DP)',
           descricao: `B1 N2 saturado (${b1Bruto} brutos)`,
           valor: b1Saturado,
         },
+        { termo: 'B2..C', descricao: `Artigos B2 a C Nível 2 (peso 0)`, valor: b2 + b3 + b4 + c },
         { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontosNumerador },
         { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
       ],
@@ -879,14 +1051,23 @@ export function calcularTodosIndicadores(
   // --- DPI2 (item 2.4.3): todas as publicações Nível 2 dos DPs ---
   const pubsNivel2Geral = pubsNoQuadrienio.filter((p) => p.indicacao_nivel === 2)
   const dpi2Indicador: ResultadoIndicador = (() => {
-    const { a1, a2, a3, a4, b1Bruto, b1Saturado, pontosNumerador } =
-      calcularPontuacaoQualisComSaturacao(pubsNivel2Geral)
+    const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
+      calcularPontuacaoQualisComSaturacao(pubsNivel2Geral, true)
+
+    const pubsN2ComQualis = pubsNivel2Geral.filter((p) =>
+      Boolean((p.estrato_qualis || '').trim()),
+    ).length
 
     const insumos: InsumoStatus[] = [
       {
         totalExistente: pubsNivel2Geral.length,
         descricao: `${pubsNivel2Geral.length} publicações Nível 2 indicadas pelo programa`,
         atendido: pubsNivel2Geral.length > 0,
+      },
+      {
+        totalExistente: pubsN2ComQualis,
+        descricao: `${pubsN2ComQualis} publicações Nível 2 com estrato Qualis definido`,
+        atendido: pubsN2ComQualis > 0,
       },
       {
         totalExistente: denominadorEfetivo,
@@ -907,6 +1088,26 @@ export function calcularTodosIndicadores(
         formulaTexto: 'DPI2 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
         status: 'indefinido',
         motivoIndefinido: 'aguardando indicação de publicações Nível 2 pelo programa',
+        valorCalculado: null,
+        unidade: '',
+        decomposicao: [],
+        insumos,
+      }
+    }
+
+    if (pubsN2ComQualis === 0) {
+      return {
+        id: 'dpi2',
+        codigo: 'DPI2',
+        nome: 'DPI das Melhores Publicações do Programa (Nível 2)',
+        quesito: '2',
+        itemFicha: '2.4.3',
+        pesoPercentual: 6,
+        pesoQuesitoGeral: '25%',
+        formulaTexto: 'DPI2 = [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP)',
+        status: 'indefinido',
+        motivoIndefinido:
+          'aguardando insumo de estrato Qualis nas publicações Nível 2 indicadas pelo programa',
         valorCalculado: null,
         unidade: '',
         decomposicao: [],
@@ -947,15 +1148,16 @@ export function calcularTodosIndicadores(
       valorCalculado: valor,
       unidade: '',
       decomposicao: [
-        { termo: 'A1 N2', descricao: 'Artigos A1 no Nível 2', valor: a1 },
-        { termo: 'A2 N2', descricao: 'Artigos A2 no Nível 2', valor: a2 },
-        { termo: 'A3 N2', descricao: 'Artigos A3 no Nível 2', valor: a3 },
-        { termo: 'A4 N2', descricao: 'Artigos A4 no Nível 2', valor: a4 },
+        { termo: 'A1 N2', descricao: 'Artigos A1 no Nível 2 somados por docente', valor: a1 },
+        { termo: 'A2 N2', descricao: 'Artigos A2 no Nível 2 somados por docente', valor: a2 },
+        { termo: 'A3 N2', descricao: 'Artigos A3 no Nível 2 somados por docente', valor: a3 },
+        { termo: 'A4 N2', descricao: 'Artigos A4 no Nível 2 somados por docente', valor: a4 },
         {
           termo: 'min(B1, DP)',
           descricao: `B1 N2 saturado (${b1Bruto} brutos)`,
           valor: b1Saturado,
         },
+        { termo: 'B2..C', descricao: `Artigos B2 a C Nível 2 (peso 0)`, valor: b2 + b3 + b4 + c },
         { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontosNumerador },
         { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
       ],

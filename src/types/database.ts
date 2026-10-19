@@ -31,7 +31,15 @@ export type Docente = {
   ano_doutorado?: number | null
 }
 
-export type EstratoQualis = 'A1' | 'A2' | 'A3' | 'A4' | 'B1'
+export type EstratoQualis = 'A1' | 'A2' | 'A3' | 'A4' | 'B1' | 'B2' | 'B3' | 'B4' | 'C'
+
+export type Qualis = {
+  id: number
+  estrato: string
+  nome: string
+  descricao?: string | null
+  created_at?: string
+}
 export type QualisOrigem = 'manual' | 'sugerido_confirmado'
 export type TipoProducao = 'Artigo em periódico' | 'Trabalho em anais' | 'Capítulo'
 export type IndicacaoNivel = 2 | 3
