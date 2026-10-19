@@ -1,8 +1,25 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import { MemoryRouter } from 'react-router-dom'
 import Dashboard from './Dashboard'
 import type { ResultadoRelatorioLacunas } from '@/services/lacunas'
+import type { Role } from '@/types/database'
+
+// Mock de useAuth
+let mockRole: Role | null = 'coordenador'
+
+vi.mock('@/hooks/use-auth', () => ({
+  useAuth: () => ({
+    user: { id: 'user-1' },
+    role: mockRole,
+    isSuporte: mockRole === 'suporte',
+    isCoordenador: mockRole === 'coordenador',
+    isAuxiliar: mockRole === 'auxiliar',
+    isDocente: mockRole === 'docente',
+    isCapes: mockRole === 'capes',
+    loading: false,
+  }),
+}))
 
 // Mock de supabase para os contadores do Dashboard
 vi.mock('@/lib/supabase/client', () => ({
@@ -53,8 +70,9 @@ describe('Dashboard — Card de Status Lacunas de Dados', () => {
     expect(html).toContain('data-testid="card-status-lacunas"')
     expect(html).toContain('Pendências de Dados')
     expect(html).toContain('border-red-300')
-    expect(html).toContain('3 críticas')
     expect(html).toContain('3 pendências críticas de dados')
+    // O badge de contagem (ex.: "3 críticas") foi removido conforme requisito
+    expect(html).not.toContain('3 críticas')
     expect(html).toContain('Revise e preencha os dados prioritários')
     expect(html).toContain('Clique para revisar no Relatório de Lacunas')
   })
@@ -108,5 +126,56 @@ describe('Dashboard — Card de Status Lacunas de Dados', () => {
     expect(html).toContain('Total de Registros')
     expect(html).toContain('Docentes')
     expect(html).not.toContain('data-testid="card-status-lacunas"')
+  })
+
+  describe('Visibilidade por papel', () => {
+    const mockLacunasCriticas: ResultadoRelatorioLacunas = {
+      sucesso: true,
+      dados: {
+        gerado_em: '2025-05-10T12:00:00Z',
+        resumo: [
+          {
+            regra_id: 'docente_sem_scopus_id',
+            descricao: 'Docente sem Scopus ID',
+            severidade: 'critica',
+            grupo: 'Docentes',
+            tabela: 'docentes',
+            total_registros: 10,
+            total_lacunas: 5,
+          },
+        ],
+        lacunas: [],
+      },
+      origem: 'edge_function',
+    }
+
+    it('NÃO exibe o card de Pendências de Dados para papel "docente" em nenhuma hipótese', () => {
+      mockRole = 'docente'
+      const html = renderToString(
+        <MemoryRouter>
+          <Dashboard obterLacunasFn={() => Promise.resolve(mockLacunasCriticas)} />
+        </MemoryRouter>,
+      )
+
+      expect(html).not.toContain('data-testid="card-status-lacunas"')
+      expect(html).not.toContain('Pendências de Dados')
+    })
+
+    it.each<Role>(['suporte', 'coordenador', 'auxiliar', 'capes'])(
+      'exibe o card de Pendências de Dados para papel "%s" quando houver críticas',
+      (papelPermitido) => {
+        mockRole = papelPermitido
+        const html = renderToString(
+          <MemoryRouter>
+            <Dashboard obterLacunasFn={() => Promise.resolve(mockLacunasCriticas)} />
+          </MemoryRouter>,
+        )
+
+        expect(html).toContain('data-testid="card-status-lacunas"')
+        expect(html).toContain('Pendências de Dados')
+        // E o badge de contagem ("5 críticas") NÃO deve existir
+        expect(html).not.toContain('5 críticas')
+      },
+    )
   })
 })

@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
+import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
 import { ImportarLattesDialog } from '@/components/lattes/ImportarLattesDialog'
 import type { ResultadoProcessamentoLattes } from '@/lib/lattes/processor'
@@ -190,6 +191,7 @@ export interface DashboardProps {
 export default function Dashboard({ obterLacunasFn = obterRelatorioLacunas }: DashboardProps = {}) {
   const { toast } = useToast()
   const navigate = useNavigate()
+  const { role } = useAuth()
   const [counts, setCounts] = useState<CountMap>({})
   const [loading, setLoading] = useState(true)
   const [lattesDialogOpen, setLattesDialogOpen] = useState(false)
@@ -356,58 +358,58 @@ export default function Dashboard({ obterLacunasFn = obterRelatorioLacunas }: Da
           </CardContent>
         </Card>
 
-        {/* Card de Alerta: Lacunas Críticas de Dados (APENAS quando houver pendências críticas > 0) */}
-        {lacunasCriticas !== null && lacunasCriticas > 0 && (
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => navigate('/lacunas')}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                navigate('/lacunas')
-              }
-            }}
-            className="block group lg:col-span-1 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-red-500 rounded-lg cursor-pointer"
-            aria-label={`Ver relatório de lacunas: ${lacunasCriticas} pendências críticas de dados`}
-            data-testid="card-status-lacunas"
-          >
-            <Card className="border border-red-300 hover:border-red-400 shadow-md hover:shadow-lg transition-all duration-200 h-full bg-white group-hover:bg-red-50/20">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-800 flex items-center gap-1.5">
-                  <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
-                  Pendências de Dados
-                </CardTitle>
-                <Badge
-                  variant="outline"
-                  className="text-xs font-semibold bg-red-100 text-red-800 border-red-200"
-                >
-                  {lacunasCriticas} {lacunasCriticas === 1 ? 'crítica' : 'críticas'}
-                </Badge>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">
-                  {lacunasCriticas}{' '}
-                  {lacunasCriticas === 1
-                    ? 'pendência crítica de dados'
-                    : 'pendências críticas de dados'}
-                </div>
-                <p className="text-xs text-slate-600 mt-1 flex items-center justify-between">
-                  <span>Revise e preencha os dados prioritários</span>
-                  <ChevronRight className="h-3.5 w-3.5 text-red-500 group-hover:translate-x-0.5 transition-transform" />
-                </p>
-                <div className="mt-3 flex items-center justify-between text-[11px] font-medium text-red-700 bg-red-50 px-2.5 py-1.5 rounded-md border border-red-100">
-                  <span>Clique para revisar no Relatório de Lacunas</span>
-                  {lacunasTotal !== null && lacunasTotal > lacunasCriticas && (
-                    <span className="text-red-600/80 font-normal">
-                      +{lacunasTotal - lacunasCriticas} atenção
-                    </span>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        {/* Card de Alerta: Lacunas Críticas de Dados (APENAS para papéis autorizados e com críticas > 0; docente NÃO vê em hipótese alguma) */}
+        {role !== 'docente' &&
+          (role === 'suporte' ||
+            role === 'coordenador' ||
+            role === 'auxiliar' ||
+            role === 'capes') &&
+          lacunasCriticas !== null &&
+          lacunasCriticas > 0 && (
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate('/lacunas')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  navigate('/lacunas')
+                }
+              }}
+              className="block group lg:col-span-1 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-red-500 rounded-lg cursor-pointer"
+              aria-label={`Ver relatório de lacunas: ${lacunasCriticas} pendências críticas de dados`}
+              data-testid="card-status-lacunas"
+            >
+              <Card className="border border-red-300 hover:border-red-400 shadow-md hover:shadow-lg transition-all duration-200 h-full bg-white group-hover:bg-red-50/20">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-800 flex items-center gap-1.5">
+                    <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+                    Pendências de Dados
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-red-600">
+                    {lacunasCriticas}{' '}
+                    {lacunasCriticas === 1
+                      ? 'pendência crítica de dados'
+                      : 'pendências críticas de dados'}
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1 flex items-center justify-between">
+                    <span>Revise e preencha os dados prioritários</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-red-500 group-hover:translate-x-0.5 transition-transform" />
+                  </p>
+                  <div className="mt-3 flex items-center justify-between text-[11px] font-medium text-red-700 bg-red-50 px-2.5 py-1.5 rounded-md border border-red-100">
+                    <span>Clique para revisar no Relatório de Lacunas</span>
+                    {lacunasTotal !== null && lacunasTotal > lacunasCriticas && (
+                      <span className="text-red-600/80 font-normal">
+                        +{lacunasTotal - lacunasCriticas} atenção
+                      </span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
         {categoryStats.map((cat) => (
           <Card
