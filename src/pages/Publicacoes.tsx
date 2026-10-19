@@ -249,22 +249,42 @@ export default function Publicacoes() {
     ? podeEditarRegistro(role, docenteIdLogado, 'publicacoes', editingPub, editingCtx)
     : canCreate
 
-  const filtered = publicacoes.filter((p) => {
-    const s =
-      p.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.autores.toLowerCase().includes(searchTerm.toLowerCase())
-    if (!s) return false
-    if (yearFilter !== 'all' && p.ano.toString() !== yearFilter) return false
-    if (qualisFilter !== 'all') {
-      if (qualisFilter === 'nenhum' && p.estrato_qualis) return false
-      if (qualisFilter !== 'nenhum' && p.estrato_qualis !== qualisFilter) return false
-    }
-    if (tipoProducaoFilter !== 'all') {
-      if (tipoProducaoFilter === 'nenhum' && p.tipo_producao) return false
-      if (tipoProducaoFilter !== 'nenhum' && p.tipo_producao !== tipoProducaoFilter) return false
-    }
-    return true
-  })
+  const filtered = useMemo(() => {
+    const termo = searchTerm
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+
+    const normalizar = (txt?: string | null) =>
+      (txt || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+
+    return publicacoes.filter((p) => {
+      if (yearFilter !== 'all' && p.ano.toString() !== yearFilter) return false
+      if (qualisFilter !== 'all') {
+        if (qualisFilter === 'nenhum' && p.estrato_qualis) return false
+        if (qualisFilter !== 'nenhum' && p.estrato_qualis !== qualisFilter) return false
+      }
+      if (tipoProducaoFilter !== 'all') {
+        if (tipoProducaoFilter === 'nenhum' && p.tipo_producao) return false
+        if (tipoProducaoFilter !== 'nenhum' && p.tipo_producao !== tipoProducaoFilter) return false
+      }
+
+      if (!termo) return true
+
+      const matchTitulo = normalizar(p.titulo).includes(termo)
+      const matchAutores = normalizar(p.autores).includes(termo)
+      const matchPeriodico = normalizar(p.periodico).includes(termo)
+      const matchDoi = normalizar(p.doi).includes(termo)
+      const matchAno = String(p.ano ?? '').includes(termo)
+      const matchQualis = normalizar(p.estrato_qualis).includes(termo)
+
+      return matchTitulo || matchAutores || matchPeriodico || matchDoi || matchAno || matchQualis
+    })
+  }, [publicacoes, searchTerm, yearFilter, qualisFilter, tipoProducaoFilter])
   const totalPages = Math.ceil(filtered.length / PER_PAGE)
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 

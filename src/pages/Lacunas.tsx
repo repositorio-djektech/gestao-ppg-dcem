@@ -893,16 +893,30 @@ export default function Lacunas({
         return false
       }
 
-      // Busca textual livre por nome ou motivo
+      // Busca textual livre por nome ou motivo (com normalização sem acentos)
       if (termoBusca.trim()) {
-        const buscaNorm = termoBusca.toLowerCase().trim()
-        const nomeNorm = item.nome.toLowerCase()
-        const motivoNorm = item.motivo.toLowerCase()
-        const regraNorm = item.regraDescricao.toLowerCase()
+        const buscaNorm = termoBusca
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .trim()
+
+        const normalizar = (txt: string) =>
+          txt
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+
+        const nomeNorm = normalizar(item.nome)
+        const motivoNorm = normalizar(item.motivo)
+        const regraNorm = normalizar(item.regraDescricao)
+        const grupoNorm = normalizar(item.grupoId)
+
         if (
           !nomeNorm.includes(buscaNorm) &&
           !motivoNorm.includes(buscaNorm) &&
-          !regraNorm.includes(buscaNorm)
+          !regraNorm.includes(buscaNorm) &&
+          !grupoNorm.includes(buscaNorm)
         ) {
           return false
         }

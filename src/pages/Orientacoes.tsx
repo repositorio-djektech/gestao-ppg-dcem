@@ -155,6 +155,16 @@ export default function Orientacoes() {
       fields={fields}
       emptyForm={emptyForm}
       searchKey="tipo"
+      customFilterItem={(o, termo, normalizar) => {
+        const docNome = o.docente_id ? docenteMap[String(o.docente_id)] : ''
+        const discNome = o.discente_id ? discenteMap[String(o.discente_id)] : ''
+        return (
+          normalizar(docNome).includes(termo) ||
+          normalizar(discNome).includes(termo) ||
+          normalizar(o.tipo).includes(termo) ||
+          normalizar(o.status).includes(termo)
+        )
+      }}
       entityName="Orientação"
       tableName="orientacoes"
       printModule="orientacoes"

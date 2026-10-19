@@ -78,6 +78,7 @@ interface CrudPageProps<T extends { id: number | string }> {
         setFormData: React.Dispatch<React.SetStateAction<any>>
       }) => ReactNode)
   getContextoItem?: (item: T) => ContextoPermissaoRegistro | undefined
+  customFilterItem?: (item: T, termo: string, normalizar: (val: any) => string) => boolean
 }
 
 export function CrudPage<T extends { id: number | string }>({
@@ -97,6 +98,7 @@ export function CrudPage<T extends { id: number | string }>({
   renderCustomActions,
   formHeaderActions,
   getContextoItem,
+  customFilterItem,
 }: CrudPageProps<T>) {
   const navigate = useNavigate()
   const { role, profile } = useAuth()
@@ -138,11 +140,110 @@ export function CrudPage<T extends { id: number | string }>({
     })
   }, [fields])
 
-  const filtered = data.filter((item) =>
-    String(item[searchKey] ?? '')
+  const filtered = useMemo(() => {
+    const termo = searchTerm
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
-      .includes(searchTerm.toLowerCase()),
-  )
+      .trim()
+
+    if (!termo) return data
+
+    const normalizar = (val: any): string => {
+      if (val === null || val === undefined) return ''
+      return String(val)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+    }
+
+    const termoDigitos = termo.replace(/\D/g, '')
+
+    return data.filter((item) => {
+      // 1. Filtro customizado opcional
+      if (customFilterItem && customFilterItem(item, termo, normalizar)) {
+        return true
+      }
+
+      // 2. Chave principal de busca da página
+      if (searchKey && normalizar(item[searchKey]).includes(termo)) {
+        return true
+      }
+
+      // 2. Busca pelas colunas declaradas na tabela (valores diretos e renderizados)
+      for (const col of columns) {
+        const val = item[col.key as keyof T]
+        if (val !== undefined && val !== null) {
+          const valStr = normalizar(val)
+          if (valStr.includes(termo)) return true
+
+          // Se for CPF ou número formatado
+          if (termoDigitos.length >= 3 && String(col.key).toLowerCase().includes('cpf')) {
+            const cpfLimpo = String(val).replace(/\D/g, '')
+            if (cpfLimpo.includes(termoDigitos)) return true
+          }
+        }
+
+        // Se a coluna tiver render customizado que retorna string ou número
+        if (col.render) {
+          try {
+            const rendered = col.render(item)
+            if (typeof rendered === 'string' || typeof rendered === 'number') {
+              if (normalizar(rendered).includes(termo)) return true
+            }
+          } catch {
+            // ignora erro em render
+          }
+        }
+      }
+
+      // 3. Busca por campos comuns de entidade (nome, titulo, autores, orientador, coordenador, email, cpf)
+      const itemAny = item as any
+      const camposComuns = [
+        itemAny.nome,
+        itemAny.titulo,
+        itemAny.titulo_trabalho,
+        itemAny.evento,
+        itemAny.autores,
+        itemAny.orientador,
+        itemAny.discente_nome,
+        itemAny.nome_premiado,
+        itemAny.instituicao,
+        itemAny.email,
+        itemAny.cpf,
+        itemAny.tipo,
+        itemAny.tipo_curso,
+        itemAny.area,
+        itemAny.codigo,
+        itemAny.status,
+        itemAny.classificacao,
+        itemAny.orgao_fomento,
+        itemAny.ano,
+        itemAny.ano_semestre,
+        itemAny.ano_ingresso,
+        itemAny.ano_titulacao,
+        itemAny.ano_conclusao,
+        itemAny.data_ingresso,
+        itemAny.inpi,
+        itemAny.atuacao_profissional,
+      ]
+
+      for (const campo of camposComuns) {
+        if (campo !== undefined && campo !== null) {
+          if (normalizar(campo).includes(termo)) return true
+          if (
+            termoDigitos.length >= 3 &&
+            typeof campo === 'string' &&
+            campo.replace(/\D/g, '').includes(termoDigitos)
+          ) {
+            return true
+          }
+        }
+      }
+
+      return false
+    })
+  }, [data, searchTerm, searchKey, columns, customFilterItem])
   const totalPages = Math.ceil(filtered.length / PER_PAGE)
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
   const colCount = columns.length + (hasActionsColumn ? 1 : 0)

@@ -114,6 +114,14 @@ export default function Bancas() {
       fields={fields}
       emptyForm={emptyForm}
       searchKey="titulo_trabalho"
+      customFilterItem={(b, termo, normalizar) => {
+        const discNome = b.discente_id ? discenteMap[b.discente_id] : ''
+        return (
+          normalizar(discNome).includes(termo) ||
+          normalizar(b.titulo_trabalho).includes(termo) ||
+          normalizar(b.tipo).includes(termo)
+        )
+      }}
       entityName="Banca"
       tableName="bancas"
       printModule="bancas"

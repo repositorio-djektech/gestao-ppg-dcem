@@ -158,7 +158,40 @@ export default function Docentes() {
   const canDeleteGlobal = !isCapes && (role === 'suporte' || role === 'coordenador')
   const PER_PAGE = 20
 
-  const filtered = docentes.filter((d) => d.nome.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filtered = useMemo(() => {
+    const termo = searchTerm
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+
+    if (!termo) return docentes
+
+    const normalizar = (txt?: string | null) =>
+      (txt || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+
+    return docentes.filter((d) => {
+      const matchNome = normalizar(d.nome).includes(termo)
+      const matchEmail = normalizar(d.email).includes(termo)
+      const matchCpf = (d.cpf || '').replace(/\D/g, '').includes(termo.replace(/\D/g, ''))
+      const matchSiape = (d.siape || '').replace(/\D/g, '').includes(termo.replace(/\D/g, ''))
+      const matchCategoria = normalizar(d.categoria).includes(termo)
+      const matchLattes = (d.lattes_id || '').includes(termo)
+      const matchOrcid = (d.orcid || '').includes(termo)
+      return (
+        matchNome ||
+        matchEmail ||
+        (matchCpf && termo.replace(/\D/g, '').length >= 3) ||
+        (matchSiape && termo.replace(/\D/g, '').length >= 3) ||
+        matchCategoria ||
+        matchLattes ||
+        matchOrcid
+      )
+    })
+  }, [docentes, searchTerm])
   const totalPages = Math.ceil(filtered.length / PER_PAGE)
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 

@@ -551,6 +551,17 @@ export default function ProjetosPesquisa() {
       fields={fields}
       emptyForm={emptyForm}
       searchKey="titulo"
+      customFilterItem={(p, termo, normalizar) => {
+        const coordNome = p.coordenador_id ? docenteMap[String(p.coordenador_id)] : ''
+        if (coordNome && normalizar(coordNome).includes(termo)) return true
+
+        const parts = todosParticipantes.filter((part) => part.projeto_id === Number(p.id))
+        for (const part of parts) {
+          const nomeDoc = docenteMap[String(part.docente_id)]
+          if (nomeDoc && normalizar(nomeDoc).includes(termo)) return true
+        }
+        return false
+      }}
       entityName="Projeto"
       tableName="projetos_pesquisa"
       printModule="projetos-pesquisa"

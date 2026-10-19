@@ -20,7 +20,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import backImgSignin from '@/assets/back-img-signin-cc601.webp'
-import logoP2cem from '@/assets/logo-p2cem.png'
+import p2cemUfs from '@/assets/p2cem-ufs.png'
 import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt'
 
 // Tela de Login e Cadastro do PPG DCEM
@@ -192,9 +192,9 @@ export default function Login() {
           <CardHeader className="space-y-4 pb-4">
             <div className="flex items-center justify-center">
               <img
-                src={logoP2cem}
-                alt="P²CEM"
-                className="h-14 max-w-[200px] shrink-0 object-contain drop-shadow-sm"
+                src={p2cemUfs}
+                alt="P²CEM - UFS"
+                className="h-12 max-w-[260px] w-auto shrink-0 object-contain drop-shadow-sm"
               />
             </div>
 

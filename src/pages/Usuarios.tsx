@@ -169,16 +169,29 @@ export default function Usuarios() {
 
   // Lista filtrada
   const usuariosFiltrados = useMemo(() => {
+    const termo = busca
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+
     return usuarios.filter((u) => {
       if (filtroPapel !== 'todos' && u.role !== filtroPapel) {
         return false
       }
-      if (!busca.trim()) return true
-      const termo = busca.toLowerCase()
-      const matchNome = (u.name || '').toLowerCase().includes(termo)
-      const matchEmail = (u.email || '').toLowerCase().includes(termo)
-      const matchDocente = (u.docente_nome || '').toLowerCase().includes(termo)
-      return matchNome || matchEmail || matchDocente
+      if (!termo) return true
+
+      const normalizar = (txt?: string | null) =>
+        (txt || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+
+      const matchNome = normalizar(u.name).includes(termo)
+      const matchEmail = normalizar(u.email).includes(termo)
+      const matchDocente = normalizar(u.docente_nome || u.docente?.nome).includes(termo)
+      const matchPapel = normalizar(ROLE_INFO[u.role]?.label || u.role).includes(termo)
+      return matchNome || matchEmail || matchDocente || matchPapel
     })
   }, [usuarios, busca, filtroPapel])
 
@@ -400,35 +413,6 @@ export default function Usuarios() {
               <span>Novo Usuário</span>
             </Button>
           )}
-        </div>
-      </div>
-
-      {/* Regra de acesso informacional */}
-      <div className="bg-amber-50/70 border border-amber-200/80 rounded-lg p-3 sm:p-4 text-xs sm:text-sm text-amber-900 flex items-start gap-2.5">
-        <ShieldCheck className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-        <div className="space-y-1">
-          <p className="font-semibold text-amber-950">
-            Regras de Governança de Papéis (Etapa A1 & A2):
-          </p>
-          <ul className="list-disc list-inside space-y-0.5 text-amber-900/90 text-xs sm:text-xs">
-            <li>
-              <strong>Suporte:</strong> Controle irrestrito (criação, exclusão e promoção para
-              qualquer um dos 5 papéis).
-            </li>
-            <li>
-              <strong>Coordenador:</strong> Pode promover usuários de <em>Docente</em> para{' '}
-              <em>Auxiliar</em> e vincular perfis a docentes.
-            </li>
-            <li>
-              <strong>Vínculo Docente:</strong> Usuários com papel <em>Docente</em> vinculados a um
-              registro de docente têm acesso de edição exclusivo aos seus próprios dados e
-              orientações (RLS por linha).
-            </li>
-            <li>
-              <strong>Autoproteção:</strong> Nenhum usuário pode alterar o próprio papel ou excluir
-              a si mesmo.
-            </li>
-          </ul>
         </div>
       </div>
 

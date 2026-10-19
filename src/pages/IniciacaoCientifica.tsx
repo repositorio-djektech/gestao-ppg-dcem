@@ -252,6 +252,31 @@ export default function IniciacaoCientificaPage() {
       fields={fields}
       emptyForm={emptyForm}
       searchKey="titulo"
+      customFilterItem={(item, termo, normalizar) => {
+        let discNome = item.discente_nome || ''
+        if (item.discente_id) {
+          const disc = discentes.find((d) => String(d.id) === String(item.discente_id))
+          if (disc) discNome = disc.nome
+        }
+        let docNome = ''
+        if (item.docente_orientador_id) {
+          const doc = docentes.find((d) => String(d.id) === String(item.docente_orientador_id))
+          if (doc) docNome = doc.nome
+        }
+        let projTitulo = ''
+        if (item.projeto_id) {
+          const proj = projetos.find((p) => String(p.id) === String(item.projeto_id))
+          if (proj) projTitulo = proj.titulo
+        }
+
+        return (
+          normalizar(discNome).includes(termo) ||
+          normalizar(docNome).includes(termo) ||
+          normalizar(projTitulo).includes(termo) ||
+          normalizar(item.bolsa_cnpq).includes(termo) ||
+          normalizar(item.tipo).includes(termo)
+        )
+      }}
       entityName="Iniciação Científica"
       tableName="iniciacao_cientifica"
       tableHeaderClassName="bg-[#e9effc] sticky top-0 z-10"
