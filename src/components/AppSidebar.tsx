@@ -300,7 +300,7 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
                         side="right"
                         align="center"
                         sideOffset={8}
-                        className="hidden lg:block z-[110] bg-neutral-900 text-neutral-100 text-xs px-2.5 py-1 rounded-md shadow-md border border-neutral-800 font-medium select-none pointer-events-none"
+                        className="hidden lg:block z-[110] bg-blue-950 text-blue-50 text-xs px-2.5 py-1 rounded-md shadow-md border border-blue-800/80 font-medium select-none pointer-events-none"
                       >
                         {item.label}
                       </TooltipContent>
