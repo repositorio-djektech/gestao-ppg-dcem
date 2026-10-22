@@ -6,6 +6,7 @@ import p2cemUfs from '@/assets/p2cem-ufs.png'
 import { Sidebar, SidebarBody, SidebarLink, useSidebar } from '@/components/ui/sidebar'
 import { useAuth } from '@/hooks/use-auth'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -272,7 +273,7 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
               )}
               {section.items.map((item) => {
                 const isActive = location.pathname === item.href
-                return (
+                const linkElement = (
                   <SidebarLink
                     key={item.href}
                     link={item}
@@ -289,6 +290,25 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
                     )}
                   />
                 )
+
+                // Quando a sidebar estiver FECHADA no desktop, exibe tooltip com a label do item no hover
+                if (!open) {
+                  return (
+                    <Tooltip key={item.href} delayDuration={150}>
+                      <TooltipTrigger asChild>{linkElement}</TooltipTrigger>
+                      <TooltipContent
+                        side="right"
+                        align="center"
+                        sideOffset={8}
+                        className="hidden lg:block z-[110] bg-neutral-900 text-neutral-100 text-xs px-2.5 py-1 rounded-md shadow-md border border-neutral-800 font-medium select-none pointer-events-none"
+                      >
+                        {item.label}
+                      </TooltipContent>
+                    </Tooltip>
+                  )
+                }
+
+                return linkElement
               })}
             </div>
           ))}
@@ -388,11 +408,19 @@ export function AppSidebar({ open: openProp, setOpen: setOpenProp }: AppSidebarP
   const open = openProp !== undefined ? openProp : internalOpen
   const setOpen = setOpenProp !== undefined ? setOpenProp : setInternalOpen
 
+  const handleNavigate = () => {
+    // No mobile (< 1024px), fecha o drawer overlay ao clicar no item.
+    // No desktop (>= 1024px), preserva o estado aberto da sidebar (não fecha).
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setOpen(false)
+    }
+  }
+
   return (
     <Sidebar open={open} setOpen={setOpen}>
       {/* Sidebar com borda vertical nítida à direita e leve sombra */}
       <SidebarBody className="bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 shadow-sm">
-        <SidebarContentWithSections onNavigate={() => setOpen(false)} />
+        <SidebarContentWithSections onNavigate={handleNavigate} />
       </SidebarBody>
     </Sidebar>
   )
