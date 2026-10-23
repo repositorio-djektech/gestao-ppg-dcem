@@ -5,7 +5,10 @@ import { orientacoesService } from '@/services/orientacoes'
 import { docentesService } from '@/services/docentes'
 import { discentesService } from '@/services/discentes'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import type { Orientacao } from '@/types/database'
+import { calcularStatusEfetivoOrientacao } from '@/lib/orientacoes/status'
 
 const emptyForm = {
   docente_id: '',
@@ -14,14 +17,22 @@ const emptyForm = {
   inicio: '',
   fim: '',
   cancelado: false,
-  status: 'em_andamento',
   link_comprovacao: '',
   observacoes: '',
 }
+
 const statusColors: Record<string, string> = {
   ativo: 'bg-emerald-50 text-emerald-700',
+  em_andamento: 'bg-emerald-50 text-emerald-700',
   concluido: 'bg-blue-50 text-blue-700',
   cancelado: 'bg-red-50 text-red-700',
+}
+
+const statusLabels: Record<string, string> = {
+  ativo: 'Em andamento',
+  em_andamento: 'Em andamento',
+  concluido: 'Concluído',
+  cancelado: 'Cancelado',
 }
 
 export default function Orientacoes() {
@@ -71,14 +82,23 @@ export default function Orientacoes() {
     {
       key: 'status',
       label: 'Status',
-      render: (o) => (
-        <Badge
-          variant="secondary"
-          className={`border-0 capitalize ${statusColors[o.status] ?? ''}`}
-        >
-          {o.status}
-        </Badge>
-      ),
+      render: (o) => {
+        const statusEfetivo =
+          o.status_efetivo ||
+          calcularStatusEfetivoOrientacao({
+            status: o.status,
+            fim: o.fim,
+            cancelado: o.cancelado,
+          })
+        return (
+          <Badge
+            variant="secondary"
+            className={`border-0 font-medium ${statusColors[statusEfetivo] ?? statusColors.em_andamento}`}
+          >
+            {statusLabels[statusEfetivo] ?? statusEfetivo}
+          </Badge>
+        )
+      },
     },
   ]
 
@@ -126,15 +146,51 @@ export default function Orientacoes() {
       helperText: 'Deixe em branco se em andamento',
     },
     {
-      key: 'status',
-      label: 'Status da Orientação',
-      type: 'select',
-      required: true,
-      options: [
-        { value: 'ativo', label: 'Ativo' },
-        { value: 'concluido', label: 'Concluído' },
-        { value: 'cancelado', label: 'Cancelado' },
-      ],
+      key: 'cancelado',
+      label: 'Cancelado',
+      type: 'switch',
+      customRender: ({ formData, setFormData }) => {
+        // Deriva o status efetivo do formulário
+        const statusEfetivo = calcularStatusEfetivoOrientacao({
+          status: formData.status,
+          fim: formData.fim,
+          cancelado: formData.cancelado === true,
+        })
+
+        // Quando o status efetivo do registro for concluido, o switcher NÃO é exibido
+        // (não faz sentido cancelar o que já concluiu)
+        if (statusEfetivo === 'concluido') {
+          return null
+        }
+
+        const isCancelado = Boolean(formData.cancelado)
+
+        return (
+          <div className="flex items-center justify-between border border-slate-200 rounded-lg p-3 bg-white">
+            <div className="space-y-0.5">
+              <Label
+                htmlFor="cancelado"
+                className="cursor-pointer text-sm font-medium text-slate-800"
+              >
+                Cancelado
+              </Label>
+              <p className="text-xs text-slate-500">
+                Marque se a orientação foi interrompida ou cancelada
+              </p>
+            </div>
+            <Switch
+              id="cancelado"
+              checked={isCancelado}
+              onCheckedChange={(checked) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  cancelado: checked,
+                }))
+              }}
+            />
+          </div>
+        )
+      },
     },
     {
       key: 'link_comprovacao',
@@ -155,14 +211,34 @@ export default function Orientacoes() {
       fields={fields}
       emptyForm={emptyForm}
       searchKey="tipo"
+      transformSubmitData={(data) => {
+        // Envia cancelado (boolean) + datas, nunca um status escolhido pelo usuário.
+        // O trigger no backend (ou aplicação do backend) deriva o status definitivo.
+        const canceladoBool = Boolean(data.cancelado)
+        const { status: _ignorado, ...rest } = data
+        return {
+          ...rest,
+          cancelado: canceladoBool,
+        }
+      }}
       customFilterItem={(o, termo, normalizar) => {
         const docNome = o.docente_id ? docenteMap[String(o.docente_id)] : ''
         const discNome = o.discente_id ? discenteMap[String(o.discente_id)] : ''
+        const stEfetivo =
+          o.status_efetivo ||
+          calcularStatusEfetivoOrientacao({
+            status: o.status,
+            fim: o.fim,
+            cancelado: o.cancelado,
+          })
+        const labelSt = statusLabels[stEfetivo] ?? ''
         return (
           normalizar(docNome).includes(termo) ||
           normalizar(discNome).includes(termo) ||
           normalizar(o.tipo).includes(termo) ||
-          normalizar(o.status).includes(termo)
+          normalizar(o.status).includes(termo) ||
+          normalizar(stEfetivo).includes(termo) ||
+          normalizar(labelSt).includes(termo)
         )
       }}
       entityName="Orientação"

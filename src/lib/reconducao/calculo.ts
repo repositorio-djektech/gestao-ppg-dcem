@@ -1,4 +1,5 @@
 import { ANO_INICIO, ANO_FIM, extrairAnoNumerico } from '../lattes/quadrienio'
+import { calcularStatusEfetivoOrientacao } from '../orientacoes/status'
 import type {
   Docente,
   Orientacao,
@@ -89,9 +90,20 @@ export function orientacaoNoPeriodo(ori: Orientacao, inicio = ANO_INICIO, fim = 
  * Determina se uma orientação é de mestrado concluída.
  */
 export function isMestradoConcluido(ori: Orientacao): boolean {
+  const statusEfetivo =
+    ori.status_efetivo ||
+    calcularStatusEfetivoOrientacao({
+      status: ori.status,
+      fim: ori.fim,
+      cancelado: ori.cancelado,
+    })
   const statusNorm = (ori.status || '').toLowerCase().trim()
   const tipoNorm = (ori.tipo || '').toLowerCase().trim()
-  const concluido = statusNorm === 'concluido' || statusNorm === 'titulado'
+  const concluido =
+    statusEfetivo === 'concluido' ||
+    statusNorm === 'concluido' ||
+    statusNorm === 'titulado' ||
+    Boolean(ori.data_defesa)
   const mestrado = tipoNorm.includes('mestrado')
   return concluido && mestrado
 }
@@ -100,9 +112,20 @@ export function isMestradoConcluido(ori: Orientacao): boolean {
  * Determina se uma orientação é de doutorado concluída.
  */
 export function isDoutoradoConcluido(ori: Orientacao): boolean {
+  const statusEfetivo =
+    ori.status_efetivo ||
+    calcularStatusEfetivoOrientacao({
+      status: ori.status,
+      fim: ori.fim,
+      cancelado: ori.cancelado,
+    })
   const statusNorm = (ori.status || '').toLowerCase().trim()
   const tipoNorm = (ori.tipo || '').toLowerCase().trim()
-  const concluido = statusNorm === 'concluido' || statusNorm === 'titulado'
+  const concluido =
+    statusEfetivo === 'concluido' ||
+    statusNorm === 'concluido' ||
+    statusNorm === 'titulado' ||
+    Boolean(ori.data_defesa)
   const doutorado = tipoNorm.includes('doutorado')
   return concluido && doutorado
 }

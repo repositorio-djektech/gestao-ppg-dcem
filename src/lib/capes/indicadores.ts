@@ -6,6 +6,7 @@ import {
   orientacaoNoPeriodo,
   obterAnoOrientacaoDefesa,
 } from '../reconducao/calculo'
+import { calcularStatusEfetivoOrientacao } from '../orientacoes/status'
 import { calcularResumoJdpPrograma } from './jdp'
 import type { Docente, Orientacao, Disciplina, Publicacao, Patente } from '@/types/database'
 import type {
@@ -256,10 +257,18 @@ export function calcularTodosIndicadores(
     return anoDentro(a, anoInicio, anoFim)
   })
 
-  // Orientações concluídas no quadriênio com orientador permanente
+  // Orientações concluídas no quadriênio com orientador permanente (usa status efetivo derivado)
   const oriConcluidasNoQuadrienio = dados.orientacoes.filter((o) => {
     const noPeriodo = orientacaoNoPeriodo(o, anoInicio, anoFim)
+    const statusEfetivo =
+      o.status_efetivo ||
+      calcularStatusEfetivoOrientacao({
+        status: o.status,
+        fim: o.fim,
+        cancelado: o.cancelado,
+      })
     const concluida =
+      statusEfetivo === 'concluido' ||
       normStr(o.status) === 'concluido' ||
       normStr(o.status) === 'titulado' ||
       Boolean(o.data_defesa)
@@ -542,9 +551,17 @@ export function calcularTodosIndicadores(
       continue
     }
 
-    // Orientações ativas no ano (seja por status 'ativo' ou vigência temporal)
+    // Orientações ativas no ano (seja por status efetivo 'em_andamento'/ativo ou vigência temporal)
     const ativasAno = dados.orientacoes.filter((ori) => {
-      if (normStr(ori.status) !== 'ativo') return false
+      const statusEfetivo =
+        ori.status_efetivo ||
+        calcularStatusEfetivoOrientacao({
+          status: ori.status,
+          fim: ori.fim,
+          cancelado: ori.cancelado,
+        })
+      if (statusEfetivo === 'cancelado') return false
+      if (statusEfetivo !== 'em_andamento' && normStr(ori.status) !== 'ativo') return false
       const ini = extrairAnoDeData(ori.inicio)
       const fim = extrairAnoDeData(ori.fim) || extrairAnoDeData(ori.data_defesa)
       if (ini !== null && fim !== null) {
@@ -627,7 +644,15 @@ export function calcularTodosIndicadores(
     // Defesas M ou D concluídas exatamente no ano
     const defesasAno = dados.orientacoes.filter((ori) => {
       const a = obterAnoOrientacaoDefesa(ori)
+      const statusEfetivo =
+        ori.status_efetivo ||
+        calcularStatusEfetivoOrientacao({
+          status: ori.status,
+          fim: ori.fim,
+          cancelado: ori.cancelado,
+        })
       const concluida =
+        statusEfetivo === 'concluido' ||
         normStr(ori.status) === 'concluido' ||
         normStr(ori.status) === 'titulado' ||
         Boolean(ori.data_defesa)
@@ -709,7 +734,16 @@ export function calcularTodosIndicadores(
     // 1. Orientações ativas no ano
     const docsOri = new Set<number>()
     for (const o of dados.orientacoes) {
-      if (normStr(o.status) === 'ativo' && o.docente_id) {
+      const stEfetivo =
+        o.status_efetivo ||
+        calcularStatusEfetivoOrientacao({
+          status: o.status,
+          fim: o.fim,
+          cancelado: o.cancelado,
+        })
+      const isAtiva =
+        stEfetivo === 'em_andamento' || (stEfetivo !== 'cancelado' && normStr(o.status) === 'ativo')
+      if (isAtiva && o.docente_id) {
         const ini = extrairAnoDeData(o.inicio)
         const fim = extrairAnoDeData(o.fim) || extrairAnoDeData(o.data_defesa)
         const noAno =
