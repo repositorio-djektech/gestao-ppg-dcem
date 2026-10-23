@@ -79,6 +79,10 @@ interface CrudPageProps<T extends { id: number | string }> {
       }) => ReactNode)
   getContextoItem?: (item: T) => ContextoPermissaoRegistro | undefined
   customFilterItem?: (item: T, termo: string, normalizar: (val: any) => string) => boolean
+  transformSubmitData?: (
+    formData: Record<string, any>,
+    editingId: number | string | null,
+  ) => Record<string, any>
 }
 
 export function CrudPage<T extends { id: number | string }>({
@@ -99,6 +103,7 @@ export function CrudPage<T extends { id: number | string }>({
   formHeaderActions,
   getContextoItem,
   customFilterItem,
+  transformSubmitData,
 }: CrudPageProps<T>) {
   const navigate = useNavigate()
   const { role, profile } = useAuth()
@@ -266,8 +271,11 @@ export function CrudPage<T extends { id: number | string }>({
         return
       }
     }
-    const submitData = { ...formData }
+    let submitData = { ...formData }
     delete (submitData as any).id
+    if (transformSubmitData) {
+      submitData = transformSubmitData(submitData, editingId)
+    }
     // Converter campos com ID vazio em null para respeitar foreign keys no Supabase
     for (const key of Object.keys(submitData)) {
       if (

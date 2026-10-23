@@ -148,6 +148,8 @@ export type Orientacao = {
   inicio: string
   fim: string
   status: 'ativo' | 'concluido' | 'cancelado' | 'em_andamento'
+  cancelado?: boolean
+  status_efetivo?: 'em_andamento' | 'concluido' | 'cancelado'
   link_comprovacao: string
   observacoes: string
   data_defesa?: string | null

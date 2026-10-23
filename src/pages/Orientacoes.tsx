@@ -8,16 +8,16 @@ import { Badge } from '@/components/ui/badge'
 import type { Orientacao } from '@/types/database'
 
 const emptyForm = {
-  tipo: '',
   docente_id: '',
   discente_id: '',
+  tipo: '',
   inicio: '',
   fim: '',
-  status: 'ativo',
+  cancelado: false,
+  status: 'em_andamento',
   link_comprovacao: '',
   observacoes: '',
 }
-
 const statusColors: Record<string, string> = {
   ativo: 'bg-emerald-50 text-emerald-700',
   concluido: 'bg-blue-50 text-blue-700',
