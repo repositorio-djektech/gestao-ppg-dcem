@@ -75,6 +75,9 @@ export type Mobilidade = {
   observacoes: string
 }
 
+export type EventoTipo = 'Trabalho' | 'Resumo'
+export type EventoNacionalidade = 'Nacional' | 'Internacional'
+
 export type Evento = {
   id: number
   docente: string
@@ -83,7 +86,18 @@ export type Evento = {
   papel: string
   link_comprovacao: string
   observacoes: string
+  tipo?: EventoTipo | null
+  nacionalidade?: EventoNacionalidade | null
 }
+
+export type PatenteTipoInpi =
+  | 'Patente de Invenção (PI)'
+  | 'Modelo de Utilidade (MU)'
+  | 'Certificado de Adição'
+  | 'Desenho Industrial'
+  | 'Programa de Computador'
+  | 'Topografia de Circuitos'
+  | 'Marca'
 
 export type Patente = {
   id: number
@@ -95,6 +109,7 @@ export type Patente = {
   observacoes: string
   created_at?: string
   ambito?: 'nacional' | 'internacional' | string | null
+  tipo?: PatenteTipoInpi | string | null
 }
 
 export type Discente = {
@@ -242,6 +257,22 @@ export type ImpactoSocial = {
   ano: number | null
   link_comprovacao: string
   observacoes: string
+}
+
+export type ImpactoVinculoEntidade =
+  | 'producao_tecnica'
+  | 'patentes'
+  | 'premiacoes'
+  | 'projetos_pesquisa'
+  | 'publicacoes'
+  | string
+
+export type ImpactoVinculo = {
+  id: number
+  impacto_social_id: number
+  entidade: ImpactoVinculoEntidade
+  entidade_id: number
+  created_at?: string
 }
 
 export type Premissao = {
