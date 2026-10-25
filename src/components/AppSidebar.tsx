@@ -28,7 +28,7 @@ import {
   GraduationCap,
   UserCheck,
   ClipboardList,
-  Users2,
+  BookUser,
   Library,
   GitFork,
   FlaskConical,
@@ -137,7 +137,7 @@ const navSections: NavSection[] = [
       {
         label: 'Orientações',
         href: '/orientacoes',
-        icon: <GraduationCap className="h-5 w-5 shrink-0" />,
+        icon: <BookUser className="h-5 w-5 shrink-0" />,
       },
       {
         label: 'Iniciação Científica',
