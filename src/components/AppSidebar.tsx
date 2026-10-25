@@ -32,6 +32,7 @@ import {
   Library,
   GitFork,
   FlaskConical,
+  FolderOpen,
   FileText,
   Wrench,
   Lightbulb,
@@ -136,7 +137,7 @@ const navSections: NavSection[] = [
       {
         label: 'Orientações',
         href: '/orientacoes',
-        icon: <Users2 className="h-5 w-5 shrink-0" />,
+        icon: <GraduationCap className="h-5 w-5 shrink-0" />,
       },
       {
         label: 'Iniciação Científica',
@@ -156,7 +157,7 @@ const navSections: NavSection[] = [
       {
         label: 'Projetos de Pesquisa',
         href: '/projetos-pesquisa',
-        icon: <FlaskConical className="h-5 w-5 shrink-0" />,
+        icon: <FolderOpen className="h-5 w-5 shrink-0" />,
       },
     ],
   },
@@ -326,7 +327,7 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
           {/* Identificação do Usuário */}
           <div
             className={cn('flex items-center gap-2 min-w-0 flex-1', !open && 'justify-center')}
-            title={`${profile?.name ?? 'Usuário'} (${profile?.email ?? ''})`}
+            title={profile?.name ?? 'Usuário'}
           >
             <Avatar className="h-7 w-7 border border-neutral-200 dark:border-neutral-700 shrink-0">
               <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
@@ -334,20 +335,15 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
               </AvatarFallback>
             </Avatar>
             {open && (
-              <div className="flex flex-col overflow-hidden text-left min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate">
-                    {profile?.name ?? 'Usuário'}
-                  </span>
-                  {role && (
-                    <span className="shrink-0 text-[9px] font-semibold uppercase px-1.5 py-0.2 rounded bg-primary/10 text-primary border border-primary/20">
-                      {ROLE_LABELS[role] || role}
-                    </span>
-                  )}
-                </div>
-                <span className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
-                  {profile?.email ?? ''}
+              <div className="flex flex-col items-start gap-0.5 overflow-hidden text-left min-w-0 flex-1">
+                <span className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate w-full">
+                  {profile?.name ?? 'Usuário'}
                 </span>
+                {role && (
+                  <span className="inline-flex self-start items-center text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 leading-none">
+                    {ROLE_LABELS[role] || role}
+                  </span>
+                )}
               </div>
             )}
           </div>

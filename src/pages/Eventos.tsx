@@ -17,7 +17,7 @@ const emptyForm = {
 }
 
 const OPCOES_TIPO = [
-  { value: 'Trabalho', label: 'Trabalho' },
+  { value: 'Trabalho completo', label: 'Trabalho completo' },
   { value: 'Resumo', label: 'Resumo' },
 ]
 
@@ -99,7 +99,7 @@ const fields: FieldDef[] = [
     label: 'Tipo de Apresentação',
     type: 'select',
     required: false,
-    placeholder: 'Selecione o tipo (Trabalho ou Resumo)...',
+    placeholder: 'Selecione o tipo (Trabalho completo ou Resumo)...',
     options: OPCOES_TIPO,
     helperText: 'Classificação do produto apresentado no evento',
   },

@@ -75,7 +75,7 @@ export type Mobilidade = {
   observacoes: string
 }
 
-export type EventoTipo = 'Trabalho' | 'Resumo'
+export type EventoTipo = 'Trabalho completo' | 'Resumo'
 export type EventoNacionalidade = 'Nacional' | 'Internacional'
 
 export type Evento = {
