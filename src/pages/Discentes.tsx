@@ -70,12 +70,32 @@ export default function Discentes() {
   const [dialogoLattesAberto, setDialogoLattesAberto] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [arquivoSelecionado, setArquivoSelecionado] = useState<File | null>(null)
+  const [projetosDiscentesMap, setProjetosDiscentesMap] = useState<Map<number, number[]>>(new Map())
   const modalFileInputRef = useRef<HTMLInputElement>(null)
   const formStateRef = useRef<{
     isEditing: boolean
     formData: any
     setFormData: React.Dispatch<React.SetStateAction<any>>
   } | null>(null)
+
+  const carregarProjetosDiscentes = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projetos_discentes')
+        .select('projeto_id, discente_id')
+      if (!error && data) {
+        const mapa = new Map<number, number[]>()
+        data.forEach((row) => {
+          const list = mapa.get(row.discente_id) || []
+          list.push(row.projeto_id)
+          mapa.set(row.discente_id, list)
+        })
+        setProjetosDiscentesMap(mapa)
+      }
+    } catch (err) {
+      console.error('Falha ao carregar vínculos projetos_discentes:', err)
+    }
+  }, [])
 
   useEffect(() => {
     Promise.all([docentesService.list(), projetosPesquisaService.list()])
@@ -84,7 +104,8 @@ export default function Discentes() {
         setProjetos(projList)
       })
       .catch(console.error)
-  }, [])
+    carregarProjetosDiscentes()
+  }, [carregarProjetosDiscentes])
 
   const docenteObjMap = useMemo(() => {
     const m = new Map<number, Docente>()
@@ -291,25 +312,30 @@ export default function Discentes() {
         className: 'text-left font-medium text-slate-900',
         headerClassName: 'text-left font-semibold text-slate-700',
         render: (d) => {
-          const tituloProjeto =
-            d.projeto_id && projetoMap.has(d.projeto_id) ? projetoMap.get(d.projeto_id) : null
+          // Obtém projetos vinculados da ponte projetos_discentes com fallback para d.projeto_id
+          const pIdsDaPonte = projetosDiscentesMap.get(d.id) || []
+          const todosIds = Array.from(
+            new Set([...pIdsDaPonte, ...(d.projeto_id ? [d.projeto_id] : [])]),
+          )
+          const nomesProjetos = todosIds
+            .map((pid) => projetoMap.get(pid))
+            .filter((nome): nome is string => Boolean(nome))
 
           return (
             <div className="flex flex-col items-start gap-0.5">
               <span>{normalizarNomePessoa(d.nome)}</span>
-              {(d.tipo_curso || tituloProjeto) && (
+              {(d.tipo_curso || nomesProjetos.length > 0) && (
                 <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 font-normal">
                   {d.tipo_curso && (
                     <span className="font-medium text-primary bg-primary/10 px-1.5 py-0.2 rounded">
                       {d.tipo_curso}
                     </span>
                   )}
-                  {tituloProjeto && (
-                    <span className="text-blue-700 line-clamp-1" title={tituloProjeto}>
-                      • Projeto:{' '}
-                      {tituloProjeto.length > 40 ? `${tituloProjeto.slice(0, 40)}…` : tituloProjeto}
+                  {nomesProjetos.map((titulo, idx) => (
+                    <span key={idx} className="text-blue-700 line-clamp-1" title={titulo}>
+                      • Projeto: {titulo.length > 35 ? `${titulo.slice(0, 35)}…` : titulo}
                     </span>
-                  )}
+                  ))}
                 </div>
               )}
             </div>
@@ -414,7 +440,7 @@ export default function Discentes() {
         },
       },
     ],
-    [docenteObjMap, projetoMap],
+    [docenteObjMap, projetoMap, projetosDiscentesMap],
   )
 
   const docentesOpcoes = useMemo(() => {
@@ -521,14 +547,15 @@ export default function Discentes() {
       },
       {
         key: 'projeto_id',
-        label: 'Projeto',
+        label: 'Projeto Principal',
         type: 'select',
         options: projetos.map((p) => ({
           value: String(p.id),
           label: `${p.titulo.slice(0, 70)}${p.titulo.length > 70 ? '…' : ''}`,
         })),
         placeholder: 'Selecione o projeto vinculado...',
-        helperText: 'Projeto de pesquisa institucional ou individual em que o discente atua',
+        helperText:
+          'Projeto de pesquisa em que o discente atua (também gerenciável em /projetos-pesquisa)',
       },
       {
         key: 'link_comprovacao',
@@ -539,15 +566,53 @@ export default function Discentes() {
       },
       { key: 'observacoes', label: 'Observações', type: 'textarea', rows: 2 },
     ],
-    [docentes, projetos],
+    [docentes, projetos, isDocente, docenteIdLogado, docentesOpcoes],
   )
+
+  const customDiscentesService = useMemo(() => {
+    return {
+      ...discentesService,
+      create: async (item: Partial<Discente>) => {
+        const criado = await discentesService.create(item)
+        if (criado?.id && item.projeto_id) {
+          await supabase.from('projetos_discentes').upsert(
+            {
+              projeto_id: Number(item.projeto_id),
+              discente_id: Number(criado.id),
+              papel: 'participante',
+            },
+            { onConflict: 'projeto_id,discente_id' },
+          )
+          await carregarProjetosDiscentes()
+        }
+        return criado
+      },
+      update: async (id: number | string, item: Partial<Discente>) => {
+        const atualizado = await discentesService.update(id, item)
+        if (item.projeto_id !== undefined) {
+          if (item.projeto_id) {
+            await supabase.from('projetos_discentes').upsert(
+              {
+                projeto_id: Number(item.projeto_id),
+                discente_id: Number(id),
+                papel: 'participante',
+              },
+              { onConflict: 'projeto_id,discente_id' },
+            )
+          }
+          await carregarProjetosDiscentes()
+        }
+        return atualizado
+      },
+    }
+  }, [carregarProjetosDiscentes])
 
   return (
     <>
       <CrudPage
         title="Discentes"
         description="Gerencie os discentes do programa de pós-graduação."
-        service={discentesService}
+        service={customDiscentesService as any}
         columns={columns}
         fields={fields}
         emptyForm={initialEmptyForm}

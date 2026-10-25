@@ -134,6 +134,8 @@ export type Banca = {
   titulo_trabalho: string
   data: string
   discente_id: number | null
+  docente_orientador_id?: number | null
+  projeto_id?: number | null
   membros: string
   tipo: 'Mestrado' | 'Doutorado' | 'Qualificação'
   link_comprovacao: string
@@ -167,9 +169,19 @@ export type ProjetoPesquisa = {
   coordenador_id: number | null
   financiamento: boolean
   orgao_fomento: string
+  financiador_nome?: string | null
+  valor_financiamento?: number | null
+  comprovante_url?: string | null
   link_comprovacao: string
   observacoes: string
   classificacao?: ProjetoPesquisaClassificacao | null
+}
+
+export type ProjetoDiscente = {
+  projeto_id: number
+  discente_id: number
+  papel?: string | null
+  created_at?: string
 }
 
 export type NivelDisciplina = 'graduacao' | 'pos_graduacao'
