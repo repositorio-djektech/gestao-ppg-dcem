@@ -259,7 +259,7 @@ describe('Regras de Lacunas - Etapa 1', () => {
       expect(regra.avaliar(disc2).temLacuna).toBe(false)
     })
 
-    it('R4: discente sem projeto_id gera lacuna atenção', () => {
+    it('R4: discente sem projeto_id gera lacuna atenção, mas ponte projetos_discentes satisfaz a regra', () => {
       const regra = REGRAS_DISCENTES.find((r) => r.id === 'discente_sem_projeto_pesquisa')!
       expect(regra).toBeDefined()
       expect(regra.severidade).toBe('atencao')
@@ -269,6 +269,22 @@ describe('Regras de Lacunas - Etapa 1', () => {
 
       const disc2 = { id: 2, nome: 'Aluno B', projeto_id: 5 } as any
       expect(regra.avaliar(disc2).temLacuna).toBe(false)
+
+      const disc3 = {
+        id: 3,
+        nome: 'Aluno C',
+        projeto_id: null,
+        total_projetos_vinculados: 1,
+      } as any
+      expect(regra.avaliar(disc3).temLacuna).toBe(false)
+
+      const disc4 = {
+        id: 4,
+        nome: 'Aluno D',
+        projeto_id: null,
+        projetos_discentes: [{ projeto_id: 8, discente_id: 4 }],
+      } as any
+      expect(regra.avaliar(disc4).temLacuna).toBe(false)
     })
 
     it('R4: publicação JCR >= 1.0 sem nenhum docente autor vinculado gera lacuna atenção', () => {

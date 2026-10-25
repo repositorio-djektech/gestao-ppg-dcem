@@ -170,8 +170,8 @@ export default function Bancas() {
         const discId = val ? Number(val) : null
         const disc = discId ? discenteMap.get(discId) : null
         // Pré-preenche o orientador e projeto se a banca ainda não tiver
-        const atualizado = { ...currentData, discente_id: val }
-        if (disc?.docente_orientador_id && !currentData.docente_orientador_id) {
+        const atualizado: Record<string, any> = { ...currentData, discente_id: val }
+        if (disc?.docente_orientador_id && !(currentData as any).docente_orientador_id) {
           atualizado.docente_orientador_id = String(disc.docente_orientador_id)
         }
         return atualizado

@@ -276,13 +276,24 @@ export const REGRAS_DISCENTES_EDGE: RegraLacunaDef[] = [
     severidade: 'atencao',
     grupo: 'Acadêmico',
     avaliar: (discente) => {
-      const tem =
-        discente.projeto_id === null ||
-        discente.projeto_id === undefined ||
-        Number(discente.projeto_id) <= 0
+      const qtdProjetosPonte =
+        typeof discente.total_projetos_vinculados === 'number'
+          ? discente.total_projetos_vinculados
+          : Array.isArray(discente.projetos_discentes)
+            ? discente.projetos_discentes.length
+            : 0
+
+      const temProjetoLegado =
+        discente.projeto_id !== null &&
+        discente.projeto_id !== undefined &&
+        Number(discente.projeto_id) > 0
+
+      const temVinculo = qtdProjetosPonte > 0 || temProjetoLegado
       return {
-        temLacuna: tem,
-        motivo: tem ? 'Projeto de pesquisa estruturado não vinculado ao discente' : undefined,
+        temLacuna: !temVinculo,
+        motivo: !temVinculo
+          ? 'Projeto de pesquisa estruturado não vinculado ao discente'
+          : undefined,
       }
     },
   },
@@ -750,6 +761,7 @@ Deno.serve(async (req: Request) => {
       producaoTecnicaRes,
       docentesLinhasRes,
       projetosParticipantesRes,
+      projetosDiscentesRes,
       publicacoesDocentesRes,
     ] = await Promise.all([
       supabase
@@ -786,6 +798,7 @@ Deno.serve(async (req: Request) => {
         .order('ano', { ascending: false }),
       supabase.from('docentes_linhas').select('docente_id, linha_id'),
       supabase.from('projetos_participantes').select('projeto_id, docente_id'),
+      supabase.from('projetos_discentes').select('projeto_id, discente_id'),
       supabase.from('publicacoes_docentes').select('publicacao_id, docente_id'),
     ])
 
@@ -804,6 +817,7 @@ Deno.serve(async (req: Request) => {
       producaoTecnicaRes.error,
       docentesLinhasRes.error,
       projetosParticipantesRes.error,
+      projetosDiscentesRes.error,
       publicacoesDocentesRes.error,
     ].filter(Boolean)
 
@@ -850,6 +864,16 @@ Deno.serve(async (req: Request) => {
       mapaPubsDocentes.set(pd.publicacao_id, (mapaPubsDocentes.get(pd.publicacao_id) || 0) + 1)
     }
 
+    const mapaDiscProjetos = new Map<number, number>()
+    for (const pd of projetosDiscentesRes.data || []) {
+      mapaDiscProjetos.set(pd.discente_id, (mapaDiscProjetos.get(pd.discente_id) || 0) + 1)
+    }
+
+    const discentesEnriquecidos = (discentesRes.data || []).map((d: any) => ({
+      ...d,
+      total_projetos_vinculados: mapaDiscProjetos.get(d.id) || 0,
+    }))
+
     const docentesEnriquecidos = (docentesRes.data || []).map((d: any) => ({
       ...d,
       total_linhas: mapaDocentesLinhas.get(d.id) || 0,
@@ -863,7 +887,7 @@ Deno.serve(async (req: Request) => {
     }))
 
     const avalDocentes = avaliarColecaoEdge(docentesEnriquecidos, REGRAS_DOCENTES_EDGE)
-    const avalDiscentes = avaliarColecaoEdge(discentesRes.data || [], REGRAS_DISCENTES_EDGE)
+    const avalDiscentes = avaliarColecaoEdge(discentesEnriquecidos, REGRAS_DISCENTES_EDGE)
     const avalPublicacoes = avaliarColecaoEdge(publicacoesEnriquecidas, REGRAS_PUBLICACOES_EDGE)
     const avalOrientacoes = avaliarColecaoEdge(orientacoesRes.data || [], REGRAS_ORIENTACOES_EDGE)
     const avalProjetos = avaliarColecaoEdge(projetosRes.data || [], REGRAS_PROJETOS_PESQUISA_EDGE)

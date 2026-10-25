@@ -308,13 +308,25 @@ export const REGRAS_DISCENTES: RegraLacuna<Discente>[] = [
     severidade: 'atencao',
     grupo: 'Acadêmico',
     avaliar: (discente) => {
-      const tem =
-        discente.projeto_id === null ||
-        discente.projeto_id === undefined ||
-        Number(discente.projeto_id) <= 0
+      const d = discente as any
+      const qtdProjetosPonte =
+        typeof d.total_projetos_vinculados === 'number'
+          ? d.total_projetos_vinculados
+          : Array.isArray(d.projetos_discentes)
+            ? d.projetos_discentes.length
+            : 0
+
+      const temProjetoLegado =
+        discente.projeto_id !== null &&
+        discente.projeto_id !== undefined &&
+        Number(discente.projeto_id) > 0
+
+      const temVinculo = qtdProjetosPonte > 0 || temProjetoLegado
       return {
-        temLacuna: tem,
-        motivo: tem ? 'Projeto de pesquisa estruturado não vinculado ao discente' : undefined,
+        temLacuna: !temVinculo,
+        motivo: !temVinculo
+          ? 'Projeto de pesquisa estruturado não vinculado ao discente'
+          : undefined,
       }
     },
   },
@@ -776,6 +788,7 @@ export interface DadosConsolidacaoLacunas {
   producao_tecnica?: ProducaoTecnica[]
   docentes_linhas?: Array<{ docente_id: number; linha_id: number }>
   projetos_participantes?: Array<{ projeto_id: number; docente_id: number }>
+  projetos_discentes?: Array<{ projeto_id: number; discente_id: number }>
   publicacoes_docentes?: Array<{ publicacao_id: number; docente_id: number }>
   dataGeracao?: string
 }
@@ -797,6 +810,7 @@ export function consolidarRelatorioLacunas(
     producao_tecnica = [],
     docentes_linhas = [],
     projetos_participantes = [],
+    projetos_discentes = [],
     publicacoes_docentes = [],
     dataGeracao,
   } = params
@@ -827,6 +841,11 @@ export function consolidarRelatorioLacunas(
     mapaPubDocentes.set(pd.publicacao_id, (mapaPubDocentes.get(pd.publicacao_id) || 0) + 1)
   }
 
+  const mapaDiscProjetos = new Map<number, number>()
+  for (const pd of projetos_discentes) {
+    mapaDiscProjetos.set(pd.discente_id, (mapaDiscProjetos.get(pd.discente_id) || 0) + 1)
+  }
+
   const docentesAvaliados = docentes.map((d: any) => ({
     ...d,
     total_linhas:
@@ -855,8 +874,17 @@ export function consolidarRelatorioLacunas(
           (Array.isArray(p.publicacoes_docentes) ? p.publicacoes_docentes.length : 0)),
   }))
 
+  const discentesAvaliados = discentes.map((d: any) => ({
+    ...d,
+    total_projetos_vinculados:
+      typeof d.total_projetos_vinculados === 'number'
+        ? d.total_projetos_vinculados
+        : (mapaDiscProjetos.get(d.id) ??
+          (Array.isArray(d.projetos_discentes) ? d.projetos_discentes.length : 0)),
+  }))
+
   const resDocentes = avaliarColecao(docentesAvaliados, REGRAS_DOCENTES)
-  const resDiscentes = avaliarColecao(discentes, REGRAS_DISCENTES)
+  const resDiscentes = avaliarColecao(discentesAvaliados, REGRAS_DISCENTES)
   const resPublicacoes = avaliarColecao(publicacoesAvaliadas, REGRAS_PUBLICACOES)
   const resOrientacoes = avaliarColecao(orientacoes, REGRAS_ORIENTACOES)
   const resProjetos = avaliarColecao(projetos_pesquisa, REGRAS_PROJETOS_PESQUISA)

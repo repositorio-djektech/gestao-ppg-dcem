@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { CrudPage } from '@/components/crud/CrudPage'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { discentesService } from '@/services/discentes'
 import { docentesService } from '@/services/docentes'
 import { projetosPesquisaService } from '@/services/projetos-pesquisa'
+import { supabase } from '@/lib/supabase/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -575,14 +576,18 @@ export default function Discentes() {
       create: async (item: Partial<Discente>) => {
         const criado = await discentesService.create(item)
         if (criado?.id && item.projeto_id) {
-          await supabase.from('projetos_discentes').upsert(
-            {
-              projeto_id: Number(item.projeto_id),
-              discente_id: Number(criado.id),
-              papel: 'participante',
-            },
-            { onConflict: 'projeto_id,discente_id' },
-          )
+          try {
+            await supabase.from('projetos_discentes').upsert(
+              {
+                projeto_id: Number(item.projeto_id),
+                discente_id: Number(criado.id),
+                papel: 'participante',
+              },
+              { onConflict: 'projeto_id,discente_id' },
+            )
+          } catch (e) {
+            console.error('Erro ao sincronizar projetos_discentes no create:', e)
+          }
           await carregarProjetosDiscentes()
         }
         return criado
@@ -590,15 +595,23 @@ export default function Discentes() {
       update: async (id: number | string, item: Partial<Discente>) => {
         const atualizado = await discentesService.update(id, item)
         if (item.projeto_id !== undefined) {
-          if (item.projeto_id) {
-            await supabase.from('projetos_discentes').upsert(
-              {
-                projeto_id: Number(item.projeto_id),
-                discente_id: Number(id),
-                papel: 'participante',
-              },
-              { onConflict: 'projeto_id,discente_id' },
-            )
+          const numId = Number(id)
+          try {
+            if (item.projeto_id) {
+              await supabase.from('projetos_discentes').upsert(
+                {
+                  projeto_id: Number(item.projeto_id),
+                  discente_id: numId,
+                  papel: 'participante',
+                },
+                { onConflict: 'projeto_id,discente_id' },
+              )
+            } else {
+              // Se o usuário limpou o projeto no form, remove o vínculo da ponte correspondente
+              await supabase.from('projetos_discentes').delete().eq('discente_id', numId)
+            }
+          } catch (e) {
+            console.error('Erro ao sincronizar projetos_discentes no update:', e)
           }
           await carregarProjetosDiscentes()
         }

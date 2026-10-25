@@ -49,6 +49,7 @@ export function VisualizarDiscenteDialog({
   const [loading, setLoading] = useState(false)
   const [orientacoes, setOrientacoes] = useState<(Orientacao & { docente_nome?: string })[]>([])
   const [bancas, setBancas] = useState<Banca[]>([])
+  const [projetosVinculadosIds, setProjetosVinculadosIds] = useState<number[]>([])
 
   // Docente orientador vinculado
   const docenteOrientador = useMemo(() => {
@@ -56,15 +57,25 @@ export function VisualizarDiscenteDialog({
     return docentes.find((d) => d.id === discente.docente_orientador_id) || null
   }, [discente?.docente_orientador_id, docentes])
 
-  // Projeto vinculado
+  // Projetos vinculados: união da ponte projetos_discentes + fallback de discente.projeto_id
+  const projetosVinculados = useMemo(() => {
+    if (!discente) return []
+    const ids = new Set<number>(projetosVinculadosIds)
+    if (discente.projeto_id) {
+      ids.add(Number(discente.projeto_id))
+    }
+    if (ids.size === 0) return []
+    return projetos.filter((p) => ids.has(Number(p.id)))
+  }, [discente, projetosVinculadosIds, projetos])
+
   const projetoVinculado = useMemo(() => {
-    if (!discente?.projeto_id) return null
-    return projetos.find((p) => p.id === discente.projeto_id) || null
-  }, [discente?.projeto_id, projetos])
+    return projetosVinculados[0] || null
+  }, [projetosVinculados])
 
   useEffect(() => {
     if (!open || !discente) {
       setAbaAtiva('geral')
+      setProjetosVinculadosIds([])
       return
     }
 
@@ -73,7 +84,7 @@ export function VisualizarDiscenteDialog({
 
     async function carregarRegistros() {
       try {
-        const [resOri, resBancas] = await Promise.all([
+        const [resOri, resBancas, resPonte] = await Promise.all([
           supabase
             .from('orientacoes')
             .select('*, docentes(nome)')
@@ -84,6 +95,7 @@ export function VisualizarDiscenteDialog({
             .select('*')
             .eq('discente_id', discente!.id)
             .order('data', { ascending: false }),
+          supabase.from('projetos_discentes').select('projeto_id').eq('discente_id', discente!.id),
         ])
 
         if (!ativo) return
@@ -95,6 +107,10 @@ export function VisualizarDiscenteDialog({
 
         setOrientacoes(oriFormatadas)
         setBancas((resBancas.data as Banca[]) || [])
+
+        if (!resPonte.error && resPonte.data) {
+          setProjetosVinculadosIds(resPonte.data.map((r: any) => Number(r.projeto_id)))
+        }
       } catch (err) {
         console.error('Erro ao carregar dados do discente:', err)
       } finally {
@@ -124,13 +140,13 @@ export function VisualizarDiscenteDialog({
     { id: 'bancas', rotulo: 'Bancas', icone: ClipboardList, total: bancas.length },
     {
       id: 'projeto',
-      rotulo: 'Projeto de Pesquisa',
+      rotulo: 'Projetos de Pesquisa',
       icone: FlaskConical,
-      total: projetoVinculado ? 1 : 0,
+      total: projetosVinculados.length,
     },
   ]
 
-  const totalRegistros = orientacoes.length + bancas.length + (projetoVinculado ? 1 : 0)
+  const totalRegistros = orientacoes.length + bancas.length + projetosVinculados.length
 
   const statusColors: Record<string, string> = {
     ativo: 'bg-emerald-50 text-emerald-700 border-emerald-300',
@@ -251,49 +267,57 @@ export function VisualizarDiscenteDialog({
           </div>
         </div>
 
-        {/* Bloco 3: Projeto Vinculado */}
+        {/* Bloco 3: Projetos Vinculados (lidos da ponte projetos_discentes) */}
         <div className="bg-slate-50 dark:bg-neutral-800/60 rounded-lg p-4 border border-slate-200 dark:border-neutral-700">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-neutral-100 flex items-center gap-2 mb-3">
-            <FlaskConical className="h-4 w-4 text-primary" />
-            Projeto de Pesquisa
-          </h3>
-          {projetoVinculado ? (
-            <div className="space-y-2 text-xs">
-              <div>
-                <span className="text-slate-500 font-medium block">Título do Projeto:</span>
-                <span className="text-slate-900 font-semibold text-sm">
-                  {projetoVinculado.titulo}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 pt-1 text-slate-600">
-                <div>
-                  <span className="font-medium text-slate-700">Período: </span>
-                  <span>
-                    {projetoVinculado.inicio || '—'}{' '}
-                    {projetoVinculado.fim ? `– ${projetoVinculado.fim}` : ''}
-                  </span>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-neutral-100 flex items-center gap-2">
+              <FlaskConical className="h-4 w-4 text-primary" />
+              Projetos de Pesquisa Vinculados
+            </h3>
+            {projetosVinculados.length > 0 && (
+              <Badge variant="outline" className="text-[10px] bg-white text-slate-700">
+                {projetosVinculados.length} projeto{projetosVinculados.length === 1 ? '' : 's'}
+              </Badge>
+            )}
+          </div>
+          {projetosVinculados.length > 0 ? (
+            <div className="space-y-3">
+              {projetosVinculados.map((proj) => (
+                <div
+                  key={proj.id}
+                  className="p-3 bg-white rounded-md border border-slate-200 space-y-2 text-xs"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-slate-900 font-semibold text-sm">{proj.titulo}</span>
+                    {proj.classificacao && (
+                      <Badge variant="secondary" className="text-[10px] capitalize shrink-0">
+                        {proj.classificacao}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-slate-600">
+                    <div>
+                      <span className="font-medium text-slate-700">Período: </span>
+                      <span>
+                        {proj.inicio || '—'} {proj.fim ? `– ${proj.fim}` : ''}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-slate-700">Financiamento: </span>
+                      <span>
+                        {proj.financiamento
+                          ? `Sim (${proj.financiador_nome || proj.orgao_fomento || 'Fomento'})`
+                          : 'Não'}
+                      </span>
+                    </div>
+                  </div>
+                  {proj.descricao && (
+                    <p className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 line-clamp-2">
+                      {proj.descricao}
+                    </p>
+                  )}
                 </div>
-                <div>
-                  <span className="font-medium text-slate-700">Financiamento: </span>
-                  <span>
-                    {projetoVinculado.financiamento
-                      ? `Sim (${projetoVinculado.orgao_fomento || 'Fomento'})`
-                      : 'Não'}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium text-slate-700">Classificação: </span>
-                  <span className="capitalize">{projetoVinculado.classificacao || '—'}</span>
-                </div>
-              </div>
-              {projetoVinculado.descricao && (
-                <div className="pt-1 text-slate-600">
-                  <span className="font-medium text-slate-700 block mb-0.5">Descrição:</span>
-                  <p className="text-xs leading-relaxed bg-white p-2.5 rounded border border-slate-200">
-                    {projetoVinculado.descricao}
-                  </p>
-                </div>
-              )}
+              ))}
             </div>
           ) : (
             <p className="text-xs text-slate-500 italic">
@@ -454,7 +478,7 @@ export function VisualizarDiscenteDialog({
   }
 
   const renderAbaProjeto = () => {
-    if (!projetoVinculado) {
+    if (projetosVinculados.length === 0) {
       return (
         <div className="text-center py-12 text-slate-500 text-xs">
           Nenhum projeto de pesquisa vinculado ao discente.
@@ -463,55 +487,66 @@ export function VisualizarDiscenteDialog({
     }
 
     return (
-      <div className="p-4 overflow-y-auto max-h-full space-y-3">
-        <div className="bg-white rounded-lg p-4 border border-slate-200 space-y-3 text-xs">
-          <div>
-            <span className="text-xs uppercase tracking-wider text-slate-500 font-semibold">
-              Título do Projeto
-            </span>
-            <h4 className="text-base font-bold text-slate-900 mt-0.5">{projetoVinculado.titulo}</h4>
+      <div className="p-4 overflow-y-auto max-h-full space-y-4">
+        {projetosVinculados.map((proj) => (
+          <div
+            key={proj.id}
+            className="bg-white rounded-lg p-4 border border-slate-200 space-y-3 text-xs"
+          >
+            <div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                  Título do Projeto
+                </span>
+                {proj.classificacao && (
+                  <Badge variant="outline" className="text-[10px] capitalize">
+                    {proj.classificacao}
+                  </Badge>
+                )}
+              </div>
+              <h4 className="text-base font-bold text-slate-900 mt-0.5">{proj.titulo}</h4>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
+              <div>
+                <span className="text-slate-500 font-medium block">Período de Execução:</span>
+                <span className="font-semibold text-slate-800">
+                  {proj.inicio || '—'} {proj.fim ? `– ${proj.fim}` : ''}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500 font-medium block">Financiamento:</span>
+                <span className="font-semibold text-slate-800">
+                  {proj.financiamento
+                    ? `Sim (${proj.financiador_nome || proj.orgao_fomento || 'Fomento'})`
+                    : 'Sem Financiamento'}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500 font-medium block">Classificação:</span>
+                <span className="capitalize font-semibold text-slate-800">
+                  {proj.classificacao || '—'}
+                </span>
+              </div>
+            </div>
+
+            {proj.descricao && (
+              <div className="pt-2 border-t border-slate-100">
+                <span className="text-slate-500 font-medium block mb-1">Descrição:</span>
+                <p className="text-slate-700 leading-relaxed bg-slate-50 p-3 rounded border border-slate-100">
+                  {proj.descricao}
+                </p>
+              </div>
+            )}
+
+            {proj.observacoes && (
+              <div className="pt-2 border-t border-slate-100">
+                <span className="text-slate-500 font-medium block mb-1">Observações:</span>
+                <p className="text-slate-600 italic">{proj.observacoes}</p>
+              </div>
+            )}
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
-            <div>
-              <span className="text-slate-500 font-medium block">Período de Execução:</span>
-              <span className="font-semibold text-slate-800">
-                {projetoVinculado.inicio || '—'}{' '}
-                {projetoVinculado.fim ? `– ${projetoVinculado.fim}` : ''}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-500 font-medium block">Financiamento:</span>
-              <span className="font-semibold text-slate-800">
-                {projetoVinculado.financiamento
-                  ? `Sim (${projetoVinculado.orgao_fomento || 'Fomento'})`
-                  : 'Sem Financiamento'}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-500 font-medium block">Classificação:</span>
-              <span className="capitalize font-semibold text-slate-800">
-                {projetoVinculado.classificacao || '—'}
-              </span>
-            </div>
-          </div>
-
-          {projetoVinculado.descricao && (
-            <div className="pt-2 border-t border-slate-100">
-              <span className="text-slate-500 font-medium block mb-1">Descrição:</span>
-              <p className="text-slate-700 leading-relaxed bg-slate-50 p-3 rounded border border-slate-100">
-                {projetoVinculado.descricao}
-              </p>
-            </div>
-          )}
-
-          {projetoVinculado.observacoes && (
-            <div className="pt-2 border-t border-slate-100">
-              <span className="text-slate-500 font-medium block mb-1">Observações:</span>
-              <p className="text-slate-600 italic">{projetoVinculado.observacoes}</p>
-            </div>
-          )}
-        </div>
+        ))}
       </div>
     )
   }

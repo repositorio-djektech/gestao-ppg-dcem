@@ -85,6 +85,7 @@ export async function obterRelatorioLacunas(
       producaoTecnicaRes,
       docentesLinhasRes,
       projetosParticipantesRes,
+      projetosDiscentesRes,
       publicacoesDocentesRes,
     ] = await Promise.all([
       supabase
@@ -139,6 +140,7 @@ export async function obterRelatorioLacunas(
         .select('id, titulo, ano, autores, tipo, link_comprovacao, observacoes'),
       (supabase.from as any)('docentes_linhas').select('docente_id, linha_id'),
       (supabase.from as any)('projetos_participantes').select('projeto_id, docente_id'),
+      (supabase.from as any)('projetos_discentes').select('projeto_id, discente_id'),
       (supabase.from as any)('publicacoes_docentes').select('publicacao_id, docente_id'),
     ])
 
@@ -156,6 +158,7 @@ export async function obterRelatorioLacunas(
       producaoTecnicaRes.error,
       docentesLinhasRes.error,
       projetosParticipantesRes.error,
+      projetosDiscentesRes.error,
       publicacoesDocentesRes.error,
     ].find(Boolean)
 
@@ -180,6 +183,7 @@ export async function obterRelatorioLacunas(
       producao_tecnica: (producaoTecnicaRes.data || []) as unknown as ProducaoTecnica[],
       docentes_linhas: (docentesLinhasRes.data || []) as any[],
       projetos_participantes: (projetosParticipantesRes.data || []) as any[],
+      projetos_discentes: (projetosDiscentesRes.data || []) as any[],
       publicacoes_docentes: (publicacoesDocentesRes.data || []) as any[],
     })
 

@@ -56,6 +56,152 @@ export interface DiscenteProjetoItem {
   papel?: string
 }
 
+interface CampoUploadComprovanteProjetoProps {
+  formData: Record<string, any>
+  setFormData: React.Dispatch<React.SetStateAction<any>>
+}
+
+function CampoUploadComprovanteProjeto({
+  formData,
+  setFormData,
+}: CampoUploadComprovanteProjetoProps) {
+  const [enviando, setEnviando] = useState(false)
+  const [progresso, setProgresso] = useState<number | null>(null)
+  const [infoUpload, setInfoUpload] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  if (!formData.financiamento) return null
+
+  const handleSelecionarPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      toast.error('O arquivo deve ser obrigatoriamente um documento PDF (.pdf).')
+      return
+    }
+
+    setEnviando(true)
+    setProgresso(10)
+    setInfoUpload(null)
+
+    try {
+      const res = await uploadComprovanteProjeto(formData.id || 'temp', file, (p) =>
+        setProgresso(p),
+      )
+
+      setFormData((prev: any) => ({
+        ...prev,
+        comprovante_url: res.url,
+      }))
+
+      const reducaoKb = Math.round((res.tamanhoOriginal - res.tamanhoFinal) / 1024)
+      const infoTxt =
+        res.comprimido && reducaoKb > 0
+          ? `PDF otimizado com sucesso (${reducaoKb} KB economizados).`
+          : 'PDF original preservado e gravado com sucesso no storage.'
+
+      setInfoUpload(infoTxt)
+      toast.success('Comprovante em PDF anexado com sucesso!')
+    } catch (err: any) {
+      console.error('Falha no upload do comprovante:', err)
+      toast.error(`Erro ao anexar comprovante: ${err?.message || 'Falha no envio'}`)
+    } finally {
+      setEnviando(false)
+      setProgresso(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  return (
+    <div className="space-y-2 p-3 bg-slate-50/80 rounded-lg border border-slate-200">
+      <Label className="text-xs font-semibold text-slate-800 flex items-center justify-between">
+        <span className="flex items-center gap-1.5">
+          <FileText className="h-4 w-4 text-primary" />
+          Comprovante de Financiamento (PDF Compactado)
+        </span>
+        {formData.comprovante_url && (
+          <Badge
+            variant="outline"
+            className="bg-emerald-50 text-emerald-700 border-emerald-300 text-[10px]"
+          >
+            Anexado
+          </Badge>
+        )}
+      </Label>
+      <p className="text-[11px] text-slate-500">
+        Anexe o termo de outorga, contrato ou publicação oficial em PDF. O arquivo passa por
+        compressão inteligente sem degradação para economizar storage no Supabase.
+      </p>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,application/pdf"
+        className="hidden"
+        onChange={handleSelecionarPdf}
+      />
+
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={enviando}
+          onClick={() => fileInputRef.current?.click()}
+          className="gap-1.5 h-8 text-xs bg-white border-slate-300 hover:bg-slate-50"
+        >
+          <Upload className="h-3.5 w-3.5 text-primary" />
+          <span>
+            {formData.comprovante_url ? 'Substituir PDF' : 'Selecionar Comprovante (PDF)'}
+          </span>
+        </Button>
+
+        {formData.comprovante_url && (
+          <>
+            <a
+              href={formData.comprovante_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline px-2 py-1 bg-white rounded border border-slate-200"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              <span>Visualizar Comprovante Atual</span>
+            </a>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setFormData((prev: any) => ({
+                  ...prev,
+                  comprovante_url: '',
+                }))
+              }
+              className="h-8 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+            >
+              Remover anexo
+            </Button>
+          </>
+        )}
+      </div>
+
+      {enviando && progresso !== null && (
+        <div className="text-xs text-slate-600 pt-1">
+          Processando e otimizando PDF ({progresso}%)...
+        </div>
+      )}
+
+      {infoUpload && (
+        <p className="text-[11px] text-emerald-700 flex items-center gap-1 pt-0.5">
+          <CheckCircle2 className="h-3 w-3 shrink-0" />
+          {infoUpload}
+        </p>
+      )}
+    </div>
+  )
+}
+
 const emptyForm = {
   titulo: '',
   descricao: '',
@@ -773,138 +919,9 @@ export default function ProjetosPesquisa() {
       key: 'comprovante_url',
       label: 'Comprovante em PDF do Financiamento',
       type: 'text',
-      customRender: ({ formData, setFormData }) => {
-        if (!formData.financiamento) return null
-
-        const [enviando, setEnviando] = useState(false)
-        const [progresso, setProgresso] = useState<number | null>(null)
-        const [infoUpload, setInfoUpload] = useState<string | null>(null)
-        const fileInputRef = useRef<HTMLInputElement>(null)
-
-        const handleSelecionarPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
-          const file = e.target.files?.[0]
-          if (!file) return
-
-          if (!file.name.toLowerCase().endsWith('.pdf')) {
-            toast.error('O arquivo deve ser obrigatoriamente um documento PDF (.pdf).')
-            return
-          }
-
-          setEnviando(true)
-          setProgresso(10)
-          setInfoUpload(null)
-
-          try {
-            const res = await uploadComprovanteProjeto(formData.id || 'temp', file, (p) =>
-              setProgresso(p),
-            )
-
-            setFormData({
-              ...formData,
-              comprovante_url: res.url,
-            })
-
-            const reducaoKb = Math.round((res.tamanhoOriginal - res.tamanhoFinal) / 1024)
-            const infoTxt =
-              res.comprimido && reducaoKb > 0
-                ? `PDF otimizado com sucesso (${reducaoKb} KB economizados).`
-                : 'PDF original preservado e gravado com sucesso no storage.'
-
-            setInfoUpload(infoTxt)
-            toast.success('Comprovante em PDF anexado com sucesso!')
-          } catch (err: any) {
-            console.error('Falha no upload do comprovante:', err)
-            toast.error(`Erro ao anexar comprovante: ${err?.message || 'Falha no envio'}`)
-          } finally {
-            setEnviando(false)
-            setProgresso(null)
-            if (fileInputRef.current) fileInputRef.current.value = ''
-          }
-        }
-
-        return (
-          <div className="space-y-2 p-3 bg-slate-50/80 rounded-lg border border-slate-200">
-            <Label className="text-xs font-semibold text-slate-800 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <FileText className="h-4 w-4 text-primary" />
-                Comprovante de Financiamento (PDF Compactado)
-              </span>
-              {formData.comprovante_url && (
-                <Badge
-                  variant="outline"
-                  className="bg-emerald-50 text-emerald-700 border-emerald-300 text-[10px]"
-                >
-                  Anexado
-                </Badge>
-              )}
-            </Label>
-            <p className="text-[11px] text-slate-500">
-              Anexe o termo de outorga, contrato ou publicação oficial em PDF. O arquivo passa por
-              compressão inteligente sem degradação para economizar storage no Supabase.
-            </p>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,application/pdf"
-              className="hidden"
-              onChange={handleSelecionarPdf}
-            />
-
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={enviando}
-                onClick={() => fileInputRef.current?.click()}
-                className="gap-1.5 h-8 text-xs bg-white border-slate-300 hover:bg-slate-50"
-              >
-                <Upload className="h-3.5 w-3.5 text-primary" />
-                <span>
-                  {formData.comprovante_url ? 'Substituir PDF' : 'Selecionar Comprovante (PDF)'}
-                </span>
-              </Button>
-
-              {formData.comprovante_url && (
-                <>
-                  <a
-                    href={formData.comprovante_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline px-2 py-1 bg-white rounded border border-slate-200"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    <span>Visualizar Comprovante Atual</span>
-                  </a>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setFormData({ ...formData, comprovante_url: '' })}
-                    className="h-8 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                  >
-                    Remover anexo
-                  </Button>
-                </>
-              )}
-            </div>
-
-            {enviando && progresso !== null && (
-              <div className="text-xs text-slate-600 pt-1">
-                Processando e otimizando PDF ({progresso}%)...
-              </div>
-            )}
-
-            {infoUpload && (
-              <p className="text-[11px] text-emerald-700 flex items-center gap-1 pt-0.5">
-                <CheckCircle2 className="h-3 w-3 shrink-0" />
-                {infoUpload}
-              </p>
-            )}
-          </div>
-        )
-      },
+      customRender: ({ formData, setFormData }) => (
+        <CampoUploadComprovanteProjeto formData={formData} setFormData={setFormData} />
+      ),
     },
     {
       key: 'discentes_vinculados',
