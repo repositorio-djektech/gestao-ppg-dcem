@@ -16,6 +16,11 @@ interface ExcluirUsuarioPayload {
   userId: string
 }
 
+interface ExcluirDocentePayload {
+  acao: 'excluir-docente'
+  docenteId: number | string
+}
+
 interface SignupDocentePayload {
   acao: 'signup-docente'
   cpf: string
@@ -31,6 +36,7 @@ interface ResolverCpfPayload {
 type AdminUsuariosPayload =
   | CriarUsuarioPayload
   | ExcluirUsuarioPayload
+  | ExcluirDocentePayload
   | SignupDocentePayload
   | ResolverCpfPayload
 
@@ -446,18 +452,196 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // Apenas suporte pode criar ou excluir usuários do Auth diretamente pelo painel admin
-    if (callerProfile.role !== 'suporte') {
+    // Excluir docente em cascata pode ser executado por suporte ou coordenador (permissões de exclusão de docentes do PPG-DCEM).
+    // Criação e exclusão avulsa de usuários no Auth continuam restritas a 'suporte'.
+    const isSuporte = callerProfile.role === 'suporte'
+    const isCoordenador = callerProfile.role === 'coordenador'
+
+    if (payload.acao === 'excluir-docente') {
+      if (!isSuporte && !isCoordenador) {
+        return new Response(
+          JSON.stringify({
+            sucesso: false,
+            mensagem:
+              'Permissão negada. Apenas usuários com papel Suporte ou Coordenador podem excluir docentes.',
+          }),
+          {
+            status: 403,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          },
+        )
+      }
+    } else {
+      if (!isSuporte) {
+        return new Response(
+          JSON.stringify({
+            sucesso: false,
+            mensagem:
+              'Permissão negada. Apenas usuários com papel Suporte podem gerenciar contas no Auth.',
+          }),
+          {
+            status: 403,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          },
+        )
+      }
+    }
+
+    // ==========================================
+    // AÇÃO: EXCLUIR DOCENTE EM CASCATA (docente + profile + auth.users)
+    // ==========================================
+    if (payload.acao === 'excluir-docente') {
+      const targetDocenteId = Number(payload.docenteId)
+
+      if (!targetDocenteId || isNaN(targetDocenteId)) {
+        return new Response(
+          JSON.stringify({
+            sucesso: false,
+            mensagem: 'ID do docente para exclusão não foi fornecido ou é inválido.',
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        )
+      }
+
+      // 1. Buscar o docente na tabela docentes
+      const { data: targetDocente, error: docenteErr } = await adminClient
+        .from('docentes')
+        .select('*')
+        .eq('id', targetDocenteId)
+        .maybeSingle()
+
+      if (docenteErr) {
+        console.error('[excluir-docente] Erro ao consultar docente:', docenteErr)
+        return new Response(
+          JSON.stringify({
+            sucesso: false,
+            mensagem: `Erro ao consultar docente: ${docenteErr.message}`,
+          }),
+          { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        )
+      }
+
+      if (!targetDocente) {
+        return new Response(
+          JSON.stringify({
+            sucesso: false,
+            mensagem: 'Docente não encontrado para exclusão.',
+          }),
+          { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        )
+      }
+
+      // 2. Verificar se existe perfil vinculado apontando para esse docente
+      const { data: targetProfile, error: profileErr } = await adminClient
+        .from('profiles')
+        .select('*')
+        .eq('docente_id', targetDocenteId)
+        .maybeSingle()
+
+      if (profileErr) {
+        console.error('[excluir-docente] Erro ao consultar perfil vinculado:', profileErr)
+        return new Response(
+          JSON.stringify({
+            sucesso: false,
+            mensagem: `Erro ao verificar perfil vinculado: ${profileErr.message}`,
+          }),
+          { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        )
+      }
+
+      const linkedUserId = targetProfile?.user_id || null
+
+      // Proteção de segurança: nunca permitir excluir a si mesmo caso o chamador seja o docente vinculado
+      if (linkedUserId && linkedUserId === callerUser.id) {
+        return new Response(
+          JSON.stringify({
+            sucesso: false,
+            mensagem:
+              'Operação proibida: você não pode excluir a sua própria conta de docente vinculada.',
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        )
+      }
+
+      // 3. Se houver usuário vinculado no Auth:
+      // Excluir do Auth usando adminClient.auth.admin.deleteUser(linkedUserId)
+      // Graças às constraints FK em cascata:
+      // - Se o auth.users for excluído, profiles(user_id) é apagado em cascata
+      // - Em seguida removemos docentes(id)
+      // Se não houver usuário no Auth (apenas docente ou perfil órfão):
+      // - Removemos de docentes e profiles
+      if (linkedUserId) {
+        // Validação extra: assegurar que o perfil do usuário realmente aponta para este docente_id
+        if (targetProfile?.docente_id !== targetDocenteId) {
+          return new Response(
+            JSON.stringify({
+              sucesso: false,
+              mensagem: 'Inconsistência detectada: o perfil não corresponde ao docente alvo.',
+            }),
+            { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+          )
+        }
+
+        const { error: deleteAuthErr } = await adminClient.auth.admin.deleteUser(linkedUserId)
+        if (deleteAuthErr) {
+          console.error('[excluir-docente] Erro ao excluir usuário no Auth:', deleteAuthErr)
+          return new Response(
+            JSON.stringify({
+              sucesso: false,
+              mensagem: `Erro ao excluir usuário no Auth: ${deleteAuthErr.message}`,
+            }),
+            { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+          )
+        }
+
+        // Limpeza explícita de profiles (caso o cascade do postgres auth demore milissegundos)
+        await adminClient.from('profiles').delete().eq('user_id', linkedUserId)
+      } else if (targetProfile) {
+        // Havia profile com docente_id mas sem user_id
+        await adminClient.from('profiles').delete().eq('id', targetProfile.id)
+      }
+
+      // 4. Excluir o registro de docentes
+      const { error: deleteDocenteErr } = await adminClient
+        .from('docentes')
+        .delete()
+        .eq('id', targetDocenteId)
+
+      if (deleteDocenteErr) {
+        console.error('[excluir-docente] Erro ao excluir docente:', deleteDocenteErr)
+        return new Response(
+          JSON.stringify({
+            sucesso: false,
+            mensagem: `Erro ao excluir docente na base de dados: ${deleteDocenteErr.message}`,
+          }),
+          { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        )
+      }
+
+      // 5. Registrar no log institucional
+      await adminClient.from('logs').insert({
+        user_id: callerUser.id,
+        user_email: callerProfile.email || callerUser.email,
+        user_nome: callerProfile.name || 'Usuário Staff',
+        acao: 'excluir',
+        entidade: 'docentes',
+        entidade_id: String(targetDocenteId),
+        detalhes: {
+          docente_nome: targetDocente.nome,
+          docente_cpf: targetDocente.cpf,
+          teve_usuario_vinculado: Boolean(linkedUserId),
+          usuario_id_vinculado: linkedUserId,
+          usuario_email_vinculado: targetProfile?.email || null,
+        },
+      })
+
       return new Response(
         JSON.stringify({
-          sucesso: false,
-          mensagem:
-            'Permissão negada. Apenas usuários com papel Suporte podem gerenciar contas no Auth.',
+          sucesso: true,
+          mensagem: `Docente ${targetDocente.nome} e suas vinculações foram excluídos com sucesso.`,
+          teve_usuario_vinculado: Boolean(linkedUserId),
         }),
-        {
-          status: 403,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        },
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders } },
       )
     }
 

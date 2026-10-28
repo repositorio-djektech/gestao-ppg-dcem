@@ -17,16 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { ModalExcluirDocente } from '@/components/docentes/ModalExcluirDocente'
 import {
   Select,
   SelectContent,
@@ -137,7 +128,9 @@ export default function Docentes() {
   const [page, setPage] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState<Omit<Docente, 'id'>>(emptyForm)
-  const [idParaExcluir, setIdParaExcluir] = useState<number | string | null>(null)
+  const [docenteParaExcluir, setDocenteParaExcluir] = useState<Docente | null>(null)
+  const [excluindoDocente, setExcluindoDocente] = useState(false)
+  const idParaExcluir = docenteParaExcluir ? docenteParaExcluir.id : null
 
   // Linhas de Pesquisa
   const [todasLinhas, setTodasLinhas] = useState<LinhaPesquisa[]>([])
@@ -359,22 +352,27 @@ export default function Docentes() {
     }
   }
 
-  const handleDelete = async (id: number | string) => {
+  const handleConfirmarExclusaoDocente = async (docenteAlvo: Docente) => {
+    setExcluindoDocente(true)
     try {
-      await remove(id)
-      toast.success('Docente removido com sucesso')
-      registrarLog({
-        acao: 'excluir',
-        entidade: 'docentes',
-        entidade_id: id,
-        detalhes: {
-          resumo: `Exclusão de docente ID ${id}`,
-        },
-      })
-    } catch {
-      toast.error('Erro ao remover')
+      // Exclusão em cascata via Edge Function admin-usuarios (remove docente + profile + auth user)
+      const res = await docentesService.excluirDocenteEmCascata(docenteAlvo.id)
+      if (res.teve_usuario_vinculado) {
+        toast.success(
+          `Docente "${docenteAlvo.nome}" e sua conta de usuário vinculada foram excluídos com sucesso.`,
+        )
+      } else {
+        toast.success(`Docente "${docenteAlvo.nome}" excluído com sucesso.`)
+      }
+
+      // Atualiza o estado da listagem removendo do cache local
+      await remove(docenteAlvo.id)
+      setDocenteParaExcluir(null)
+    } catch (err: any) {
+      console.error('Falha ao excluir docente em cascata:', err)
+      toast.error(err?.message || 'Erro ao excluir docente.')
     } finally {
-      setIdParaExcluir(null)
+      setExcluindoDocente(false)
     }
   }
 
@@ -911,8 +909,9 @@ export default function Docentes() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              data-testid={`btn-excluir-docente-${d.id}`}
                               className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => setIdParaExcluir(d.id)}
+                              onClick={() => setDocenteParaExcluir(d)}
                               title="Excluir Docente"
                             >
                               <Trash2 className="h-4 w-4 text-red-600" />
@@ -1372,35 +1371,16 @@ export default function Docentes() {
         </Dialog>
       )}
 
-      {/* Modal de confirmação antes de excluir docente */}
-      <AlertDialog
-        open={idParaExcluir !== null}
+      {/* Modal de confirmação de exclusão em cascata com validação estrita do nome */}
+      <ModalExcluirDocente
+        open={docenteParaExcluir !== null}
         onOpenChange={(open) => {
-          if (!open) setIdParaExcluir(null)
+          if (!open) setDocenteParaExcluir(null)
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão de Docente</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza de que deseja remover este docente? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (idParaExcluir !== null) {
-                  handleDelete(idParaExcluir)
-                }
-              }}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              Sim, excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        docente={docenteParaExcluir}
+        onConfirmar={handleConfirmarExclusaoDocente}
+        loading={excluindoDocente}
+      />
     </div>
   )
 }
