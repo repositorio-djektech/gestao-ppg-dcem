@@ -34,7 +34,7 @@ export default function PrintView() {
   const [discentesMap, setDiscentesMap] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    // Carregar mapas de docentes e discentes para relacionamentos (bancas, orientações, projetos)
+    // Carregar mapas de docentes e discentes para relacionamentos (orientações, projetos)
     Promise.all([
       docentesService.list().catch(() => []),
       discentesService.list().catch(() => []),

@@ -116,7 +116,6 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(mapearGrupoParaVisual('egressos')).toBe('pessoas')
 
       // Acadêmico
-      expect(mapearGrupoParaVisual('bancas')).toBe('academico')
       expect(mapearGrupoParaVisual('orientacoes')).toBe('academico')
       expect(mapearGrupoParaVisual('disciplinas')).toBe('academico')
       expect(mapearGrupoParaVisual('projetos_pesquisa')).toBe('academico')

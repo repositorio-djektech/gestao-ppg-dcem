@@ -788,27 +788,16 @@ describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => 
       expect(mock.database.discentes.some((d) => d.nome === 'Aluno Novo Inedito')).toBe(true)
     })
 
-    it('cenário 9: bancas -> dedupe por título e ano, mapeamento estrito de tipo', async () => {
-      const mock = createMockSupabaseClient({
-        bancas: [
-          {
-            id: 1,
-            titulo_trabalho: 'Banca Original de Mestrado',
-            data: '2023',
-            tipo: 'Mestrado',
-          },
-        ],
-      })
+    it('cenário 9: bancas -> descontinuado / no-op seguro (tabela removida do banco)', async () => {
+      const mock = createMockSupabaseClient()
 
       const listaBancas: BancaParaGravar[] = [
-        // Atualiza banca existente
         {
           titulo_trabalho: 'Banca Original de Mestrado',
           data: '2023',
           tipo: 'Mestrado',
           membros: 'Prof A; Prof B',
         },
-        // Insere nova banca
         {
           titulo_trabalho: 'Nova Banca Doutorado 2024',
           data: '2024',
@@ -819,9 +808,10 @@ describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => 
 
       const res = await gravarBancas(listaBancas, mock.client)
 
-      expect(res.contagem.atualizados).toBe(1)
-      expect(res.contagem.inseridos).toBe(1)
-      expect(mock.database.bancas).toHaveLength(2)
+      expect(res.contagem.atualizados).toBe(0)
+      expect(res.contagem.inseridos).toBe(0)
+      expect(res.contagem.ignorados).toBe(2)
+      expect(res.erros).toHaveLength(0)
     })
 
     it('cenário 10: projetos de pesquisa -> vincula coordenador e dedupe por título + início', async () => {
@@ -1068,7 +1058,7 @@ describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => 
       })
 
       expect(relatorio.orientacoes.inseridos).toBe(1)
-      expect(relatorio.bancas.inseridos).toBe(1)
+      expect(relatorio.bancas.ignorados).toBe(1)
       expect(relatorio.projetos_pesquisa.inseridos).toBe(1)
       expect(relatorio.premiacoes.inseridos).toBe(1)
       expect(relatorio.producao_tecnica.inseridos).toBe(1)

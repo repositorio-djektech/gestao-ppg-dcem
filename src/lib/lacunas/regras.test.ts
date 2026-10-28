@@ -5,7 +5,6 @@ import {
   REGRAS_PUBLICACOES,
   REGRAS_ORIENTACOES,
   REGRAS_PROJETOS_PESQUISA,
-  REGRAS_BANCAS,
   REGRAS_EVENTOS,
   REGRAS_MOBILIDADE,
   REGRAS_PATENTES,
@@ -21,7 +20,6 @@ import type {
   Publicacao,
   Orientacao,
   ProjetoPesquisa,
-  Banca,
   Evento,
   Mobilidade,
   Patente,
@@ -177,9 +175,9 @@ describe('Regras de Lacunas - Etapa 1', () => {
     })
   })
 
-  describe('Regras das 9 tabelas restantes (Etapa 5) e R4', () => {
-    it('totaliza 33 regras no sistema (9 doc + 6 disc + 4 pub + 3 ori + 3 proj + 2 banc + 2 ev + 2 mob + 2 pat + 2 prem + 1 pt)', () => {
-      expect(TODAS_AS_REGRAS).toHaveLength(33)
+  describe('Regras das 8 tabelas restantes (Etapa 5) e R4', () => {
+    it('totaliza 31 regras no sistema (9 doc + 6 disc + 4 pub + 3 ori + 3 proj + 2 ev + 2 mob + 2 pat + 2 prem + 1 pt)', () => {
+      expect(TODAS_AS_REGRAS).toHaveLength(31)
     })
 
     it('identifica docente JDP com prazo expirado', () => {
@@ -389,25 +387,7 @@ describe('Regras de Lacunas - Etapa 1', () => {
       ).toHaveLength(1)
     })
 
-    it('avalia regras de bancas, eventos, mobilidade, patentes, premiações e produção técnica', () => {
-      const banca: Banca = {
-        id: 1,
-        titulo_trabalho: 'Banca Teste',
-        data: '',
-        discente_id: 1,
-        membros: '',
-        tipo: 'Mestrado',
-        link_comprovacao: '',
-        observacoes: '',
-      }
-      const avalBanca = avaliarColecao([banca], REGRAS_BANCAS)
-      expect(
-        avalBanca.lacunas.find((l) => l.regra_id === 'banca_sem_data')?.registros,
-      ).toHaveLength(1)
-      expect(
-        avalBanca.lacunas.find((l) => l.regra_id === 'banca_sem_membros')?.registros,
-      ).toHaveLength(1)
-
+    it('avalia regras de eventos, mobilidade, patentes, premiações e produção técnica', () => {
       const evento: Evento = {
         id: 2,
         docente: '',
@@ -495,7 +475,7 @@ describe('Regras de Lacunas - Etapa 1', () => {
   })
 
   describe('consolidarRelatorioLacunas', () => {
-    it('gera formato correto com resumo e detalhes consolidados de todas as 11 tabelas', () => {
+    it('gera formato correto com resumo e detalhes consolidados de todas as 10 tabelas', () => {
       const docentes: Docente[] = [
         {
           id: 4,
@@ -566,8 +546,8 @@ describe('Regras de Lacunas - Etapa 1', () => {
       })
 
       expect(relatorio.gerado_em).toBe('2026-10-10T12:00:00.000Z')
-      expect(relatorio.resumo).toHaveLength(33) // Todas as 33 regras consolidadas (+2 regras JDP)
-      expect(relatorio.lacunas).toHaveLength(33)
+      expect(relatorio.resumo).toHaveLength(31) // Todas as 31 regras consolidadas (+2 regras JDP)
+      expect(relatorio.lacunas).toHaveLength(31)
 
       // Verificar que Ledjane NÃO aparece na lacuna de Scopus, mas Euler aparece
       const lacunaScopus = relatorio.lacunas.find((l) => l.regra_id === 'docente_sem_scopus_id')!

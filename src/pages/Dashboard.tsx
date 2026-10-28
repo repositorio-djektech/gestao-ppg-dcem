@@ -14,7 +14,6 @@ import {
   Users,
   GraduationCap,
   UserCheck,
-  ClipboardList,
   Users2,
   Library,
   FlaskConical,
@@ -94,7 +93,6 @@ const categories: CategoryConfig[] = [
       bgSoft: 'bg-emerald-50/40',
     },
     modules: [
-      { name: 'Bancas', table: 'bancas', route: '/bancas', icon: ClipboardList, target: 30 },
       {
         name: 'Orientações',
         table: 'orientacoes',

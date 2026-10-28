@@ -370,9 +370,8 @@ describe('Serviço de Permissões por Linha e Tabela (permissoes.ts)', () => {
     })
   })
 
-  describe('Papel Docente - Tabelas institucionais (bancas, eventos, patentes, etc.)', () => {
+  describe('Papel Docente - Tabelas institucionais (eventos, patentes, etc.)', () => {
     const tabelasInstitucionais = [
-      'bancas',
       'eventos',
       'impacto_social',
       'linhas_pesquisa',

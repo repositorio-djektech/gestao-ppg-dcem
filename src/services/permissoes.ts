@@ -4,12 +4,10 @@ export type TabelaMapeada =
   | 'docentes'
   | 'discentes'
   | 'egressos'
-  | 'orientacoes'
   | 'disciplinas'
   | 'projetos_pesquisa'
   | 'publicacoes'
   | 'iniciacao_cientifica'
-  | 'bancas'
   | 'eventos'
   | 'impacto_social'
   | 'linhas_pesquisa'
@@ -35,7 +33,7 @@ export interface ContextoPermissaoRegistro {
  * - suporte, coordenador, auxiliar: pode criar em tudo.
  * - capes: não pode criar em nada.
  * - docente:
- *   - Não pode criar em docentes, discentes, egressos, bancas, eventos, impacto_social,
+ *   - Não pode criar em docentes, discentes, egressos, eventos, impacto_social,
  *     linhas_pesquisa, mobilidade_docente, patentes, premiacoes, producao_tecnica, ppg, usuarios.
  *   - Pode criar em orientacoes, disciplinas, projetos_pesquisa, publicacoes, iniciacao_cientifica (onde a RLS permite vinculando ao docente).
  */
@@ -127,7 +125,7 @@ export function podeEditarRegistro(
         return false
 
       default:
-        // Tabelas institucionais sem política RLS de UPDATE para docente (bancas, eventos, etc.)
+        // Tabelas institucionais sem política RLS de UPDATE para docente (eventos, patentes, etc.)
         return false
     }
   }
