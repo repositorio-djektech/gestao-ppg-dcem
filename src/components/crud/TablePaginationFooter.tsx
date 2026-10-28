@@ -106,17 +106,17 @@ export function TablePaginationFooter({
   return (
     <div
       className={cn(
-        'border-t border-slate-200 bg-slate-50/70 shrink-0 select-none relative',
+        'border-t border-slate-200 bg-slate-50/70 shrink-0 select-none relative flex flex-col',
         className,
       )}
       data-testid="table-pagination-footer"
     >
-      {/* Barra de rolagem horizontal colada no topo da div de paginação (visível apenas no desktop se houver overflow) */}
+      {/* Barra de rolagem horizontal COLADA no topo da div de paginação (visível no desktop se houver overflow horizontal) */}
       {hasOverflow && (
         <div
           ref={scrollbarRef}
           onScroll={handleScrollbarScroll}
-          className="hidden md:block w-full overflow-x-auto overflow-y-hidden table-footer-scrollbar h-[8px] -mt-[1px] relative z-10"
+          className="hidden md:block w-full overflow-x-auto overflow-y-hidden table-footer-scrollbar h-[10px] relative z-10 shrink-0 border-b border-slate-200/60"
           style={{ willChange: 'scroll-position' }}
           aria-hidden="true"
           data-testid="table-horizontal-scrollbar"
@@ -125,34 +125,48 @@ export function TablePaginationFooter({
         </div>
       )}
 
-      {/* Paginação padronizada: <Anterior    Página 1 de 3    Próxima> */}
+      {/* Paginação padronizada: <Anterior    Página X de Y    Próxima> */}
       <div className="py-2.5 px-3">
         <Pagination>
           <PaginationContent className="gap-2 sm:gap-4">
             <PaginationItem>
               <PaginationPrevious
-                onClick={() => onPageChange(Math.max(1, safePage - 1))}
+                onClick={(e) => {
+                  e.preventDefault()
+                  if (safePage > 1) {
+                    onPageChange(safePage - 1)
+                  }
+                }}
                 className={
                   safePage <= 1
                     ? 'pointer-events-none opacity-40 cursor-not-allowed select-none'
                     : 'cursor-pointer hover:bg-white text-slate-700'
                 }
-              />
+              >
+                Anterior
+              </PaginationPrevious>
             </PaginationItem>
             <PaginationItem>
-              <span className="px-2 sm:px-4 text-xs sm:text-sm font-medium text-slate-600 whitespace-nowrap">
+              <span className="px-2 sm:px-4 text-xs sm:text-sm font-medium text-slate-700 whitespace-nowrap">
                 Página {safePage} de {safeTotalPages}
               </span>
             </PaginationItem>
             <PaginationItem>
               <PaginationNext
-                onClick={() => onPageChange(Math.min(safeTotalPages, safePage + 1))}
+                onClick={(e) => {
+                  e.preventDefault()
+                  if (safePage < safeTotalPages) {
+                    onPageChange(safePage + 1)
+                  }
+                }}
                 className={
                   safePage >= safeTotalPages
                     ? 'pointer-events-none opacity-40 cursor-not-allowed select-none'
                     : 'cursor-pointer hover:bg-white text-slate-700'
                 }
-              />
+              >
+                Próxima
+              </PaginationNext>
             </PaginationItem>
           </PaginationContent>
         </Pagination>

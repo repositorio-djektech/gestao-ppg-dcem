@@ -1318,7 +1318,9 @@ export default function Lacunas({
                     setPage(1)
                   }}
                   className="w-full text-xs h-9 px-2.5 rounded-md border border-slate-300 bg-white text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary"
-                >                  <option value="todos">Todos os Grupos</option>
+                >
+                  {' '}
+                  <option value="todos">Todos os Grupos</option>
                   {GRUPOS_VISUAIS.map((g) => (
                     <option key={g.id} value={g.id}>
                       {g.label}
@@ -1360,7 +1362,9 @@ export default function Lacunas({
                     setPage(1)
                   }}
                   className="w-full text-xs h-9 px-2.5 rounded-md border border-slate-300 bg-white text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary"
-                >                  <option value="todas">Todas as Severidades</option>
+                >
+                  {' '}
+                  <option value="todas">Todas as Severidades</option>
                   <option value="critica">🔴 Críticas</option>
                   <option value="atencao">🟡 Atenção</option>
                 </select>
@@ -1399,7 +1403,9 @@ export default function Lacunas({
                     setPage(1)
                   }}
                   className="w-full text-xs h-9 px-2.5 rounded-md border border-slate-300 bg-white text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary truncate"
-                >                  <option value="todas">Todas as Regras</option>
+                >
+                  {' '}
+                  <option value="todas">Todas as Regras</option>
                   {regrasDisponiveis.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.descricao}
@@ -1517,7 +1523,10 @@ export default function Lacunas({
           ) : (
             <>
               {/* Tabela de Lacunas com rolagem interna */}
-              <div ref={tableContainerRef} className="flex-1 overflow-auto table-scroll-container min-h-0">
+              <div
+                ref={tableContainerRef}
+                className="flex-1 overflow-auto table-scroll-container min-h-0"
+              >
                 <table className="w-full text-left border-collapse text-xs">
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-slate-200 bg-slate-50/95 text-slate-600 font-semibold uppercase tracking-wider text-[11px] backdrop-blur-xs">

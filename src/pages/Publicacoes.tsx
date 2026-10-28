@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCrudData } from '@/hooks/use-crud-data'
 import { publicacoesService } from '@/services/publicacoes'
@@ -891,7 +891,10 @@ export default function Publicacoes() {
 
       {/* Contêiner de Dados: Tabela rolável com rodapé de paginação fixo sempre visível */}
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden relative min-h-0">
-        <div ref={tableContainerRef} className="flex-1 overflow-auto table-scroll-container min-h-0">
+        <div
+          ref={tableContainerRef}
+          className="flex-1 overflow-auto table-scroll-container min-h-0"
+        >
           <Table>
             <TableHeader className="bg-slate-50/80 sticky top-0">
               <TableRow>

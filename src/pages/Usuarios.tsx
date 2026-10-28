@@ -413,7 +413,10 @@ export default function Usuarios() {
 
       {/* Contêiner de Dados: Tabela rolável com rodapé de paginação fixo */}
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden relative min-h-0">
-        <div ref={tableContainerRef} className="flex-1 overflow-auto table-scroll-container min-h-0">
+        <div
+          ref={tableContainerRef}
+          className="flex-1 overflow-auto table-scroll-container min-h-0"
+        >
           <Table>
             <TableHeader className="bg-slate-50/80 sticky top-0 z-10">
               <TableRow>
