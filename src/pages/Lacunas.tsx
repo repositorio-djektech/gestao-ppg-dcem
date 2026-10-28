@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TablePaginationFooter } from '@/components/crud/TablePaginationFooter'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -310,6 +311,9 @@ export default function Lacunas({
     useState<FiltroSeveridade>(filtroSeveridadeInicial)
   const [filtroRegra, setFiltroRegra] = useState<string>(filtroRegraInicial)
   const [termoBusca, setTermoBusca] = useState<string>('')
+  const [page, setPage] = useState(1)
+  const PER_PAGE = 20
+  const tableContainerRef = useRef<HTMLDivElement>(null)
 
   // Histórico de acompanhamento persistido em localStorage
   const [historico, setHistorico] = useState<ItemHistoricoExportacao[]>(() => {
@@ -926,6 +930,11 @@ export default function Lacunas({
     })
   }, [todasLacunasIndividuais, filtroGrupo, filtroSeveridade, filtroRegra, termoBusca])
 
+  const totalPages = Math.ceil(lacunasFiltradas.length / PER_PAGE)
+  const paginatedLacunas = useMemo(() => {
+    return lacunasFiltradas.slice((page - 1) * PER_PAGE, page * PER_PAGE)
+  }, [lacunasFiltradas, page])
+
   return (
     <div className="space-y-6 animate-fade-in" data-testid="pagina-lacunas">
       {/* Topo da página: título, descrição e ações */}
@@ -1304,10 +1313,12 @@ export default function Lacunas({
                   id="filtro-grupo"
                   data-testid="filtro-grupo"
                   value={filtroGrupo}
-                  onChange={(e) => setFiltroGrupo(e.target.value as FiltroGrupo)}
-                  className="w-full text-xs h-9 appearance-none rounded-md border border-slate-300 bg-white pl-3 pr-10 py-1 text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer truncate"
-                >
-                  <option value="todos">Todos os Grupos</option>
+                  onChange={(e) => {
+                    setFiltroGrupo(e.target.value as FiltroGrupo)
+                    setPage(1)
+                  }}
+                  className="w-full text-xs h-9 px-2.5 rounded-md border border-slate-300 bg-white text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary"
+                >                  <option value="todos">Todos os Grupos</option>
                   {GRUPOS_VISUAIS.map((g) => (
                     <option key={g.id} value={g.id}>
                       {g.label}
@@ -1344,10 +1355,12 @@ export default function Lacunas({
                   id="filtro-severidade"
                   data-testid="filtro-severidade"
                   value={filtroSeveridade}
-                  onChange={(e) => setFiltroSeveridade(e.target.value as FiltroSeveridade)}
-                  className="w-full text-xs h-9 appearance-none rounded-md border border-slate-300 bg-white pl-3 pr-10 py-1 text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer truncate"
-                >
-                  <option value="todas">Todas as Severidades</option>
+                  onChange={(e) => {
+                    setFiltroSeveridade(e.target.value as FiltroSeveridade)
+                    setPage(1)
+                  }}
+                  className="w-full text-xs h-9 px-2.5 rounded-md border border-slate-300 bg-white text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary"
+                >                  <option value="todas">Todas as Severidades</option>
                   <option value="critica">🔴 Críticas</option>
                   <option value="atencao">🟡 Atenção</option>
                 </select>
@@ -1381,10 +1394,12 @@ export default function Lacunas({
                   id="filtro-regra"
                   data-testid="filtro-regra"
                   value={filtroRegra}
-                  onChange={(e) => setFiltroRegra(e.target.value)}
-                  className="w-full text-xs h-9 appearance-none rounded-md border border-slate-300 bg-white pl-3 pr-10 py-1 text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer truncate"
-                >
-                  <option value="todas">Todas as Regras</option>
+                  onChange={(e) => {
+                    setFiltroRegra(e.target.value)
+                    setPage(1)
+                  }}
+                  className="w-full text-xs h-9 px-2.5 rounded-md border border-slate-300 bg-white text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary truncate"
+                >                  <option value="todas">Todas as Regras</option>
                   {regrasDisponiveis.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.descricao}
@@ -1424,7 +1439,10 @@ export default function Lacunas({
                   type="text"
                   placeholder="Nome do docente/discente..."
                   value={termoBusca}
-                  onChange={(e) => setTermoBusca(e.target.value)}
+                  onChange={(e) => {
+                    setTermoBusca(e.target.value)
+                    setPage(1)
+                  }}
                   className="w-full text-xs h-9 pl-8 pr-2.5 rounded-md border border-slate-300 bg-white text-slate-800 shadow-xs focus:outline-hidden focus:ring-1 focus:ring-primary"
                 />
               </div>
@@ -1454,8 +1472,8 @@ export default function Lacunas({
           )}
         </Card>
 
-        {/* Tabela / Lista Detalhada */}
-        <div className="rounded-lg border border-slate-200 bg-white shadow-xs overflow-hidden">
+        {/* Tabela / Lista Detalhada com rodapé fixo e barra de rolagem */}
+        <div className="rounded-lg border border-slate-200 bg-white shadow-xs overflow-hidden flex flex-col md:max-h-[600px]">
           {carregando ? (
             <div className="p-4 space-y-3" data-testid="skeletons-lista-lacunas">
               <Skeleton className="h-10 w-full" />
@@ -1488,6 +1506,7 @@ export default function Lacunas({
                     setFiltroSeveridade('todas')
                     setFiltroRegra('todas')
                     setTermoBusca('')
+                    setPage(1)
                   }}
                   className="mt-3 text-xs border-slate-300"
                 >
@@ -1497,11 +1516,11 @@ export default function Lacunas({
             </div>
           ) : (
             <>
-              {/* Tabela Única de Lacunas */}
-              <div className="overflow-x-auto">
+              {/* Tabela de Lacunas com rolagem interna */}
+              <div ref={tableContainerRef} className="flex-1 overflow-auto table-scroll-container min-h-0">
                 <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b border-slate-200 bg-slate-50/95 text-slate-600 font-semibold uppercase tracking-wider text-[11px] backdrop-blur-xs">
                       <th scope="col" className="py-3 px-4 w-[280px] max-w-[320px]">
                         Quem
                       </th>
@@ -1520,7 +1539,7 @@ export default function Lacunas({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {lacunasFiltradas.map((item, idx) => {
+                    {paginatedLacunas.map((item, idx) => {
                       const configGrupo = GRUPOS_VISUAIS.find((g) => g.id === item.grupoVisualId)
                       const badgeClass =
                         configGrupo?.theme.badge || 'bg-slate-100 text-slate-800 border-slate-200'
@@ -1615,6 +1634,13 @@ export default function Lacunas({
                   </tbody>
                 </table>
               </div>
+              <TablePaginationFooter
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                targetRef={tableContainerRef}
+                totalItems={lacunasFiltradas.length}
+              />
             </>
           )}
         </div>

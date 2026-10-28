@@ -108,37 +108,27 @@
     background-color: rgba(100, 116, 139, 0.7);
   }
 
-  /* Barra de rolagem horizontal flutuante (sticky) na base da área visível */
-  .sticky-table-scrollbar {
-    position: sticky;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    z-index: 25;
-    background-color: rgba(248, 250, 252, 0.95);
-    backdrop-filter: blur(4px);
-    border-top: 1px solid #e2e8f0;
+  /* Barra de rolagem horizontal integrada na div de paginação com o mesmo cinza padrão */
+  .table-footer-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: rgba(148, 163, 184, 0.6) transparent;
+    scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
   }
 
-  .sticky-table-scrollbar::-webkit-scrollbar {
+  .table-footer-scrollbar::-webkit-scrollbar {
     height: 8px;
   }
 
-  .sticky-table-scrollbar::-webkit-scrollbar-track {
+  .table-footer-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
 
-  .sticky-table-scrollbar::-webkit-scrollbar-thumb {
-    background-color: rgba(148, 163, 184, 0.6);
+  .table-footer-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.5);
     border-radius: 9999px;
   }
 
-  .sticky-table-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(100, 116, 139, 0.8);
+  .table-footer-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(100, 116, 139, 0.7);
   }
 
   @keyframes fade-in {

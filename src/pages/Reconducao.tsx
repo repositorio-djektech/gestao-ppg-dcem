@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { StickyHorizontalScrollbar } from '@/components/crud/StickyHorizontalScrollbar'
+import { TablePaginationFooter } from '@/components/crud/TablePaginationFooter'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -90,15 +90,14 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
   const [erro, setErro] = useState<string | null>(null)
   const [origem, setOrigem] = useState<'edge_function' | 'local_fallback' | null>(null)
 
-  // Filtros e busca
+  // Filtros, busca e paginação
   const [buscaNome, setBuscaNome] = useState('')
   const [filtroVeredito, setFiltroVeredito] = useState<FiltroVeredito>('TODOS')
+  const [page, setPage] = useState(1)
+  const PER_PAGE = 20
 
   // Drill-down do docente selecionado
   const tableContainerRef = useRef<HTMLDivElement>(null)
-  const [docenteSelecionado, setDocenteSelecionado] = useState<AvaliacaoDocenteReconducao | null>(
-    null,
-  )
   const [dialogAberto, setDialogAberto] = useState(false)
   const [imprimindoGeral, setImprimindoGeral] = useState(false)
   const [imprimindoDocente, setImprimindoDocente] = useState(false)
@@ -167,6 +166,11 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
         return a.nome.localeCompare(b.nome, 'pt-BR')
       })
   }, [relatorio?.avaliacoes, filtroVeredito, buscaNome])
+
+  const totalPages = Math.ceil(docentesFiltrados.length / PER_PAGE)
+  const paginatedDocentes = useMemo(() => {
+    return docentesFiltrados.slice((page - 1) * PER_PAGE, page * PER_PAGE)
+  }, [docentesFiltrados, page])
 
   const handleAbrirDetalhes = (doc: AvaliacaoDocenteReconducao) => {
     setDocenteSelecionado(doc)
@@ -635,7 +639,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in" data-testid="pagina-reconducao">
+    <div className="space-y-4 md:space-y-6 animate-fade-in flex flex-col md:h-[calc(100vh-6.5rem)] md:max-h-[calc(100vh-6.5rem)] min-h-0" data-testid="pagina-reconducao">
       {/* Topo da página: título, descrição e ações */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
@@ -834,7 +838,10 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
           <Input
             placeholder="Buscar docente por nome..."
             value={buscaNome}
-            onChange={(e) => setBuscaNome(e.target.value)}
+            onChange={(e) => {
+              setBuscaNome(e.target.value)
+              setPage(1)
+            }}
             className="pl-9 bg-slate-50/50 border-slate-200 text-sm"
             data-testid="input-busca-docente-reconducao"
           />
@@ -844,7 +851,10 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
           <span className="text-xs font-medium text-slate-600 shrink-0">Filtrar por Veredito:</span>
           <Select
             value={filtroVeredito}
-            onValueChange={(val) => setFiltroVeredito(val as FiltroVeredito)}
+            onValueChange={(val) => {
+              setFiltroVeredito(val as FiltroVeredito)
+              setPage(1)
+            }}
           >
             <SelectTrigger
               className="w-[180px] bg-slate-50/50 border-slate-200 text-xs"
@@ -863,11 +873,11 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
         </div>
       </div>
 
-      {/* Tabela Principal de Docentes: Tabela única com overflow-x-auto */}
-      <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden relative">
-        <div ref={tableContainerRef} className="overflow-x-auto table-scroll-container">
+      {/* Tabela Principal de Docentes: Tabela rolável com rodapé de paginação fixo */}
+      <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden relative min-h-0">
+        <div ref={tableContainerRef} className="flex-1 overflow-auto table-scroll-container min-h-0">
           <Table>
-            <TableHeader className="bg-slate-50/80">
+            <TableHeader className="bg-slate-50/80 sticky top-0 z-10">
               <TableRow>
                 <TableHead className="font-semibold text-slate-700 min-w-[200px]">
                   Docente
@@ -910,8 +920,8 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
                     ))}
                   </TableRow>
                 ))
-              ) : docentesFiltrados.length > 0 ? (
-                docentesFiltrados.map((doc) => {
+              ) : paginatedDocentes.length > 0 ? (
+                paginatedDocentes.map((doc) => {
                   const pdq = doc.pdq_detalhes.pdq
                   const precondicaoAtendida = doc.pdq_detalhes.precondicao_atendida
 
@@ -1026,7 +1036,13 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
             </TableBody>
           </Table>
         </div>
-        <StickyHorizontalScrollbar targetRef={tableContainerRef} />
+        <TablePaginationFooter
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          targetRef={tableContainerRef}
+          totalItems={docentesFiltrados.length}
+        />
       </div>
 
       {/* Drill-down de Evidências: Dialog centralizado */}

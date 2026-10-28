@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '@/hooks/use-auth'
-import { StickyHorizontalScrollbar } from '@/components/crud/StickyHorizontalScrollbar'
+import { TablePaginationFooter } from '@/components/crud/TablePaginationFooter'
 import {
   usuariosService,
   type UsuarioComDetalhes,
@@ -112,6 +112,8 @@ export default function Usuarios() {
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
   const [filtroPapel, setFiltroPapel] = useState<string>('todos')
+  const [page, setPage] = useState(1)
+  const PER_PAGE = 20
 
   // Modais de Criação
   const [modalCriarAberto, setModalCriarAberto] = useState(false)
@@ -188,6 +190,11 @@ export default function Usuarios() {
       return matchNome || matchEmail || matchDocente || matchPapel
     })
   }, [usuarios, busca, filtroPapel])
+
+  const totalPages = Math.ceil(usuariosFiltrados.length / PER_PAGE)
+  const paginatedUsuarios = useMemo(() => {
+    return usuariosFiltrados.slice((page - 1) * PER_PAGE, page * PER_PAGE)
+  }, [usuariosFiltrados, page])
 
   // Ações de Criação
   const handleCriarUsuario = async (e: React.FormEvent) => {
@@ -332,7 +339,7 @@ export default function Usuarios() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in flex-1 flex flex-col">
+    <div className="space-y-4 md:space-y-6 animate-fade-in flex-1 flex flex-col md:h-[calc(100vh-6.5rem)] md:max-h-[calc(100vh-6.5rem)] min-h-0">
       {/* Cabeçalho da Página Padronizado com CrudPage */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -369,7 +376,10 @@ export default function Usuarios() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             value={busca}
-            onChange={(e) => setBusca(e.target.value)}
+            onChange={(e) => {
+              setBusca(e.target.value)
+              setPage(1)
+            }}
             placeholder="Buscar por nome, e-mail ou docente..."
             className="pl-9 h-9 bg-white"
           />
@@ -379,7 +389,13 @@ export default function Usuarios() {
           <span className="text-xs font-medium text-slate-500 whitespace-nowrap hidden sm:inline">
             Papel:
           </span>
-          <Select value={filtroPapel} onValueChange={setFiltroPapel}>
+          <Select
+            value={filtroPapel}
+            onValueChange={(val) => {
+              setFiltroPapel(val)
+              setPage(1)
+            }}
+          >
             <SelectTrigger className="w-full sm:w-[180px] h-9 bg-white">
               <SelectValue placeholder="Filtrar papel" />
             </SelectTrigger>
@@ -395,9 +411,9 @@ export default function Usuarios() {
         </div>
       </div>
 
-      {/* Contêiner de Dados: Tabela única com overflow-auto */}
-      <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden relative">
-        <div ref={tableContainerRef} className="flex-1 overflow-auto table-scroll-container">
+      {/* Contêiner de Dados: Tabela rolável com rodapé de paginação fixo */}
+      <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden relative min-h-0">
+        <div ref={tableContainerRef} className="flex-1 overflow-auto table-scroll-container min-h-0">
           <Table>
             <TableHeader className="bg-slate-50/80 sticky top-0 z-10">
               <TableRow>
@@ -426,8 +442,8 @@ export default function Usuarios() {
                     </TableCell>
                   </TableRow>
                 ))
-              ) : usuariosFiltrados.length > 0 ? (
-                usuariosFiltrados.map((u) => {
+              ) : paginatedUsuarios.length > 0 ? (
+                paginatedUsuarios.map((u) => {
                   const roleCfg = ROLE_INFO[u.role] || {
                     label: u.role,
                     bg: 'bg-slate-100 text-slate-700 border-slate-200',
@@ -514,7 +530,13 @@ export default function Usuarios() {
             </TableBody>
           </Table>
         </div>
-        <StickyHorizontalScrollbar targetRef={tableContainerRef} />
+        <TablePaginationFooter
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          targetRef={tableContainerRef}
+          totalItems={usuariosFiltrados.length}
+        />
       </div>
 
       {/* ========================================================= */}

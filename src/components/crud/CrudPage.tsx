@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { StickyHorizontalScrollbar } from './StickyHorizontalScrollbar'
+import { TablePaginationFooter } from './TablePaginationFooter'
 import { useCrudData } from '@/hooks/use-crud-data'
 import { useAuth } from '@/hooks/use-auth'
 import type { CrudService } from '@/services/crud'
@@ -17,13 +17,6 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Search, Plus, Edit, Trash2, Printer } from 'lucide-react'
 import { toast } from 'sonner'
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -349,8 +342,8 @@ export function CrudPage<T extends { id: number | string }>({
   }
 
   return (
-    <div className="space-y-6 animate-fade-in flex flex-col h-full">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-4 md:space-y-6 animate-fade-in flex flex-col md:h-[calc(100vh-6.5rem)] md:max-h-[calc(100vh-6.5rem)] min-h-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
           <p className="text-slate-500 text-sm mt-1">{description}</p>
@@ -387,9 +380,9 @@ export function CrudPage<T extends { id: number | string }>({
           )}
         </div>
       </div>
-      {/* Contêiner de Dados: Tabela única com overflow-auto */}
-      <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden relative">
-        <div ref={tableContainerRef} className="flex-1 overflow-auto table-scroll-container">
+      {/* Contêiner de Dados: Tabela única com overflow-auto no miolo e rodapé fixo sempre visível */}
+      <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden relative min-h-0">
+        <div ref={tableContainerRef} className="flex-1 overflow-auto table-scroll-container min-h-0">
           <Table>
             <TableHeader className={tableHeaderClassName ?? 'bg-slate-50/80 sticky top-0 z-10'}>
               <TableRow className={tableHeaderRowClassName}>
@@ -502,34 +495,13 @@ export function CrudPage<T extends { id: number | string }>({
             </TableBody>
           </Table>
         </div>
-        <StickyHorizontalScrollbar targetRef={tableContainerRef} />
-        {totalPages > 1 && (
-          <div className="border-t p-3 bg-slate-50/50">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className={page === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                  />
-                </PaginationItem>
-                <PaginationItem>
-                  <span className="px-4 text-sm font-medium text-slate-600">
-                    Página {page} de {totalPages}
-                  </span>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    className={
-                      page === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
-        )}
+        <TablePaginationFooter
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          targetRef={tableContainerRef}
+          totalItems={filtered.length}
+        />
       </div>
       {isDialogOpen && (
         <CrudFormDialog
