@@ -14,7 +14,6 @@ import {
   GraduationCap,
   FileText,
   Users2,
-  ClipboardList,
   FlaskConical,
   ExternalLink,
   Calendar,
@@ -23,12 +22,12 @@ import {
   Loader2,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
-import type { Discente, Docente, ProjetoPesquisa, Orientacao, Banca } from '@/types/database'
+import type { Discente, Docente, ProjetoPesquisa, Orientacao } from '@/types/database'
 import { normalizarNomePessoa } from '@/lib/normalizacao'
 import { formatarCpf } from '@/lib/utils'
 import { DocenteNome } from '@/components/docentes/DocenteNome'
 
-export type DiscenteTabKey = 'geral' | 'orientacoes' | 'bancas' | 'projeto'
+export type DiscenteTabKey = 'geral' | 'orientacoes' | 'projeto'
 
 export interface VisualizarDiscenteDialogProps {
   open: boolean
@@ -48,7 +47,6 @@ export function VisualizarDiscenteDialog({
   const [abaAtiva, setAbaAtiva] = useState<DiscenteTabKey>('geral')
   const [loading, setLoading] = useState(false)
   const [orientacoes, setOrientacoes] = useState<(Orientacao & { docente_nome?: string })[]>([])
-  const [bancas, setBancas] = useState<Banca[]>([])
   const [projetosVinculadosIds, setProjetosVinculadosIds] = useState<number[]>([])
 
   // Docente orientador vinculado
@@ -84,17 +82,12 @@ export function VisualizarDiscenteDialog({
 
     async function carregarRegistros() {
       try {
-        const [resOri, resBancas, resPonte] = await Promise.all([
+        const [resOri, resPonte] = await Promise.all([
           supabase
             .from('orientacoes')
             .select('*, docentes(nome)')
             .eq('discente_id', discente!.id)
             .order('inicio', { ascending: false }),
-          supabase
-            .from('bancas')
-            .select('*')
-            .eq('discente_id', discente!.id)
-            .order('data', { ascending: false }),
           supabase.from('projetos_discentes').select('projeto_id').eq('discente_id', discente!.id),
         ])
 
@@ -106,7 +99,6 @@ export function VisualizarDiscenteDialog({
         }))
 
         setOrientacoes(oriFormatadas)
-        setBancas((resBancas.data as Banca[]) || [])
 
         if (!resPonte.error && resPonte.data) {
           setProjetosVinculadosIds(resPonte.data.map((r: any) => Number(r.projeto_id)))
@@ -137,7 +129,6 @@ export function VisualizarDiscenteDialog({
   }> = [
     { id: 'geral', rotulo: 'Dados Cadastrais', icone: GraduationCap, total: 1 },
     { id: 'orientacoes', rotulo: 'Orientações', icone: Users2, total: orientacoes.length },
-    { id: 'bancas', rotulo: 'Bancas', icone: ClipboardList, total: bancas.length },
     {
       id: 'projeto',
       rotulo: 'Projetos de Pesquisa',
@@ -146,7 +137,7 @@ export function VisualizarDiscenteDialog({
     },
   ]
 
-  const totalRegistros = orientacoes.length + bancas.length + projetosVinculados.length
+  const totalRegistros = orientacoes.length + projetosVinculados.length
 
   const statusColors: Record<string, string> = {
     ativo: 'bg-emerald-50 text-emerald-700 border-emerald-300',
@@ -435,48 +426,6 @@ export function VisualizarDiscenteDialog({
     )
   }
 
-  const renderAbaBancas = () => {
-    return (
-      <div className="p-4 overflow-y-auto max-h-full space-y-3">
-        {bancas.length === 0 ? (
-          <div className="text-center py-12 text-slate-500 text-xs">
-            Nenhuma banca examinadora associada a este discente.
-          </div>
-        ) : (
-          <div className="rounded-lg border border-slate-200 overflow-hidden bg-white">
-            <div className="divide-y divide-slate-100 text-xs">
-              {bancas.map((banca) => (
-                <div key={banca.id} className="p-3 space-y-1.5 hover:bg-slate-50/60">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="font-semibold text-slate-900 text-sm">
-                      {banca.titulo_trabalho || 'Trabalho de Conclusão / Defesa'}
-                    </span>
-                    <Badge variant="outline" className="text-[11px]">
-                      {banca.tipo}
-                    </Badge>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3 text-slate-600 text-xs">
-                    <span>
-                      <strong className="text-slate-700">Data:</strong> {banca.data || '—'}
-                    </span>
-                  </div>
-                  {banca.membros && (
-                    <div className="text-[11px] text-slate-600 pt-1">
-                      <strong className="text-slate-700 block mb-0.5">Membros da Banca:</strong>
-                      <span className="bg-slate-50 p-1.5 rounded border border-slate-100 block">
-                        {banca.membros}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
   const renderAbaProjeto = () => {
     if (projetosVinculados.length === 0) {
       return (
@@ -640,13 +589,6 @@ export function VisualizarDiscenteDialog({
                 className="flex-1 flex flex-col overflow-hidden mt-3 p-0 data-[state=inactive]:hidden min-h-0"
               >
                 {renderAbaOrientacoes()}
-              </TabsContent>
-
-              <TabsContent
-                value="bancas"
-                className="flex-1 flex flex-col overflow-hidden mt-3 p-0 data-[state=inactive]:hidden min-h-0"
-              >
-                {renderAbaBancas()}
               </TabsContent>
 
               <TabsContent

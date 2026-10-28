@@ -33,7 +33,6 @@ export function gerarHtmlDocenteRelatorio(
   const totalGeralRegistros =
     dados.publicacoes.length +
     dados.orientacoes.length +
-    dados.bancas.length +
     dados.projetos.length +
     dados.premiacoes.length +
     dados.producaoTecnica.length +
@@ -184,49 +183,7 @@ export function gerarHtmlDocenteRelatorio(
     `)
   }
 
-  // 4. Bancas
-  if (abasSelecionadas.bancas) {
-    const conteudoTabela =
-      dados.bancas.length === 0
-        ? '<p class="sem-registros">Nenhuma banca registrada.</p>'
-        : `
-          <table class="print-table">
-            <thead>
-              <tr>
-                <th style="width: 15%;">Tipo</th>
-                <th style="width: 38%;">Trabalho</th>
-                <th style="width: 20%;">Candidato</th>
-                <th style="width: 12%;">Data</th>
-                <th>Membros</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${dados.bancas
-                .map(
-                  (banca) => `
-                <tr>
-                  <td>${escaparHtml(banca.tipo)}</td>
-                  <td class="font-medium">${escaparHtml(banca.titulo_trabalho)}</td>
-                  <td>${escaparHtml(banca.discente_nome)}</td>
-                  <td class="font-mono">${escaparHtml(banca.data)}</td>
-                  <td class="texto-secundario">${escaparHtml(banca.membros)}</td>
-                </tr>
-              `,
-                )
-                .join('')}
-            </tbody>
-          </table>
-        `
-
-    secoesHtml.push(`
-      <section class="print-section">
-        <h2>Bancas Examinadoras (${dados.bancas.length})</h2>
-        ${conteudoTabela}
-      </section>
-    `)
-  }
-
-  // 5. Projetos
+  // 4. Projetos
   if (abasSelecionadas.projetos) {
     const conteudoTabela =
       dados.projetos.length === 0

@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { docentesService } from '@/services/docentes'
 import { discentesService } from '@/services/discentes'
 import { egressosService } from '@/services/egressos'
-import { bancasService } from '@/services/bancas'
 import { orientacoesService } from '@/services/orientacoes'
 import { disciplinasService } from '@/services/disciplinas'
 import { projetosPesquisaService } from '@/services/projetos-pesquisa'
@@ -93,22 +92,6 @@ export default function PrintView() {
           render: (e) => e.atuacao_profissional || '—',
         },
         { key: 'link_lattes', label: 'Lattes / Perfil', render: (e) => e.link_lattes || '—' },
-      ],
-    },
-    bancas: {
-      title: 'Bancas Examinadoras',
-      subtitle: 'Bancas de qualificação e defesa de dissertações e teses',
-      service: bancasService,
-      columns: [
-        { key: 'titulo_trabalho', label: 'Título do Trabalho' },
-        { key: 'tipo', label: 'Tipo' },
-        {
-          key: 'discente_id',
-          label: 'Discente',
-          render: (b) => (b.discente && b.discente.nome) || discentesMap[b.discente_id] || '—',
-        },
-        { key: 'data', label: 'Data', render: (b) => b.data || '—' },
-        { key: 'membros', label: 'Membros da Banca', render: (b) => b.membros || '—' },
       ],
     },
     orientacoes: {

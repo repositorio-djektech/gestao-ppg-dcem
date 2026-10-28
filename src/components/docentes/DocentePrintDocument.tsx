@@ -2,7 +2,6 @@ import type {
   Docente,
   Publicacao,
   Orientacao,
-  Banca,
   ProjetoPesquisa,
   Premicao as Premiacao,
   ProducaoTecnica,
@@ -16,7 +15,6 @@ export type TabKey =
   | 'geral'
   | 'publicacoes'
   | 'orientacoes'
-  | 'bancas'
   | 'projetos'
   | 'premiacoes'
   | 'producao_tecnica'
@@ -29,7 +27,6 @@ export interface DadosDocenteCompleto {
   docente: Docente | null
   publicacoes: Publicacao[]
   orientacoes: (Orientacao & { discente_nome?: string })[]
-  bancas: (Banca & { discente_nome?: string })[]
   projetos: ProjetoPesquisa[]
   premiacoes: Premiacao[]
   producaoTecnica: ProducaoTecnica[]
@@ -71,7 +68,6 @@ export function DocentePrintDocument({
   const totalGeralRegistros =
     dados.publicacoes.length +
     dados.orientacoes.length +
-    dados.bancas.length +
     dados.projetos.length +
     dados.premiacoes.length +
     dados.producaoTecnica.length +
@@ -248,42 +244,7 @@ export function DocentePrintDocument({
         </section>
       )}
 
-      {/* 4. Bancas */}
-      {abasSelecionadas.bancas && (
-        <section className="print-section mb-6">
-          <h2 className="text-sm font-bold uppercase tracking-wide border-b border-slate-400 pb-1 mb-2 text-slate-900">
-            Bancas Examinadoras ({dados.bancas.length})
-          </h2>
-          {dados.bancas.length === 0 ? (
-            <p className="text-xs text-slate-500 italic mb-3">Nenhuma banca registrada.</p>
-          ) : (
-            <table className="w-full text-left border-collapse print-table mb-4">
-              <thead>
-                <tr className="bg-slate-100 border-b-2 border-slate-300 text-xs text-slate-900 uppercase">
-                  <th className="py-1 px-2 w-[15%] font-bold">Tipo</th>
-                  <th className="py-1 px-2 w-[40%] font-bold">Trabalho</th>
-                  <th className="py-1 px-2 w-[20%] font-bold">Candidato</th>
-                  <th className="py-1 px-2 w-[12%] font-bold">Data</th>
-                  <th className="py-1 px-2 font-bold">Membros</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 text-xs">
-                {dados.bancas.map((banca) => (
-                  <tr key={banca.id}>
-                    <td className="py-1 px-2">{banca.tipo || '—'}</td>
-                    <td className="py-1 px-2 font-medium">{banca.titulo_trabalho || '—'}</td>
-                    <td className="py-1 px-2">{banca.discente_nome || '—'}</td>
-                    <td className="py-1 px-2 font-mono">{banca.data || '—'}</td>
-                    <td className="py-1 px-2 text-slate-600">{banca.membros || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
-      )}
-
-      {/* 5. Projetos */}
+      {/* 4. Projetos */}
       {abasSelecionadas.projetos && (
         <section className="print-section mb-6">
           <h2 className="text-sm font-bold uppercase tracking-wide border-b border-slate-400 pb-1 mb-2 text-slate-900">

@@ -46,10 +46,10 @@ describe('VisualizarDocenteDialog', () => {
       {
         id: 101,
         titulo: 'Artigo sobre Nanomateriais de Carbono',
-        ano: 2025,
+        ano: 2024,
         periodico: 'Journal of Materials Science',
-        autores: 'Silva, M.; Barreto, L. S.',
-        doi: '10.1000/182',
+        autores: 'Silva, M.; Santos, P.',
+        doi: '10.1000/xyz123',
         justificativa: '',
         link_comprovacao: '',
         observacoes: '',
@@ -69,9 +69,7 @@ describe('VisualizarDocenteDialog', () => {
         observacoes: 'Bolsista FAPITEC',
       },
     ],
-    bancas: [],
-    projetos: [
-      {
+    projetos: [      {
         id: 401,
         titulo: 'Desenvolvimento de Biocompósitos Avançados',
         coordenador_id: 1,
@@ -96,7 +94,6 @@ describe('VisualizarDocenteDialog', () => {
     geral: true,
     publicacoes: true,
     orientacoes: true,
-    bancas: true,
     projetos: true,
     premiacoes: true,
     producao_tecnica: true,
@@ -195,7 +192,6 @@ describe('VisualizarDocenteDialog', () => {
       geral: false,
       publicacoes: true,
       orientacoes: false,
-      bancas: false,
       projetos: false,
       premiacoes: false,
       producao_tecnica: false,
@@ -266,7 +262,6 @@ describe('VisualizarDocenteDialog', () => {
       geral: true,
       publicacoes: false,
       orientacoes: false,
-      bancas: false,
       projetos: false,
       premiacoes: false,
       producao_tecnica: false,
@@ -368,7 +363,6 @@ describe('VisualizarDocenteDialog', () => {
         link_comprovacao: '',
         observacoes: '',
       })),
-      bancas: [],
       projetos: [
         {
           id: 50,

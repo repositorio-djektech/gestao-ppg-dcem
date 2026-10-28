@@ -11,7 +11,6 @@ import Dashboard from '@/pages/Dashboard'
 import Docentes from '@/pages/Docentes'
 import Discentes from '@/pages/Discentes'
 import Egressos from '@/pages/Egressos'
-import Bancas from '@/pages/Bancas'
 import Orientacoes from '@/pages/Orientacoes'
 import Disciplinas from '@/pages/Disciplinas'
 import IniciacaoCientificaPage from '@/pages/IniciacaoCientifica'
@@ -74,7 +73,6 @@ const App = () => {
               <Route path="/docentes" element={<Docentes />} />
               <Route path="/discentes" element={<Discentes />} />
               <Route path="/egressos" element={<Egressos />} />
-              <Route path="/bancas" element={<Bancas />} />
               <Route path="/orientacoes" element={<Orientacoes />} />
               <Route path="/disciplinas" element={<Disciplinas />} />
               <Route path="/iniciacao-cientifica" element={<IniciacaoCientificaPage />} />

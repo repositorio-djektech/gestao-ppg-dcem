@@ -55,7 +55,6 @@ import type {
   Docente,
   Publicacao,
   Orientacao,
-  Banca,
   ProjetoPesquisa,
   Premicao as Premiacao,
   ProducaoTecnica,
@@ -147,7 +146,6 @@ export function VisualizarDocenteDialog({
     docente: null,
     publicacoes: [],
     orientacoes: [],
-    bancas: [],
     projetos: [],
     premiacoes: [],
     producaoTecnica: [],
@@ -169,7 +167,6 @@ export function VisualizarDocenteDialog({
     geral: ITENS_POR_PAGINA,
     publicacoes: ITENS_POR_PAGINA,
     orientacoes: ITENS_POR_PAGINA,
-    bancas: ITENS_POR_PAGINA,
     projetos: ITENS_POR_PAGINA,
     premiacoes: ITENS_POR_PAGINA,
     producao_tecnica: ITENS_POR_PAGINA,
@@ -189,7 +186,6 @@ export function VisualizarDocenteDialog({
       geral: ITENS_POR_PAGINA,
       publicacoes: ITENS_POR_PAGINA,
       orientacoes: ITENS_POR_PAGINA,
-      bancas: ITENS_POR_PAGINA,
       projetos: ITENS_POR_PAGINA,
       premiacoes: ITENS_POR_PAGINA,
       producao_tecnica: ITENS_POR_PAGINA,
@@ -228,16 +224,11 @@ export function VisualizarDocenteDialog({
           .eq('coordenador_id', docente.id)
           .order('inicio', { ascending: false })
 
-        // 4. Tabelas com texto (publicacoes, bancas, eventos, premiacoes, producao_tecnica, patentes, mobilidade, impacto_social)
+        // 4. Tabelas com texto (publicacoes, eventos, premiacoes, producao_tecnica, patentes, mobilidade, impacto_social)
         const publicacoesPromise = supabase
           .from('publicacoes')
           .select('*')
           .order('ano', { ascending: false })
-
-        const bancasPromise = supabase
-          .from('bancas')
-          .select('*, discentes(id, nome)')
-          .order('data', { ascending: false })
 
         const premiacoesPromise = supabase
           .from('premiacoes')
@@ -274,7 +265,6 @@ export function VisualizarDocenteDialog({
           resOrientacoes,
           resProjetos,
           resPublicacoes,
-          resBancas,
           resPremiacoes,
           resProducaoTecnica,
           resPatentes,
@@ -286,7 +276,6 @@ export function VisualizarDocenteDialog({
           orientacoesPromise,
           projetosPromise,
           publicacoesPromise,
-          bancasPromise,
           premiacoesPromise,
           producaoTecnicaPromise,
           patentesPromise,
@@ -307,14 +296,6 @@ export function VisualizarDocenteDialog({
         const publicacoesFiltradas = ((resPublicacoes.data as Publicacao[]) || []).filter((pub) =>
           docenteCorresponde(pub.autores, termosNome),
         )
-
-        // Filtra bancas pelos membros
-        const bancasFiltradas = ((resBancas.data as any[]) || [])
-          .filter((banca) => docenteCorresponde(banca.membros, termosNome))
-          .map((banca) => ({
-            ...banca,
-            discente_nome: banca.discentes?.nome || '—',
-          }))
 
         // Filtra premiações pelo nome do premiado
         const premiacoesFiltradas = ((resPremiacoes.data as Premiacao[]) || []).filter((prem) =>
@@ -353,7 +334,6 @@ export function VisualizarDocenteDialog({
           docente: docFinal,
           publicacoes: publicacoesFiltradas,
           orientacoes: orientacoesFormatadas,
-          bancas: bancasFiltradas,
           projetos: (resProjetos.data as ProjetoPesquisa[]) || [],
           premiacoes: premiacoesFiltradas,
           producaoTecnica: producaoTecnicaFiltrada,
@@ -409,7 +389,6 @@ export function VisualizarDocenteDialog({
         total: dados.publicacoes.length,
       },
       { id: 'orientacoes', rotulo: 'Orientações', icone: Users2, total: dados.orientacoes.length },
-      { id: 'bancas', rotulo: 'Bancas', icone: ClipboardList, total: dados.bancas.length },
       { id: 'projetos', rotulo: 'Projetos', icone: FlaskConical, total: dados.projetos.length },
       { id: 'premiacoes', rotulo: 'Premiações', icone: Award, total: dados.premiacoes.length },
       {
@@ -435,7 +414,6 @@ export function VisualizarDocenteDialog({
     () =>
       dados.publicacoes.length +
       dados.orientacoes.length +
-      dados.bancas.length +
       dados.projetos.length +
       dados.premiacoes.length +
       dados.producaoTecnica.length +
@@ -1329,58 +1307,6 @@ export function VisualizarDocenteDialog({
     )
   }
 
-  const renderAbaBancas = () => {
-    const itens = dados.bancas
-    const limite = limitesPaginacao.bancas
-    const visiveis = itens.slice(0, limite)
-
-    if (itens.length === 0) {
-      return renderEstadoVazio('Nenhuma banca de defesa ou qualificação encontrada.')
-    }
-
-    return (
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-auto border rounded-md bg-white dark:bg-neutral-900">
-          <Table>
-            <TableHeader className="bg-slate-50 dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
-              <TableRow>
-                <TableHead className="w-[12%]">Tipo</TableHead>
-                <TableHead className="w-[40%]">Título do Trabalho</TableHead>
-                <TableHead className="w-[18%]">Candidato / Discente</TableHead>
-                <TableHead className="w-[12%]">Data / Ano</TableHead>
-                <TableHead className="w-[18%]">Membros</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visiveis.map((banca) => (
-                <TableRow key={banca.id}>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs font-semibold">
-                      {banca.tipo || '—'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-medium text-slate-900 dark:text-neutral-100">
-                    {banca.titulo_trabalho || '—'}
-                  </TableCell>
-                  <TableCell className="text-xs text-slate-700 dark:text-neutral-300">
-                    {banca.discente_nome || '—'}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-600 dark:text-neutral-400">
-                    {banca.data || '—'}
-                  </TableCell>
-                  <TableCell className="text-xs text-slate-500 dark:text-neutral-400">
-                    {banca.membros || '—'}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-        {renderPaginacao(itens.length, limite, () => carregarMais('bancas'))}
-      </div>
-    )
-  }
-
   const renderAbaProjetos = () => {
     const itens = dados.projetos
     const limite = limitesPaginacao.projetos
@@ -1872,13 +1798,6 @@ export function VisualizarDocenteDialog({
                 className="flex-1 flex flex-col overflow-hidden mt-3 p-0 data-[state=inactive]:hidden min-h-0"
               >
                 {renderAbaOrientacoes()}
-              </TabsContent>
-
-              <TabsContent
-                value="bancas"
-                className="flex-1 flex flex-col overflow-hidden mt-3 p-0 data-[state=inactive]:hidden min-h-0"
-              >
-                {renderAbaBancas()}
               </TabsContent>
 
               <TabsContent

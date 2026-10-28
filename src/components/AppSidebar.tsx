@@ -130,11 +130,6 @@ const navSections: NavSection[] = [
     title: 'Acadêmico',
     items: [
       {
-        label: 'Bancas',
-        href: '/bancas',
-        icon: <ClipboardList className="h-5 w-5 shrink-0" />,
-      },
-      {
         label: 'Orientações',
         href: '/orientacoes',
         icon: <BookUser className="h-5 w-5 shrink-0" />,
