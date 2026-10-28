@@ -387,7 +387,7 @@ export function CrudPage<T extends { id: number | string }>({
       </div>
       {/* Contêiner de Dados: Tabela única com overflow-auto */}
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto table-horizontal-scrollbar">
           <Table>
             <TableHeader className={tableHeaderClassName ?? 'bg-slate-50/80 sticky top-0 z-10'}>
               <TableRow className={tableHeaderRowClassName}>
