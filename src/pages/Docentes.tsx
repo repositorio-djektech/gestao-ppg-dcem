@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useCrudData } from '@/hooks/use-crud-data'
 import { docentesService } from '@/services/docentes'
 import { linhasPesquisaService } from '@/services/linhas-pesquisa'
@@ -102,6 +102,7 @@ const emptyForm: Omit<Docente, 'id'> = {
 
 export default function Docentes() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { role, profile } = useAuth()
   const { data: docentes, loading, create, update, remove } = useCrudData(docentesService)
   const [searchTerm, setSearchTerm] = useState('')
@@ -228,6 +229,27 @@ export default function Docentes() {
       }, 100)
     }
   }
+
+  // Consome o parâmetro de edição do próprio docente vindo da sidebar ou URL
+  useEffect(() => {
+    const solicitarEdicaoPropria = searchParams.get('solicitar-edicao-propria')
+    if (!solicitarEdicaoPropria) return
+
+    // Se a lista de docentes ainda está carregando, aguarda
+    if (loading) return
+
+    if (podeEditarProprio && docenteIdLogado) {
+      const docenteProprio = docentes.find((d) => Number(d.id) === Number(docenteIdLogado))
+      if (docenteProprio) {
+        handleOpen(docenteProprio)
+      }
+    }
+
+    // Remove o parâmetro da URL mantendo eventuais outros parâmetros
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('solicitar-edicao-propria')
+    setSearchParams(nextParams, { replace: true })
+  }, [searchParams, setSearchParams, loading, podeEditarProprio, docenteIdLogado, docentes])
 
   const resumoJdp = useMemo(() => {
     return calcularResumoJdpPrograma(docentes)

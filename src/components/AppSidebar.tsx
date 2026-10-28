@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import logoP2cem from '@/assets/logo-p2cem.png'
 import p2cemUfs from '@/assets/p2cem-ufs.png'
@@ -223,6 +223,7 @@ const ROLE_LABELS: Record<string, string> = {
 function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
   const { open } = useSidebar()
   const location = useLocation()
+  const navigate = useNavigate()
   const { profile, role, isSuporte, isCoordenador, signOut } = useAuth()
   const [showLogoutModal, setShowLogoutModal] = useState(false)
 
@@ -325,9 +326,23 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
           )}
         >
           {/* Identificação do Usuário */}
-          <div
-            className={cn('flex items-center gap-2 min-w-0 flex-1', !open && 'justify-center')}
-            title={profile?.name ?? 'Usuário'}
+          <button
+            type="button"
+            onClick={() => {
+              if (profile?.docente_id) {
+                navigate('/docentes?solicitar-edicao-propria=1')
+              } else {
+                navigate('/docentes')
+              }
+            }}
+            className={cn(
+              'flex items-center gap-2 min-w-0 flex-1 rounded-md p-1 -m-1 text-left cursor-pointer transition-colors',
+              'hover:bg-neutral-100 dark:hover:bg-neutral-800/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+              !open && 'justify-center',
+            )}
+            title={
+              profile?.docente_id ? 'Editar meus dados de docente' : (profile?.name ?? 'Usuário')
+            }
           >
             <Avatar className="h-7 w-7 border border-neutral-200 dark:border-neutral-700 shrink-0">
               <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
@@ -346,7 +361,7 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
                 )}
               </div>
             )}
-          </div>
+          </button>
 
           {/* Botão de SAIR: apenas ícone LogOut alinhado à direita na mesma linha */}
           <button
