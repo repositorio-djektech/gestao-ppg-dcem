@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '@/hooks/use-auth'
+import { StickyHorizontalScrollbar } from '@/components/crud/StickyHorizontalScrollbar'
 import {
   usuariosService,
   type UsuarioComDetalhes,
@@ -133,6 +134,7 @@ export default function Usuarios() {
   // Modal de Exclusão
   const [usuarioParaExcluir, setUsuarioParaExcluir] = useState<UsuarioComDetalhes | null>(null)
   const [excluindo, setExcluindo] = useState(false)
+  const tableContainerRef = useRef<HTMLDivElement>(null)
 
   // Carregar dados
   const carregarDados = useCallback(async () => {
@@ -330,42 +332,30 @@ export default function Usuarios() {
   }
 
   return (
-    <div className="flex-1 flex flex-col p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full gap-6">
-      {/* Cabeçalho da Página com fundo suave #e9effc padrão PPG-DCEM */}
-      <div className="rounded-xl border border-blue-100 bg-[#e9effc] p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
-              <Users className="h-6 w-6" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-                Gestão de Usuários
-              </h1>
-              <p className="text-sm text-slate-600">
-                Controle de perfis, concessão de papéis no PPG-DCEM e vinculação com docentes.
-              </p>
-            </div>
-          </div>
+    <div className="space-y-6 animate-fade-in flex-1 flex flex-col">
+      {/* Cabeçalho da Página Padronizado com CrudPage */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Usuários</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Controle de perfis, concessão de papéis no PPG-DCEM e vinculação com docentes
+          </p>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={carregarDados}
             disabled={loading}
-            className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 h-9"
+            className="h-9 gap-1.5"
           >
-            <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Atualizar</span>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Atualizar</span>
           </Button>
 
           {isSuporte && (
-            <Button
-              onClick={() => setModalCriarAberto(true)}
-              className="gap-2 shrink-0 h-9 px-4 shadow-xs"
-            >
+            <Button onClick={() => setModalCriarAberto(true)} className="gap-2 shrink-0 h-9 px-4">
               <UserPlus className="h-4 w-4" />
               <span>Novo Usuário</span>
             </Button>
@@ -405,9 +395,9 @@ export default function Usuarios() {
         </div>
       </div>
 
-      {/* Contêiner da Listagem */}
-      <div className="rounded-lg border border-slate-200 bg-white shadow-xs flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-auto">
+      {/* Contêiner de Dados: Tabela única com overflow-auto */}
+      <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden relative">
+        <div ref={tableContainerRef} className="flex-1 overflow-auto table-scroll-container">
           <Table>
             <TableHeader className="bg-slate-50/80 sticky top-0 z-10">
               <TableRow>
@@ -524,6 +514,7 @@ export default function Usuarios() {
             </TableBody>
           </Table>
         </div>
+        <StickyHorizontalScrollbar targetRef={tableContainerRef} />
       </div>
 
       {/* ========================================================= */}

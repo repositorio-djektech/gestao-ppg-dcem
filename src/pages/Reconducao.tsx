@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { StickyHorizontalScrollbar } from '@/components/crud/StickyHorizontalScrollbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -94,6 +95,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
   const [filtroVeredito, setFiltroVeredito] = useState<FiltroVeredito>('TODOS')
 
   // Drill-down do docente selecionado
+  const tableContainerRef = useRef<HTMLDivElement>(null)
   const [docenteSelecionado, setDocenteSelecionado] = useState<AvaliacaoDocenteReconducao | null>(
     null,
   )
@@ -862,8 +864,8 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
       </div>
 
       {/* Tabela Principal de Docentes: Tabela única com overflow-x-auto */}
-      <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden relative">
+        <div ref={tableContainerRef} className="overflow-x-auto table-scroll-container">
           <Table>
             <TableHeader className="bg-slate-50/80">
               <TableRow>
@@ -1024,6 +1026,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
             </TableBody>
           </Table>
         </div>
+        <StickyHorizontalScrollbar targetRef={tableContainerRef} />
       </div>
 
       {/* Drill-down de Evidências: Dialog centralizado */}

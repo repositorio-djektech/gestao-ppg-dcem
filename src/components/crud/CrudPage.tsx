@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo, type ReactNode } from 'react'
+import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { StickyHorizontalScrollbar } from './StickyHorizontalScrollbar'
 import { useCrudData } from '@/hooks/use-crud-data'
 import { useAuth } from '@/hooks/use-auth'
 import type { CrudService } from '@/services/crud'
@@ -113,6 +114,7 @@ export function CrudPage<T extends { id: number | string }>({
   const [editingId, setEditingId] = useState<number | string | null>(null)
   const [page, setPage] = useState(1)
   const [submitting, setSubmitting] = useState(false)
+  const tableContainerRef = useRef<HTMLDivElement>(null)
   const [formData, setFormData] = useState<Record<string, any>>(emptyForm)
   const [idParaExcluir, setIdParaExcluir] = useState<number | string | null>(null)
   const [fieldOptions, setFieldOptions] = useState<
@@ -386,8 +388,8 @@ export function CrudPage<T extends { id: number | string }>({
         </div>
       </div>
       {/* Contêiner de Dados: Tabela única com overflow-auto */}
-      <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-auto table-horizontal-scrollbar">
+      <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden relative">
+        <div ref={tableContainerRef} className="flex-1 overflow-auto table-scroll-container">
           <Table>
             <TableHeader className={tableHeaderClassName ?? 'bg-slate-50/80 sticky top-0 z-10'}>
               <TableRow className={tableHeaderRowClassName}>
@@ -500,6 +502,7 @@ export function CrudPage<T extends { id: number | string }>({
             </TableBody>
           </Table>
         </div>
+        <StickyHorizontalScrollbar targetRef={tableContainerRef} />
         {totalPages > 1 && (
           <div className="border-t p-3 bg-slate-50/50">
             <Pagination>
