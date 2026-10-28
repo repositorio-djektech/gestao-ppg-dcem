@@ -106,7 +106,7 @@ export function TablePaginationFooter({
   return (
     <div
       className={cn(
-        'border-t border-slate-200 bg-slate-50/70 shrink-0 select-none relative flex flex-col',
+        'sticky bottom-0 z-20 border-t border-slate-200 bg-slate-50 shrink-0 select-none relative flex flex-col shadow-xs',
         className,
       )}
       data-testid="table-pagination-footer"
@@ -116,7 +116,7 @@ export function TablePaginationFooter({
         <div
           ref={scrollbarRef}
           onScroll={handleScrollbarScroll}
-          className="hidden md:block w-full overflow-x-auto overflow-y-hidden table-footer-scrollbar h-[10px] relative z-10 shrink-0 border-b border-slate-200/60"
+          className="hidden md:block w-full overflow-x-auto overflow-y-hidden table-footer-scrollbar h-[10px] relative z-10 shrink-0"
           style={{ willChange: 'scroll-position' }}
           aria-hidden="true"
           data-testid="table-horizontal-scrollbar"

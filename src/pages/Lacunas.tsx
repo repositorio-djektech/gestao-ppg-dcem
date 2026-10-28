@@ -1479,7 +1479,7 @@ export default function Lacunas({
         </Card>
 
         {/* Tabela / Lista Detalhada com rodapé fixo e barra de rolagem */}
-        <div className="rounded-lg border border-slate-200 bg-white shadow-xs overflow-hidden flex flex-col md:max-h-[600px]">
+        <div className="rounded-lg border border-slate-200 bg-white shadow-xs relative">
           {carregando ? (
             <div className="p-4 space-y-3" data-testid="skeletons-lista-lacunas">
               <Skeleton className="h-10 w-full" />
@@ -1522,11 +1522,8 @@ export default function Lacunas({
             </div>
           ) : (
             <>
-              {/* Tabela de Lacunas com rolagem interna */}
-              <div
-                ref={tableContainerRef}
-                className="flex-1 overflow-auto table-scroll-container min-h-0"
-              >
+              {/* Tabela de Lacunas com rolagem horizontal */}
+              <div ref={tableContainerRef} className="overflow-x-auto table-scroll-container">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-slate-200 bg-slate-50/95 text-slate-600 font-semibold uppercase tracking-wider text-[11px] backdrop-blur-xs">

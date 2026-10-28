@@ -342,8 +342,8 @@ export function CrudPage<T extends { id: number | string }>({
   }
 
   return (
-    <div className="space-y-4 md:space-y-6 animate-fade-in flex flex-col md:h-[calc(100vh-6.5rem)] md:max-h-[calc(100vh-6.5rem)] min-h-0">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
+    <div className="space-y-4 md:space-y-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
           <p className="text-slate-500 text-sm mt-1">{description}</p>
@@ -380,12 +380,9 @@ export function CrudPage<T extends { id: number | string }>({
           )}
         </div>
       </div>
-      {/* Contêiner de Dados: Tabela única com overflow-auto no miolo e rodapé fixo sempre visível */}
-      <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex-1 flex flex-col overflow-hidden relative min-h-0">
-        <div
-          ref={tableContainerRef}
-          className="flex-1 overflow-auto table-scroll-container min-h-0"
-        >
+      {/* Contêiner de Dados: Tabela com rolagem horizontal e rodapé fixo sempre visível */}
+      <div className="rounded-lg border border-slate-200 bg-white shadow-sm relative">
+        <div ref={tableContainerRef} className="overflow-x-auto table-scroll-container">
           <Table>
             <TableHeader className={tableHeaderClassName ?? 'bg-slate-50/80 sticky top-0 z-10'}>
               <TableRow className={tableHeaderRowClassName}>
