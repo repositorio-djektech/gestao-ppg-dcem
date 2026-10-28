@@ -7,11 +7,10 @@ import type {
   Publicacao,
   Orientacao,
   ProjetoPesquisa,
-  Banca,
   Evento,
   Mobilidade,
   Patente,
-  Premiacao,
+  Premicao as Premiacao,
   ProducaoTecnica,
 } from '@/types/database'
 
@@ -77,7 +76,6 @@ export async function obterRelatorioLacunas(
       publicacoesRes,
       orientacoesRes,
       projetosRes,
-      bancasRes,
       eventosRes,
       mobilidadeRes,
       patentesRes,
@@ -117,11 +115,6 @@ export async function obterRelatorioLacunas(
           'id, titulo, descricao, inicio, fim, financiamento, orgao_fomento, coordenador_id, link_comprovacao, observacoes',
         ),
       supabase
-        .from('bancas')
-        .select(
-          'id, titulo_trabalho, data, membros, tipo, discente_id, link_comprovacao, observacoes',
-        ),
-      supabase
         .from('eventos')
         .select('id, docente, evento, local_data, papel, link_comprovacao, observacoes'),
       supabase
@@ -150,7 +143,6 @@ export async function obterRelatorioLacunas(
       publicacoesRes.error,
       orientacoesRes.error,
       projetosRes.error,
-      bancasRes.error,
       eventosRes.error,
       mobilidadeRes.error,
       patentesRes.error,
@@ -175,7 +167,6 @@ export async function obterRelatorioLacunas(
       publicacoes: (publicacoesRes.data || []) as unknown as Publicacao[],
       orientacoes: (orientacoesRes.data || []) as unknown as Orientacao[],
       projetos_pesquisa: (projetosRes.data || []) as unknown as ProjetoPesquisa[],
-      bancas: (bancasRes.data || []) as unknown as Banca[],
       eventos: (eventosRes.data || []) as unknown as Evento[],
       mobilidade_docente: (mobilidadeRes.data || []) as unknown as Mobilidade[],
       patentes: (patentesRes.data || []) as unknown as Patente[],

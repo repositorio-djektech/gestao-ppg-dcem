@@ -4,16 +4,9 @@ import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { projetosPesquisaService } from '@/services/projetos-pesquisa'
 import { docentesService } from '@/services/docentes'
 import { discentesService } from '@/services/discentes'
-import { bancasService } from '@/services/bancas'
 import { iniciacaoCientificaService } from '@/services/iniciacao-cientifica'
 import { Badge } from '@/components/ui/badge'
-import type {
-  ProjetoPesquisa,
-  Docente,
-  Discente,
-  Banca,
-  IniciacaoCientifica,
-} from '@/types/database'
+import type { ProjetoPesquisa, Docente, Discente, IniciacaoCientifica } from '@/types/database'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
@@ -218,7 +211,6 @@ const emptyForm = {
   classificacao: '',
   participantes_docentes: [] as ParticipanteDocenteItem[],
   discentes_vinculados: [] as DiscenteProjetoItem[],
-  bancas_vinculadas_ids: [] as number[],
   iniciacoes_vinculadas_ids: [] as number[],
 }
 
@@ -227,7 +219,6 @@ export default function ProjetosPesquisa() {
   const [docenteMap, setDocenteMap] = useState<Record<string, string>>({})
   const [docentesLista, setDocentesLista] = useState<Docente[]>([])
   const [discentesLista, setDiscentesLista] = useState<Discente[]>([])
-  const [todasBancas, setTodasBancas] = useState<Banca[]>([])
   const [todasIniciacoes, setTodasIniciacoes] = useState<IniciacaoCientifica[]>([])
   const [projetosParticipantesIds, setProjetosParticipantesIds] = useState<number[]>([])
   const [todosParticipantes, setTodosParticipantes] = useState<
@@ -239,10 +230,9 @@ export default function ProjetosPesquisa() {
 
   const carregarParticipantes = useCallback(async () => {
     try {
-      const [partsRes, discPartsRes, bancasRes, icRes] = await Promise.all([
+      const [partsRes, discPartsRes, icRes] = await Promise.all([
         supabase.from('projetos_participantes').select('projeto_id, docente_id, papel'),
         supabase.from('projetos_discentes').select('projeto_id, discente_id, papel'),
-        bancasService.list(),
         iniciacaoCientificaService.list(),
       ])
 
@@ -256,7 +246,6 @@ export default function ProjetosPesquisa() {
           discPartsRes.data as { projeto_id: number; discente_id: number; papel?: string | null }[],
         )
       }
-      setTodasBancas(bancasRes || [])
       setTodasIniciacoes(icRes || [])
     } catch (err) {
       console.error('Falha ao carregar vínculos de projetos:', err)
@@ -296,7 +285,6 @@ export default function ProjetosPesquisa() {
     projetoId: number,
     participantes: ParticipanteDocenteItem[],
     discentes: DiscenteProjetoItem[],
-    bancasIds: number[],
     iniciacoesIds: number[],
   ) => {
     // 1. Docentes participantes
@@ -319,26 +307,6 @@ export default function ProjetosPesquisa() {
         papel: d.papel || 'participante',
       }))
       await supabase.from('projetos_discentes').insert(rowsDisc)
-    }
-
-    // 3. Bancas vinculadas (campo bancas.projeto_id)
-    // Desvincula as bancas que estavam vinculadas a este projeto mas não estão mais
-    const bancasAntigas = todasBancas.filter((b) => Number(b.projeto_id) === Number(projetoId))
-    const bancasParaDesvincular = bancasAntigas
-      .filter((b) => !bancasIds.includes(b.id))
-      .map((b) => b.id)
-
-    if (bancasParaDesvincular.length > 0) {
-      for (const bId of bancasParaDesvincular) {
-        await supabase.from('bancas').update({ projeto_id: null }).eq('id', bId)
-      }
-    }
-    // Vincula as selecionadas
-    for (const bId of bancasIds) {
-      await supabase
-        .from('bancas')
-        .update({ projeto_id: Number(projetoId) })
-        .eq('id', bId)
     }
 
     // 4. Iniciações científicas vinculadas (campo iniciacao_cientifica.projeto_id)
@@ -369,7 +337,6 @@ export default function ProjetosPesquisa() {
         const itemAny = item as any
         const participantes: ParticipanteDocenteItem[] = itemAny.participantes_docentes || []
         const discentes: DiscenteProjetoItem[] = itemAny.discentes_vinculados || []
-        const bancasIds: number[] = itemAny.bancas_vinculadas_ids || []
         const iniciacoesIds: number[] = itemAny.iniciacoes_vinculadas_ids || []
 
         // Validação estrita: exatamente 1 coordenador obrigatório
@@ -406,7 +373,6 @@ export default function ProjetosPesquisa() {
             Number(novo.id),
             participantes,
             discentes,
-            bancasIds,
             iniciacoesIds,
           )
         }
@@ -416,7 +382,6 @@ export default function ProjetosPesquisa() {
         const itemAny = item as any
         const participantes: ParticipanteDocenteItem[] = itemAny.participantes_docentes || []
         const discentes: DiscenteProjetoItem[] = itemAny.discentes_vinculados || []
-        const bancasIds: number[] = itemAny.bancas_vinculadas_ids || []
         const iniciacoesIds: number[] = itemAny.iniciacoes_vinculadas_ids || []
 
         // Validação estrita: exatamente 1 coordenador obrigatório
@@ -451,17 +416,11 @@ export default function ProjetosPesquisa() {
           id,
           payload,
         )) as unknown as ProjetoPesquisa
-        await sincronizarTodosVinculosBanco(
-          Number(id),
-          participantes,
-          discentes,
-          bancasIds,
-          iniciacoesIds,
-        )
+        await sincronizarTodosVinculosBanco(Number(id), participantes, discentes, iniciacoesIds)
         return atualizado
       },
     }
-  }, [carregarParticipantes, todasBancas, todasIniciacoes])
+  }, [carregarParticipantes, todasIniciacoes])
 
   const columns: ColumnDef<ProjetoPesquisa>[] = [
     { key: 'titulo', label: 'Título', className: 'font-medium text-slate-900' },
@@ -1044,36 +1003,17 @@ export default function ProjetosPesquisa() {
     },
     {
       key: 'trabalhos_conclusao_vinculados',
-      label: 'Trabalhos de Conclusão e Iniciação Vinculados',
+      label: 'Iniciações Científicas e Tecnológicas Vinculadas',
       type: 'text',
       customRender: ({ formData, setFormData }) => {
-        let bancasIds: number[] = formData.bancas_vinculadas_ids || []
         let iniciacoesIds: number[] = formData.iniciacoes_vinculadas_ids || []
 
         // Inicializa no modo editar
-        if (bancasIds.length === 0 && formData.id) {
-          const doProjeto = todasBancas
-            .filter((b) => Number(b.projeto_id) === Number(formData.id))
-            .map((b) => b.id)
-          bancasIds = doProjeto
-        }
         if (iniciacoesIds.length === 0 && formData.id) {
           const icDoProjeto = todasIniciacoes
             .filter((ic) => Number(ic.projeto_id) === Number(formData.id))
             .map((ic) => ic.id)
           iniciacoesIds = icDoProjeto
-        }
-
-        const adicionarBanca = (idStr: string) => {
-          const bId = Number(idStr)
-          if (!bId || bancasIds.includes(bId)) return
-          const novos = [...bancasIds, bId]
-          setFormData({ ...formData, bancas_vinculadas_ids: novos })
-        }
-
-        const removerBanca = (bId: number) => {
-          const novos = bancasIds.filter((id) => id !== bId)
-          setFormData({ ...formData, bancas_vinculadas_ids: novos })
         }
 
         const adicionarIniciacao = (idStr: string) => {
@@ -1088,7 +1028,6 @@ export default function ProjetosPesquisa() {
           setFormData({ ...formData, iniciacoes_vinculadas_ids: novos })
         }
 
-        const bancasDisponiveis = todasBancas.filter((b) => !bancasIds.includes(b.id))
         const icDisponiveis = todasIniciacoes.filter((ic) => !iniciacoesIds.includes(ic.id))
 
         return (
@@ -1096,86 +1035,18 @@ export default function ProjetosPesquisa() {
             <div>
               <Label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
                 <BookOpen className="h-4 w-4 text-primary" />
-                Vínculo de Trabalhos de Conclusão e Iniciação ao Projeto
+                Vínculo de Iniciação Científica ao Projeto
               </Label>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Associe bancas de qualificação/defesa e projetos de IC/IT/IE que foram desenvolvidos
-                no âmbito deste projeto.
+                Associe projetos de IC/IT/IE que foram desenvolvidos no âmbito deste projeto.
               </p>
             </div>
 
-            {/* Grupo A: Bancas de Mestrado / Doutorado / Qualificação */}
+            {/* Grupo Iniciação Científica, Tecnológica e em Extensão (IC/IT/IE) */}
             <div className="space-y-2 border-t pt-2 border-slate-200">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
-                  <strong>(a) Bancas do Programa</strong> (Qualificação, Dissertação, Tese)
-                </span>
-                <Badge variant="outline" className="text-[10px] bg-white">
-                  {bancasIds.length} vinculada{bancasIds.length === 1 ? '' : 's'}
-                </Badge>
-              </div>
-
-              {bancasIds.length > 0 ? (
-                <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                  {bancasIds.map((bId) => {
-                    const banca = todasBancas.find((b) => b.id === bId)
-                    const titulo = banca ? banca.titulo_trabalho : `Banca #${bId}`
-                    return (
-                      <div
-                        key={bId}
-                        className="flex items-center justify-between p-1.5 rounded bg-white border border-slate-200 text-xs"
-                      >
-                        <div className="flex items-center gap-1.5 truncate pr-2">
-                          {banca?.tipo && (
-                            <Badge variant="outline" className="text-[10px] py-0 px-1 shrink-0">
-                              {banca.tipo}
-                            </Badge>
-                          )}
-                          <span className="truncate text-slate-800" title={titulo}>
-                            {titulo}
-                          </span>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removerBanca(bId)}
-                          className="h-6 w-6 p-0 text-slate-400 hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <p className="text-[11px] text-slate-400 italic">Nenhuma banca associada.</p>
-              )}
-
-              {bancasDisponiveis.length > 0 && (
-                <Select onValueChange={adicionarBanca} value="">
-                  <SelectTrigger className="h-7 text-xs bg-white">
-                    <SelectValue placeholder="+ Vincular banca existente..." />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-48">
-                    {bancasDisponiveis.map((b) => (
-                      <SelectItem key={b.id} value={String(b.id)} className="text-xs">
-                        [{b.tipo}]{' '}
-                        {b.titulo_trabalho.length > 60
-                          ? `${b.titulo_trabalho.slice(0, 60)}…`
-                          : b.titulo_trabalho}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {/* Grupo B: Iniciação Científica, Tecnológica e em Extensão (IC/IT/IE) */}
-            <div className="space-y-2 border-t pt-2 border-slate-200">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
-                  <strong>(b) Iniciações e TCC</strong> (IC, IT, IE)
+                  <strong>Iniciações e TCC</strong> (IC, IT, IE)
                 </span>
                 <Badge variant="outline" className="text-[10px] bg-white">
                   {iniciacoesIds.length} vinculada{iniciacoesIds.length === 1 ? '' : 's'}

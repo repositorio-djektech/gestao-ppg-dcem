@@ -96,7 +96,7 @@ export const GRUPOS_VISUAIS: GrupoVisualConfig[] = [
   {
     id: 'academico',
     label: 'Acadêmico',
-    subtitulo: 'Bancas, Orientações, Disciplinas e Projetos',
+    subtitulo: 'Orientações, Disciplinas e Projetos',
     icon: GraduationCap,
     theme: {
       border: 'border-emerald-200',
@@ -161,7 +161,6 @@ export function mapearGrupoParaVisual(grupoOuTabela: string): GrupoVisualId {
   if (
     norm.includes('acadêm') ||
     norm.includes('academ') ||
-    norm.includes('banca') ||
     norm.includes('orienta') ||
     norm.includes('disciplina') ||
     norm.includes('projeto')
@@ -495,7 +494,6 @@ export default function Lacunas({
         const rotas: Record<string, string> = {
           orientacoes: '/orientacoes',
           projetos_pesquisa: '/projetos-pesquisa',
-          bancas: '/bancas',
           eventos: '/eventos',
           mobilidade_docente: '/mobilidade',
           patentes: '/patentes',

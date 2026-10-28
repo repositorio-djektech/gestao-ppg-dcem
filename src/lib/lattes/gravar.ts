@@ -1195,123 +1195,16 @@ export async function gravarOrientacoes(
  */
 export async function gravarBancas(
   bancas: BancaParaGravar[],
-  client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
+  _client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
 ): Promise<{ contagem: RelatorioContagemTabela; erros: RelatorioGravacaoLattes['erros'] }> {
-  const contagem: RelatorioContagemTabela = { inseridos: 0, atualizados: 0, ignorados: 0 }
-  const erros: RelatorioGravacaoLattes['erros'] = []
-
-  if (!bancas || bancas.length === 0) {
-    return { contagem, erros }
+  // A tabela bancas foi descontinuada e removida do banco conforme decisão de negócio.
+  // O parser Lattes continua lendo bancas do XML, mas a persistência foi desativada (no-op seguro).
+  const contagem: RelatorioContagemTabela = {
+    inseridos: 0,
+    atualizados: 0,
+    ignorados: bancas ? bancas.length : 0,
   }
-
-  // 1. Carrega bancas existentes
-  const { data: existentes, error: errBusca } = await (client as any)
-    .from('bancas')
-    .select('id, titulo_trabalho, data, tipo')
-
-  if (errBusca) {
-    erros.push({
-      tabela: 'bancas',
-      item: 'listagem_inicial',
-      mensagem: errBusca.message || 'Erro ao consultar bancas existentes.',
-    })
-    contagem.ignorados += bancas.length
-    return { contagem, erros }
-  }
-
-  // 2. Cache de discentes para resolução de candidato_nome
-  const { data: discentesData } = await (client as any).from('discentes').select('id, nome')
-  const mapDiscentes = new Map<string, number>()
-  for (const d of discentesData || []) {
-    if (d.nome) mapDiscentes.set(normalizarTitulo(d.nome), d.id)
-  }
-
-  interface BancaExistente {
-    id: number
-    titulo_trabalho: string
-    data: string
-    tipo: string
-  }
-  const listaExistentes: BancaExistente[] = existentes || []
-  const mapaPorChave = new Map<string, BancaExistente>()
-
-  for (const b of listaExistentes) {
-    const anoStr = b.data ? b.data.slice(0, 4) : ''
-    const chave = `${normalizarTitulo(b.titulo_trabalho)}_${anoStr}`
-    mapaPorChave.set(chave, b)
-  }
-
-  for (const banca of bancas) {
-    const tituloLimpo = banca.titulo_trabalho?.trim()
-    if (!tituloLimpo) {
-      contagem.ignorados++
-      continue
-    }
-
-    const anoStr = banca.ano_referencia
-      ? String(banca.ano_referencia)
-      : banca.data
-        ? banca.data.slice(0, 4)
-        : ''
-    const chave = `${normalizarTitulo(tituloLimpo)}_${anoStr}`
-    const existente = mapaPorChave.get(chave)
-
-    // Resolve discente_id se houver candidato
-    let discenteId = banca.discente_id ?? null
-    if (!discenteId && banca.candidato_nome) {
-      discenteId = mapDiscentes.get(normalizarTitulo(banca.candidato_nome)) || null
-    }
-
-    const payload: Record<string, unknown> = {
-      titulo_trabalho: tituloLimpo,
-      data: banca.data || anoStr || '',
-      membros: banca.membros || '',
-      tipo: banca.tipo || 'Mestrado',
-      discente_id: discenteId,
-      link_comprovacao: banca.link_comprovacao || '',
-      observacoes: banca.observacoes || '',
-    }
-
-    if (existente) {
-      const { error: updErr } = await (client as any)
-        .from('bancas')
-        .update(payload)
-        .eq('id', existente.id)
-
-      if (updErr) {
-        erros.push({
-          tabela: 'bancas',
-          item: tituloLimpo,
-          mensagem: updErr.message || 'Erro no update de banca.',
-        })
-        contagem.ignorados++
-      } else {
-        contagem.atualizados++
-      }
-    } else {
-      const { data: insData, error: insErr } = await (client as any)
-        .from('bancas')
-        .insert([payload])
-        .select('id, titulo_trabalho, data, tipo')
-        .single()
-
-      if (insErr) {
-        erros.push({
-          tabela: 'bancas',
-          item: tituloLimpo,
-          mensagem: insErr.message || 'Erro no insert de banca.',
-        })
-        contagem.ignorados++
-      } else {
-        contagem.inseridos++
-        if (insData) {
-          mapaPorChave.set(chave, insData as BancaExistente)
-        }
-      }
-    }
-  }
-
-  return { contagem, erros }
+  return { contagem, erros: [] }
 }
 
 /**
@@ -1970,20 +1863,10 @@ export async function gravarDadosLattes(
     }
   }
 
-  // 4. Bancas
+  // 4. Bancas (tabela removida: gravação desativada, parser continua preservado)
   if (dados.bancas && dados.bancas.length > 0) {
-    try {
-      const resBan = await gravarBancas(dados.bancas, client)
-      relatorio.bancas = resBan.contagem
-      relatorio.erros.push(...resBan.erros)
-    } catch (err: any) {
-      relatorio.erros.push({
-        tabela: 'bancas',
-        item: 'lote_bancas',
-        mensagem: err?.message || 'Falha crítica ao gravar bancas.',
-      })
-      relatorio.bancas.ignorados += dados.bancas.length
-    }
+    const resBan = await gravarBancas(dados.bancas, client)
+    relatorio.bancas = resBan.contagem
   }
 
   // 5. Projetos de pesquisa

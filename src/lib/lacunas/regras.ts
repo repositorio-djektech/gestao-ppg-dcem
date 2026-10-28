@@ -4,11 +4,10 @@ import type {
   Publicacao,
   Orientacao,
   ProjetoPesquisa,
-  Banca,
   Evento,
   Mobilidade,
   Patente,
-  Premiacao,
+  Premicao as Premiacao,
   ProducaoTecnica,
 } from '@/types/database'
 import type {
@@ -516,40 +515,6 @@ export const REGRAS_PROJETOS_PESQUISA: RegraLacuna<ProjetoPesquisa>[] = [
   },
 ]
 
-// 4. BANCAS
-export const REGRAS_BANCAS: RegraLacuna<Banca>[] = [
-  {
-    id: 'banca_sem_data',
-    tabela: 'bancas',
-    campos: ['data'],
-    descricao: 'Banca sem data informada',
-    severidade: 'critica',
-    grupo: 'Acadêmico',
-    avaliar: (banca) => {
-      const tem = textoVazio(banca.data)
-      return {
-        temLacuna: tem,
-        motivo: tem ? 'Data de realização da banca não informada' : undefined,
-      }
-    },
-  },
-  {
-    id: 'banca_sem_membros',
-    tabela: 'bancas',
-    campos: ['membros'],
-    descricao: 'Banca sem docentes/membros avaliadores',
-    severidade: 'critica',
-    grupo: 'Acadêmico',
-    avaliar: (banca) => {
-      const tem = textoVazio(banca.membros)
-      return {
-        temLacuna: tem,
-        motivo: tem ? 'Membros da banca examinadora não informados' : undefined,
-      }
-    },
-  },
-]
-
 // 5. EVENTOS
 export const REGRAS_EVENTOS: RegraLacuna<Evento>[] = [
   {
@@ -711,7 +676,6 @@ export const TODAS_AS_REGRAS = [
   ...REGRAS_PUBLICACOES,
   ...REGRAS_ORIENTACOES,
   ...REGRAS_PROJETOS_PESQUISA,
-  ...REGRAS_BANCAS,
   ...REGRAS_EVENTOS,
   ...REGRAS_MOBILIDADE,
   ...REGRAS_PATENTES,
@@ -780,7 +744,6 @@ export interface DadosConsolidacaoLacunas {
   publicacoes?: Publicacao[]
   orientacoes?: Orientacao[]
   projetos_pesquisa?: ProjetoPesquisa[]
-  bancas?: Banca[]
   eventos?: Evento[]
   mobilidade_docente?: Mobilidade[]
   patentes?: Patente[]
@@ -802,7 +765,6 @@ export function consolidarRelatorioLacunas(
     publicacoes = [],
     orientacoes = [],
     projetos_pesquisa = [],
-    bancas = [],
     eventos = [],
     mobilidade_docente = [],
     patentes = [],
@@ -888,7 +850,6 @@ export function consolidarRelatorioLacunas(
   const resPublicacoes = avaliarColecao(publicacoesAvaliadas, REGRAS_PUBLICACOES)
   const resOrientacoes = avaliarColecao(orientacoes, REGRAS_ORIENTACOES)
   const resProjetos = avaliarColecao(projetos_pesquisa, REGRAS_PROJETOS_PESQUISA)
-  const resBancas = avaliarColecao(bancas, REGRAS_BANCAS)
   const resEventos = avaliarColecao(eventos, REGRAS_EVENTOS)
   const resMobilidade = avaliarColecao(mobilidade_docente, REGRAS_MOBILIDADE)
   const resPatentes = avaliarColecao(patentes, REGRAS_PATENTES)
@@ -903,7 +864,6 @@ export function consolidarRelatorioLacunas(
       ...resPublicacoes.resumo,
       ...resOrientacoes.resumo,
       ...resProjetos.resumo,
-      ...resBancas.resumo,
       ...resEventos.resumo,
       ...resMobilidade.resumo,
       ...resPatentes.resumo,
@@ -916,7 +876,6 @@ export function consolidarRelatorioLacunas(
       ...resPublicacoes.lacunas,
       ...resOrientacoes.lacunas,
       ...resProjetos.lacunas,
-      ...resBancas.lacunas,
       ...resEventos.lacunas,
       ...resMobilidade.lacunas,
       ...resPatentes.lacunas,

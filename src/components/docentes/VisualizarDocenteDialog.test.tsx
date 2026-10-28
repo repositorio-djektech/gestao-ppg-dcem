@@ -69,7 +69,8 @@ describe('VisualizarDocenteDialog', () => {
         observacoes: 'Bolsista FAPITEC',
       },
     ],
-    projetos: [      {
+    projetos: [
+      {
         id: 401,
         titulo: 'Desenvolvimento de Biocompósitos Avançados',
         coordenador_id: 1,

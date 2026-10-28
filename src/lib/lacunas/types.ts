@@ -5,7 +5,6 @@ export type TabelaAlvoLacuna =
   | 'publicacoes'
   | 'orientacoes'
   | 'projetos_pesquisa'
-  | 'bancas'
   | 'eventos'
   | 'mobilidade_docente'
   | 'patentes'

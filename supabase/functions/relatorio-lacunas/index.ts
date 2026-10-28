@@ -9,7 +9,6 @@ export type TabelaAlvoLacuna =
   | 'publicacoes'
   | 'orientacoes'
   | 'projetos_pesquisa'
-  | 'bancas'
   | 'eventos'
   | 'mobilidade_docente'
   | 'patentes'
@@ -482,40 +481,6 @@ export const REGRAS_PROJETOS_PESQUISA_EDGE: RegraLacunaDef[] = [
   },
 ]
 
-// 6. BANCAS (2 regras)
-export const REGRAS_BANCAS_EDGE: RegraLacunaDef[] = [
-  {
-    id: 'banca_sem_data',
-    tabela: 'bancas',
-    campos: ['data'],
-    descricao: 'Banca sem data informada',
-    severidade: 'critica',
-    grupo: 'Acadêmico',
-    avaliar: (banca) => {
-      const tem = textoVazio(banca.data)
-      return {
-        temLacuna: tem,
-        motivo: tem ? 'Data de realização da banca não informada' : undefined,
-      }
-    },
-  },
-  {
-    id: 'banca_sem_membros',
-    tabela: 'bancas',
-    campos: ['membros'],
-    descricao: 'Banca sem docentes/membros avaliadores',
-    severidade: 'critica',
-    grupo: 'Acadêmico',
-    avaliar: (banca) => {
-      const tem = textoVazio(banca.membros)
-      return {
-        temLacuna: tem,
-        motivo: tem ? 'Membros da banca examinadora não informados' : undefined,
-      }
-    },
-  },
-]
-
 // 7. EVENTOS (2 regras)
 export const REGRAS_EVENTOS_EDGE: RegraLacunaDef[] = [
   {
@@ -753,7 +718,6 @@ Deno.serve(async (req: Request) => {
       publicacoesRes,
       orientacoesRes,
       projetosRes,
-      bancasRes,
       eventosRes,
       mobilidadeRes,
       patentesRes,
@@ -782,7 +746,6 @@ Deno.serve(async (req: Request) => {
       supabase
         .from('projetos_pesquisa')
         .select('id, titulo, inicio, fim, financiamento, orgao_fomento, coordenador_id'),
-      supabase.from('bancas').select('id, titulo_trabalho, data, membros, tipo, discente_id'),
       supabase.from('eventos').select('id, docente, evento, local_data, papel'),
       supabase
         .from('mobilidade_docente')
@@ -809,7 +772,6 @@ Deno.serve(async (req: Request) => {
       publicacoesRes.error,
       orientacoesRes.error,
       projetosRes.error,
-      bancasRes.error,
       eventosRes.error,
       mobilidadeRes.error,
       patentesRes.error,
@@ -891,7 +853,6 @@ Deno.serve(async (req: Request) => {
     const avalPublicacoes = avaliarColecaoEdge(publicacoesEnriquecidas, REGRAS_PUBLICACOES_EDGE)
     const avalOrientacoes = avaliarColecaoEdge(orientacoesRes.data || [], REGRAS_ORIENTACOES_EDGE)
     const avalProjetos = avaliarColecaoEdge(projetosRes.data || [], REGRAS_PROJETOS_PESQUISA_EDGE)
-    const avalBancas = avaliarColecaoEdge(bancasRes.data || [], REGRAS_BANCAS_EDGE)
     const avalEventos = avaliarColecaoEdge(eventosRes.data || [], REGRAS_EVENTOS_EDGE)
     const avalMobilidade = avaliarColecaoEdge(mobilidadeRes.data || [], REGRAS_MOBILIDADE_EDGE)
     const avalPatentes = avaliarColecaoEdge(patentesRes.data || [], REGRAS_PATENTES_EDGE)
@@ -909,7 +870,6 @@ Deno.serve(async (req: Request) => {
         ...avalPublicacoes.resumo,
         ...avalOrientacoes.resumo,
         ...avalProjetos.resumo,
-        ...avalBancas.resumo,
         ...avalEventos.resumo,
         ...avalMobilidade.resumo,
         ...avalPatentes.resumo,
@@ -922,7 +882,6 @@ Deno.serve(async (req: Request) => {
         ...avalPublicacoes.lacunas,
         ...avalOrientacoes.lacunas,
         ...avalProjetos.lacunas,
-        ...avalBancas.lacunas,
         ...avalEventos.lacunas,
         ...avalMobilidade.lacunas,
         ...avalPatentes.lacunas,
