@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
-  GraduationCap,
+  Users,
   FileText,
   Users2,
   FlaskConical,
@@ -127,7 +127,7 @@ export function VisualizarDiscenteDialog({
     icone: React.ComponentType<{ className?: string }>
     total: number
   }> = [
-    { id: 'geral', rotulo: 'Dados Cadastrais', icone: GraduationCap, total: 1 },
+    { id: 'geral', rotulo: 'Dados Cadastrais', icone: Users, total: 1 },
     { id: 'orientacoes', rotulo: 'Orientações', icone: Users2, total: orientacoes.length },
     {
       id: 'projeto',
@@ -151,7 +151,7 @@ export function VisualizarDiscenteDialog({
         {/* Bloco 1: Identificação Básica */}
         <div className="bg-slate-50 dark:bg-neutral-800/60 rounded-lg p-4 border border-slate-200 dark:border-neutral-700">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-neutral-100 flex items-center gap-2 mb-3">
-            <GraduationCap className="h-4 w-4 text-primary" />
+            <Users className="h-4 w-4 text-primary" />
             Identificação do Discente
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
@@ -508,7 +508,7 @@ export function VisualizarDiscenteDialog({
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <DialogTitle className="flex items-center gap-2 text-xl text-primary font-bold truncate">
-                <GraduationCap className="h-5 w-5 text-primary shrink-0" />
+                <Users className="h-5 w-5 text-primary shrink-0" />
                 <span className="truncate">{nomeDiscenteNormalizado}</span>
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-600 mt-1">

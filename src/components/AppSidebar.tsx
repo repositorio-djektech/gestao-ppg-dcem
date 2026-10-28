@@ -112,12 +112,12 @@ const navSections: NavSection[] = [
       {
         label: 'Docentes',
         href: '/docentes',
-        icon: <Users className="h-5 w-5 shrink-0" />,
+        icon: <GraduationCap className="h-5 w-5 shrink-0" />,
       },
       {
         label: 'Discentes',
         href: '/discentes',
-        icon: <GraduationCap className="h-5 w-5 shrink-0" />,
+        icon: <Users className="h-5 w-5 shrink-0" />,
       },
       {
         label: 'Egressos',

@@ -55,11 +55,9 @@ import {
   Trash2,
   Search,
   RefreshCw,
-  GraduationCap,
   Lock,
   Mail,
   User as UserIcon,
-  Link as LinkIcon,
   KeyRound,
   Check,
 } from 'lucide-react'
@@ -131,12 +129,6 @@ export default function Usuarios() {
   )
   const [papelEscolhido, setPapelEscolhido] = useState<Role>('capes')
   const [salvandoPapel, setSalvandoPapel] = useState(false)
-
-  // Modais de Vinculação Docente
-  const [usuarioParaVincularDocente, setUsuarioParaVincularDocente] =
-    useState<UsuarioComDetalhes | null>(null)
-  const [docenteIdEscolhido, setDocenteIdEscolhido] = useState<string>('nenhum')
-  const [salvandoVinculo, setSalvandoVinculo] = useState(false)
 
   // Modal de Exclusão
   const [usuarioParaExcluir, setUsuarioParaExcluir] = useState<UsuarioComDetalhes | null>(null)
@@ -277,41 +269,6 @@ export default function Usuarios() {
       })
     } finally {
       setSalvandoPapel(false)
-    }
-  }
-
-  // Ação de Vinculação de Docente
-  const handleAbrirVincularDocente = (u: UsuarioComDetalhes) => {
-    setUsuarioParaVincularDocente(u)
-    setDocenteIdEscolhido(u.docente_id ? String(u.docente_id) : 'nenhum')
-  }
-
-  const handleConfirmarVinculoDocente = async () => {
-    if (!usuarioParaVincularDocente) return
-
-    setSalvandoVinculo(true)
-    try {
-      const docenteIdFinal = docenteIdEscolhido === 'nenhum' ? null : Number(docenteIdEscolhido)
-
-      await usuariosService.vincularDocente(usuarioParaVincularDocente.user_id, docenteIdFinal)
-
-      const docObj = docentes.find((d) => d.id === docenteIdFinal)
-      toast({
-        title: 'Vínculo atualizado!',
-        description: docenteIdFinal
-          ? `Usuário ${usuarioParaVincularDocente.name} vinculado ao docente ${docObj?.nome || 'selecionado'}.`
-          : `Vínculo de docente removido para ${usuarioParaVincularDocente.name}.`,
-      })
-      setUsuarioParaVincularDocente(null)
-      await carregarDados()
-    } catch (err: any) {
-      toast({
-        title: 'Erro ao vincular docente',
-        description: err.message || 'Não foi possível atualizar o docente vinculado.',
-        variant: 'destructive',
-      })
-    } finally {
-      setSalvandoVinculo(false)
     }
   }
 
@@ -456,7 +413,6 @@ export default function Usuarios() {
               <TableRow>
                 <TableHead className="font-semibold text-slate-700">Usuário</TableHead>
                 <TableHead className="font-semibold text-slate-700">Papel</TableHead>
-                <TableHead className="font-semibold text-slate-700">Docente Vinculado</TableHead>
                 <TableHead className="font-semibold text-slate-700">Criado em</TableHead>
                 <TableHead className="text-right font-semibold text-slate-700">Ações</TableHead>
               </TableRow>
@@ -471,9 +427,6 @@ export default function Usuarios() {
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-6 w-24 rounded-full" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-36" />
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-5 w-20" />
@@ -521,35 +474,12 @@ export default function Usuarios() {
                         </Badge>
                       </TableCell>
 
-                      <TableCell>
-                        {u.docente ? (
-                          <div className="flex items-center gap-1.5 text-sm text-slate-800">
-                            <GraduationCap className="h-4 w-4 text-emerald-600 shrink-0" />
-                            <span className="font-medium">{u.docente.nome}</span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-400 italic">Nenhum vinculado</span>
-                        )}
-                      </TableCell>
-
                       <TableCell className="text-xs text-slate-600">
                         {formatarData(u.created_at)}
                       </TableCell>
 
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* Botão Vincular Docente */}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleAbrirVincularDocente(u)}
-                            className="h-8 px-2 text-xs text-slate-700 hover:text-primary hover:bg-primary/10"
-                            title="Vincular a um docente do programa"
-                          >
-                            <LinkIcon className="h-3.5 w-3.5 mr-1" />
-                            <span>Vincular Docente</span>
-                          </Button>
-
                           {/* Botão Trocar Papel */}
                           {podeGerenciarPapelDoUsuario(u) && (
                             <Button
@@ -583,7 +513,7 @@ export default function Usuarios() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-36 text-center text-slate-500">
+                  <TableCell colSpan={4} className="h-36 text-center text-slate-500">
                     <p className="font-medium text-slate-600">Nenhum usuário encontrado.</p>
                     <p className="text-xs text-slate-400 mt-1">
                       Ajuste os filtros de busca ou cadastre um novo usuário.
@@ -869,92 +799,7 @@ export default function Usuarios() {
       </Dialog>
 
       {/* ========================================================= */}
-      {/* MODAL 3: VINCULAR DOCENTE                                 */}
-      {/* ========================================================= */}
-      <Dialog
-        open={usuarioParaVincularDocente !== null}
-        onOpenChange={(open) => !open && setUsuarioParaVincularDocente(null)}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-slate-900">
-              <GraduationCap className="h-5 w-5 text-emerald-600" />
-              <span>Vincular Docente do Programa</span>
-            </DialogTitle>
-            <DialogDescription>
-              Associe a conta de{' '}
-              <strong>
-                {usuarioParaVincularDocente?.name || usuarioParaVincularDocente?.email}
-              </strong>{' '}
-              a um dos 16 docentes cadastrados no PPG-DCEM.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-slate-700">Docente Cadastrado</Label>
-              <Select
-                value={docenteIdEscolhido}
-                onValueChange={(val) => setDocenteIdEscolhido(val)}
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Selecione um docente" />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  <SelectItem value="nenhum">Nenhum docente (desvincular)</SelectItem>
-                  {docentes.map((d) => (
-                    <SelectItem key={d.id} value={String(d.id)}>
-                      {d.nome} {d.categoria ? `— ${d.categoria}` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded p-3 text-xs text-blue-900 space-y-1">
-              <p className="font-semibold">Importância do vínculo para o papel Docente:</p>
-              <p>
-                Ao vincular um docente a este perfil, as políticas RLS do Supabase liberarão
-                automaticamente a edição das publicações, orientações e projetos associados a ele,
-                garantindo o isolamento estrito de dados.
-              </p>
-            </div>
-          </div>
-
-          <DialogFooter className="gap-2 flex-col-reverse sm:flex-row">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setUsuarioParaVincularDocente(null)}
-              disabled={salvandoVinculo}
-              className="h-9"
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              onClick={handleConfirmarVinculoDocente}
-              disabled={salvandoVinculo}
-              className="h-9 gap-1.5"
-            >
-              {salvandoVinculo ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  <span>Salvando Vínculo...</span>
-                </>
-              ) : (
-                <>
-                  <Check className="h-4 w-4" />
-                  <span>Salvar Vínculo</span>
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ========================================================= */}
-      {/* MODAL 4: CONFIRMAÇÃO DE EXCLUSÃO (Apenas Suporte)        */}
+      {/* MODAL 3: CONFIRMAÇÃO DE EXCLUSÃO (Apenas Suporte)        */}
       {/* ========================================================= */}
       <AlertDialog
         open={usuarioParaExcluir !== null}

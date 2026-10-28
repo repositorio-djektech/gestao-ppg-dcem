@@ -70,12 +70,12 @@ const categories: CategoryConfig[] = [
       bgSoft: 'bg-blue-50/40',
     },
     modules: [
-      { name: 'Docentes', table: 'docentes', route: '/docentes', icon: Users, target: 20 },
+      { name: 'Docentes', table: 'docentes', route: '/docentes', icon: GraduationCap, target: 20 },
       {
         name: 'Discentes',
         table: 'discentes',
         route: '/discentes',
-        icon: GraduationCap,
+        icon: Users,
         target: 50,
       },
       { name: 'Egressos', table: 'egressos', route: '/egressos', icon: UserCheck, target: 50 },
