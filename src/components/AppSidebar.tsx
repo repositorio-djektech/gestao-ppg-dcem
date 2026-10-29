@@ -124,7 +124,7 @@ const navSections: NavSection[] = [
         icon: <Award className="h-5 w-5 shrink-0" />,
       },
       {
-        label: 'Indicadores de Avaliação',
+        label: 'Indicadores',
         href: '/indicadores',
         icon: <BarChart3 className="h-5 w-5 shrink-0" />,
       },
@@ -159,7 +159,7 @@ const navSections: NavSection[] = [
         icon: <BookUser className="h-5 w-5 shrink-0" />,
       },
       {
-        label: 'Iniciação Científica',
+        label: 'Iniciações',
         href: '/iniciacao-cientifica',
         icon: <FlaskConical className="h-5 w-5 shrink-0" />,
       },
