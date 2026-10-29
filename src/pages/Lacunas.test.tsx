@@ -142,10 +142,10 @@ describe('Página Lacunas - Etapa 2', () => {
       const producao = GRUPOS_VISUAIS.find((g) => g.id === 'producao')!
       const difusao = GRUPOS_VISUAIS.find((g) => g.id === 'difusao')!
 
-      // Azul para Pessoas
-      expect(pessoas.theme.border).toContain('blue-200')
-      expect(pessoas.theme.accentBar).toContain('blue-500')
-      expect(pessoas.theme.iconColor).toContain('blue-500')
+      // Rosa para Pessoas
+      expect(pessoas.theme.border).toContain('pink-200')
+      expect(pessoas.theme.accentBar).toContain('pink-500')
+      expect(pessoas.theme.iconColor).toContain('pink-600')
 
       // Verde esmeralda para Acadêmico
       expect(academico.theme.border).toContain('emerald-200')

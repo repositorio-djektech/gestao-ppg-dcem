@@ -63,13 +63,13 @@ const categories: CategoryConfig[] = [
   {
     label: 'Pessoas',
     theme: {
-      border: 'border-teal-200',
-      hoverBorder: 'hover:border-teal-400',
-      badge: 'bg-teal-100 text-teal-800 border-teal-200',
-      accentBar: 'bg-teal-500',
-      progressBar: 'bg-teal-500',
-      iconColor: 'text-teal-600 group-hover:text-teal-700',
-      bgSoft: 'bg-teal-50/40',
+      border: 'border-pink-200',
+      hoverBorder: 'hover:border-pink-400',
+      badge: 'bg-pink-100 text-pink-800 border-pink-200',
+      accentBar: 'bg-pink-500',
+      progressBar: 'bg-pink-500',
+      iconColor: 'text-pink-600 group-hover:text-pink-700',
+      bgSoft: 'bg-pink-50/40',
     },
     modules: [
       { name: 'Docentes', table: 'docentes', route: '/docentes', icon: GraduationCap, target: 20 },

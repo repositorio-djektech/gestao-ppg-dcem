@@ -88,12 +88,12 @@ export const GRUPOS_VISUAIS: GrupoVisualConfig[] = [
     subtitulo: 'Docentes, Discentes e Egressos',
     icon: Users,
     theme: {
-      border: 'border-teal-200',
-      hoverBorder: 'hover:border-teal-400',
-      badge: 'bg-teal-100 text-teal-800 border-teal-200',
-      accentBar: 'bg-teal-500',
-      iconColor: 'text-teal-600',
-      bgSoft: 'bg-teal-50/50',
+      border: 'border-pink-200',
+      hoverBorder: 'hover:border-pink-400',
+      badge: 'bg-pink-100 text-pink-800 border-pink-200',
+      accentBar: 'bg-pink-500',
+      iconColor: 'text-pink-600',
+      bgSoft: 'bg-pink-50/50',
     },
   },
   {

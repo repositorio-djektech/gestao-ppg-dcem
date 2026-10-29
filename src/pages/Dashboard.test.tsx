@@ -130,6 +130,25 @@ describe('Dashboard — Card de Status Lacunas de Dados', () => {
     expect(html).not.toContain('data-testid="card-status-lacunas"')
   })
 
+  it('renderiza os cards do grupo Pessoas no Dashboard com tema rosa (pink-200, pink-500, pink-600)', () => {
+    const html = renderToString(
+      <MemoryRouter>
+        <Dashboard obterLacunasFn={() => Promise.resolve({ sucesso: true, dados: null })} />
+      </MemoryRouter>,
+    )
+
+    // Grupo Pessoas usa rosa
+    expect(html).toContain('border-pink-200')
+    expect(html).toContain('bg-pink-100')
+    expect(html).toContain('text-pink-800')
+    expect(html).toContain('text-pink-600')
+    expect(html).toContain('bg-pink-500')
+
+    // Acadêmico segue verde/esmeralda
+    expect(html).toContain('border-emerald-200')
+    expect(html).toContain('bg-emerald-500')
+  })
+
   describe('Visibilidade por papel', () => {
     const mockLacunasCriticas: ResultadoRelatorioLacunas = {
       sucesso: true,
