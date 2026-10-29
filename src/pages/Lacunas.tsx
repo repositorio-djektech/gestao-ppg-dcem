@@ -34,6 +34,7 @@ import {
   Wrench,
   Loader2,
   Printer,
+  FileSpreadsheet,
   Download,
   History,
   Trash2,
@@ -83,16 +84,16 @@ export interface GrupoVisualConfig {
 export const GRUPOS_VISUAIS: GrupoVisualConfig[] = [
   {
     id: 'pessoas',
-    label: 'Pessoas',
+    label: 'Pessoas e Quadro Docente/Discente',
     subtitulo: 'Docentes, Discentes e Egressos',
     icon: Users,
     theme: {
-      border: 'border-blue-200',
-      hoverBorder: 'hover:border-blue-400',
-      badge: 'bg-blue-100 text-blue-800 border-blue-200',
-      accentBar: 'bg-blue-500',
-      iconColor: 'text-blue-500',
-      bgSoft: 'bg-blue-50/40',
+      border: 'border-teal-200',
+      hoverBorder: 'hover:border-teal-400',
+      badge: 'bg-teal-100 text-teal-800 border-teal-200',
+      accentBar: 'bg-teal-500',
+      iconColor: 'text-teal-600',
+      bgSoft: 'bg-teal-50/50',
     },
   },
   {
@@ -942,16 +943,11 @@ export default function Lacunas({
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="h-6 w-1.5 rounded-full bg-primary" />
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Relatório de Lacunas
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <AlertTriangle className="h-6 w-6 text-primary shrink-0" />
+              <span>Relatório de Lacunas</span>
             </h1>
           </div>
-          <p className="text-slate-500 mt-1 max-w-3xl text-sm leading-relaxed">
-            Diagnóstico de campos e identificadores faltantes no cadastro do PPG-DCEM (Quadriênio
-            2025-2028). Acompanhe pendências críticas e pontos de atenção para manter a base de
-            dados completa e pronta para avaliação da CAPES.
-          </p>
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
@@ -973,11 +969,11 @@ export default function Lacunas({
             variant="outline"
             onClick={handleExportarCsv}
             disabled={carregando || !relatorio || lacunasFiltradas.length === 0}
-            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 h-9 flex-1 sm:flex-initial"
+            className="inline-flex items-center justify-center gap-2 border-emerald-400 bg-white hover:bg-emerald-50 text-emerald-700 h-9 px-3.5 text-sm font-medium flex-1 sm:flex-initial cursor-pointer"
             title="Exportar lista de lacunas atualmente filtrada em formato CSV (compatível com Excel)"
             data-testid="btn-exportar-csv-lacunas"
           >
-            <Download className="h-4 w-4 text-slate-600" />
+            <FileSpreadsheet className="h-4 w-4 text-emerald-600 shrink-0" />
             <span>Exportar CSV</span>
           </Button>
 
@@ -986,11 +982,11 @@ export default function Lacunas({
             variant="outline"
             onClick={handleImprimir}
             disabled={carregando || imprimindo || !relatorio}
-            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 h-9 flex-1 sm:flex-initial"
+            className="inline-flex items-center justify-center gap-2 border-blue-300 bg-white hover:bg-blue-50 text-blue-700 h-9 px-3.5 text-sm font-medium flex-1 sm:flex-initial cursor-pointer"
             title="Imprimir relatório de lacunas (PDF / ABNT) conforme filtros ativos"
             data-testid="btn-imprimir-lacunas"
           >
-            <Printer className="h-4 w-4 text-slate-600" />
+            <Printer className="h-4 w-4 text-blue-600 shrink-0" />
             <span>{imprimindo ? 'Gerando...' : 'Imprimir'}</span>
           </Button>
 
@@ -999,10 +995,12 @@ export default function Lacunas({
             variant="outline"
             onClick={carregarRelatorio}
             disabled={carregando}
-            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 h-9 flex-1 sm:flex-initial"
+            className="inline-flex items-center justify-center gap-2 border-blue-300 bg-white hover:bg-blue-50 text-blue-700 h-9 px-3.5 text-sm font-medium flex-1 sm:flex-initial cursor-pointer"
           >
-            <RefreshCw className={`h-4 w-4 text-primary ${carregando ? 'animate-spin' : ''}`} />
-            {carregando ? 'Atualizando...' : 'Atualizar'}
+            <RefreshCw
+              className={`h-4 w-4 text-blue-600 shrink-0 ${carregando ? 'animate-spin' : ''}`}
+            />
+            <span>{carregando ? 'Atualizando...' : 'Atualizar'}</span>
           </Button>
         </div>
       </div>

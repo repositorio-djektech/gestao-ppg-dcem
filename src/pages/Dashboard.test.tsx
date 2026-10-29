@@ -123,6 +123,8 @@ describe('Dashboard — Card de Status Lacunas de Dados', () => {
     )
 
     // O Dashboard continua normal com seus módulos principais sem exibir o card de lacunas críticas
+    expect(html).toContain('Dashboard')
+    expect(html).not.toContain('Visão geral do preenchimento')
     expect(html).toContain('Total de Registros')
     expect(html).toContain('Docentes')
     expect(html).not.toContain('data-testid="card-status-lacunas"')

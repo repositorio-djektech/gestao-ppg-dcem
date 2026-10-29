@@ -62,6 +62,7 @@ import {
   User as UserIcon,
   KeyRound,
   Check,
+  UserCog,
 } from 'lucide-react'
 
 const ROLE_INFO: Record<
@@ -343,12 +344,11 @@ export default function Usuarios() {
     <div className="flex flex-col md:h-[calc(100vh-4rem-3rem)] min-h-0 animate-fade-in gap-3 md:gap-4 flex-1">
       {/* Topo: Título, Descrição e Botão Novo Usuário */}
       <div className="shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        {' '}
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Usuários</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Controle de perfis, concessão de papéis no PPG-DCEM e vinculação com docentes
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <UserCog className="h-6 w-6 text-primary shrink-0" />
+            <span>Usuários</span>
+          </h1>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -356,9 +356,11 @@ export default function Usuarios() {
             size="sm"
             onClick={carregarDados}
             disabled={loading}
-            className="h-9 gap-1.5"
+            className="inline-flex items-center justify-center gap-2 border-blue-300 bg-white hover:bg-blue-50 text-blue-700 h-9 px-3.5 text-sm font-medium shrink-0 cursor-pointer"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 text-blue-600 shrink-0 ${loading ? 'animate-spin' : ''}`}
+            />
             <span className="hidden sm:inline">Atualizar</span>
           </Button>
 

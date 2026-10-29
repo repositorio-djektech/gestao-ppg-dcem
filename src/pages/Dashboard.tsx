@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase/client'
 import { ImportarLattesDialog } from '@/components/lattes/ImportarLattesDialog'
 import type { ResultadoProcessamentoLattes } from '@/lib/lattes/processor'
 import {
+  LayoutDashboard,
   Users,
   GraduationCap,
   UserCheck,
@@ -29,6 +30,7 @@ import {
   FileUp,
   AlertTriangle,
   ChevronRight,
+  RefreshCw,
 } from 'lucide-react'
 import { obterRelatorioLacunas } from '@/services/lacunas'
 import type { LucideIcon } from 'lucide-react'
@@ -61,13 +63,13 @@ const categories: CategoryConfig[] = [
   {
     label: 'Pessoas',
     theme: {
-      border: 'border-blue-200',
-      hoverBorder: 'hover:border-blue-400',
-      badge: 'bg-blue-100 text-blue-800 border-blue-200',
-      accentBar: 'bg-blue-500',
-      progressBar: 'bg-blue-500',
-      iconColor: 'text-blue-500 group-hover:text-blue-600',
-      bgSoft: 'bg-blue-50/40',
+      border: 'border-teal-200',
+      hoverBorder: 'hover:border-teal-400',
+      badge: 'bg-teal-100 text-teal-800 border-teal-200',
+      accentBar: 'bg-teal-500',
+      progressBar: 'bg-teal-500',
+      iconColor: 'text-teal-600 group-hover:text-teal-700',
+      bgSoft: 'bg-teal-50/40',
     },
     modules: [
       { name: 'Docentes', table: 'docentes', route: '/docentes', icon: GraduationCap, target: 20 },
@@ -281,10 +283,10 @@ export default function Dashboard({ obterLacunasFn = obterRelatorioLacunas }: Da
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Dashboard</h1>
-          <p className="text-slate-500 mt-1 text-xs sm:text-sm">
-            Visão geral do preenchimento dos módulos CAPES (Quadriênio 2025-2028).
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <LayoutDashboard className="h-6 w-6 text-primary shrink-0" />
+            <span>Dashboard</span>
+          </h1>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Button
@@ -292,11 +294,13 @@ export default function Dashboard({ obterLacunasFn = obterRelatorioLacunas }: Da
             variant="outline"
             size="sm"
             onClick={handleAtualizarTudo}
-            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 h-9 flex-1 sm:flex-initial"
+            className="inline-flex items-center justify-center gap-2 border-blue-300 bg-white hover:bg-blue-50 text-blue-700 h-9 px-3.5 text-sm font-medium flex-1 sm:flex-initial cursor-pointer"
             data-testid="btn-atualizar-dashboard"
           >
-            <TrendingUp className="h-4 w-4 text-primary" />
-            Atualizar
+            <RefreshCw
+              className={`h-4 w-4 text-blue-600 shrink-0 ${loading ? 'animate-spin' : ''}`}
+            />
+            <span>Atualizar</span>
           </Button>
 
           <Button

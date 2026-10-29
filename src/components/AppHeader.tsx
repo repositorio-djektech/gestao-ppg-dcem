@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import { Search, PanelLeftClose, PanelLeftOpen, Calendar } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
 interface AppHeaderProps {
   onToggleSidebar?: () => void
@@ -12,14 +13,17 @@ export function AppHeader({ onToggleSidebar, sidebarOpen }: AppHeaderProps = {})
   return (
     <header className="flex h-16 shrink-0 items-center justify-between bg-white dark:bg-neutral-900 px-3 sm:px-4 md:px-6 z-10 border-b border-neutral-200 dark:border-neutral-800 shadow-sm">
       <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 mr-2">
-        {/* Toggle da sidebar no HEADER, do lado ESQUERDO do campo de busca (desktop e mobile) */}
+        {/* Toggle da sidebar no HEADER: quando fechada aparece no desktop e mobile; quando aberta aparece apenas no mobile (pois no desktop fica dentro da sidebar) */}
         {onToggleSidebar && (
           <Button
             type="button"
             variant="ghost"
             size="icon"
             onClick={onToggleSidebar}
-            className="h-9 w-9 shrink-0 text-slate-600 dark:text-neutral-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors"
+            className={cn(
+              'h-9 w-9 shrink-0 text-slate-600 dark:text-neutral-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors',
+              sidebarOpen && 'lg:hidden',
+            )}
             title={sidebarOpen ? 'Recolher menu lateral' : 'Expandir menu lateral'}
             aria-label={sidebarOpen ? 'Recolher menu lateral' : 'Expandir menu lateral'}
           >

@@ -30,6 +30,7 @@ import {
   GraduationCap,
   BookOpen,
   Plus,
+  FolderOpen,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -1130,7 +1131,7 @@ export default function ProjetosPesquisa() {
   return (
     <CrudPage
       title="Projetos de Pesquisa"
-      description="Gerencie os projetos de pesquisa do programa."
+      icon={<FolderOpen className="h-6 w-6 text-primary shrink-0" />}
       service={customService as any}
       columns={columns}
       fields={fields}

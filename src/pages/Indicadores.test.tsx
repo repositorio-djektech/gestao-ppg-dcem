@@ -100,9 +100,9 @@ describe('Página Indicadores', () => {
 
     const html = renderToString(<Indicadores carregarDadosFn={mockLoader} />)
 
-    expect(html).toContain('Ficha CAPES — Indicadores de Avaliação')
-    expect(html).toContain('Etapa Q4')
-    expect(html).toContain('Nota Metodológica')
+    expect(html).toContain('Indicadores de Avaliação')
+    expect(html).not.toContain('Etapa Q4')
+    expect(html).not.toContain('Nota Metodológica')
     expect(html).toContain('Exportar CSV')
     expect(html).toContain('Exportar PDF')
     expect(html).toContain('Ano:')

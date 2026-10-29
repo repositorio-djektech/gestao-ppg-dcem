@@ -41,7 +41,31 @@ import {
   HeartHandshake,
   Trophy,
   LogOut,
+  PanelLeftClose,
 } from 'lucide-react'
+
+export const PAGE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  '/': LayoutDashboard,
+  '/lacunas': AlertTriangle,
+  '/reconducao': Award,
+  '/indicadores': BarChart3,
+  '/docentes': GraduationCap,
+  '/discentes': Users,
+  '/egressos': UserCheck,
+  '/usuarios': UserCog,
+  '/orientacoes': BookUser,
+  '/iniciacao-cientifica': FlaskConical,
+  '/disciplinas': Library,
+  '/linhas-pesquisa': GitFork,
+  '/projetos-pesquisa': FolderOpen,
+  '/publicacoes': FileText,
+  '/producao-tecnica': Wrench,
+  '/patentes': Lightbulb,
+  '/eventos': Calendar,
+  '/mobilidade': Plane,
+  '/impacto-social': HeartHandshake,
+  '/premiacoes': Trophy,
+}
 
 export const Logo = () => {
   return (
@@ -100,7 +124,7 @@ const navSections: NavSection[] = [
         icon: <Award className="h-5 w-5 shrink-0" />,
       },
       {
-        label: 'Indicadores',
+        label: 'Indicadores de Avaliação',
         href: '/indicadores',
         icon: <BarChart3 className="h-5 w-5 shrink-0" />,
       },
@@ -250,10 +274,27 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
         <div
           className={cn(
             'flex items-center min-w-0 w-full',
-            open ? 'justify-start px-1.5' : 'justify-center',
+            open ? 'justify-between px-1.5' : 'justify-center',
           )}
         >
-          {open ? <Logo /> : <LogoIcon />}
+          {open ? (
+            <>
+              <div className="min-w-0 flex-1">
+                <Logo />
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="hidden lg:flex p-1.5 rounded-md text-slate-600 hover:text-slate-900 dark:text-neutral-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors shrink-0 items-center justify-center cursor-pointer"
+                title="Recolher menu lateral"
+                aria-label="Recolher menu lateral"
+              >
+                <PanelLeftClose className="h-5 w-5" />
+              </button>
+            </>
+          ) : (
+            <LogoIcon />
+          )}
         </div>
       </div>
 

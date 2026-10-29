@@ -44,7 +44,8 @@ import {
 
 interface CrudPageProps<T extends { id: number | string }> {
   title: string
-  description: string
+  description?: string
+  icon?: React.ReactNode
   service: CrudService<T>
   columns: ColumnDef<T>[]
   fields: FieldDef[]
@@ -83,6 +84,7 @@ interface CrudPageProps<T extends { id: number | string }> {
 export function CrudPage<T extends { id: number | string }>({
   title,
   description,
+  icon,
   service,
   columns,
   fields,
@@ -347,8 +349,10 @@ export function CrudPage<T extends { id: number | string }>({
       {/* Bloco de Título e Filtros (shrink-0, fora da área rolável) */}
       <div className="shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{description}</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            {icon}
+            <span>{title}</span>
+          </h1>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-72">

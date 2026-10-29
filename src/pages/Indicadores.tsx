@@ -20,7 +20,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import {
-  Award,
+  BarChart3,
   RefreshCw,
   AlertCircle,
   CheckCircle2,
@@ -138,23 +138,10 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-              <Award className="h-6 w-6 text-primary" />
-              Ficha CAPES — Indicadores de Avaliação
+              <BarChart3 className="h-6 w-6 text-primary shrink-0" />
+              <span>Indicadores de Avaliação</span>
             </h1>
-            <Badge
-              variant="outline"
-              className="bg-primary/10 text-primary border-primary/20 text-xs"
-            >
-              Etapa Q4
-            </Badge>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Motor quantitativo completo da Área Engenharias II (Quadriênio{' '}
-            <span className="font-semibold text-slate-800">
-              {relatorio?.quadrienio.inicio ?? 2025}–{relatorio?.quadrienio.fim ?? 2028}
-            </span>
-            ) com fórmulas oficiais, pesos, saturação Qualis e diagnósticos de insumo.
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
@@ -163,9 +150,11 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
             size="sm"
             onClick={carregar}
             disabled={carregando}
-            className="gap-1.5 text-xs h-9 flex-1 sm:flex-initial justify-center"
+            className="inline-flex items-center justify-center gap-2 border-blue-300 bg-white hover:bg-blue-50 text-blue-700 h-9 px-3.5 text-sm font-medium flex-1 sm:flex-initial cursor-pointer"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${carregando ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 text-blue-600 shrink-0 ${carregando ? 'animate-spin' : ''}`}
+            />
             <span>Atualizar</span>
           </Button>
 
@@ -174,9 +163,9 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
             size="sm"
             onClick={handleExportarCsv}
             disabled={!relatorio || carregando}
-            className="gap-1.5 text-xs text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border-emerald-300 h-9 flex-1 sm:flex-initial justify-center"
+            className="inline-flex items-center justify-center gap-2 border-emerald-400 bg-white hover:bg-emerald-50 text-emerald-700 h-9 px-3.5 text-sm font-medium flex-1 sm:flex-initial cursor-pointer"
           >
-            <FileSpreadsheet className="h-3.5 w-3.5" />
+            <FileSpreadsheet className="h-4 w-4 text-emerald-600 shrink-0" />
             <span>Exportar CSV</span>
           </Button>
 
@@ -185,21 +174,10 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
             size="sm"
             onClick={handleExportarPdf}
             disabled={!relatorio || imprimindo}
-            className="gap-1.5 text-xs text-blue-700 hover:text-blue-800 hover:bg-blue-50 border-blue-300 h-9 flex-1 sm:flex-initial justify-center"
+            className="inline-flex items-center justify-center gap-2 border-red-300 bg-white hover:bg-red-50 text-red-600 h-9 px-3.5 text-sm font-medium flex-1 sm:flex-initial cursor-pointer"
           >
-            <Printer className="h-3.5 w-3.5" />
+            <Printer className="h-4 w-4 text-red-600 shrink-0" />
             <span>{imprimindo ? 'Gerando...' : 'Exportar PDF'}</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setModalNotaAberta(true)}
-            className="gap-1 text-xs h-9 px-3 shrink-0"
-            title="Nota Metodológica da Ficha Engenharias II"
-          >
-            <BookOpen className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Nota Metodológica</span>
           </Button>
         </div>
       </div>

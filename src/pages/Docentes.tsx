@@ -581,8 +581,10 @@ export default function Docentes() {
     <div className="flex flex-col md:h-[calc(100vh-4rem-3rem)] min-h-0 animate-fade-in gap-3 md:gap-4">
       <div className="shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Docentes</h1>
-          <p className="text-slate-500 text-sm mt-1">Gerencie o corpo docente permanente.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <GraduationCap className="h-6 w-6 text-primary shrink-0" />
+            <span>Docentes</span>
+          </h1>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-72">
@@ -600,11 +602,11 @@ export default function Docentes() {
           <Button
             variant="outline"
             onClick={() => navigate('/imprimir/docentes')}
-            className="gap-2 shrink-0 bg-white"
-            title="Versão para Impressão / Exportar PDF"
+            className="inline-flex items-center justify-center gap-2 border-blue-300 bg-white hover:bg-blue-50 text-blue-700 h-9 px-3.5 text-sm font-medium shrink-0 cursor-pointer"
+            title="Versão para Impressão"
           >
-            <Printer className="h-4 w-4 text-slate-600" />
-            <span className="hidden sm:inline">Imprimir / PDF</span>
+            <Printer className="h-4 w-4 text-blue-600 shrink-0" />
+            <span className="hidden sm:inline">Imprimir</span>
           </Button>
           {canCreate && (
             <Button onClick={() => handleOpen()} className="gap-2 shrink-0">

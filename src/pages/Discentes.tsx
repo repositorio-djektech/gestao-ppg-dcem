@@ -18,6 +18,7 @@ import {
   FileArchive,
   Info,
   CheckCircle2,
+  Users,
 } from 'lucide-react'
 import {
   Dialog,
@@ -624,7 +625,7 @@ export default function Discentes() {
     <>
       <CrudPage
         title="Discentes"
-        description="Gerencie os discentes do programa de pós-graduação."
+        icon={<Users className="h-6 w-6 text-primary shrink-0" />}
         service={customDiscentesService as any}
         columns={columns}
         fields={fields}

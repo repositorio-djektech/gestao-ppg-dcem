@@ -648,16 +648,11 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
       <div className="shrink-0 flex items-start justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="h-6 w-1.5 rounded-full bg-primary" />
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Norma de Recondução Docente
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <Award className="h-6 w-6 text-primary shrink-0" />
+              <span>Norma de Recondução Docente</span>
             </h1>
           </div>
-          <p className="text-slate-500 mt-1 max-w-3xl text-sm leading-relaxed">
-            Avaliação quadrienal de permanência docente no PPG-DCEM conforme o regulamento interno
-            (§ 4º). Monitoramento dos 4 critérios normativos: orientação principal, disciplinas
-            ministradas, projetos com financiamento e índice de produção docente qualificada (PDQ).
-          </p>
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -680,23 +675,26 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
             size="sm"
             onClick={carregarRelatorio}
             disabled={carregando || imprimindoGeral}
-            className="inline-flex items-center justify-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 h-9 flex-1 sm:flex-initial"
+            className="inline-flex items-center justify-center gap-2 border-blue-300 bg-white hover:bg-blue-50 text-blue-700 h-9 px-3.5 text-sm font-medium flex-1 sm:flex-initial cursor-pointer"
             data-testid="btn-atualizar-reconducao"
           >
-            <RefreshCw className={`h-4 w-4 text-primary ${carregando ? 'animate-spin' : ''}`} />
-            {carregando ? 'Atualizando...' : 'Atualizar'}
+            <RefreshCw
+              className={`h-4 w-4 text-blue-600 shrink-0 ${carregando ? 'animate-spin' : ''}`}
+            />
+            <span>{carregando ? 'Atualizando...' : 'Atualizar'}</span>
           </Button>
 
           <Button
             type="button"
+            variant="outline"
             size="sm"
             onClick={handleImprimirRelatorio}
             disabled={carregando || !relatorio || imprimindoGeral}
-            className="inline-flex items-center justify-center gap-2 shadow-sm h-9 flex-1 sm:flex-initial"
+            className="inline-flex items-center justify-center gap-2 border-blue-300 bg-white hover:bg-blue-50 text-blue-700 h-9 px-3.5 text-sm font-medium flex-1 sm:flex-initial cursor-pointer"
             data-testid="btn-imprimir-relatorio-reconducao"
           >
-            <Printer className="h-4 w-4" />
-            {imprimindoGeral ? 'Preparando...' : 'Imprimir Relatório'}
+            <Printer className="h-4 w-4 text-blue-600 shrink-0" />
+            <span>{imprimindoGeral ? 'Preparando...' : 'Imprimir'}</span>
           </Button>
         </div>
       </div>

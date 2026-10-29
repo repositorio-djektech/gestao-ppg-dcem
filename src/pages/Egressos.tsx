@@ -17,6 +17,7 @@ import {
   Info,
   CheckCircle2,
   AlertCircle,
+  UserCheck,
 } from 'lucide-react'
 import {
   Dialog,
@@ -478,7 +479,7 @@ export default function Egressos() {
     <>
       <CrudPage
         title="Egressos"
-        description="Gerencie os egressos do programa de pós-graduação."
+        icon={<UserCheck className="h-6 w-6 text-primary shrink-0" />}
         service={egressosService}
         columns={columns}
         fields={fields}
