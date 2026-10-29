@@ -90,39 +90,64 @@
      - barra horizontal e vertical nativas formam moldura nas bordas do contêiner
      - sem ocultar a horizontal no desktop (removido display:none / height:0)
   */
+  /* Barra de rolagem nativa para contêineres de tabela:
+     - Barra VERTICAL preservada com estilo discreto
+     - Barra HORIZONTAL NATIVA ocultada definitivamente em todos os navegadores/motores
+       (WebKit, Blink, Safari, Chrome, Edge), pois a FrameHorizontalScrollbar dedicada
+       já fornece a rolagem horizontal fixa e sincronizada.
+     - A rolagem horizontal em si permanece 100% funcional (trackpad, shift+scroll, drag do frame).
+  */
   .table-scroll-container {
     scrollbar-width: thin;
     scrollbar-color: rgba(148, 163, 184, 0.6) rgba(241, 245, 249, 0.5);
   }
 
+  /* Largura da barra vertical nativa (10px) e altura zero para a horizontal */
   .table-scroll-container::-webkit-scrollbar {
     width: 10px;
-    height: 10px;
+    height: 0px !important;
   }
 
-  /* Ocultar barra horizontal nativa em motores WebKit/Blink (Chrome/Safari/macOS/Edge)
-     pois renderizamos a FrameHorizontalScrollbar sempre visível e arrastável.
-     A vertical é preservada intacta. */
-  .table-scroll-container::-webkit-scrollbar:horizontal {
-    height: 0;
-    display: none;
+  /* Ocultar barra horizontal nativa em WebKit/Blink (Chrome, Edge, Safari, Opera)
+     aplicando em pseudo-classes horizontais, tracks e thumbs */
+  .table-scroll-container::-webkit-scrollbar:horizontal,
+  .table-scroll-container::-webkit-scrollbar-track:horizontal,
+  .table-scroll-container::-webkit-scrollbar-thumb:horizontal {
+    height: 0px !important;
+    max-height: 0px !important;
+    display: none !important;
+    background: transparent !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  /* Garantir que contêineres descendentes da tabela também não exponham barra horizontal nativa */
+  .table-scroll-container *::-webkit-scrollbar:horizontal,
+  .table-scroll-container *::-webkit-scrollbar-track:horizontal,
+  .table-scroll-container *::-webkit-scrollbar-thumb:horizontal {
+    height: 0px !important;
+    max-height: 0px !important;
+    display: none !important;
+    background: transparent !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
   }
 
   .table-scroll-container::-webkit-scrollbar-corner {
     background: rgba(241, 245, 249, 0.8);
   }
 
-  .table-scroll-container::-webkit-scrollbar-track {
+  .table-scroll-container::-webkit-scrollbar-track:vertical {
     background: rgba(241, 245, 249, 0.6);
   }
 
-  .table-scroll-container::-webkit-scrollbar-thumb {
+  .table-scroll-container::-webkit-scrollbar-thumb:vertical {
     background-color: rgba(148, 163, 184, 0.6);
     border-radius: 6px;
     border: 2px solid rgba(241, 245, 249, 0.6);
   }
 
-  .table-scroll-container::-webkit-scrollbar-thumb:hover {
+  .table-scroll-container::-webkit-scrollbar-thumb:vertical:hover {
     background-color: rgba(100, 116, 139, 0.8);
   }
 
@@ -130,12 +155,15 @@
     scrollbar-color: rgba(115, 115, 115, 0.6) rgba(23, 23, 23, 0.5);
   }
 
-  .dark .table-scroll-container::-webkit-scrollbar-corner,
-  .dark .table-scroll-container::-webkit-scrollbar-track {
+  .dark .table-scroll-container::-webkit-scrollbar-corner {
     background: rgba(23, 23, 23, 0.6);
   }
 
-  .dark .table-scroll-container::-webkit-scrollbar-thumb {
+  .dark .table-scroll-container::-webkit-scrollbar-track:vertical {
+    background: rgba(23, 23, 23, 0.6);
+  }
+
+  .dark .table-scroll-container::-webkit-scrollbar-thumb:vertical {
     background-color: rgba(115, 115, 115, 0.6);
     border-color: rgba(23, 23, 23, 0.6);
   }

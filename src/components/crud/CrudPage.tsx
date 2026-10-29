@@ -385,10 +385,10 @@ export function CrudPage<T extends { id: number | string }>({
 
       {/* Moldura estilo Supabase: contêiner flex-1 min-h-0 com tabela rolável e paginação colada na base */}
       <div className="flex flex-col flex-1 min-h-0 rounded-lg border border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm overflow-hidden">
-        {/* Contêiner da tabela: overflow-y-auto, overflow-x-scroll forçado no desktop com barra nativa visível colada na paginação */}
+        {/* Contêiner da tabela: overflow-y-auto, overflow-x-auto com barra horizontal nativa oculta (substituída pela FrameHorizontalScrollbar) */}
         <div
           ref={tableContainerRef}
-          className="flex-1 min-h-0 overflow-y-auto overflow-x-auto md:overflow-x-scroll table-scroll-container"
+          className="flex-1 min-h-0 overflow-y-auto overflow-x-auto table-scroll-container"
         >
           <Table>
             <TableHeader

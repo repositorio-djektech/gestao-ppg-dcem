@@ -1526,7 +1526,7 @@ export default function Lacunas({
               {/* Tabela de Lacunas com rolagem nos dois eixos e barra nativa colada no topo da paginação */}
               <div
                 ref={tableContainerRef}
-                className="max-h-[500px] overflow-y-auto overflow-x-auto md:overflow-x-scroll table-scroll-container"
+                className="max-h-[500px] overflow-y-auto overflow-x-auto table-scroll-container"
               >
                 <table className="w-full text-left border-collapse text-xs">
                   <thead className="sticky top-0 z-10">

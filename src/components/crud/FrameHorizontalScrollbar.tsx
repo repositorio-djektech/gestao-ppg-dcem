@@ -51,8 +51,9 @@ export function resolveScrollElement(el: HTMLElement | null): HTMLElement | null
  * desaparecem quando o scroll vertical não está no fim da página.
  *
  * Características:
- * - Trilho sempre visível (~10px de altura, tons compatíveis com .table-scroll-container)
- * - Polegar (thumb) proporcional a clientWidth/scrollWidth e posicionado proporcionalmente
+ * - Trilho sempre visível, discreto e translúcido (altura fina de 5px–6px, exatamente como a scrollbar nativa)
+ * - Polegar (thumb) fino, no tom cinza claro nativo (slate-300/60 no repouso), escurecendo suavemente no hover (slate-400)
+ * - Proporcional a clientWidth/scrollWidth e posicionado proporcionalmente
  * - Arrastável com pointer capture (drag suave sem travar se o ponteiro sair do trilho)
  * - Clique no trilho posiciona o centro do polegar no ponto clicado
  * - Só renderiza no breakpoint md+ (mesmo breakpoint da moldura desktop)
@@ -279,9 +280,9 @@ export function FrameHorizontalScrollbar({ targetRef, className }: FrameHorizont
       className={cn(
         // Só renderiza no breakpoint desktop md: (moldura estilo Supabase)
         'hidden md:block shrink-0 relative select-none cursor-pointer',
-        'h-[10px] w-full',
-        // Fundo no mesmo tom do track da classe table-scroll-container
-        'bg-slate-100/90 dark:bg-neutral-800/80',
+        'h-[6px] w-full',
+        // Trilho discreto/translúcido como a scrollbar nativa
+        'bg-transparent hover:bg-slate-100/60 dark:hover:bg-neutral-800/40',
         'transition-colors',
         className,
       )}
@@ -298,9 +299,9 @@ export function FrameHorizontalScrollbar({ targetRef, className }: FrameHorizont
         }}
         className={cn(
           'absolute top-0 bottom-0 h-full rounded-full transition-[background-color] duration-150',
-          // Tons correspondentes ao thumb de table-scroll-container (slate-400 no light, zinc/neutral no dark)
-          'bg-slate-400/70 hover:bg-slate-500/90 dark:bg-neutral-500/70 dark:hover:bg-neutral-400/90',
-          isDragging ? 'bg-slate-500/95 dark:bg-neutral-400/95 cursor-grabbing' : 'cursor-grab',
+          // Tom cinza claro no repouso (igual à scrollbar nativa da print) e escurece suavemente no hover
+          'bg-slate-300/80 hover:bg-slate-400/90 dark:bg-neutral-600/70 dark:hover:bg-neutral-500/90',
+          isDragging ? 'bg-slate-500/90 dark:bg-neutral-400/95 cursor-grabbing' : 'cursor-grab',
         )}
       />
     </div>
