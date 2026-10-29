@@ -394,17 +394,17 @@ export function CrudPage<T extends { id: number | string }>({
             <TableHeader
               className={
                 tableHeaderClassName ??
-                'bg-slate-50/90 dark:bg-neutral-900/90 sticky top-0 z-10 backdrop-blur-xs'
+                'bg-[#e9effc] dark:bg-neutral-900/90 sticky top-0 z-10 backdrop-blur-xs'
               }
             >
-              <TableRow className={tableHeaderRowClassName}>
+              <TableRow className={tableHeaderRowClassName ?? 'bg-[#e9effc] hover:bg-[#e9effc]'}>
                 {columns.map((col) => (
                   <TableHead
                     key={String(col.key)}
                     className={
                       col.headerClassName ??
                       col.className ??
-                      'font-semibold text-slate-700 dark:text-neutral-200'
+                      'font-semibold text-slate-700 dark:text-neutral-200 bg-[#e9effc]'
                     }
                   >
                     {col.label}
@@ -414,7 +414,7 @@ export function CrudPage<T extends { id: number | string }>({
                   <TableHead
                     className={
                       actionsHeaderClassName ??
-                      'text-right font-semibold text-slate-700 dark:text-neutral-200'
+                      'text-right font-semibold text-slate-700 dark:text-neutral-200 bg-[#e9effc]'
                     }
                   >
                     Ações

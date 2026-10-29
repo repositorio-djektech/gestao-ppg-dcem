@@ -878,7 +878,7 @@ export function RevisaoImportacaoDialog({
                           </div>
                         ) : (
                           <Table>
-                            <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                            <TableHeader className="bg-[#e9effc] sticky top-0 z-10 shadow-sm">
                               {renderCabecalhoTabela(id)}
                             </TableHeader>
                             <TableBody>

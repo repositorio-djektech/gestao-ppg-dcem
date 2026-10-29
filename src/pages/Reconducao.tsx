@@ -888,34 +888,34 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
           className="flex-1 min-h-0 overflow-y-auto overflow-x-auto table-scroll-container"
         >
           <Table>
-            <TableHeader className="bg-slate-50/90 dark:bg-neutral-900/90 sticky top-0 z-10 backdrop-blur-xs">
-              <TableRow>
-                <TableHead className="font-semibold text-slate-700 min-w-[200px]">
+            <TableHeader className="bg-[#e9effc] dark:bg-neutral-900/90 sticky top-0 z-10 backdrop-blur-xs">
+              <TableRow className="bg-[#e9effc] hover:bg-[#e9effc]">
+                <TableHead className="font-semibold text-slate-700 min-w-[200px] bg-[#e9effc]">
                   Docente
                 </TableHead>
-                <TableHead className="text-center font-semibold text-slate-700">
+                <TableHead className="text-center font-semibold text-slate-700 bg-[#e9effc]">
                   Critério I<br />
                   <span className="text-[10px] font-normal text-slate-500">Orientação</span>
                 </TableHead>
-                <TableHead className="text-center font-semibold text-slate-700">
+                <TableHead className="text-center font-semibold text-slate-700 bg-[#e9effc]">
                   Critério II
                   <br />
                   <span className="text-[10px] font-normal text-slate-500">Disciplina</span>
                 </TableHead>
-                <TableHead className="text-center font-semibold text-slate-700">
+                <TableHead className="text-center font-semibold text-slate-700 bg-[#e9effc]">
                   Critério III
                   <br />
                   <span className="text-[10px] font-normal text-slate-500">Projeto</span>
                 </TableHead>
-                <TableHead className="text-center font-semibold text-slate-700">
+                <TableHead className="text-center font-semibold text-slate-700 bg-[#e9effc]">
                   Índice PDQ
                   <br />
                   <span className="text-[10px] font-normal text-slate-500">NP / (MSc+DSc)</span>
                 </TableHead>
-                <TableHead className="text-center font-semibold text-slate-700 min-w-[150px]">
+                <TableHead className="text-center font-semibold text-slate-700 min-w-[150px] bg-[#e9effc]">
                   Veredito
                 </TableHead>
-                <TableHead className="text-right font-semibold text-slate-700">
+                <TableHead className="text-right font-semibold text-slate-700 bg-[#e9effc]">
                   Evidências
                 </TableHead>
               </TableRow>

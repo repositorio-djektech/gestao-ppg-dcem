@@ -898,23 +898,33 @@ export default function Publicacoes() {
           className="flex-1 min-h-0 overflow-y-auto overflow-x-auto table-scroll-container"
         >
           <Table>
-            <TableHeader className="bg-slate-50/90 dark:bg-neutral-900/90 sticky top-0 z-10 backdrop-blur-xs">
-              <TableRow>
-                <TableHead className="w-[26%] font-semibold text-slate-700">
+            <TableHeader className="bg-[#e9effc] dark:bg-neutral-900/90 sticky top-0 z-10 backdrop-blur-xs">
+              <TableRow className="bg-[#e9effc] hover:bg-[#e9effc]">
+                <TableHead className="w-[26%] font-semibold text-slate-700 bg-[#e9effc]">
                   Título & Autores
                 </TableHead>
-                <TableHead className="font-semibold text-slate-700">Qualis</TableHead>
-                <TableHead className="font-semibold text-slate-700">Docentes Autores</TableHead>
-                <TableHead className="font-semibold text-slate-700">Periódico</TableHead>
-                <TableHead className="font-semibold text-slate-700">Ano</TableHead>
-                <TableHead className="font-semibold text-slate-700">
+                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">Qualis</TableHead>
+                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">
+                  Docentes Autores
+                </TableHead>
+                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">
+                  Periódico
+                </TableHead>
+                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">Ano</TableHead>
+                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">
                   Fator de Impacto (JCR)
                 </TableHead>
-                <TableHead className="font-semibold text-slate-700">Coautoria P²CEM</TableHead>
-                <TableHead className="font-semibold text-slate-700">DOI</TableHead>
-                <TableHead className="font-semibold text-slate-700">Justificativa</TableHead>
+                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">
+                  Coautoria P²CEM
+                </TableHead>
+                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">DOI</TableHead>
+                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">
+                  Justificativa
+                </TableHead>
                 {hasActionsColumn && (
-                  <TableHead className="text-right font-semibold text-slate-700">Ações</TableHead>
+                  <TableHead className="text-right font-semibold text-slate-700 bg-[#e9effc]">
+                    Ações
+                  </TableHead>
                 )}
               </TableRow>
             </TableHeader>{' '}

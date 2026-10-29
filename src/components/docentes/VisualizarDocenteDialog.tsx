@@ -1197,8 +1197,8 @@ export function VisualizarDocenteDialog({
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto border rounded-md bg-white dark:bg-neutral-900">
           <Table>
-            <TableHeader className="bg-slate-50 dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
-              <TableRow>
+            <TableHeader className="bg-[#e9effc] dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
+              <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
                 <TableHead className="w-[10%]">Ano</TableHead>
                 <TableHead className="w-[45%]">Título</TableHead>
                 <TableHead className="w-[20%]">Periódico</TableHead>
@@ -1254,8 +1254,8 @@ export function VisualizarDocenteDialog({
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto border rounded-md bg-white dark:bg-neutral-900">
           <Table>
-            <TableHeader className="bg-slate-50 dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
-              <TableRow>
+            <TableHeader className="bg-[#e9effc] dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
+              <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
                 <TableHead className="w-[15%]">Nível / Tipo</TableHead>
                 <TableHead className="w-[30%]">Orientando (Discente)</TableHead>
                 <TableHead className="w-[15%]">Período</TableHead>
@@ -1320,8 +1320,8 @@ export function VisualizarDocenteDialog({
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto border rounded-md bg-white dark:bg-neutral-900">
           <Table>
-            <TableHeader className="bg-slate-50 dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
-              <TableRow>
+            <TableHeader className="bg-[#e9effc] dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
+              <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
                 <TableHead className="w-[40%]">Título do Projeto</TableHead>
                 <TableHead className="w-[15%]">Período</TableHead>
                 <TableHead className="w-[15%]">Financiamento</TableHead>
@@ -1379,8 +1379,8 @@ export function VisualizarDocenteDialog({
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto border rounded-md bg-white dark:bg-neutral-900">
           <Table>
-            <TableHeader className="bg-slate-50 dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
-              <TableRow>
+            <TableHeader className="bg-[#e9effc] dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
+              <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
                 <TableHead className="w-[12%]">Ano</TableHead>
                 <TableHead className="w-[48%]">Título / Premiação</TableHead>
                 <TableHead className="w-[40%]">Entidade Promotora</TableHead>
@@ -1421,8 +1421,8 @@ export function VisualizarDocenteDialog({
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto border rounded-md bg-white dark:bg-neutral-900">
           <Table>
-            <TableHeader className="bg-slate-50 dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
-              <TableRow>
+            <TableHeader className="bg-[#e9effc] dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
+              <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
                 <TableHead className="w-[15%]">Tipo</TableHead>
                 <TableHead className="w-[10%]">Ano</TableHead>
                 <TableHead className="w-[45%]">Título da Produção Técnica</TableHead>
@@ -1469,8 +1469,8 @@ export function VisualizarDocenteDialog({
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto border rounded-md bg-white dark:bg-neutral-900">
           <Table>
-            <TableHeader className="bg-slate-50 dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
-              <TableRow>
+            <TableHeader className="bg-[#e9effc] dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
+              <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
                 <TableHead className="w-[40%]">Título da Patente</TableHead>
                 <TableHead className="w-[18%]">Registro INPI</TableHead>
                 <TableHead className="w-[15%]">Status</TableHead>
@@ -1526,8 +1526,8 @@ export function VisualizarDocenteDialog({
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto border rounded-md bg-white dark:bg-neutral-900">
           <Table>
-            <TableHeader className="bg-slate-50 dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
-              <TableRow>
+            <TableHeader className="bg-[#e9effc] dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
+              <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
                 <TableHead className="w-[35%]">Nome do Evento</TableHead>
                 <TableHead className="w-[20%]">Papel / Participação</TableHead>
                 <TableHead className="w-[20%]">Local e Data</TableHead>
@@ -1574,8 +1574,8 @@ export function VisualizarDocenteDialog({
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto border rounded-md bg-white dark:bg-neutral-900">
           <Table>
-            <TableHeader className="bg-slate-50 dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
-              <TableRow>
+            <TableHeader className="bg-[#e9effc] dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
+              <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
                 <TableHead className="w-[15%]">Modalidade</TableHead>
                 <TableHead className="w-[35%]">Instituição de Destino</TableHead>
                 <TableHead className="w-[20%]">Período</TableHead>
@@ -1622,8 +1622,8 @@ export function VisualizarDocenteDialog({
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto border rounded-md bg-white dark:bg-neutral-900">
           <Table>
-            <TableHeader className="bg-slate-50 dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
-              <TableRow>
+            <TableHeader className="bg-[#e9effc] dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
+              <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
                 <TableHead className="w-[10%]">Ano</TableHead>
                 <TableHead className="w-[45%]">Título da Ação / Projeto</TableHead>
                 <TableHead className="w-[45%]">Descrição e Impacto</TableHead>

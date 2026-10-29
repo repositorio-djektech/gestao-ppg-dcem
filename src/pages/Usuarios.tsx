@@ -420,12 +420,16 @@ export default function Usuarios() {
           className="flex-1 min-h-0 overflow-y-auto overflow-x-auto table-scroll-container"
         >
           <Table>
-            <TableHeader className="bg-slate-50/90 dark:bg-neutral-900/90 sticky top-0 z-10 backdrop-blur-xs">
-              <TableRow>
-                <TableHead className="font-semibold text-slate-700">Usuário</TableHead>
-                <TableHead className="font-semibold text-slate-700">Papel</TableHead>
-                <TableHead className="font-semibold text-slate-700">Criado em</TableHead>
-                <TableHead className="text-right font-semibold text-slate-700">Ações</TableHead>
+            <TableHeader className="bg-[#e9effc] dark:bg-neutral-900/90 sticky top-0 z-10 backdrop-blur-xs">
+              <TableRow className="bg-[#e9effc] hover:bg-[#e9effc]">
+                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">Usuário</TableHead>
+                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">Papel</TableHead>
+                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">
+                  Criado em
+                </TableHead>
+                <TableHead className="text-right font-semibold text-slate-700 bg-[#e9effc]">
+                  Ações
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

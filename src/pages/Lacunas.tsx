@@ -1529,26 +1529,41 @@ export default function Lacunas({
                 className="max-h-[500px] overflow-y-auto overflow-x-auto table-scroll-container"
               >
                 <table className="w-full text-left border-collapse text-xs">
-                  <thead className="sticky top-0 z-10">
-                    <tr className="border-b border-slate-200 bg-slate-50/95 text-slate-600 font-semibold uppercase tracking-wider text-[11px] backdrop-blur-xs">
-                      <th scope="col" className="py-3 px-4 w-[280px] max-w-[320px]">
+                  <thead className="sticky top-0 z-10 bg-[#e9effc] dark:bg-neutral-900">
+                    <tr className="border-b border-slate-200 dark:border-neutral-800 bg-[#e9effc] dark:bg-neutral-900 text-slate-700 dark:text-neutral-200 font-semibold uppercase tracking-wider text-[11px]">
+                      <th
+                        scope="col"
+                        className="py-3 px-4 w-[280px] max-w-[320px] border-r border-slate-200 dark:border-neutral-800 bg-[#e9effc] dark:bg-neutral-900 sticky top-0 z-10"
+                      >
                         Quem
                       </th>
-                      <th scope="col" className="py-3 px-4 min-w-[220px]">
+                      <th
+                        scope="col"
+                        className="py-3 px-4 min-w-[220px] border-r border-slate-200 dark:border-neutral-800 bg-[#e9effc] dark:bg-neutral-900 sticky top-0 z-10"
+                      >
                         O que falta
                       </th>
-                      <th scope="col" className="py-3 px-4 w-[130px]">
+                      <th
+                        scope="col"
+                        className="py-3 px-4 w-[130px] border-r border-slate-200 dark:border-neutral-800 bg-[#e9effc] dark:bg-neutral-900 sticky top-0 z-10"
+                      >
                         Grupo
                       </th>
-                      <th scope="col" className="py-3 px-4 w-[120px] text-left">
+                      <th
+                        scope="col"
+                        className="py-3 px-4 w-[120px] text-left border-r border-slate-200 dark:border-neutral-800 bg-[#e9effc] dark:bg-neutral-900 sticky top-0 z-10"
+                      >
                         Severidade
                       </th>
-                      <th scope="col" className="py-3 px-4 w-[100px] text-right">
+                      <th
+                        scope="col"
+                        className="py-3 px-4 w-[100px] text-right bg-[#e9effc] dark:bg-neutral-900 sticky top-0 z-10"
+                      >
                         Ação
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-neutral-800">
                     {paginatedLacunas.map((item, idx) => {
                       const configGrupo = GRUPOS_VISUAIS.find((g) => g.id === item.grupoVisualId)
                       const badgeClass =
@@ -1558,11 +1573,11 @@ export default function Lacunas({
                       return (
                         <tr
                           key={`${item.regraId}-${item.idRegistro}-${idx}`}
-                          className="hover:bg-slate-50/70 transition-colors"
+                          className="hover:bg-slate-50/70 dark:hover:bg-neutral-800/50 transition-colors border-b border-slate-100 dark:border-neutral-800"
                           data-testid={`linha-lacuna-${item.regraId}-${item.idRegistro}`}
                         >
                           {/* Coluna Quem: largura máxima limitada com quebra de linha normal */}
-                          <td className="py-3 px-4 font-medium text-slate-900 w-[280px] max-w-[320px] break-words whitespace-normal align-top">
+                          <td className="py-3 px-4 font-medium text-slate-900 dark:text-neutral-100 w-[280px] max-w-[320px] break-words whitespace-normal align-top border-r border-slate-200 dark:border-neutral-800">
                             <div className="flex items-start gap-2">
                               <span
                                 className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${
@@ -1581,13 +1596,13 @@ export default function Lacunas({
                           </td>
 
                           {/* Coluna O que falta */}
-                          <td className="py-3 px-4 text-slate-700 align-top break-words whitespace-normal">
+                          <td className="py-3 px-4 text-slate-700 dark:text-neutral-300 align-top break-words whitespace-normal border-r border-slate-200 dark:border-neutral-800">
                             <div className="flex flex-col">
-                              <span className="font-semibold text-slate-800 break-words whitespace-normal">
+                              <span className="font-semibold text-slate-800 dark:text-neutral-100 break-words whitespace-normal">
                                 {item.regraDescricao}
                               </span>
                               {item.motivo && item.motivo !== item.regraDescricao && (
-                                <span className="text-[11px] text-slate-500 mt-0.5 break-words whitespace-normal">
+                                <span className="text-[11px] text-slate-500 dark:text-neutral-400 mt-0.5 break-words whitespace-normal">
                                   {item.motivo}
                                 </span>
                               )}
@@ -1595,7 +1610,7 @@ export default function Lacunas({
                           </td>
 
                           {/* Coluna Grupo */}
-                          <td className="py-3 px-4">
+                          <td className="py-3 px-4 border-r border-slate-200 dark:border-neutral-800">
                             <span
                               className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${badgeClass}`}
                             >
@@ -1604,7 +1619,7 @@ export default function Lacunas({
                           </td>
 
                           {/* Coluna Severidade */}
-                          <td className="py-3 px-4 text-left">
+                          <td className="py-3 px-4 text-left border-r border-slate-200 dark:border-neutral-800">
                             {isCritica ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-800 border border-red-200">
                                 <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
@@ -1703,20 +1718,20 @@ export default function Lacunas({
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-semibold text-[11px]">
-                    <th scope="col" className="py-2 px-3">
+                  <tr className="border-b border-slate-200 bg-[#e9effc] text-slate-700 font-semibold text-[11px]">
+                    <th scope="col" className="py-2 px-3 border-r border-slate-200">
                       Data/Hora
                     </th>
-                    <th scope="col" className="py-2 px-3">
+                    <th scope="col" className="py-2 px-3 border-r border-slate-200">
                       Operação
                     </th>
-                    <th scope="col" className="py-2 px-3">
+                    <th scope="col" className="py-2 px-3 border-r border-slate-200">
                       Filtros Aplicados
                     </th>
-                    <th scope="col" className="py-2 px-3 text-right">
+                    <th scope="col" className="py-2 px-3 text-right border-r border-slate-200">
                       Críticas
                     </th>
-                    <th scope="col" className="py-2 px-3 text-right">
+                    <th scope="col" className="py-2 px-3 text-right border-r border-slate-200">
                       Atenção
                     </th>
                     <th scope="col" className="py-2 px-3 text-right">
@@ -1751,22 +1766,22 @@ export default function Lacunas({
                         className="hover:bg-slate-50/60"
                         data-testid={`linha-historico-${item.id}`}
                       >
-                        <td className="py-2 px-3 font-medium text-slate-800 whitespace-nowrap">
+                        <td className="py-2 px-3 font-medium text-slate-800 whitespace-nowrap border-r border-slate-200">
                           {dataTexto}
                         </td>
-                        <td className="py-2 px-3 text-slate-600 whitespace-nowrap">
+                        <td className="py-2 px-3 text-slate-600 whitespace-nowrap border-r border-slate-200">
                           <span className="inline-flex items-center gap-1 font-medium text-slate-700">
                             <Download className="h-3 w-3 text-slate-500" />
                             {item.nomeArquivo || 'Exportação CSV'}
                           </span>
                         </td>
-                        <td className="py-2 px-3 text-slate-600 text-[11px] max-w-[280px] truncate">
+                        <td className="py-2 px-3 text-slate-600 text-[11px] max-w-[280px] truncate border-r border-slate-200">
                           {filtrosResumo || 'Todos os registros (sem filtros)'}
                         </td>
-                        <td className="py-2 px-3 text-right font-semibold text-red-600">
+                        <td className="py-2 px-3 text-right font-semibold text-red-600 border-r border-slate-200">
                           {item.criticas}
                         </td>
-                        <td className="py-2 px-3 text-right font-medium text-amber-600">
+                        <td className="py-2 px-3 text-right font-medium text-amber-600 border-r border-slate-200">
                           {item.atencao}
                         </td>
                         <td className="py-2 px-3 text-right font-bold text-slate-900">
