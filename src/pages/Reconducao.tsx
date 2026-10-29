@@ -642,7 +642,10 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6 animate-fade-in" data-testid="pagina-reconducao">
+    <div
+      className="space-y-4 md:space-y-6 animate-fade-in md:pb-24"
+      data-testid="pagina-reconducao"
+    >
       {/* Topo da página: título, descrição e ações */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>

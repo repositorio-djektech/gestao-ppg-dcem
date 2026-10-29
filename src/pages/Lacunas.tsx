@@ -936,7 +936,7 @@ export default function Lacunas({
   }, [lacunasFiltradas, page])
 
   return (
-    <div className="space-y-6 animate-fade-in" data-testid="pagina-lacunas">
+    <div className="space-y-6 animate-fade-in md:pb-24" data-testid="pagina-lacunas">
       {/* Topo da página: título, descrição e ações */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>

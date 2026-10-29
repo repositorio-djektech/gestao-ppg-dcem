@@ -28,16 +28,20 @@ describe('TablePaginationFooter', () => {
     const handlePageChange = vi.fn()
     render(<TablePaginationFooter page={1} totalPages={3} onPageChange={handlePageChange} />)
 
-    const anteriorBtn = screen.getByText('Anterior').closest('a')
-    expect(anteriorBtn?.className).toContain('pointer-events-none')
+    const anteriorBtns = screen.getAllByText('Anterior').map((el) => el.closest('a'))
+    anteriorBtns.forEach((btn) => {
+      expect(btn?.className).toContain('pointer-events-none')
+    })
   })
 
   it('desabilita botão Próxima na última página', () => {
     const handlePageChange = vi.fn()
     render(<TablePaginationFooter page={3} totalPages={3} onPageChange={handlePageChange} />)
 
-    const proximaBtn = screen.getByText('Próxima').closest('a')
-    expect(proximaBtn?.className).toContain('pointer-events-none')
+    const proximaBtns = screen.getAllByText('Próxima').map((el) => el.closest('a'))
+    proximaBtns.forEach((btn) => {
+      expect(btn?.className).toContain('pointer-events-none')
+    })
   })
 
   it('não renderiza barra de rolagem horizontal quando não há overflow', () => {
