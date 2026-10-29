@@ -29,6 +29,7 @@ import { ANO_INICIO, ANO_FIM } from '@/lib/lattes/quadrienio'
 import { useAuth } from '@/hooks/use-auth'
 import { podeCriarNaTabela, podeEditarRegistro, podeExcluirRegistro } from '@/services/permissoes'
 import { normalizarTituloAcademico } from '@/lib/normalizacao'
+import { toTitleCase } from '@/lib/titleCase'
 import { Badge } from '@/components/ui/badge'
 import { registrarLog } from '@/services/logs'
 import {
@@ -905,21 +906,27 @@ export default function Publicacoes() {
                 <TableHead className="w-[26%] font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Título & Autores
                 </TableHead>
-                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">Qualis</TableHead>
+                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
+                  Qualis
+                </TableHead>
                 <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Docentes Autores
                 </TableHead>
                 <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Periódico
                 </TableHead>
-                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">Ano</TableHead>
+                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
+                  Ano
+                </TableHead>
                 <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Fator de Impacto (JCR)
                 </TableHead>
                 <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Coautoria P²CEM
                 </TableHead>
-                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">DOI</TableHead>
+                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
+                  DOI
+                </TableHead>
                 <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Justificativa
                 </TableHead>
@@ -952,7 +959,7 @@ export default function Publicacoes() {
                     <TableRow key={p.id} className="hover:bg-slate-50/50">
                       <TableCell>
                         <div className="font-medium text-slate-900 mb-1 flex items-start gap-1.5 flex-wrap">
-                          <span>{normalizarTituloAcademico(p.titulo)}</span>
+                          <span>{toTitleCase(p.titulo)}</span>
                           {p.indicacao_nivel && (
                             <Badge
                               variant="outline"
@@ -972,11 +979,11 @@ export default function Publicacoes() {
                           )}
                           {p.tipo_producao && (
                             <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-                              {p.tipo_producao}
+                              {toTitleCase(p.tipo_producao)}
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-slate-500">{p.autores}</div>
+                        <div className="text-xs text-slate-500">{toTitleCase(p.autores)}</div>
                       </TableCell>
                       <TableCell>
                         {getQualisBadge(
@@ -989,7 +996,7 @@ export default function Publicacoes() {
                         {docentesVinculados.length > 0 ? (
                           <div className="flex flex-wrap gap-1 max-w-[160px]">
                             {docentesVinculados.map((doc) => {
-                              const nomes = doc.nome.trim().split(' ')
+                              const nomes = toTitleCase(doc.nome).trim().split(' ')
                               const primeiro = nomes[0]
                               const ultimo = nomes.length > 1 ? nomes[nomes.length - 1] : ''
                               const exibicao = ultimo ? `${primeiro[0]}. ${ultimo}` : primeiro
@@ -1004,8 +1011,8 @@ export default function Publicacoes() {
                                   }`}
                                   title={
                                     doc.status === false
-                                      ? `${doc.nome} (Inativo no programa)`
-                                      : doc.nome
+                                      ? `${toTitleCase(doc.nome)} (Inativo no programa)`
+                                      : toTitleCase(doc.nome)
                                   }
                                 >
                                   <DocenteNome
@@ -1021,7 +1028,7 @@ export default function Publicacoes() {
                           <span className="text-xs text-slate-400">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-slate-700">{p.periodico}</TableCell>
+                      <TableCell className="text-slate-700">{toTitleCase(p.periodico)}</TableCell>
                       <TableCell className="font-medium">{p.ano}</TableCell>
                       <TableCell className="font-mono text-xs font-semibold text-slate-800">
                         {p.fator_impacto_jcr !== null && p.fator_impacto_jcr !== undefined

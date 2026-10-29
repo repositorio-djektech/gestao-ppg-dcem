@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { DocenteNome } from '@/components/docentes/DocenteNome'
+import { toTitleCase } from '@/lib/titleCase'
 import {
   Award,
   RefreshCw,
@@ -597,15 +598,15 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
                     <div key={pub.id} className="p-3 text-xs space-y-1 hover:bg-slate-50/50">
                       <div className="flex items-start justify-between gap-2">
                         <span className="font-semibold text-slate-900 leading-snug">
-                          {pub.titulo}
+                          {toTitleCase(pub.titulo)}
                         </span>
                         {badgeStatus}
                       </div>
                       <div className="text-slate-600 text-[11px] truncate" title={pub.autores}>
-                        {pub.autores}
+                        {toTitleCase(pub.autores)}
                       </div>
                       <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
-                        <span className="italic">{pub.periodico}</span>
+                        <span className="italic">{toTitleCase(pub.periodico)}</span>
                         <span>• Ano: {pub.ano}</span>
                         {pub.fator_impacto_jcr && (
                           <span className="font-medium text-primary">

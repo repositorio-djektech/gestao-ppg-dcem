@@ -9,6 +9,7 @@ import {
 } from '@/services/usuarios'
 import { docentesService } from '@/services/docentes'
 import type { Docente, Role } from '@/types/database'
+import { toTitleCase } from '@/lib/titleCase'
 import {
   Table,
   TableBody,
@@ -424,8 +425,12 @@ export default function Usuarios() {
           <Table>
             <TableHeader className="bg-[#e9effc] dark:bg-neutral-900/90 sticky top-0 z-10 backdrop-blur-xs">
               <TableRow className="bg-[#e9effc] hover:bg-[#e9effc]">
-                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">Usuário</TableHead>
-                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">Papel</TableHead>
+                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
+                  Usuário
+                </TableHead>
+                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
+                  Papel
+                </TableHead>
                 <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Criado em
                 </TableHead>
@@ -467,7 +472,7 @@ export default function Usuarios() {
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">
                             <span className="font-semibold text-slate-900">
-                              {u.name || 'Sem nome'}
+                              {toTitleCase(u.name) || 'Sem nome'}
                             </span>
                             {isSelf && (
                               <Badge
@@ -667,7 +672,7 @@ export default function Usuarios() {
                   <SelectItem value="nenhum">Nenhum docente vinculado</SelectItem>
                   {docentes.map((d) => (
                     <SelectItem key={d.id} value={String(d.id)}>
-                      {d.nome} {d.categoria ? `(${d.categoria})` : ''}
+                      {toTitleCase(d.nome)} {d.categoria ? `(${d.categoria})` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -1,6 +1,7 @@
 import React from 'react'
 import { cn } from '@/lib/utils'
 import { normalizarNomePessoa } from '@/lib/normalizacao'
+import { toTitleCase } from '@/lib/titleCase'
 
 export interface DocenteNomeProps extends React.HTMLAttributes<HTMLSpanElement> {
   nome: string
@@ -32,7 +33,7 @@ export function DocenteNome({
   ...props
 }: DocenteNomeProps) {
   const isStatusFalse = status === false
-  const nomeExibicao = normalizar ? normalizarNomePessoa(nome) : nome
+  const nomeExibicao = normalizar ? toTitleCase(nome) : toTitleCase(nome)
 
   return (
     <span

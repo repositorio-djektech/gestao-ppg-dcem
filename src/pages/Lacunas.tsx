@@ -42,6 +42,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { obterRelatorioLacunas } from '@/services/lacunas'
+import { toTitleCase } from '@/lib/titleCase'
 import { imprimirRelatorioLacunasViaIframe } from '@/lib/lacunas/imprimirLacunasIframe'
 import { supabase } from '@/lib/supabase/client'
 import { docentesService } from '@/services/docentes'
@@ -1584,7 +1585,7 @@ export default function Lacunas({
                               />
                               <div className="min-w-0 flex-1 break-words whitespace-normal">
                                 <span className="font-semibold text-slate-900 block break-words whitespace-normal">
-                                  {item.nome}
+                                  {toTitleCase(item.nome)}
                                 </span>
                                 <span className="text-[10px] text-slate-400 font-normal block break-all">
                                   ({item.tabela} #{item.idRegistro})
@@ -1717,19 +1718,34 @@ export default function Lacunas({
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 bg-[#e9effc] text-slate-700 font-semibold text-[11px]">
-                    <th scope="col" className="py-2 px-3 text-left whitespace-nowrap border-r border-slate-200">
+                    <th
+                      scope="col"
+                      className="py-2 px-3 text-left whitespace-nowrap border-r border-slate-200"
+                    >
                       Data/Hora
                     </th>
-                    <th scope="col" className="py-2 px-3 text-left whitespace-nowrap border-r border-slate-200">
+                    <th
+                      scope="col"
+                      className="py-2 px-3 text-left whitespace-nowrap border-r border-slate-200"
+                    >
                       Operação
                     </th>
-                    <th scope="col" className="py-2 px-3 text-left whitespace-nowrap border-r border-slate-200">
+                    <th
+                      scope="col"
+                      className="py-2 px-3 text-left whitespace-nowrap border-r border-slate-200"
+                    >
                       Filtros Aplicados
                     </th>
-                    <th scope="col" className="py-2 px-3 text-left whitespace-nowrap border-r border-slate-200">
+                    <th
+                      scope="col"
+                      className="py-2 px-3 text-left whitespace-nowrap border-r border-slate-200"
+                    >
                       Críticas
                     </th>
-                    <th scope="col" className="py-2 px-3 text-left whitespace-nowrap border-r border-slate-200">
+                    <th
+                      scope="col"
+                      className="py-2 px-3 text-left whitespace-nowrap border-r border-slate-200"
+                    >
                       Atenção
                     </th>
                     <th scope="col" className="py-2 px-3 text-left whitespace-nowrap">

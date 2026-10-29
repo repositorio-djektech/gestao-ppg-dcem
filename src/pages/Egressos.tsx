@@ -318,7 +318,7 @@ export default function Egressos() {
             return (
               <div className="flex justify-center items-center gap-1.5 flex-wrap">
                 <DocenteNome
-                  nome={docenteVinculado.nome}
+                  nome={toTitleCase(docenteVinculado.nome)}
                   status={docenteVinculado.status}
                   className="font-medium text-xs"
                 />

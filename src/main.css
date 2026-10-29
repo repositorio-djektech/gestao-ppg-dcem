@@ -363,3 +363,35 @@
     text-decoration: none !important;
   }
 }
+
+/* ==========================================================================
+   Regras Globais de Tabelas (Grade inferior e Cabeçalhos)
+   1. Garantir fechamento da grade com borda inferior visível na última linha,
+      mesmo quando a tabela tiver poucos dados e o container for mais alto.
+   2. Cabeçalhos alinhados à esquerda e sem quebra em duas linhas (nowrap),
+      preservando rolagem horizontal caso necessário.
+   ========================================================================== */
+
+/* Fechamento da última linha da grade em todas as tabelas */
+tbody tr:last-child {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+tbody tr:last-child > td {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+/* Cabeçalhos de tabelas: sempre alinhados à esquerda e em linha única */
+th,
+[data-slot='table-head'],
+th[class*='text-'] {
+  text-align: left !important;
+  white-space: nowrap !important;
+}
+
+th button,
+[data-slot='table-head'] button {
+  white-space: nowrap !important;
+  justify-content: flex-start !important;
+  text-align: left !important;
+}

@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Calendar } from 'lucide-react'
 import type { Evento, EventoTipo, EventoNacionalidade } from '@/types/database'
 import { normalizarTituloAcademico } from '@/lib/normalizacao'
+import { toTitleCase } from '@/lib/titleCase'
 
 const emptyForm = {
   docente: '',
@@ -32,7 +33,7 @@ const columns: ColumnDef<Evento>[] = [
     key: 'evento',
     label: 'Evento',
     className: 'font-medium text-slate-900',
-    render: (e) => normalizarTituloAcademico(e.evento),
+    render: (e) => toTitleCase(e.evento),
   },
   {
     key: 'tipo' as any,
