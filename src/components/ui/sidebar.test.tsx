@@ -102,4 +102,15 @@ describe('Tarefa B - Sidebar aberta por padrão', () => {
     // No estado recolhido, as labels textuais não ficam no DOM regular do link
     expect(html).not.toContain('Geral')
   })
+
+  it('No modo aberto (open=true), renderiza o botão de fechar no header da sidebar', () => {
+    const html = renderToString(
+      <MemoryRouter initialEntries={['/']}>
+        <AppSidebar open={true} />
+      </MemoryRouter>,
+    )
+
+    expect(html).toContain('title="Recolher menu lateral"')
+    expect(html).toContain('aria-label="Recolher menu lateral"')
+  })
 })

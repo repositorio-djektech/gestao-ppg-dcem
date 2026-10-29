@@ -68,7 +68,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Search, Plus, Edit, Trash2, Printer, Sparkles, Award } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Printer, Sparkles, Award, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { TablePaginationFooter } from '@/components/crud/TablePaginationFooter'
 import { FrameHorizontalScrollbar } from '@/components/crud/FrameHorizontalScrollbar'

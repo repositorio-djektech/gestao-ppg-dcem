@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Search, Plus, Edit, Trash2, Printer, Eye } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Printer, Eye, GraduationCap } from 'lucide-react'
 import {
   VincularOpenAlexDialog,
   type FonteIdentificador,

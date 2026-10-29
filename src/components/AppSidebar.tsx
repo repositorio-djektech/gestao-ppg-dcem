@@ -240,7 +240,7 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
-  const { open } = useSidebar()
+  const { open, setOpen } = useSidebar()
   const location = useLocation()
   const navigate = useNavigate()
   const { profile, role, isSuporte, isCoordenador, signOut } = useAuth()
