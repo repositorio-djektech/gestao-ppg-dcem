@@ -28,7 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { formatarCpf } from '@/lib/utils'
+import { cn, formatarCpf } from '@/lib/utils'
 import { toTitleCase } from '@/lib/titleCase'
 import { CrudFormDialog } from './CrudFormDialog'
 import type { ColumnDef, FieldDef } from './types'
