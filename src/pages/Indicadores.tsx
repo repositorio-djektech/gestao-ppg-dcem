@@ -132,7 +132,7 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
   }, [relatorio, filtroQuesito, filtroStatus, busca])
 
   return (
-    <div className="space-y-6 p-4 md:p-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Cabeçalho da Página */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b pb-4">
         <div>

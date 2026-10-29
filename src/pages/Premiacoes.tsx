@@ -5,6 +5,7 @@ import { premiacoesService } from '@/services/premiacoes'
 import { impactoSocialService } from '@/services/impacto-social'
 import { impactosVinculosService } from '@/services/impactos-vinculos'
 import { Badge } from '@/components/ui/badge'
+import { Trophy } from 'lucide-react'
 import type { Premicao, ImpactoSocial } from '@/types/database'
 import { normalizarTituloAcademico } from '@/lib/normalizacao'
 import {
@@ -198,6 +199,7 @@ export default function PremiacoesPage() {
   return (
     <CrudPage
       title="Premiações"
+      icon={<Trophy className="h-6 w-6 text-primary shrink-0" />}
       description="Gerencie as premiações recebidas pelo programa."
       service={customService}
       columns={columns}
