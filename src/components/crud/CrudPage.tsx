@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TablePaginationFooter } from './TablePaginationFooter'
+import { FrameHorizontalScrollbar } from './FrameHorizontalScrollbar'
 import { useCrudData } from '@/hooks/use-crud-data'
 import { useAuth } from '@/hooks/use-auth'
 import type { CrudService } from '@/services/crud'
@@ -514,6 +515,7 @@ export function CrudPage<T extends { id: number | string }>({
             </TableBody>
           </Table>
         </div>
+        <FrameHorizontalScrollbar targetRef={tableContainerRef} />
         <TablePaginationFooter
           page={page}
           totalPages={totalPages}

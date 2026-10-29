@@ -71,6 +71,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Search, Plus, Edit, Trash2, Printer, Sparkles, Award } from 'lucide-react'
 import { toast } from 'sonner'
 import { TablePaginationFooter } from '@/components/crud/TablePaginationFooter'
+import { FrameHorizontalScrollbar } from '@/components/crud/FrameHorizontalScrollbar'
 
 const emptyForm: Omit<Publicacao, 'id'> = {
   titulo: '',
@@ -1128,6 +1129,7 @@ export default function Publicacoes() {
           </Table>
         </div>
 
+        <FrameHorizontalScrollbar targetRef={tableContainerRef} />
         <TablePaginationFooter
           page={page}
           totalPages={totalPages}

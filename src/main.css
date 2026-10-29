@@ -100,6 +100,14 @@
     height: 10px;
   }
 
+  /* Ocultar barra horizontal nativa em motores WebKit/Blink (Chrome/Safari/macOS/Edge)
+     pois renderizamos a FrameHorizontalScrollbar sempre visível e arrastável.
+     A vertical é preservada intacta. */
+  .table-scroll-container::-webkit-scrollbar:horizontal {
+    height: 0;
+    display: none;
+  }
+
   .table-scroll-container::-webkit-scrollbar-corner {
     background: rgba(241, 245, 249, 0.8);
   }

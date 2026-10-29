@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { TablePaginationFooter } from '@/components/crud/TablePaginationFooter'
+import { FrameHorizontalScrollbar } from '@/components/crud/FrameHorizontalScrollbar'
 import {
   usuariosService,
   type UsuarioComDetalhes,
@@ -534,6 +535,7 @@ export default function Usuarios() {
             </TableBody>
           </Table>
         </div>
+        <FrameHorizontalScrollbar targetRef={tableContainerRef} />
         <TablePaginationFooter
           page={page}
           totalPages={totalPages}

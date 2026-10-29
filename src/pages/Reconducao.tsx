@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { TablePaginationFooter } from '@/components/crud/TablePaginationFooter'
+import { FrameHorizontalScrollbar } from '@/components/crud/FrameHorizontalScrollbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -1046,6 +1047,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
             </TableBody>
           </Table>
         </div>
+        <FrameHorizontalScrollbar targetRef={tableContainerRef} />
         <TablePaginationFooter
           page={page}
           totalPages={totalPages}

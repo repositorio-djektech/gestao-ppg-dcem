@@ -67,6 +67,7 @@ import {
   parseAnoNumerico,
 } from '@/lib/capes/jdp'
 import { TablePaginationFooter } from '@/components/crud/TablePaginationFooter'
+import { FrameHorizontalScrollbar } from '@/components/crud/FrameHorizontalScrollbar'
 
 const emptyForm: Omit<Docente, 'id'> = {
   nome: '',
@@ -923,6 +924,7 @@ export default function Docentes() {
           </Table>
         </div>
 
+        <FrameHorizontalScrollbar targetRef={tableContainerRef} />
         <TablePaginationFooter
           page={page}
           totalPages={totalPages}
