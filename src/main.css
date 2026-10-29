@@ -418,3 +418,16 @@ th button,
   justify-content: flex-start !important;
   text-align: left !important;
 }
+
+/* Separadores de grade verticais visíveis e consistentes em células de cabeçalho */
+th:not(:last-child),
+[data-slot='table-head']:not(:last-child) {
+  border-right: 1px solid rgb(226 232 240) !important;
+  box-shadow: inset -1px 0 0 0 rgb(226 232 240) !important;
+}
+
+.dark th:not(:last-child),
+.dark [data-slot='table-head']:not(:last-child) {
+  border-right: 1px solid rgb(38 38 38) !important;
+  box-shadow: inset -1px 0 0 0 rgb(38 38 38) !important;
+}

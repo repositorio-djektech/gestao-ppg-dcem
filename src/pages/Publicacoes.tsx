@@ -1156,10 +1156,16 @@ export default function Publicacoes() {
                         })()}
                       </TableCell>
                       <TableCell className="font-mono text-sm text-primary hover:underline cursor-pointer">
-                        {p.doi}
+                        {p.doi || '—'}
                       </TableCell>
-                      <TableCell className="text-xs text-slate-600 line-clamp-2">
-                        {p.justificativa}
+                      <TableCell className="text-xs text-slate-600">
+                        {p.justificativa?.trim() ? (
+                          <span className="line-clamp-2" title={p.justificativa}>
+                            {p.justificativa}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </TableCell>
                       {hasActionsColumn && (
                         <TableCell className="text-right">
