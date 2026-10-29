@@ -1193,7 +1193,7 @@ export function VisualizarDocenteDialog({
   }
 
   const renderBotaoAcaoNavegacao = (rota: string, id: number | string) => (
-    <TableCell className="text-right py-2">
+    <TableCell className="text-center py-2">
       <Button
         type="button"
         variant="ghost"
