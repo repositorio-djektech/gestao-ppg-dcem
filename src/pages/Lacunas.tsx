@@ -1531,31 +1531,31 @@ export default function Lacunas({
                     <tr className="border-b border-slate-200 dark:border-neutral-800 bg-[#e9effc] dark:bg-neutral-900 text-slate-700 dark:text-neutral-200 font-semibold uppercase tracking-wider text-[11px]">
                       <th
                         scope="col"
-                        className="py-3 px-4 w-[280px] max-w-[320px] border-r border-slate-200 dark:border-neutral-800 bg-[#e9effc] dark:bg-neutral-900 sticky top-0 z-10"
+                        className="py-3 px-4 text-left whitespace-nowrap w-[280px] max-w-[320px] border-r border-slate-200 dark:border-neutral-800 bg-[#e9effc] dark:bg-neutral-900 sticky top-0 z-10"
                       >
                         Quem
                       </th>
                       <th
                         scope="col"
-                        className="py-3 px-4 min-w-[220px] border-r border-slate-200 dark:border-neutral-800 bg-[#e9effc] dark:bg-neutral-900 sticky top-0 z-10"
+                        className="py-3 px-4 text-left whitespace-nowrap min-w-[220px] border-r border-slate-200 dark:border-neutral-800 bg-[#e9effc] dark:bg-neutral-900 sticky top-0 z-10"
                       >
                         O que falta
                       </th>
                       <th
                         scope="col"
-                        className="py-3 px-4 w-[130px] border-r border-slate-200 dark:border-neutral-800 bg-[#e9effc] dark:bg-neutral-900 sticky top-0 z-10"
+                        className="py-3 px-4 text-left whitespace-nowrap w-[130px] border-r border-slate-200 dark:border-neutral-800 bg-[#e9effc] dark:bg-neutral-900 sticky top-0 z-10"
                       >
                         Grupo
                       </th>
                       <th
                         scope="col"
-                        className="py-3 px-4 w-[120px] text-left border-r border-slate-200 dark:border-neutral-800 bg-[#e9effc] dark:bg-neutral-900 sticky top-0 z-10"
+                        className="py-3 px-4 text-left whitespace-nowrap w-[120px] border-r border-slate-200 dark:border-neutral-800 bg-[#e9effc] dark:bg-neutral-900 sticky top-0 z-10"
                       >
                         Severidade
                       </th>
                       <th
                         scope="col"
-                        className="py-3 px-4 w-[100px] text-right bg-[#e9effc] dark:bg-neutral-900 sticky top-0 z-10"
+                        className="py-3 px-4 text-left whitespace-nowrap w-[100px] bg-[#e9effc] dark:bg-neutral-900 sticky top-0 z-10"
                       >
                         Ação
                       </th>
@@ -1717,22 +1717,22 @@ export default function Lacunas({
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 bg-[#e9effc] text-slate-700 font-semibold text-[11px]">
-                    <th scope="col" className="py-2 px-3 border-r border-slate-200">
+                    <th scope="col" className="py-2 px-3 text-left whitespace-nowrap border-r border-slate-200">
                       Data/Hora
                     </th>
-                    <th scope="col" className="py-2 px-3 border-r border-slate-200">
+                    <th scope="col" className="py-2 px-3 text-left whitespace-nowrap border-r border-slate-200">
                       Operação
                     </th>
-                    <th scope="col" className="py-2 px-3 border-r border-slate-200">
+                    <th scope="col" className="py-2 px-3 text-left whitespace-nowrap border-r border-slate-200">
                       Filtros Aplicados
                     </th>
-                    <th scope="col" className="py-2 px-3 text-right border-r border-slate-200">
+                    <th scope="col" className="py-2 px-3 text-left whitespace-nowrap border-r border-slate-200">
                       Críticas
                     </th>
-                    <th scope="col" className="py-2 px-3 text-right border-r border-slate-200">
+                    <th scope="col" className="py-2 px-3 text-left whitespace-nowrap border-r border-slate-200">
                       Atenção
                     </th>
-                    <th scope="col" className="py-2 px-3 text-right">
+                    <th scope="col" className="py-2 px-3 text-left whitespace-nowrap">
                       Total
                     </th>
                   </tr>

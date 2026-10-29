@@ -424,12 +424,12 @@ export default function Usuarios() {
           <Table>
             <TableHeader className="bg-[#e9effc] dark:bg-neutral-900/90 sticky top-0 z-10 backdrop-blur-xs">
               <TableRow className="bg-[#e9effc] hover:bg-[#e9effc]">
-                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">Usuário</TableHead>
-                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">Papel</TableHead>
-                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">
+                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">Usuário</TableHead>
+                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">Papel</TableHead>
+                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Criado em
                 </TableHead>
-                <TableHead className="text-right font-semibold text-slate-700 bg-[#e9effc]">
+                <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Ações
                 </TableHead>
               </TableRow>

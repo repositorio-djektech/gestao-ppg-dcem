@@ -902,29 +902,29 @@ export default function Publicacoes() {
           <Table>
             <TableHeader className="bg-[#e9effc] dark:bg-neutral-900/90 sticky top-0 z-10 backdrop-blur-xs">
               <TableRow className="bg-[#e9effc] hover:bg-[#e9effc]">
-                <TableHead className="w-[26%] font-semibold text-slate-700 bg-[#e9effc]">
+                <TableHead className="w-[26%] font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Título & Autores
                 </TableHead>
-                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">Qualis</TableHead>
-                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">
+                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">Qualis</TableHead>
+                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Docentes Autores
                 </TableHead>
-                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">
+                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Periódico
                 </TableHead>
-                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">Ano</TableHead>
-                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">
+                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">Ano</TableHead>
+                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Fator de Impacto (JCR)
                 </TableHead>
-                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">
+                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Coautoria P²CEM
                 </TableHead>
-                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">DOI</TableHead>
-                <TableHead className="font-semibold text-slate-700 bg-[#e9effc]">
+                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">DOI</TableHead>
+                <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Justificativa
                 </TableHead>
                 {hasActionsColumn && (
-                  <TableHead className="text-right font-semibold text-slate-700 bg-[#e9effc]">
+                  <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
                     Ações
                   </TableHead>
                 )}

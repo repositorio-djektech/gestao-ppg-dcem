@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Trophy } from 'lucide-react'
 import type { Premicao, ImpactoSocial } from '@/types/database'
 import { normalizarTituloAcademico } from '@/lib/normalizacao'
+import { toTitleCase } from '@/lib/titleCase'
 import {
   SeletorImpactos,
   BadgesImpactosListagem,
@@ -106,11 +107,19 @@ export default function PremiacoesPage() {
     {
       key: 'titulo',
       label: 'Prêmio',
-      className: 'font-medium text-slate-900',
-      render: (p) => normalizarTituloAcademico(p.titulo),
+      className: 'font-medium text-slate-900 text-left',
+      render: (p) => toTitleCase(p.titulo) || normalizarTituloAcademico(p.titulo),
     },
-    { key: 'nome_premiado', label: 'Premiado' },
-    { key: 'instituicao', label: 'Instituição' },
+    {
+      key: 'nome_premiado',
+      label: 'Premiado',
+      render: (p) => toTitleCase(p.nome_premiado),
+    },
+    {
+      key: 'instituicao',
+      label: 'Instituição',
+      render: (p) => toTitleCase(p.instituicao),
+    },
     {
       key: 'ano',
       label: 'Ano',

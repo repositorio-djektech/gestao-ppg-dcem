@@ -30,6 +30,7 @@ import {
 import { toast } from 'sonner'
 import type { Egresso, Docente } from '@/types/database'
 import { normalizarNomePessoa } from '@/lib/normalizacao'
+import { toTitleCase } from '@/lib/titleCase'
 import { DocenteNome } from '@/components/docentes/DocenteNome'
 import { VisualizarEgressoDialog } from '@/components/egressos/VisualizarEgressoDialog'
 import { readLattesFiles } from '@/lib/lattes/readFiles'
@@ -266,7 +267,7 @@ export default function Egressos() {
         headerClassName: 'text-left font-semibold text-slate-700',
         render: (e) => (
           <div className="flex flex-col items-start gap-0.5">
-            <span>{normalizarNomePessoa(e.nome)}</span>
+            <span>{toTitleCase(e.nome) || normalizarNomePessoa(e.nome)}</span>
             {e.tipo_curso && (
               <span className="font-medium text-primary bg-primary/10 px-1.5 py-0.2 rounded text-[11px]">
                 {e.tipo_curso}
@@ -280,7 +281,7 @@ export default function Egressos() {
         label: 'Ano Ingresso',
         mobileSupport: true,
         className: 'text-center',
-        headerClassName: 'text-center font-semibold text-slate-700',
+        headerClassName: 'text-left font-semibold text-slate-700',
         render: (e) =>
           e.ano_ingresso ? (
             <span className="font-mono text-xs">{e.ano_ingresso}</span>
@@ -293,7 +294,7 @@ export default function Egressos() {
         label: 'Ano Titulação',
         mobileSupport: true,
         className: 'text-center',
-        headerClassName: 'text-center font-semibold text-slate-700',
+        headerClassName: 'text-left font-semibold text-slate-700',
         render: (e) =>
           e.ano_titulacao ? (
             <span className="font-semibold text-slate-800 text-xs">{e.ano_titulacao}</span>
@@ -306,7 +307,7 @@ export default function Egressos() {
         label: 'Orientador',
         mobileSupport: true,
         className: 'text-center',
-        headerClassName: 'text-center font-semibold text-slate-700',
+        headerClassName: 'text-left font-semibold text-slate-700',
         render: (e) => {
           const docenteVinculado =
             e.docente_orientador_id && docenteObjMap.has(e.docente_orientador_id)
@@ -334,7 +335,7 @@ export default function Egressos() {
           if (e.orientador && e.orientador.trim()) {
             return (
               <span className="text-xs text-slate-700 font-medium">
-                {normalizarNomePessoa(e.orientador)}
+                {toTitleCase(e.orientador) || normalizarNomePessoa(e.orientador)}
               </span>
             )
           }
@@ -347,10 +348,10 @@ export default function Egressos() {
         label: 'Atuação Profissional',
         mobileSupport: true,
         className: 'text-center',
-        headerClassName: 'text-center font-semibold text-slate-700',
+        headerClassName: 'text-left font-semibold text-slate-700',
         render: (e) => (
           <span className="text-xs text-slate-600 line-clamp-1 max-w-xs mx-auto">
-            {e.atuacao_profissional || '—'}
+            {e.atuacao_profissional ? toTitleCase(e.atuacao_profissional) : '—'}
           </span>
         ),
       },
@@ -489,7 +490,7 @@ export default function Egressos() {
         printModule="egressos"
         tableHeaderClassName="bg-[#e9effc] sticky top-0 z-10"
         tableHeaderRowClassName="bg-[#e9effc] hover:bg-[#e9effc]"
-        actionsHeaderClassName="text-center font-semibold text-slate-700"
+        actionsHeaderClassName="text-left font-semibold text-slate-700"
         formHeaderActions={(ctx) => {
           formStateRef.current = ctx
           return (

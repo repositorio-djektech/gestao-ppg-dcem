@@ -885,32 +885,25 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
           <Table>
             <TableHeader className="bg-[#e9effc] dark:bg-neutral-900/90 sticky top-0 z-10 backdrop-blur-xs">
               <TableRow className="bg-[#e9effc] hover:bg-[#e9effc]">
-                <TableHead className="font-semibold text-slate-700 min-w-[200px] bg-[#e9effc]">
+                <TableHead className="font-semibold text-left text-slate-700 min-w-[200px] bg-[#e9effc] whitespace-nowrap">
                   Docente
                 </TableHead>
-                <TableHead className="text-center font-semibold text-slate-700 bg-[#e9effc]">
-                  Critério I<br />
-                  <span className="text-[10px] font-normal text-slate-500">Orientação</span>
+                <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
+                  Critério I (Orientação)
                 </TableHead>
-                <TableHead className="text-center font-semibold text-slate-700 bg-[#e9effc]">
-                  Critério II
-                  <br />
-                  <span className="text-[10px] font-normal text-slate-500">Disciplina</span>
+                <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
+                  Critério II (Disciplina)
                 </TableHead>
-                <TableHead className="text-center font-semibold text-slate-700 bg-[#e9effc]">
-                  Critério III
-                  <br />
-                  <span className="text-[10px] font-normal text-slate-500">Projeto</span>
+                <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
+                  Critério III (Projeto)
                 </TableHead>
-                <TableHead className="text-center font-semibold text-slate-700 bg-[#e9effc]">
-                  Índice PDQ
-                  <br />
-                  <span className="text-[10px] font-normal text-slate-500">NP / (MSc+DSc)</span>
+                <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
+                  Índice PDQ [NP / (MSc+DSc)]
                 </TableHead>
-                <TableHead className="text-center font-semibold text-slate-700 min-w-[150px] bg-[#e9effc]">
+                <TableHead className="text-left font-semibold text-slate-700 min-w-[150px] bg-[#e9effc] whitespace-nowrap">
                   Veredito
                 </TableHead>
-                <TableHead className="text-right font-semibold text-slate-700 bg-[#e9effc]">
+                <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Evidências
                 </TableHead>
               </TableRow>

@@ -627,22 +627,22 @@ export default function Docentes() {
           <Table>
             <TableHeader className="bg-[#e9effc] dark:bg-neutral-900/90 sticky top-0 z-10 backdrop-blur-xs">
               <TableRow className="bg-[#e9effc] hover:bg-[#e9effc]">
-                <TableHead className="text-center font-semibold text-slate-700 bg-[#e9effc]">
+                <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Nome
                 </TableHead>
-                <TableHead className="text-center font-semibold text-slate-700 bg-[#e9effc]">
+                <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Scopus ID
                 </TableHead>
-                <TableHead className="text-center font-semibold text-slate-700 bg-[#e9effc]">
+                <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Índice-H
                 </TableHead>
-                <TableHead className="text-center font-semibold text-slate-700 bg-[#e9effc]">
+                <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Bolsa CNPq
                 </TableHead>
-                <TableHead className="text-center font-semibold text-slate-700 bg-[#e9effc]">
+                <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   OpenAlex
                 </TableHead>
-                <TableHead className="text-center font-semibold text-slate-700 bg-[#e9effc]">
+                <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Ações
                 </TableHead>
               </TableRow>

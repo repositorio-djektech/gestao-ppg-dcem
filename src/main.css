@@ -176,6 +176,22 @@
     }
   }
 
+  /* AJUSTE 1: Fechar grade da última linha do tbody dentro de .table-scroll-container e tabelas nativas */
+  .table-scroll-container tbody tr:last-child {
+    border-bottom: 1px solid rgb(226 232 240) !important; /* border-slate-200 */
+  }
+
+  .dark .table-scroll-container tbody tr:last-child {
+    border-bottom: 1px solid rgb(38 38 38) !important; /* dark:border-neutral-800 */
+  }
+
+  /* AJUSTE 2: Cabeçalhos alinhados à esquerda e em uma única linha (whitespace-nowrap) em todas as tabelas */
+  .table-scroll-container th,
+  table th {
+    text-align: left !important;
+    white-space: nowrap !important;
+  }
+
   @keyframes fade-in {
     from {
       opacity: 0;

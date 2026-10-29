@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { formatarCpf } from '@/lib/utils'
+import { toTitleCase } from '@/lib/titleCase'
 import { CrudFormDialog } from './CrudFormDialog'
 import type { ColumnDef, FieldDef } from './types'
 export type { ColumnDef, FieldDef } from './types'
@@ -405,21 +406,23 @@ export function CrudPage<T extends { id: number | string }>({
                 {columns.map((col) => (
                   <TableHead
                     key={String(col.key)}
-                    className={
-                      col.headerClassName ??
-                      col.className ??
-                      'font-semibold text-slate-700 dark:text-neutral-200 bg-[#e9effc]'
-                    }
+                    className={cn(
+                      'text-left whitespace-nowrap font-semibold text-slate-700 dark:text-neutral-200 bg-[#e9effc]',
+                      col.headerClassName,
+                      col.className,
+                      '!text-left !whitespace-nowrap',
+                    )}
                   >
                     {col.label}
                   </TableHead>
                 ))}
                 {hasActionsColumn && (
                   <TableHead
-                    className={
-                      actionsHeaderClassName ??
-                      'text-right font-semibold text-slate-700 dark:text-neutral-200 bg-[#e9effc]'
-                    }
+                    className={cn(
+                      'text-left whitespace-nowrap font-semibold text-slate-700 dark:text-neutral-200 bg-[#e9effc]',
+                      actionsHeaderClassName,
+                      '!text-left !whitespace-nowrap',
+                    )}
                   >
                     Ações
                   </TableHead>
@@ -460,15 +463,42 @@ export function CrudPage<T extends { id: number | string }>({
                       key={item.id}
                       className="hover:bg-slate-50/50 dark:hover:bg-neutral-800/50"
                     >
-                      {columns.map((col) => (
-                        <TableCell key={String(col.key)} className={col.className}>
-                          {col.render
-                            ? col.render(item)
-                            : String(col.key).toLowerCase().includes('cpf') && item[col.key]
-                              ? formatarCpf(String(item[col.key]))
-                              : String(item[col.key] ?? '-')}
-                        </TableCell>
-                      ))}
+                      {columns.map((col) => {
+                        const chave = String(col.key).toLowerCase()
+                        const val = item[col.key]
+
+                        let conteudo: React.ReactNode
+                        if (col.render) {
+                          conteudo = col.render(item)
+                        } else if (chave.includes('cpf') && val) {
+                          conteudo = formatarCpf(String(val))
+                        } else if (val === null || val === undefined || val === '') {
+                          conteudo = '-'
+                        } else if (
+                          typeof val === 'string' &&
+                          !chave.includes('email') &&
+                          !chave.includes('cpf') &&
+                          !chave.includes('ano') &&
+                          !chave.includes('data') &&
+                          !chave.includes('url') &&
+                          !chave.includes('link') &&
+                          !chave.includes('id') &&
+                          !chave.includes('doi') &&
+                          !chave.includes('qualis') &&
+                          !chave.includes('status')
+                        ) {
+                          // Campos correlatos a títulos, nomes, instituições, periódicos, editais
+                          conteudo = toTitleCase(val)
+                        } else {
+                          conteudo = String(val)
+                        }
+
+                        return (
+                          <TableCell key={String(col.key)} className={col.className}>
+                            {conteudo}
+                          </TableCell>
+                        )
+                      })}
                       {hasActionsColumn && (
                         <TableCell className={actionsHeaderClassName ?? 'text-right'}>
                           {renderCustomActions ? (

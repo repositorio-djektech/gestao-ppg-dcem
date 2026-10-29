@@ -349,7 +349,7 @@ export default function Discentes() {
         label: 'CPF',
         desktopOnly: true,
         className: 'text-center',
-        headerClassName: 'text-center font-semibold text-slate-700',
+        headerClassName: 'text-left font-semibold text-slate-700',
         render: (d) =>
           d.cpf ? (
             <span className="font-mono text-xs">{formatarCpf(d.cpf)}</span>
@@ -362,7 +362,7 @@ export default function Discentes() {
         label: 'Ingresso',
         mobileSupport: true,
         className: 'text-center',
-        headerClassName: 'text-center font-semibold text-slate-700',
+        headerClassName: 'text-left font-semibold text-slate-700',
         render: (d) =>
           d.data_ingresso ? (
             <span className="font-mono text-xs">{d.data_ingresso}</span>
@@ -375,7 +375,7 @@ export default function Discentes() {
         label: 'Status',
         mobileSupport: true,
         className: 'text-center',
-        headerClassName: 'text-center font-semibold text-slate-700',
+        headerClassName: 'text-left font-semibold text-slate-700',
         render: (d) => (
           <div className="flex justify-start md:justify-center items-center">
             <Badge
@@ -392,7 +392,7 @@ export default function Discentes() {
         label: 'Orientador',
         mobileSupport: true,
         className: 'text-center',
-        headerClassName: 'text-center font-semibold text-slate-700',
+        headerClassName: 'text-left font-semibold text-slate-700',
         render: (d) => {
           const docenteVinculado =
             d.docente_orientador_id && docenteObjMap.has(d.docente_orientador_id)
@@ -433,7 +433,7 @@ export default function Discentes() {
         label: 'Conclusão',
         mobileSupport: true,
         className: 'text-center',
-        headerClassName: 'text-center font-semibold text-slate-700',
+        headerClassName: 'text-left font-semibold text-slate-700',
         render: (d) => {
           if (d.ano_conclusao && String(d.ano_conclusao).trim()) {
             return <span className="font-semibold text-slate-800 text-xs">{d.ano_conclusao}</span>
@@ -635,7 +635,7 @@ export default function Discentes() {
         printModule="discentes"
         tableHeaderClassName="bg-[#e9effc] sticky top-0 z-10"
         tableHeaderRowClassName="bg-[#e9effc] hover:bg-[#e9effc]"
-        actionsHeaderClassName="text-center font-semibold text-slate-700"
+        actionsHeaderClassName="text-left font-semibold text-slate-700"
         formHeaderActions={(ctx) => {
           formStateRef.current = ctx
           return (
