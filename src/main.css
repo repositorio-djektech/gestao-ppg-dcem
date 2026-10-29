@@ -92,15 +92,13 @@
   */
   /* Barra de rolagem nativa para contêineres de tabela:
      - Barra VERTICAL preservada com estilo discreto
-     - Barra HORIZONTAL NATIVA ocultada definitivamente em todos os navegadores/motores
-       (WebKit, Blink, Safari, Chrome, Edge), pois a FrameHorizontalScrollbar dedicada
-       já fornece a rolagem horizontal fixa e sincronizada.
+     - Barra HORIZONTAL NATIVA ocultada definitivamente em WebKit/Blink (Safari, Chrome, Edge),
+       pois a FrameHorizontalScrollbar dedicada já fornece a rolagem horizontal fixa e sincronizada.
      - A rolagem horizontal em si permanece 100% funcional (trackpad, shift+scroll, drag do frame).
+     - NOTA: scrollbar-width e scrollbar-color NÃO são declarados aqui globalmente porque no
+       Chrome/Safari 121+ sua presença anula todos os pseudo-elementos ::-webkit-scrollbar*,
+       fazendo a barra horizontal nativa reaparecer. O Firefox é atendido via @supports (-moz-appearance: none).
   */
-  .table-scroll-container {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(148, 163, 184, 0.6) rgba(241, 245, 249, 0.5);
-  }
 
   /* Largura da barra vertical nativa (10px) e altura zero para a horizontal */
   .table-scroll-container::-webkit-scrollbar {
@@ -151,10 +149,6 @@
     background-color: rgba(100, 116, 139, 0.8);
   }
 
-  .dark .table-scroll-container {
-    scrollbar-color: rgba(115, 115, 115, 0.6) rgba(23, 23, 23, 0.5);
-  }
-
   .dark .table-scroll-container::-webkit-scrollbar-corner {
     background: rgba(23, 23, 23, 0.6);
   }
@@ -166,6 +160,20 @@
   .dark .table-scroll-container::-webkit-scrollbar-thumb:vertical {
     background-color: rgba(115, 115, 115, 0.6);
     border-color: rgba(23, 23, 23, 0.6);
+  }
+
+  /* Suporte específico para Firefox: como o Firefox não suporta ::-webkit-scrollbar*,
+     mantemos scrollbar-width fina apenas para motores Gecko sem desativar
+     as regras ::-webkit-scrollbar nos motores Blink/WebKit (Chrome, Edge, Safari 121+). */
+  @supports (-moz-appearance: none) {
+    .table-scroll-container {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.6) rgba(241, 245, 249, 0.5);
+    }
+
+    .dark .table-scroll-container {
+      scrollbar-color: rgba(115, 115, 115, 0.6) rgba(23, 23, 23, 0.5);
+    }
   }
 
   @keyframes fade-in {
