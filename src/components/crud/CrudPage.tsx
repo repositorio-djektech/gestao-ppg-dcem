@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { TablePaginationFooter } from './TablePaginationFooter'
 import { FrameHorizontalScrollbar } from './FrameHorizontalScrollbar'
 import { useCrudData } from '@/hooks/use-crud-data'
@@ -104,6 +104,9 @@ export function CrudPage<T extends { id: number | string }>({
   transformSubmitData,
 }: CrudPageProps<T>) {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const destaqueParam = searchParams.get('destaque')
+
   const { role, profile } = useAuth()
   const { data, loading, create, update, remove } = useCrudData(service)
   const [searchTerm, setSearchTerm] = useState('')
@@ -117,6 +120,8 @@ export function CrudPage<T extends { id: number | string }>({
   const [fieldOptions, setFieldOptions] = useState<
     Record<string, { value: string; label: string }[]>
   >({})
+  const [destaqueId, setDestaqueId] = useState<string | null>(null)
+  const jaProcessouDestaqueRef = useRef<string | null>(null)
 
   // Inferência ou tabela explícita
   const tabelaEfetiva = tableName || entityName.toLowerCase().replace(/\s+/g, '_')
@@ -251,6 +256,70 @@ export function CrudPage<T extends { id: number | string }>({
   const totalPages = Math.ceil(filtered.length / PER_PAGE)
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
   const colCount = columns.length + (hasActionsColumn ? 1 : 0)
+
+  // Tratamento do parâmetro ?destaque=<id> vindo de deep-link (ex: modal de docente)
+  useEffect(() => {
+    if (!destaqueParam || loading || data.length === 0) return
+    if (jaProcessouDestaqueRef.current === destaqueParam) return
+
+    const itemAlvo = data.find((item) => String(item.id) === String(destaqueParam))
+    if (!itemAlvo) return
+
+    jaProcessouDestaqueRef.current = destaqueParam
+
+    // Limpa filtro de busca caso esteja ativo para garantir visibilidade
+    setSearchTerm('')
+
+    // Localiza a posição do registro na lista completa
+    const index = data.findIndex((item) => String(item.id) === String(destaqueParam))
+    const paginaAlvo = Math.floor(index / PER_PAGE) + 1
+
+    setPage(paginaAlvo)
+    setDestaqueId(String(itemAlvo.id))
+
+    // Limpa o parâmetro da URL imediatamente para evitar re-disparo no refresh
+    const novosParams = new URLSearchParams(searchParams)
+    novosParams.delete('destaque')
+    setSearchParams(novosParams, { replace: true })
+
+    // Timer para remover a classe de destaque após ~3 segundos
+    const timer = setTimeout(() => {
+      setDestaqueId(null)
+    }, 3200)
+
+    return () => clearTimeout(timer)
+  }, [destaqueParam, loading, data, searchParams, setSearchParams])
+
+  // Rola a tabela para posicionar a linha no topo (abaixo do cabeçalho fixo)
+  useEffect(() => {
+    if (!destaqueId) return
+
+    let cancelado = false
+    const scrollParaLinha = () => {
+      if (cancelado) return
+      const container = tableContainerRef.current
+      if (!container) return
+      const linha = container.querySelector<HTMLElement>(`[data-item-id="${destaqueId}"]`)
+      if (!linha) return
+
+      const topoLinha = linha.offsetTop
+      // Cabeçalho sticky costuma ter ~40-48px de altura
+      const headerHeight =
+        container.querySelector<HTMLElement>('thead')?.getBoundingClientRect().height ?? 40
+
+      const scrollDestino = Math.max(0, topoLinha - headerHeight)
+      container.scrollTo({ top: scrollDestino, behavior: 'smooth' })
+    }
+
+    const t1 = setTimeout(scrollParaLinha, 60)
+    const t2 = setTimeout(scrollParaLinha, 200)
+
+    return () => {
+      cancelado = true
+      clearTimeout(t1)
+      clearTimeout(t2)
+    }
+  }, [destaqueId, page])
 
   const handleOpen = (item?: T) => {
     setEditingId(item?.id ?? null)
@@ -458,10 +527,16 @@ export function CrudPage<T extends { id: number | string }>({
                     ctx,
                   )
 
+                  const estaDestaque = destaqueId !== null && String(item.id) === String(destaqueId)
+
                   return (
                     <TableRow
                       key={item.id}
-                      className="hover:bg-slate-50/50 dark:hover:bg-neutral-800/50"
+                      data-item-id={String(item.id)}
+                      className={cn(
+                        'hover:bg-slate-50/50 dark:hover:bg-neutral-800/50 transition-colors',
+                        estaDestaque && 'linha-destacada-fade bg-amber-100/90 dark:bg-amber-950/60',
+                      )}
                     >
                       {columns.map((col) => {
                         const chave = String(col.key).toLowerCase()

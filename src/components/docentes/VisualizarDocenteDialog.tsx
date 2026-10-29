@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,7 @@ import {
   Pencil,
   Check,
   X,
+  Eye,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -120,6 +122,7 @@ export function VisualizarDocenteDialog({
   abaInicial = 'geral',
   onAbrirImpressao,
 }: VisualizarDocenteDialogProps) {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [abaAtiva, setAbaAtiva] = useState<TabKey>(abaInicial)
   const [editandoIdentificacao, setEditandoIdentificacao] = useState(false)
@@ -1184,6 +1187,27 @@ export function VisualizarDocenteDialog({
     )
   }
 
+  const navegarParaItem = (rota: string, id: number | string) => {
+    onOpenChange(false)
+    navigate(`${rota}?destaque=${encodeURIComponent(String(id))}`)
+  }
+
+  const renderBotaoAcaoNavegacao = (rota: string, id: number | string) => (
+    <TableCell className="text-right py-2">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => navegarParaItem(rota, id)}
+        className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10 inline-flex items-center justify-center"
+        title="Visualizar registro na página de listagem"
+        aria-label="Visualizar registro na listagem"
+      >
+        <Eye className="h-4 w-4 text-primary" />
+      </Button>
+    </TableCell>
+  )
+
   const renderAbaPublicacoes = () => {
     const itens = dados.publicacoes
     const limite = limitesPaginacao.publicacoes
@@ -1200,9 +1224,10 @@ export function VisualizarDocenteDialog({
             <TableHeader className="bg-[#e9effc] dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
               <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
                 <TableHead className="w-[10%]">Ano</TableHead>
-                <TableHead className="w-[45%]">Título</TableHead>
+                <TableHead className="w-[40%]">Título</TableHead>
                 <TableHead className="w-[20%]">Periódico</TableHead>
-                <TableHead className="w-[25%]">Autores</TableHead>
+                <TableHead className="w-[20%]">Autores</TableHead>
+                <TableHead className="w-[10%] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1231,6 +1256,7 @@ export function VisualizarDocenteDialog({
                   <TableCell className="text-xs text-slate-500 dark:text-neutral-400">
                     {pub.autores || '—'}
                   </TableCell>
+                  {renderBotaoAcaoNavegacao('/publicacoes', pub.id)}
                 </TableRow>
               ))}
             </TableBody>
@@ -1257,10 +1283,11 @@ export function VisualizarDocenteDialog({
             <TableHeader className="bg-[#e9effc] dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
               <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
                 <TableHead className="w-[15%]">Nível / Tipo</TableHead>
-                <TableHead className="w-[30%]">Orientando (Discente)</TableHead>
-                <TableHead className="w-[15%]">Período</TableHead>
-                <TableHead className="w-[15%]">Status</TableHead>
-                <TableHead className="w-[25%]">Detalhes / Observações</TableHead>
+                <TableHead className="w-[28%]">Orientando (Discente)</TableHead>
+                <TableHead className="w-[14%]">Período</TableHead>
+                <TableHead className="w-[13%]">Status</TableHead>
+                <TableHead className="w-[20%]">Detalhes / Observações</TableHead>
+                <TableHead className="w-[10%] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1297,6 +1324,7 @@ export function VisualizarDocenteDialog({
                   <TableCell className="text-xs text-slate-500 dark:text-neutral-400">
                     {ori.observacoes || '—'}
                   </TableCell>
+                  {renderBotaoAcaoNavegacao('/orientacoes', ori.id)}
                 </TableRow>
               ))}
             </TableBody>
@@ -1322,11 +1350,12 @@ export function VisualizarDocenteDialog({
           <Table>
             <TableHeader className="bg-[#e9effc] dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
               <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
-                <TableHead className="w-[40%]">Título do Projeto</TableHead>
+                <TableHead className="w-[35%]">Título do Projeto</TableHead>
                 <TableHead className="w-[15%]">Período</TableHead>
                 <TableHead className="w-[15%]">Financiamento</TableHead>
                 <TableHead className="w-[15%]">Órgão de Fomento</TableHead>
-                <TableHead className="w-[15%]">Descrição</TableHead>
+                <TableHead className="w-[10%]">Descrição</TableHead>
+                <TableHead className="w-[10%] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1356,6 +1385,7 @@ export function VisualizarDocenteDialog({
                   >
                     {proj.descricao || '—'}
                   </TableCell>
+                  {renderBotaoAcaoNavegacao('/projetos-pesquisa', proj.id)}
                 </TableRow>
               ))}
             </TableBody>
@@ -1382,8 +1412,9 @@ export function VisualizarDocenteDialog({
             <TableHeader className="bg-[#e9effc] dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
               <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
                 <TableHead className="w-[12%]">Ano</TableHead>
-                <TableHead className="w-[48%]">Título / Premiação</TableHead>
-                <TableHead className="w-[40%]">Entidade Promotora</TableHead>
+                <TableHead className="w-[43%]">Título / Premiação</TableHead>
+                <TableHead className="w-[35%]">Entidade Promotora</TableHead>
+                <TableHead className="w-[10%] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1398,6 +1429,7 @@ export function VisualizarDocenteDialog({
                   <TableCell className="text-xs text-slate-600 dark:text-neutral-400">
                     {prem.instituicao || '—'}
                   </TableCell>
+                  {renderBotaoAcaoNavegacao('/premiacoes', prem.id)}
                 </TableRow>
               ))}
             </TableBody>
@@ -1425,8 +1457,9 @@ export function VisualizarDocenteDialog({
               <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
                 <TableHead className="w-[15%]">Tipo</TableHead>
                 <TableHead className="w-[10%]">Ano</TableHead>
-                <TableHead className="w-[45%]">Título da Produção Técnica</TableHead>
-                <TableHead className="w-[30%]">Autores / Equipe</TableHead>
+                <TableHead className="w-[40%]">Título da Produção Técnica</TableHead>
+                <TableHead className="w-[25%]">Autores / Equipe</TableHead>
+                <TableHead className="w-[10%] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1446,6 +1479,7 @@ export function VisualizarDocenteDialog({
                   <TableCell className="text-xs text-slate-500 dark:text-neutral-400">
                     {pt.autores || '—'}
                   </TableCell>
+                  {renderBotaoAcaoNavegacao('/producao-tecnica', pt.id)}
                 </TableRow>
               ))}
             </TableBody>
@@ -1471,10 +1505,11 @@ export function VisualizarDocenteDialog({
           <Table>
             <TableHeader className="bg-[#e9effc] dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
               <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
-                <TableHead className="w-[40%]">Título da Patente</TableHead>
+                <TableHead className="w-[35%]">Título da Patente</TableHead>
                 <TableHead className="w-[18%]">Registro INPI</TableHead>
                 <TableHead className="w-[15%]">Status</TableHead>
-                <TableHead className="w-[27%]">Autores / Inventores</TableHead>
+                <TableHead className="w-[22%]">Autores / Inventores</TableHead>
+                <TableHead className="w-[10%] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1503,6 +1538,7 @@ export function VisualizarDocenteDialog({
                   <TableCell className="text-xs text-slate-500 dark:text-neutral-400">
                     {pat.autores || '—'}
                   </TableCell>
+                  {renderBotaoAcaoNavegacao('/patentes', pat.id)}
                 </TableRow>
               ))}
             </TableBody>
@@ -1528,10 +1564,11 @@ export function VisualizarDocenteDialog({
           <Table>
             <TableHeader className="bg-[#e9effc] dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
               <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
-                <TableHead className="w-[35%]">Nome do Evento</TableHead>
-                <TableHead className="w-[20%]">Papel / Participação</TableHead>
-                <TableHead className="w-[20%]">Local e Data</TableHead>
-                <TableHead className="w-[25%]">Observações / Detalhes</TableHead>
+                <TableHead className="w-[30%]">Nome do Evento</TableHead>
+                <TableHead className="w-[18%]">Papel / Participação</TableHead>
+                <TableHead className="w-[18%]">Local e Data</TableHead>
+                <TableHead className="w-[24%]">Observações / Detalhes</TableHead>
+                <TableHead className="w-[10%] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1551,6 +1588,7 @@ export function VisualizarDocenteDialog({
                   <TableCell className="text-xs text-slate-500 dark:text-neutral-400">
                     {eve.observacoes || '—'}
                   </TableCell>
+                  {renderBotaoAcaoNavegacao('/eventos', eve.id)}
                 </TableRow>
               ))}
             </TableBody>
@@ -1577,9 +1615,10 @@ export function VisualizarDocenteDialog({
             <TableHeader className="bg-[#e9effc] dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
               <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
                 <TableHead className="w-[15%]">Modalidade</TableHead>
-                <TableHead className="w-[35%]">Instituição de Destino</TableHead>
+                <TableHead className="w-[30%]">Instituição de Destino</TableHead>
                 <TableHead className="w-[20%]">Período</TableHead>
-                <TableHead className="w-[30%]">Observações</TableHead>
+                <TableHead className="w-[25%]">Observações</TableHead>
+                <TableHead className="w-[10%] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1599,6 +1638,7 @@ export function VisualizarDocenteDialog({
                   <TableCell className="text-xs text-slate-500 dark:text-neutral-400">
                     {mob.observacoes || '—'}
                   </TableCell>
+                  {renderBotaoAcaoNavegacao('/mobilidade', mob.id)}
                 </TableRow>
               ))}
             </TableBody>
@@ -1625,8 +1665,9 @@ export function VisualizarDocenteDialog({
             <TableHeader className="bg-[#e9effc] dark:bg-neutral-800 sticky top-0 z-10 shadow-sm">
               <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
                 <TableHead className="w-[10%]">Ano</TableHead>
-                <TableHead className="w-[45%]">Título da Ação / Projeto</TableHead>
-                <TableHead className="w-[45%]">Descrição e Impacto</TableHead>
+                <TableHead className="w-[40%]">Título da Ação / Projeto</TableHead>
+                <TableHead className="w-[40%]">Descrição e Impacto</TableHead>
+                <TableHead className="w-[10%] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1641,6 +1682,7 @@ export function VisualizarDocenteDialog({
                   <TableCell className="text-xs text-slate-500 dark:text-neutral-400">
                     {imp.descricao || '—'}
                   </TableCell>
+                  {renderBotaoAcaoNavegacao('/impacto-social', imp.id)}
                 </TableRow>
               ))}
             </TableBody>

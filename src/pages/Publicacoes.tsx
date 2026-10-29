@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useCrudData } from '@/hooks/use-crud-data'
 import { publicacoesService } from '@/services/publicacoes'
 import { discentesService } from '@/services/discentes'
@@ -73,6 +73,7 @@ import { Search, Plus, Edit, Trash2, Printer, Sparkles, Award, FileText } from '
 import { toast } from 'sonner'
 import { TablePaginationFooter } from '@/components/crud/TablePaginationFooter'
 import { FrameHorizontalScrollbar } from '@/components/crud/FrameHorizontalScrollbar'
+import { cn } from '@/lib/utils'
 
 const emptyForm: Omit<Publicacao, 'id'> = {
   titulo: '',
@@ -166,6 +167,9 @@ function getQualisBadge(
 
 export default function Publicacoes() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const destaqueParam = searchParams.get('destaque')
+
   const { profile } = useAuth()
   const { data: publicacoes, loading, create, update, remove } = useCrudData(publicacoesService)
   const [searchTerm, setSearchTerm] = useState('')
@@ -181,6 +185,8 @@ export default function Publicacoes() {
   const tableContainerRef = useRef<HTMLDivElement>(null)
   const [formData, setFormData] = useState<Omit<Publicacao, 'id'>>(emptyForm)
   const [idParaExcluir, setIdParaExcluir] = useState<number | string | null>(null)
+  const [destaqueId, setDestaqueId] = useState<string | null>(null)
+  const jaProcessouDestaqueRef = useRef<string | null>(null)
 
   // Estratos Qualis vindos da tabela qualis
   const [qualisTabelaLista, setQualisTabelaLista] = useState<Qualis[]>([])
@@ -284,6 +290,72 @@ export default function Publicacoes() {
   }, [publicacoes, searchTerm, yearFilter, qualisFilter, tipoProducaoFilter])
   const totalPages = Math.ceil(filtered.length / PER_PAGE)
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
+
+  // Tratamento do parâmetro ?destaque=<id> vindo de deep-link (ex: modal de docente)
+  useEffect(() => {
+    if (!destaqueParam || loading || publicacoes.length === 0) return
+    if (jaProcessouDestaqueRef.current === destaqueParam) return
+
+    const itemAlvo = publicacoes.find((item) => String(item.id) === String(destaqueParam))
+    if (!itemAlvo) return
+
+    jaProcessouDestaqueRef.current = destaqueParam
+
+    // Limpa todos os filtros ativos para garantir que a publicação esteja visível
+    setSearchTerm('')
+    setYearFilter('all')
+    setQualisFilter('all')
+    setTipoProducaoFilter('all')
+
+    // Localiza a posição do registro na lista completa
+    const index = publicacoes.findIndex((item) => String(item.id) === String(destaqueParam))
+    const paginaAlvo = Math.floor(index / PER_PAGE) + 1
+
+    setPage(paginaAlvo)
+    setDestaqueId(String(itemAlvo.id))
+
+    // Limpa o parâmetro da URL imediatamente para evitar re-disparo no refresh
+    const novosParams = new URLSearchParams(searchParams)
+    novosParams.delete('destaque')
+    setSearchParams(novosParams, { replace: true })
+
+    // Timer para remover a classe de destaque após ~3 segundos
+    const timer = setTimeout(() => {
+      setDestaqueId(null)
+    }, 3200)
+
+    return () => clearTimeout(timer)
+  }, [destaqueParam, loading, publicacoes, searchParams, setSearchParams])
+
+  // Rola a tabela para posicionar a linha no topo (abaixo do cabeçalho fixo)
+  useEffect(() => {
+    if (!destaqueId) return
+
+    let cancelado = false
+    const scrollParaLinha = () => {
+      if (cancelado) return
+      const container = tableContainerRef.current
+      if (!container) return
+      const linha = container.querySelector<HTMLElement>(`[data-item-id="${destaqueId}"]`)
+      if (!linha) return
+
+      const topoLinha = linha.offsetTop
+      const headerHeight =
+        container.querySelector<HTMLElement>('thead')?.getBoundingClientRect().height ?? 40
+
+      const scrollDestino = Math.max(0, topoLinha - headerHeight)
+      container.scrollTo({ top: scrollDestino, behavior: 'smooth' })
+    }
+
+    const t1 = setTimeout(scrollParaLinha, 60)
+    const t2 = setTimeout(scrollParaLinha, 200)
+
+    return () => {
+      cancelado = true
+      clearTimeout(t1)
+      clearTimeout(t2)
+    }
+  }, [destaqueId, page])
 
   const handleOpen = async (pub?: Publicacao) => {
     setEditingId(pub?.id ?? null)
@@ -955,8 +1027,17 @@ export default function Publicacoes() {
                     .map((pd) => docentesLista.find((d) => d.id === pd.docente_id))
                     .filter(Boolean) as Docente[]
 
+                  const estaDestaque = destaqueId !== null && String(p.id) === String(destaqueId)
+
                   return (
-                    <TableRow key={p.id} className="hover:bg-slate-50/50">
+                    <TableRow
+                      key={p.id}
+                      data-item-id={String(p.id)}
+                      className={cn(
+                        'hover:bg-slate-50/50 transition-colors',
+                        estaDestaque && 'linha-destacada-fade bg-amber-100/90 dark:bg-amber-950/60',
+                      )}
+                    >
                       <TableCell>
                         <div className="font-medium text-slate-900 mb-1 flex items-start gap-1.5 flex-wrap">
                           <span>{toTitleCase(p.titulo)}</span>

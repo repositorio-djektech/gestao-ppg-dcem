@@ -485,5 +485,29 @@ describe('VisualizarDocenteDialog', () => {
 
       expect(document.body.style.pointerEvents).toBe('')
     })
+
+    it('ao navegar para um item por deep-link, fecha o modal e gera rota com ?destaque=<id>', () => {
+      let modalAberto = true
+      let rotaNavegada = ''
+      const onOpenChange = vi.fn((open: boolean) => {
+        modalAberto = open
+      })
+      const navigate = vi.fn((url: string) => {
+        rotaNavegada = url
+      })
+
+      const navegarParaItem = (rota: string, id: number | string) => {
+        onOpenChange(false)
+        navigate(`${rota}?destaque=${encodeURIComponent(String(id))}`)
+      }
+
+      navegarParaItem('/publicacoes', 123)
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+      expect(modalAberto).toBe(false)
+      expect(rotaNavegada).toBe('/publicacoes?destaque=123')
+
+      navegarParaItem('/orientacoes', 'ori-456')
+      expect(rotaNavegada).toBe('/orientacoes?destaque=ori-456')
+    })
   })
 })
