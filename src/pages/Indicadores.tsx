@@ -134,7 +134,7 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Cabeçalho da Página */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b pb-4">
+      <div className="shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">

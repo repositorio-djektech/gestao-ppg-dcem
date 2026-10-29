@@ -7,6 +7,7 @@ import { discentesService } from '@/services/discentes'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { BookUser } from 'lucide-react'
 import type { Orientacao } from '@/types/database'
 import { calcularStatusEfetivoOrientacao } from '@/lib/orientacoes/status'
 
@@ -205,6 +206,7 @@ export default function Orientacoes() {
   return (
     <CrudPage
       title="Orientações"
+      icon={<BookUser className="h-6 w-6 text-primary shrink-0" />}
       description="Gerencie as orientações de discentes pelos docentes."
       service={orientacoesService}
       columns={columns}

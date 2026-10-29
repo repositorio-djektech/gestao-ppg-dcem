@@ -2,6 +2,7 @@ import { CrudPage } from '@/components/crud/CrudPage'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { mobilidadeService } from '@/services/mobilidade'
 import { Badge } from '@/components/ui/badge'
+import { Plane } from 'lucide-react'
 import type { Mobilidade } from '@/types/database'
 
 const emptyForm = {
@@ -106,6 +107,7 @@ export default function Mobilidade() {
   return (
     <CrudPage
       title="Mobilidade"
+      icon={<Plane className="h-6 w-6 text-primary shrink-0" />}
       description="Gerencie a mobilidade de docentes, discentes e visitantes."
       service={mobilidadeService}
       columns={columns}

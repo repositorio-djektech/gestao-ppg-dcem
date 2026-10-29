@@ -1,6 +1,7 @@
 import { CrudPage } from '@/components/crud/CrudPage'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { linhasPesquisaService } from '@/services/linhas-pesquisa'
+import { GitFork } from 'lucide-react'
 import type { LinhaPesquisa } from '@/types/database'
 
 const emptyForm = {
@@ -48,6 +49,7 @@ export default function LinhasPesquisa() {
   return (
     <CrudPage
       title="Linhas de Pesquisa"
+      icon={<GitFork className="h-6 w-6 text-primary shrink-0" />}
       description="Gerencie as linhas de pesquisa e áreas de concentração do programa."
       service={linhasPesquisaService}
       columns={columns}

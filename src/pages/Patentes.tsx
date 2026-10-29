@@ -5,6 +5,7 @@ import { patentesService } from '@/services/patentes'
 import { impactoSocialService } from '@/services/impacto-social'
 import { impactosVinculosService } from '@/services/impactos-vinculos'
 import { Badge } from '@/components/ui/badge'
+import { Lightbulb } from 'lucide-react'
 import type { Patente, ImpactoSocial } from '@/types/database'
 import {
   SeletorImpactos,
@@ -243,6 +244,7 @@ export default function PatentesPage() {
   return (
     <CrudPage
       title="Patentes"
+      icon={<Lightbulb className="h-6 w-6 text-primary shrink-0" />}
       description="Gerencie as patentes do programa."
       service={customService}
       columns={columns}

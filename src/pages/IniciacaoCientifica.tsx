@@ -6,6 +6,7 @@ import { docentesService } from '@/services/docentes'
 import { discentesService } from '@/services/discentes'
 import { projetosPesquisaService } from '@/services/projetos-pesquisa'
 import { Badge } from '@/components/ui/badge'
+import { FlaskConical } from 'lucide-react'
 import type { IniciacaoCientifica, Docente, Discente, ProjetoPesquisa } from '@/types/database'
 import { DocenteNome } from '@/components/docentes/DocenteNome'
 
@@ -245,7 +246,8 @@ export default function IniciacaoCientificaPage() {
 
   return (
     <CrudPage
-      title="Iniciação Científica e Tecnológica"
+      title="Iniciações"
+      icon={<FlaskConical className="h-6 w-6 text-primary shrink-0" />}
       description="Cadastro e acompanhamento de planos de Iniciação Científica (IC) e Tecnológica (IT) orientados por docentes do programa."
       service={iniciacaoCientificaService}
       columns={columns}

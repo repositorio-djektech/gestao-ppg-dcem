@@ -2,6 +2,7 @@ import { CrudPage } from '@/components/crud/CrudPage'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { disciplinasService } from '@/services/disciplinas'
 import { Badge } from '@/components/ui/badge'
+import { Library } from 'lucide-react'
 import type { Disciplina } from '@/types/database'
 
 const emptyForm = {
@@ -108,6 +109,7 @@ export default function Disciplinas() {
   return (
     <CrudPage
       title="Disciplinas"
+      icon={<Library className="h-6 w-6 text-primary shrink-0" />}
       description="Gerencie as disciplinas oferecidas pelo programa."
       service={disciplinasService}
       columns={columns}

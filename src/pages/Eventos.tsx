@@ -2,6 +2,7 @@ import { CrudPage } from '@/components/crud/CrudPage'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { eventosService } from '@/services/eventos'
 import { Badge } from '@/components/ui/badge'
+import { Calendar } from 'lucide-react'
 import type { Evento, EventoTipo, EventoNacionalidade } from '@/types/database'
 import { normalizarTituloAcademico } from '@/lib/normalizacao'
 
@@ -147,6 +148,7 @@ export default function Eventos() {
   return (
     <CrudPage
       title="Eventos"
+      icon={<Calendar className="h-6 w-6 text-primary shrink-0" />}
       description="Gerencie a participação em eventos dos docentes."
       service={eventosService}
       columns={columns}

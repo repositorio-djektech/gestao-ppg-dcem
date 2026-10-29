@@ -8,7 +8,7 @@ import { premiacoesService } from '@/services/premiacoes'
 import { impactosVinculosService } from '@/services/impactos-vinculos'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Eye, Edit, Trash2, Layers, Sparkles } from 'lucide-react'
+import { Eye, Edit, Trash2, Layers, Sparkles, HeartHandshake } from 'lucide-react'
 import type {
   ImpactoSocial,
   ImpactoVinculo,
@@ -224,6 +224,7 @@ export default function ImpactoSocialPage() {
     <>
       <CrudPage
         title="Impacto Social"
+        icon={<HeartHandshake className="h-6 w-6 text-primary shrink-0" />}
         description="Gerencie os registros de impacto social do programa e visualize as produções vinculadas."
         service={impactoSocialService}
         columns={columns}

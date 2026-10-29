@@ -5,6 +5,7 @@ import { producaoTecnicaService } from '@/services/producao-tecnica'
 import { impactoSocialService } from '@/services/impacto-social'
 import { impactosVinculosService } from '@/services/impactos-vinculos'
 import { Badge } from '@/components/ui/badge'
+import { Wrench } from 'lucide-react'
 import type { ProducaoTecnica, ImpactoSocial } from '@/types/database'
 import {
   SeletorImpactos,
@@ -215,6 +216,7 @@ export default function ProducaoTecnicaPage() {
   return (
     <CrudPage
       title="Produção Técnica"
+      icon={<Wrench className="h-6 w-6 text-primary shrink-0" />}
       description="Gerencie a produção técnica do programa."
       service={customService}
       columns={columns}
