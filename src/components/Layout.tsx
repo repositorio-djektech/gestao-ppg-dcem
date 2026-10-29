@@ -50,7 +50,7 @@ export function Layout() {
           onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
         />
         {/* Área interna de conteúdo: fundo com contraste suave e sombra sutil para destaque */}
-        <main className="flex-1 overflow-y-auto md:overflow-hidden p-4 md:p-6 shadow-inner flex flex-col min-h-0">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 shadow-inner flex flex-col min-h-0">
           <Outlet />
         </main>
       </div>
