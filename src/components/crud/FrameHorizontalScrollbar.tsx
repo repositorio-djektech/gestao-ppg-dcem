@@ -17,6 +17,34 @@ interface ScrollMetrics {
 }
 
 /**
+ * Resolve o elemento que realmente possui rolagem horizontal.
+ *
+ * Em páginas com o componente shadcn <Table>, a tabela é envolvida internamente
+ * por um `<div className="relative w-full overflow-auto table-scroll-container">`.
+ * O contêiner externo (apontado por targetRef) rola na vertical, enquanto o contêiner
+ * interno rola na horizontal.
+ *
+ * 1. Se o próprio contêiner externo tiver overflow horizontal real, usa ele;
+ * 2. Caso contrário, busca o primeiro descendente com classe `.table-scroll-container`
+ *    e verifica se este possui overflow horizontal;
+ * 3. Se nenhum tiver overflow, retorna o próprio `targetRef` (ou null se inexistente),
+ *    o que resultará em hasOverflow = false.
+ */
+export function resolveScrollElement(el: HTMLElement | null): HTMLElement | null {
+  if (!el) return null
+  if (el.scrollWidth > el.clientWidth + 1) {
+    return el
+  }
+
+  const inner = el.querySelector<HTMLElement>('.table-scroll-container')
+  if (inner && inner.scrollWidth > inner.clientWidth + 1) {
+    return inner
+  }
+
+  return el
+}
+
+/**
  * Barra de rolagem horizontal SEMPRE VISÍVEL para a "moldura estilo Supabase".
  *
  * Resolve o comportamento do macOS/iOS onde scrollbars nativas são overlay e
@@ -47,7 +75,8 @@ export function FrameHorizontalScrollbar({ targetRef, className }: FrameHorizont
   }>({ pointerX: 0, scrollLeft: 0 })
 
   const updateMetrics = useCallback(() => {
-    const el = targetRef.current
+    const rawEl = targetRef.current
+    const el = resolveScrollElement(rawEl)
     if (!el) {
       setMetrics((prev) =>
         prev.hasOverflow
@@ -79,10 +108,12 @@ export function FrameHorizontalScrollbar({ targetRef, className }: FrameHorizont
   }, [targetRef])
 
   useEffect(() => {
-    const el = targetRef.current
-    if (!el) return
+    const rootEl = targetRef.current
+    if (!rootEl) return
 
     updateMetrics()
+
+    let activeScrollEl = resolveScrollElement(rootEl)
 
     let rafId: number | null = null
     const handleScroll = () => {
@@ -93,24 +124,55 @@ export function FrameHorizontalScrollbar({ targetRef, className }: FrameHorizont
       })
     }
 
-    el.addEventListener('scroll', handleScroll, { passive: true })
+    // Registra listener no elemento atualmente resolvido e no próprio contêiner raiz
+    rootEl.addEventListener('scroll', handleScroll, { passive: true })
+    if (activeScrollEl && activeScrollEl !== rootEl) {
+      activeScrollEl.addEventListener('scroll', handleScroll, { passive: true })
+    }
 
+    // ResizeObserver monitora o elemento resolvido e sua primeira child
     let resizeObserver: ResizeObserver | null = null
-    if (typeof ResizeObserver !== 'undefined') {
+    const setupObservers = (target: HTMLElement | null) => {
+      if (typeof ResizeObserver === 'undefined') return
+      if (resizeObserver) {
+        resizeObserver.disconnect()
+      }
       resizeObserver = new ResizeObserver(() => {
+        const nextResolved = resolveScrollElement(rootEl)
+        if (nextResolved !== activeScrollEl) {
+          if (activeScrollEl && activeScrollEl !== rootEl) {
+            activeScrollEl.removeEventListener('scroll', handleScroll)
+          }
+          activeScrollEl = nextResolved
+          if (activeScrollEl && activeScrollEl !== rootEl) {
+            activeScrollEl.addEventListener('scroll', handleScroll, { passive: true })
+          }
+          setupObservers(activeScrollEl)
+        }
         updateMetrics()
       })
-      resizeObserver.observe(el)
-      if (el.firstElementChild) {
-        resizeObserver.observe(el.firstElementChild)
+
+      if (rootEl) {
+        resizeObserver.observe(rootEl)
+      }
+      if (target && target !== rootEl) {
+        resizeObserver.observe(target)
+      }
+      if (target?.firstElementChild) {
+        resizeObserver.observe(target.firstElementChild)
       }
     }
+
+    setupObservers(activeScrollEl)
 
     const handleWindowResize = () => updateMetrics()
     window.addEventListener('resize', handleWindowResize)
 
     return () => {
-      el.removeEventListener('scroll', handleScroll)
+      rootEl.removeEventListener('scroll', handleScroll)
+      if (activeScrollEl && activeScrollEl !== rootEl) {
+        activeScrollEl.removeEventListener('scroll', handleScroll)
+      }
       if (rafId !== null) {
         window.cancelAnimationFrame(rafId)
       }
@@ -141,7 +203,7 @@ export function FrameHorizontalScrollbar({ targetRef, className }: FrameHorizont
   const handlePointerDownThumb = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.stopPropagation()
-    const el = targetRef.current
+    const el = resolveScrollElement(targetRef.current)
     if (!el) return
 
     isDraggingRef.current = true
@@ -157,7 +219,7 @@ export function FrameHorizontalScrollbar({ targetRef, className }: FrameHorizont
 
   const handlePointerMoveThumb = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDraggingRef.current) return
-    const el = targetRef.current
+    const el = resolveScrollElement(targetRef.current)
     const track = trackRef.current
     if (!el || !track) return
 
@@ -183,7 +245,7 @@ export function FrameHorizontalScrollbar({ targetRef, className }: FrameHorizont
 
   const handleTrackPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     // Se o clique foi diretamente no polegar, o handler do polegar já faz e.stopPropagation()
-    const el = targetRef.current
+    const el = resolveScrollElement(targetRef.current)
     const track = trackRef.current
     if (!el || !track) return
 
