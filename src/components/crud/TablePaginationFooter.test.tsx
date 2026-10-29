@@ -44,7 +44,7 @@ describe('TablePaginationFooter', () => {
     })
   })
 
-  it('não renderiza barra de rolagem horizontal quando não há overflow', () => {
+  it('não possui barra JS sincronizada customizada (apenas paginação nativa)', () => {
     const handlePageChange = vi.fn()
     render(<TablePaginationFooter page={1} totalPages={1} onPageChange={handlePageChange} />)
 

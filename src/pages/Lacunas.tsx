@@ -936,7 +936,7 @@ export default function Lacunas({
   }, [lacunasFiltradas, page])
 
   return (
-    <div className="space-y-6 animate-fade-in md:pb-24" data-testid="pagina-lacunas">
+    <div className="space-y-6 animate-fade-in" data-testid="pagina-lacunas">
       {/* Topo da página: título, descrição e ações */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
@@ -1522,8 +1522,11 @@ export default function Lacunas({
             </div>
           ) : (
             <>
-              {/* Tabela de Lacunas com rolagem horizontal */}
-              <div ref={tableContainerRef} className="overflow-x-auto table-scroll-container">
+              {/* Tabela de Lacunas com rolagem nos dois eixos e barra nativa colada no topo da paginação */}
+              <div
+                ref={tableContainerRef}
+                className="max-h-[500px] overflow-y-auto overflow-x-auto md:overflow-x-scroll table-scroll-container"
+              >
                 <table className="w-full text-left border-collapse text-xs">
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-slate-200 bg-slate-50/95 text-slate-600 font-semibold uppercase tracking-wider text-[11px] backdrop-blur-xs">

@@ -440,8 +440,8 @@ export default function Publicacoes() {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6 animate-fade-in md:pb-24">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="flex flex-col md:h-[calc(100vh-4rem-3rem)] min-h-0 animate-fade-in gap-3 md:gap-4">
+      <div className="shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Publicações</h1>
           <p className="text-slate-500 text-sm mt-1">Gerencie artigos do quadriênio.</p>
@@ -889,11 +889,15 @@ export default function Publicacoes() {
         </div>
       </div>
 
-      {/* Contêiner de Dados: Tabela rolável com rodapé de paginação fixo sempre visível */}
-      <div className="rounded-lg border border-slate-200 bg-white shadow-sm relative">
-        <div ref={tableContainerRef} className="overflow-x-auto table-scroll-container">
+      {/* Moldura estilo Supabase: contêiner flex-1 min-h-0 com tabela rolável e paginação colada na base */}
+      <div className="flex flex-col flex-1 min-h-0 rounded-lg border border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm overflow-hidden">
+        {/* Contêiner da tabela: overflow-y-auto, overflow-x-scroll forçado no desktop com barra nativa visível colada na paginação */}
+        <div
+          ref={tableContainerRef}
+          className="flex-1 min-h-0 overflow-y-auto overflow-x-auto md:overflow-x-scroll table-scroll-container"
+        >
           <Table>
-            <TableHeader className="bg-slate-50/80 sticky top-0 z-10">
+            <TableHeader className="bg-slate-50/90 dark:bg-neutral-900/90 sticky top-0 z-10 backdrop-blur-xs">
               <TableRow>
                 <TableHead className="w-[26%] font-semibold text-slate-700">
                   Título & Autores

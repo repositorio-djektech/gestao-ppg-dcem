@@ -84,59 +84,52 @@
     background-color: rgba(82, 82, 91, 0.5);
   }
 
-  /* Barra de rolagem suave com cores padrão do sistema / cinza discreto quando houver overflow */
+  /* Barra de rolagem nativa estilizada no modelo do editor de tabelas do Supabase:
+     - cinza padrão suave (slate-400/slate-500)
+     - cantos arredondados padrão
+     - barra horizontal e vertical nativas formam moldura nas bordas do contêiner
+     - sem ocultar a horizontal no desktop (removido display:none / height:0)
+  */
   .table-scroll-container {
     scrollbar-width: thin;
-    scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
+    scrollbar-color: rgba(148, 163, 184, 0.6) rgba(241, 245, 249, 0.5);
   }
 
   .table-scroll-container::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  .table-scroll-container::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .table-scroll-container::-webkit-scrollbar-thumb {
-    background-color: rgba(148, 163, 184, 0.5);
-    border-radius: 9999px;
-  }
-
-  .table-scroll-container::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(100, 116, 139, 0.7);
-  }
-
-  @media (min-width: 768px) {
-    /* No desktop, a barra horizontal é exibida na div de paginação fixada; oculta a horizontal do contêiner da tabela para evitar duplicidade */
-    .table-scroll-container::-webkit-scrollbar:horizontal {
-      height: 0px;
-      display: none;
-    }
-  }
-
-  /* Barra de rolagem horizontal integrada na div de paginação com o mesmo cinza padrão */
-  .table-footer-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
-  }
-
-  .table-footer-scrollbar::-webkit-scrollbar {
+    width: 10px;
     height: 10px;
   }
 
-  .table-footer-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
+  .table-scroll-container::-webkit-scrollbar-corner {
+    background: rgba(241, 245, 249, 0.8);
   }
 
-  .table-footer-scrollbar::-webkit-scrollbar-thumb {
-    background-color: rgba(148, 163, 184, 0.5);
-    border-radius: 9999px;
+  .table-scroll-container::-webkit-scrollbar-track {
+    background: rgba(241, 245, 249, 0.6);
   }
 
-  .table-footer-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(100, 116, 139, 0.7);
+  .table-scroll-container::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.6);
+    border-radius: 6px;
+    border: 2px solid rgba(241, 245, 249, 0.6);
+  }
+
+  .table-scroll-container::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(100, 116, 139, 0.8);
+  }
+
+  .dark .table-scroll-container {
+    scrollbar-color: rgba(115, 115, 115, 0.6) rgba(23, 23, 23, 0.5);
+  }
+
+  .dark .table-scroll-container::-webkit-scrollbar-corner,
+  .dark .table-scroll-container::-webkit-scrollbar-track {
+    background: rgba(23, 23, 23, 0.6);
+  }
+
+  .dark .table-scroll-container::-webkit-scrollbar-thumb {
+    background-color: rgba(115, 115, 115, 0.6);
+    border-color: rgba(23, 23, 23, 0.6);
   }
 
   @keyframes fade-in {
