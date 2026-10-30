@@ -37,6 +37,7 @@ import {
   uploadComprovanteProjeto,
   obterUrlVisualizacaoComprovante,
 } from '@/lib/storage/comprovantes-projetos'
+import { toTitleCase } from '@/lib/titleCase'
 
 export type PapelDocenteProjeto = 'coordenador' | 'participante'
 
@@ -427,12 +428,26 @@ export default function ProjetosPesquisa() {
     {
       key: 'titulo',
       label: 'Título',
-      className: 'font-medium text-slate-900 min-w-[480px] w-[50%]',
-      headerClassName: 'min-w-[480px] w-[50%]',
+      className: 'font-medium text-slate-900 min-w-[336px] w-[35%]',
+      headerClassName: 'min-w-[336px] w-[35%]',
+      render: (p) => {
+        if (!p.titulo) return <span className="text-slate-400">—</span>
+        const tituloFormatado = toTitleCase(p.titulo)
+        return (
+          <span
+            className="line-clamp-3 break-words whitespace-normal font-medium text-slate-900"
+            title={p.titulo}
+          >
+            {tituloFormatado}
+          </span>
+        )
+      },
     },
     {
       key: 'coordenador_id',
       label: 'Coordenador',
+      className: 'min-w-[240px] w-[18%]',
+      headerClassName: 'min-w-[240px] w-[18%]',
       render: (p) => docenteMap[p.coordenador_id ?? ''] ?? '-',
     },
     {
@@ -522,6 +537,8 @@ export default function ProjetosPesquisa() {
     {
       key: 'financiamento',
       label: 'Financiamento',
+      className: 'min-w-[240px] w-[18%]',
+      headerClassName: 'min-w-[240px] w-[18%]',
       render: (p) => {
         if (!p.financiamento) {
           return <span className="text-slate-400">Não</span>
