@@ -575,7 +575,7 @@ export function CrudPage<T extends { id: number | string }>({
                         )
                       })}
                       {hasActionsColumn && (
-                        <TableCell className={actionsHeaderClassName ?? 'text-right'}>
+                        <TableCell className={actionsHeaderClassName ?? 'text-center'}>
                           {renderCustomActions ? (
                             renderCustomActions(item, {
                               openEdit: () => handleOpen(item),
@@ -584,13 +584,13 @@ export function CrudPage<T extends { id: number | string }>({
                               canDeleteItem: canDeleteThisItem,
                             })
                           ) : (
-                            <div className="flex items-center justify-end gap-1">
+                            <div className="flex items-center justify-center gap-2">
                               {canEditThisItem && (
                                 <Button
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => handleOpen(item)}
-                                  className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                                  className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10 shrink-0"
                                   title="Editar"
                                 >
                                   <Edit className="h-4 w-4 text-primary" />
@@ -600,7 +600,7 @@ export function CrudPage<T extends { id: number | string }>({
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
                                   onClick={() => setIdParaExcluir(item.id)}
                                   title="Excluir"
                                 >

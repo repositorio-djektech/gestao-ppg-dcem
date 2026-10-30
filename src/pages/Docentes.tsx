@@ -642,7 +642,7 @@ export default function Docentes() {
                 <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   OpenAlex
                 </TableHead>
-                <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
+                <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap w-[110px]">
                   Ações
                 </TableHead>
               </TableRow>
@@ -870,15 +870,15 @@ export default function Docentes() {
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-1">
+                        <div className="flex items-center justify-center gap-2">
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleVisualizarDocente(d)}
                             className={
                               destacarOlhoLaranja
-                                ? 'h-8 w-8 text-orange-500 hover:text-orange-600 hover:bg-orange-50'
-                                : 'h-8 w-8 text-slate-600 hover:text-primary hover:bg-primary/10'
+                                ? 'h-8 w-8 text-orange-500 hover:text-orange-600 hover:bg-orange-50 shrink-0'
+                                : 'h-8 w-8 text-slate-600 hover:text-primary hover:bg-primary/10 shrink-0'
                             }
                             title={
                               destacarOlhoLaranja
@@ -900,7 +900,7 @@ export default function Docentes() {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleOpen(d)}
-                              className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                              className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10 shrink-0"
                               title="Editar Docente"
                             >
                               <Edit className="h-4 w-4 text-primary" />
@@ -911,7 +911,7 @@ export default function Docentes() {
                               variant="ghost"
                               size="icon"
                               data-testid={`btn-excluir-docente-${d.id}`}
-                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
                               onClick={() => setDocenteParaExcluir(d)}
                               title="Excluir Docente"
                             >

@@ -235,12 +235,12 @@ export default function ImpactoSocialPage() {
         tableName="impacto_social"
         printModule="impacto-social"
         renderCustomActions={(item, { openEdit, openDelete, canEditItem, canDeleteItem }) => (
-          <div className="flex items-center justify-end gap-1">
+          <div className="flex items-center justify-center gap-2">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => abrirVisualizacao(item)}
-              className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+              className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 shrink-0"
               title="Visualizar Impacto e Registros Vinculados"
             >
               <Eye className="h-4 w-4 text-emerald-600" />
@@ -250,7 +250,7 @@ export default function ImpactoSocialPage() {
                 variant="ghost"
                 size="icon"
                 onClick={openEdit}
-                className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10 shrink-0"
                 title="Editar"
               >
                 <Edit className="h-4 w-4 text-primary" />
@@ -261,7 +261,7 @@ export default function ImpactoSocialPage() {
                 variant="ghost"
                 size="icon"
                 onClick={openDelete}
-                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
                 title="Excluir"
               >
                 <Trash2 className="h-4 w-4 text-red-600" />

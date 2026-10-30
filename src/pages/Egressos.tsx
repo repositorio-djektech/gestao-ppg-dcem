@@ -518,12 +518,12 @@ export default function Egressos() {
           edicaoRef.current = openEdit
 
           return (
-            <div className="flex items-center justify-center gap-1">
+            <div className="flex items-center justify-center gap-2">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => handleVisualizarEgresso(item)}
-                className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-50"
+                className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-50 shrink-0"
                 title="Visualizar Egresso"
                 aria-label="Visualizar Egresso"
               >
@@ -534,7 +534,7 @@ export default function Egressos() {
                   variant="ghost"
                   size="icon"
                   onClick={openEdit}
-                  className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                  className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10 shrink-0"
                   title="Editar Egresso"
                 >
                   <Edit className="h-4 w-4 text-primary" />
@@ -544,7 +544,7 @@ export default function Egressos() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
                   onClick={openDelete}
                   title="Excluir Egresso"
                 >

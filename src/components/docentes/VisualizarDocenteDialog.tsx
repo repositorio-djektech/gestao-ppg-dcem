@@ -1227,7 +1227,7 @@ export function VisualizarDocenteDialog({
                 <TableHead className="w-[40%]">Título</TableHead>
                 <TableHead className="w-[20%]">Periódico</TableHead>
                 <TableHead className="w-[20%]">Autores</TableHead>
-                <TableHead className="w-[10%] text-right">Ações</TableHead>
+                <TableHead className="w-[10%] text-left">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1287,7 +1287,7 @@ export function VisualizarDocenteDialog({
                 <TableHead className="w-[14%]">Período</TableHead>
                 <TableHead className="w-[13%]">Status</TableHead>
                 <TableHead className="w-[20%]">Detalhes / Observações</TableHead>
-                <TableHead className="w-[10%] text-right">Ações</TableHead>
+                <TableHead className="w-[10%] text-left">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1355,7 +1355,7 @@ export function VisualizarDocenteDialog({
                 <TableHead className="w-[15%]">Financiamento</TableHead>
                 <TableHead className="w-[15%]">Órgão de Fomento</TableHead>
                 <TableHead className="w-[10%]">Descrição</TableHead>
-                <TableHead className="w-[10%] text-right">Ações</TableHead>
+                <TableHead className="w-[10%] text-left">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1414,7 +1414,7 @@ export function VisualizarDocenteDialog({
                 <TableHead className="w-[12%]">Ano</TableHead>
                 <TableHead className="w-[43%]">Título / Premiação</TableHead>
                 <TableHead className="w-[35%]">Entidade Promotora</TableHead>
-                <TableHead className="w-[10%] text-right">Ações</TableHead>
+                <TableHead className="w-[10%] text-left">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1459,7 +1459,7 @@ export function VisualizarDocenteDialog({
                 <TableHead className="w-[10%]">Ano</TableHead>
                 <TableHead className="w-[40%]">Título da Produção Técnica</TableHead>
                 <TableHead className="w-[25%]">Autores / Equipe</TableHead>
-                <TableHead className="w-[10%] text-right">Ações</TableHead>
+                <TableHead className="w-[10%] text-left">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1509,7 +1509,7 @@ export function VisualizarDocenteDialog({
                 <TableHead className="w-[18%]">Registro INPI</TableHead>
                 <TableHead className="w-[15%]">Status</TableHead>
                 <TableHead className="w-[22%]">Autores / Inventores</TableHead>
-                <TableHead className="w-[10%] text-right">Ações</TableHead>
+                <TableHead className="w-[10%] text-left">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1568,7 +1568,7 @@ export function VisualizarDocenteDialog({
                 <TableHead className="w-[18%]">Papel / Participação</TableHead>
                 <TableHead className="w-[18%]">Local e Data</TableHead>
                 <TableHead className="w-[24%]">Observações / Detalhes</TableHead>
-                <TableHead className="w-[10%] text-right">Ações</TableHead>
+                <TableHead className="w-[10%] text-left">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1618,7 +1618,7 @@ export function VisualizarDocenteDialog({
                 <TableHead className="w-[30%]">Instituição de Destino</TableHead>
                 <TableHead className="w-[20%]">Período</TableHead>
                 <TableHead className="w-[25%]">Observações</TableHead>
-                <TableHead className="w-[10%] text-right">Ações</TableHead>
+                <TableHead className="w-[10%] text-left">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1667,7 +1667,7 @@ export function VisualizarDocenteDialog({
                 <TableHead className="w-[10%]">Ano</TableHead>
                 <TableHead className="w-[40%]">Título da Ação / Projeto</TableHead>
                 <TableHead className="w-[40%]">Descrição e Impacto</TableHead>
-                <TableHead className="w-[10%] text-right">Ações</TableHead>
+                <TableHead className="w-[10%] text-left">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

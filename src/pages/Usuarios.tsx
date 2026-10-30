@@ -500,15 +500,15 @@ export default function Usuarios() {
                         {formatarData(u.created_at)}
                       </TableCell>
 
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
                           {/* Botão Trocar Papel */}
                           {podeGerenciarPapelDoUsuario(u) && (
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleAbrirTrocarPapel(u)}
-                              className="h-8 px-2 text-xs text-purple-700 hover:text-purple-800 hover:bg-purple-50"
+                              className="h-8 px-2 text-xs text-purple-700 hover:text-purple-800 hover:bg-purple-50 shrink-0"
                               title="Alterar papel de permissão"
                             >
                               <KeyRound className="h-3.5 w-3.5 mr-1" />
@@ -522,7 +522,7 @@ export default function Usuarios() {
                               variant="ghost"
                               size="icon"
                               onClick={() => setUsuarioParaExcluir(u)}
-                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
                               title="Excluir usuário permanentemente"
                             >
                               <Trash2 className="h-4 w-4 text-red-600" />

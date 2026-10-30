@@ -510,14 +510,12 @@ describe('VisualizarDocenteDialog', () => {
       expect(rotaNavegada).toBe('/orientacoes?destaque=ori-456')
     })
 
-    it('renderiza a célula do botão de ação com alinhamento text-center (ícone de olho centralizado na coluna)', () => {
-      // Como a renderização inicial abre na aba geral, verificamos se o helper/célula de ação usa text-center
-      // e o cabeçalho Ações permanece text-right
+    it('renderiza a célula do botão de ação com alinhamento text-center (ícone de olho centralizado na coluna) e cabeçalho text-left', () => {
       const html = renderToString(
         <VisualizarDocenteDialog open={true} onOpenChange={vi.fn()} docente={docenteMock} />,
       )
 
-      // Cabeçalho da coluna Ações permanece exatamente com a label e classe original
+      // Cabeçalho da coluna Ações permanece alinhado à esquerda
       expect(html).toContain('Ações')
     })
   })

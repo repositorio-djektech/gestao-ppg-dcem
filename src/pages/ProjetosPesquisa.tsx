@@ -424,7 +424,12 @@ export default function ProjetosPesquisa() {
   }, [carregarParticipantes, todasIniciacoes])
 
   const columns: ColumnDef<ProjetoPesquisa>[] = [
-    { key: 'titulo', label: 'Título', className: 'font-medium text-slate-900' },
+    {
+      key: 'titulo',
+      label: 'Título',
+      className: 'font-medium text-slate-900 min-w-[480px] w-[50%]',
+      headerClassName: 'min-w-[480px] w-[50%]',
+    },
     {
       key: 'coordenador_id',
       label: 'Coordenador',

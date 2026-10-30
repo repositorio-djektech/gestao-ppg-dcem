@@ -515,131 +515,42 @@ export default function Publicacoes() {
 
   return (
     <div className="flex flex-col md:h-[calc(100vh-4rem-3rem)] min-h-0 animate-fade-in gap-3 md:gap-4">
-      <div className="shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-            <FileText className="h-6 w-6 text-primary shrink-0" />
-            <span>Publicações</span>
-          </h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          <Select
-            value={yearFilter}
-            onValueChange={(v) => {
-              setYearFilter(v)
-              setPage(1)
-            }}
-          >
-            <SelectTrigger className="w-[120px] bg-white">
-              <SelectValue placeholder="Ano" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos Anos</SelectItem>
-              <SelectItem value="2025">2025</SelectItem>
-              <SelectItem value="2026">2026</SelectItem>
-              <SelectItem value="2027">2027</SelectItem>
-              <SelectItem value="2028">2028</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={qualisFilter}
-            onValueChange={(v) => {
-              setQualisFilter(v)
-              setPage(1)
-            }}
-          >
-            <SelectTrigger className="w-[130px] bg-white">
-              <SelectValue placeholder="Qualis" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos Qualis</SelectItem>
-              {qualisTabelaLista.length > 0 ? (
-                qualisTabelaLista.map((q) => (
-                  <SelectItem key={q.id} value={q.estrato}>
-                    {q.estrato}
-                  </SelectItem>
-                ))
-              ) : (
-                <>
-                  <SelectItem value="A1">A1</SelectItem>
-                  <SelectItem value="A2">A2</SelectItem>
-                  <SelectItem value="A3">A3</SelectItem>
-                  <SelectItem value="A4">A4</SelectItem>
-                  <SelectItem value="B1">B1</SelectItem>
-                  <SelectItem value="B2">B2</SelectItem>
-                  <SelectItem value="B3">B3</SelectItem>
-                  <SelectItem value="B4">B4</SelectItem>
-                  <SelectItem value="C">C</SelectItem>
-                </>
-              )}
-              <SelectItem value="nenhum">Sem estrato</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={tipoProducaoFilter}
-            onValueChange={(v) => {
-              setTipoProducaoFilter(v)
-              setPage(1)
-            }}
-          >
-            <SelectTrigger className="w-[160px] bg-white">
-              <SelectValue placeholder="Tipo de produção" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os tipos</SelectItem>
-              <SelectItem value="Artigo em periódico">Artigo em periódico</SelectItem>
-              <SelectItem value="Trabalho em anais">Trabalho em anais</SelectItem>
-              <SelectItem value="Capítulo">Capítulo</SelectItem>
-              <SelectItem value="nenhum">Sem tipo</SelectItem>
-            </SelectContent>
-          </Select>
-          <div className="relative flex-1 sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Buscar por título ou autores..."
-              className="pl-9 bg-white"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value)
-                setPage(1)
-              }}
-            />
+      {/* Header em DUAS linhas estruturadas */}
+      <div className="shrink-0 flex flex-col gap-3">
+        {/* Linha 1: Ícone + Título e os botões de ação (Sugerir Qualis, Vincular Docentes, Nova Publicação) */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <FileText className="h-6 w-6 text-primary shrink-0" />
+              <span>Publicações</span>
+            </h1>
+            {isStaff && (
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsSugerirQualisOpen(true)}
+                  className="gap-2 shrink-0 bg-white h-9 border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                  title="Sugerir Qualis automaticamente com base no OpenAlex e Scopus (Etapa D2)"
+                >
+                  <Award className="h-4 w-4 text-emerald-600" />
+                  <span>Sugerir Qualis</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsVincularDocentesOpen(true)}
+                  className="gap-2 shrink-0 bg-white h-9 border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+                  title="Casamento Automático Autor → Docente (Etapa D1)"
+                >
+                  <Sparkles className="h-4 w-4 text-blue-600" />
+                  <span>Vincular Docentes</span>
+                </Button>
+              </div>
+            )}
           </div>
-          <Button
-            variant="outline"
-            onClick={() => navigate('/imprimir/publicacoes')}
-            className="inline-flex items-center justify-center gap-2 border-blue-300 bg-white hover:bg-blue-50 text-blue-700 h-9 px-3.5 text-sm font-medium shrink-0 cursor-pointer"
-            title="Versão para Impressão"
-          >
-            <Printer className="h-4 w-4 text-blue-600 shrink-0" />
-            <span className="hidden sm:inline">Imprimir</span>
-          </Button>
-          {isStaff && (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => setIsSugerirQualisOpen(true)}
-                className="gap-2 shrink-0 bg-white h-9 border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
-                title="Sugerir Qualis automaticamente com base no OpenAlex e Scopus (Etapa D2)"
-              >
-                <Award className="h-4 w-4 text-emerald-600" />
-                <span>Sugerir Qualis (OpenAlex/Scopus)</span>
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setIsVincularDocentesOpen(true)}
-                className="gap-2 shrink-0 bg-white h-9 border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
-                title="Casamento Automático Autor → Docente (Etapa D1)"
-              >
-                <Sparkles className="h-4 w-4 text-blue-600" />
-                <span>Vincular autores a docentes</span>
-              </Button>
-            </>
-          )}
           {canCreate && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={() => handleOpen()} className="gap-2 h-9">
+                <Button onClick={() => handleOpen()} className="gap-2 h-9 ml-auto shrink-0">
                   <Plus className="h-4 w-4" />
                   <span className="hidden sm:inline">Nova Publicação</span>
                 </Button>
@@ -963,6 +874,101 @@ export default function Publicacoes() {
             </Dialog>
           )}
         </div>
+
+        {/* Linha 2: Campos de busca e filtros ocupando toda a largura útil + botão Imprimir à direita */}
+        <div className="w-full flex flex-wrap sm:flex-nowrap items-center gap-2.5">
+          <Select
+            value={yearFilter}
+            onValueChange={(v) => {
+              setYearFilter(v)
+              setPage(1)
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-[130px] shrink-0 bg-white">
+              <SelectValue placeholder="Ano" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos Anos</SelectItem>
+              <SelectItem value="2025">2025</SelectItem>
+              <SelectItem value="2026">2026</SelectItem>
+              <SelectItem value="2027">2027</SelectItem>
+              <SelectItem value="2028">2028</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={qualisFilter}
+            onValueChange={(v) => {
+              setQualisFilter(v)
+              setPage(1)
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-[140px] shrink-0 bg-white">
+              <SelectValue placeholder="Qualis" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos Qualis</SelectItem>
+              {qualisTabelaLista.length > 0 ? (
+                qualisTabelaLista.map((q) => (
+                  <SelectItem key={q.id} value={q.estrato}>
+                    {q.estrato}
+                  </SelectItem>
+                ))
+              ) : (
+                <>
+                  <SelectItem value="A1">A1</SelectItem>
+                  <SelectItem value="A2">A2</SelectItem>
+                  <SelectItem value="A3">A3</SelectItem>
+                  <SelectItem value="A4">A4</SelectItem>
+                  <SelectItem value="B1">B1</SelectItem>
+                  <SelectItem value="B2">B2</SelectItem>
+                  <SelectItem value="B3">B3</SelectItem>
+                  <SelectItem value="B4">B4</SelectItem>
+                  <SelectItem value="C">C</SelectItem>
+                </>
+              )}
+              <SelectItem value="nenhum">Sem estrato</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={tipoProducaoFilter}
+            onValueChange={(v) => {
+              setTipoProducaoFilter(v)
+              setPage(1)
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-[170px] shrink-0 bg-white">
+              <SelectValue placeholder="Tipo de produção" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os tipos</SelectItem>
+              <SelectItem value="Artigo em periódico">Artigo em periódico</SelectItem>
+              <SelectItem value="Trabalho em anais">Trabalho em anais</SelectItem>
+              <SelectItem value="Capítulo">Capítulo</SelectItem>
+              <SelectItem value="nenhum">Sem tipo</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="relative flex-1 min-w-[200px] w-full sm:w-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Buscar por título ou autores..."
+              className="pl-9 bg-white w-full"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                setPage(1)
+              }}
+            />
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => navigate('/imprimir/publicacoes')}
+            className="inline-flex items-center justify-center gap-2 border-blue-300 bg-white hover:bg-blue-50 text-blue-700 h-9 px-3.5 text-sm font-medium shrink-0 cursor-pointer w-full sm:w-auto"
+            title="Versão para Impressão"
+          >
+            <Printer className="h-4 w-4 text-blue-600 shrink-0" />
+            <span>Imprimir</span>
+          </Button>
+        </div>
       </div>
 
       {/* Moldura estilo Supabase: contêiner flex-1 min-h-0 com tabela rolável e paginação colada na base */}
@@ -975,8 +981,8 @@ export default function Publicacoes() {
           <Table>
             <TableHeader className="bg-[#e9effc] dark:bg-neutral-900/90 sticky top-0 z-10 backdrop-blur-xs">
               <TableRow className="bg-[#e9effc] hover:bg-[#e9effc]">
-                <TableHead className="w-[26%] font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
-                  Título & Autores
+                <TableHead className="w-[52%] min-w-[420px] font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
+                  Títulos
                 </TableHead>
                 <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Qualis
@@ -1168,7 +1174,7 @@ export default function Publicacoes() {
                         )}
                       </TableCell>
                       {hasActionsColumn && (
-                        <TableCell className="text-right">
+                        <TableCell className="text-center">
                           {(() => {
                             const idsDocentesPub = todasPubsDocentes
                               .filter((pd) => pd.publicacao_id === p.id)
@@ -1190,13 +1196,13 @@ export default function Publicacoes() {
                             )
 
                             return (
-                              <div className="flex items-center justify-end gap-1">
+                              <div className="flex items-center justify-center gap-2">
                                 {canEditThisPub && (
                                   <Button
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => handleOpen(p)}
-                                    className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                                    className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10 shrink-0"
                                     title="Editar"
                                   >
                                     <Edit className="h-4 w-4 text-primary" />
@@ -1206,7 +1212,7 @@ export default function Publicacoes() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
                                     onClick={() => setIdParaExcluir(p.id)}
                                     title="Excluir"
                                   >

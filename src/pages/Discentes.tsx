@@ -659,12 +659,12 @@ export default function Discentes() {
         }}
         tableName="discentes"
         renderCustomActions={(item, { openEdit, openDelete, canEditItem, canDeleteItem }) => (
-          <div className="flex items-center justify-center gap-1">
+          <div className="flex items-center justify-center gap-2">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => handleVisualizarDiscente(item)}
-              className="h-8 w-8 text-slate-600 hover:text-primary hover:bg-primary/10"
+              className="h-8 w-8 text-slate-600 hover:text-primary hover:bg-primary/10 shrink-0"
               title="Visualizar Discente"
               aria-label="Visualizar Discente"
             >
@@ -675,7 +675,7 @@ export default function Discentes() {
                 variant="ghost"
                 size="icon"
                 onClick={openEdit}
-                className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10 shrink-0"
                 title="Editar Discente"
               >
                 <Edit className="h-4 w-4 text-primary" />
@@ -685,7 +685,7 @@ export default function Discentes() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
                 onClick={openDelete}
                 title="Excluir Discente"
               >
