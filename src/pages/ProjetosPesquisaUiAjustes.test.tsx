@@ -76,4 +76,14 @@ describe('Ajustes de UI - /projetos-pesquisa Larguras de Colunas', () => {
     expect(html).toContain('min-w-[240px]')
     expect(html).toContain('w-[18%]')
   })
+
+  it('renderiza texto do Financiamento com quebra em até 3 linhas (line-clamp-3 break-words whitespace-normal) e title preservado', () => {
+    const html = renderToString(<ProjetosPesquisa />)
+
+    // Verifica que o financiador possui quebra em até 3 linhas e não line-clamp-1
+    expect(html).toContain('title="FAPITEC / CNPq"')
+    expect(html).toContain('FAPITEC / CNPq')
+    expect(html).toContain('line-clamp-3 break-words whitespace-normal')
+    expect(html).not.toContain('line-clamp-1')
+  })
 })

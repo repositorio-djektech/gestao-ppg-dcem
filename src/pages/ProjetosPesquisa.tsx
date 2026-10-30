@@ -557,7 +557,7 @@ export default function ProjetosPesquisa() {
               <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">Sim</Badge>
               {financiadoPor && (
                 <span
-                  className="text-xs font-medium text-slate-800 line-clamp-1"
+                  className="text-xs font-medium text-slate-800 line-clamp-3 break-words whitespace-normal"
                   title={financiadoPor}
                 >
                   {financiadoPor}
