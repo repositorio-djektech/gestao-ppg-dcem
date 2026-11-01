@@ -121,7 +121,12 @@ export function SugerirQualisDialog({ open, onOpenChange, onSucesso }: SugerirQu
       carregarSugestoes()
       qualisService
         .list()
-        .then(setQualisTabelaLista)
+        .then((res) => {
+          const ordenados = [...(res || [])].sort((a, b) =>
+            a.estrato.localeCompare(b.estrato, undefined, { numeric: true }),
+          )
+          setQualisTabelaLista(ordenados)
+        })
         .catch(() => {})
     } else {
       setSugestoes([])

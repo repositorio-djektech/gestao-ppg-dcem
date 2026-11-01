@@ -683,6 +683,17 @@ export default function Publicacoes() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="sem_estrato">Sem estrato</SelectItem>
+                            {/* Opção extra caso o valor já salvo na publicação não exista no catálogo atual (evita perda de dados) */}
+                            {formData.estrato_qualis &&
+                              !qualisTabelaLista.some(
+                                (q) =>
+                                  q.estrato.toUpperCase() ===
+                                  formData.estrato_qualis?.toUpperCase(),
+                              ) && (
+                                <SelectItem value={formData.estrato_qualis}>
+                                  {formData.estrato_qualis} (salvo anteriormente)
+                                </SelectItem>
+                              )}
                             {qualisTabelaLista.length > 0 ? (
                               qualisTabelaLista.map((q) => (
                                 <SelectItem key={q.id} value={q.estrato}>
