@@ -2,7 +2,7 @@
   "name": "gestao-ppg-dcem",
   "description": "Sistema de Avaliação para Engenharias PPG-DCEM",
   "private": true,
-  "version": "0.0.202",
+  "version": "0.0.203",
   "type": "module",
   "scripts": {
     "start": "vite dev",
