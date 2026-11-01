@@ -17,6 +17,7 @@ export type TabelaMapeada =
   | 'producao_tecnica'
   | 'ppg'
   | 'usuarios'
+  | 'qualis'
   | string
 
 export interface ContextoPermissaoRegistro {

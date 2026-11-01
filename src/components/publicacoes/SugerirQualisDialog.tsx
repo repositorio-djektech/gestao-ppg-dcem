@@ -407,7 +407,7 @@ export function SugerirQualisDialog({ open, onOpenChange, onSucesso }: SugerirQu
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl md:max-h-[90vh] md:h-[85vh] flex flex-col p-0 overflow-hidden bg-white">
+      <DialogContent className="max-w-4xl h-[85vh] max-h-[90vh] flex flex-col p-0 overflow-hidden bg-white">
         {' '}
         {/* Cabeçalho padrão (#e9effc / primary) */}
         <DialogHeader className="p-4 md:p-5 pb-3 border-b border-slate-200 bg-[#e9effc] dark:bg-slate-900 shrink-0 pr-12">

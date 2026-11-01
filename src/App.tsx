@@ -19,6 +19,7 @@ import ProjetosPesquisa from '@/pages/ProjetosPesquisa'
 import Publicacoes from '@/pages/Publicacoes'
 import ProducaoTecnica from '@/pages/ProducaoTecnica'
 import Patentes from '@/pages/Patentes'
+import Qualis from '@/pages/Qualis'
 import Eventos from '@/pages/Eventos'
 import Mobilidade from '@/pages/Mobilidade'
 import ImpactoSocial from '@/pages/ImpactoSocial'
@@ -81,6 +82,7 @@ const App = () => {
               <Route path="/publicacoes" element={<Publicacoes />} />
               <Route path="/producao-tecnica" element={<ProducaoTecnica />} />
               <Route path="/patentes" element={<Patentes />} />
+              <Route path="/qualis" element={<Qualis />} />
               <Route path="/eventos" element={<Eventos />} />
               <Route path="/mobilidade" element={<Mobilidade />} />
               <Route path="/impacto-social" element={<ImpactoSocial />} />
