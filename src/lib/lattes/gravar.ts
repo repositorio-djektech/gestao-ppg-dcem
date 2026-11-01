@@ -30,13 +30,21 @@ export interface RelatorioGravacaoLattes {
   producao_tecnica: RelatorioContagemTabela
   patentes: RelatorioContagemTabela
   eventos: RelatorioContagemTabela
+  disciplinas?: RelatorioContagemTabela
   vinculos?: {
     publicacoes_docentes: number
     publicacoes_coautores: number
     orientadores_discentes: number
+    disciplinas_docentes?: number
   }
   erros: Array<{
-    tabela: TabelaAlvoId | 'discentes' | 'publicacoes_docentes' | 'publicacoes_coautores_programa'
+    tabela:
+      | TabelaAlvoId
+      | 'discentes'
+      | 'publicacoes_docentes'
+      | 'publicacoes_coautores_programa'
+      | 'disciplinas'
+      | 'disciplinas_docentes'
     item: string
     mensagem: string
   }>
@@ -154,6 +162,16 @@ export interface EventoParaGravar {
   ano_referencia?: number | null
   link_comprovacao?: string | null
   observacoes?: string | null
+}
+
+export interface DisciplinaParaGravar {
+  nome: string
+  codigo?: string | null
+  carga_horaria?: number | null
+  nivel?: string | null
+  ano?: number | null
+  docente_id?: number | null
+  docente_nome?: string | null
 }
 
 interface DocenteExistenteBanco {
@@ -1208,6 +1226,25 @@ export async function gravarBancas(
 }
 
 /**
+ * Grava disciplinas no Supabase:
+ * A importação de disciplinas via Lattes foi DESATIVADA por decisão da cliente:
+ * a página Disciplinas e os vínculos disciplina↔docente são gerenciados exclusivamente
+ * de forma manual. Qualquer dado de disciplina enviado ao pipeline Lattes é ignorado (no-op seguro)
+ * e não altera as tabelas `disciplinas` nem `disciplinas_docentes`.
+ */
+export async function gravarDisciplinas(
+  disciplinas: DisciplinaParaGravar[],
+  _client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
+): Promise<{ contagem: RelatorioContagemTabela; erros: RelatorioGravacaoLattes['erros'] }> {
+  const contagem: RelatorioContagemTabela = {
+    inseridos: 0,
+    atualizados: 0,
+    ignorados: disciplinas ? disciplinas.length : 0,
+  }
+  return { contagem, erros: [] }
+}
+
+/**
  * Grava projetos de pesquisa no Supabase:
  * - Coordenador resolvido por NRO-ID-CNPQ / id_lattes ou nome;
  * - Financiadores mapeados para orgao_fomento;
@@ -1799,6 +1836,7 @@ export async function gravarDadosLattes(
     producao_tecnica?: ProducaoTecnicaParaGravar[]
     patentes?: PatenteParaGravar[]
     eventos?: EventoParaGravar[]
+    disciplinas?: DisciplinaParaGravar[]
   },
   client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
 ): Promise<RelatorioGravacaoLattes> {
@@ -1812,6 +1850,7 @@ export async function gravarDadosLattes(
     producao_tecnica: { inseridos: 0, atualizados: 0, ignorados: 0 },
     patentes: { inseridos: 0, atualizados: 0, ignorados: 0 },
     eventos: { inseridos: 0, atualizados: 0, ignorados: 0 },
+    disciplinas: { inseridos: 0, atualizados: 0, ignorados: 0 },
     erros: [],
   }
 
@@ -1947,6 +1986,12 @@ export async function gravarDadosLattes(
       })
       relatorio.eventos.ignorados += dados.eventos.length
     }
+  }
+
+  // 10. Disciplinas (gravação desativada — preenchimento exclusivamente manual)
+  if (dados.disciplinas && dados.disciplinas.length > 0) {
+    const resDisc = await gravarDisciplinas(dados.disciplinas, client)
+    relatorio.disciplinas = resDisc.contagem
   }
 
   return relatorio

@@ -193,4 +193,43 @@ describe('Etapa R3: Idempotência de vínculos e preservação manual', () => {
     expect(discentesDb[0].docente_orientador_id).toBe(99)
     expect(discentesDb[0].orientador).toBe('Prof. Orientador Já Existente')
   })
+
+  it('pipeline Lattes não grava em disciplinas nem em disciplinas_docentes, preservando preenchimento manual', async () => {
+    const disciplinasDb = [{ id: 1, nome: 'Disciplina Manual Existente', codigo: 'MAN001' }]
+    const disciplinasDocentesDb = [{ disciplina_id: 1, docente_id: 10 }]
+
+    const mockClient = {
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'disciplinas' || table === 'disciplinas_docentes') {
+          throw new Error(`A tabela ${table} não deve ser acessada na importação Lattes!`)
+        }
+        return {
+          select: vi.fn().mockResolvedValue({ data: [], error: null }),
+          insert: vi.fn().mockResolvedValue({ data: [], error: null }),
+          update: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }
+      }),
+    }
+
+    const dadosImportacao = {
+      disciplinas: [
+        {
+          nome: 'Nova Disciplina do Lattes',
+          codigo: 'LAT001',
+          ano: 2025,
+          docente_id: 10,
+        },
+      ],
+      publicacoes: [],
+      orientacoes: [],
+    }
+
+    // A gravação de disciplinas deve ser no-op e não tocar nas tabelas disciplinas/disciplinas_docentes
+    const relatorio = await gravarDadosLattes(dadosImportacao as any, mockClient as any)
+
+    expect(relatorio.disciplinas?.ignorados).toBe(1)
+    expect(relatorio.disciplinas?.inseridos).toBe(0)
+    expect(disciplinasDb.length).toBe(1)
+    expect(disciplinasDocentesDb.length).toBe(1)
+  })
 })

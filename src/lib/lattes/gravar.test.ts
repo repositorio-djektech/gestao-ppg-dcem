@@ -9,6 +9,7 @@ import {
   gravarProducaoTecnica,
   gravarPatentes,
   gravarEventos,
+  gravarDisciplinas,
   gravarDadosLattes,
   converterLattesDocente,
   converterLattesPublicacao,
@@ -1065,6 +1066,60 @@ describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => 
       expect(relatorio.patentes.inseridos).toBe(1)
       expect(relatorio.eventos.inseridos).toBe(1)
 
+      expect(relatorio.erros).toHaveLength(0)
+    })
+
+    it('desativação de disciplinas: não grava disciplinas nem vínculos nas tabelas do banco', async () => {
+      const mock = createMockSupabaseClient()
+
+      // Tenta gravar disciplinas diretamente via gravarDisciplinas
+      const resDisc = await gravarDisciplinas(
+        [
+          {
+            nome: 'Termodinâmica de Materiais',
+            codigo: 'MAT001',
+            ano: 2025,
+            docente_id: 1,
+          },
+          {
+            nome: 'Cinética e Transformações de Fases',
+            codigo: 'MAT002',
+            ano: 2025,
+            docente_id: 2,
+          },
+        ],
+        mock.client,
+      )
+
+      expect(resDisc.contagem).toEqual({
+        inseridos: 0,
+        atualizados: 0,
+        ignorados: 2,
+      })
+      expect(resDisc.erros).toHaveLength(0)
+      // Nenhuma chamada a 'disciplinas' ou 'disciplinas_docentes' no Supabase
+      expect(mock.insertCalls.disciplinas || []).toHaveLength(0)
+      expect(mock.updateCalls.disciplinas || []).toHaveLength(0)
+
+      // Tenta gravar através do pipeline completo gravarDadosLattes
+      const relatorio = await gravarDadosLattes(
+        {
+          disciplinas: [
+            {
+              nome: 'Caracterização de Materiais',
+              codigo: 'MAT003',
+              ano: 2026,
+            },
+          ],
+        },
+        mock.client,
+      )
+
+      expect(relatorio.disciplinas).toEqual({
+        inseridos: 0,
+        atualizados: 0,
+        ignorados: 1,
+      })
       expect(relatorio.erros).toHaveLength(0)
     })
   })
