@@ -642,6 +642,9 @@ export default function Docentes() {
                 <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   OpenAlex
                 </TableHead>
+                <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
+                  PDQ DCEM
+                </TableHead>
                 <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap w-[110px]">
                   Ações
                 </TableHead>
@@ -651,7 +654,7 @@ export default function Docentes() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i} className="h-14">
-                    {Array.from({ length: 6 }).map((_, j) => (
+                    {Array.from({ length: 7 }).map((_, j) => (
                       <TableCell key={j} className="text-center py-3">
                         <Skeleton className="h-5 w-full" />
                       </TableCell>
@@ -869,6 +872,9 @@ export default function Docentes() {
                           )}
                         </div>
                       </TableCell>
+                      <TableCell className="text-left font-medium text-slate-500">
+                        {/* Coluna PDQ DCEM - reservada no frontend, células vazias */}
+                      </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-2">
                           <Button
@@ -925,7 +931,7 @@ export default function Docentes() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-32 text-center text-slate-500">
+                  <TableCell colSpan={7} className="h-32 text-center text-slate-500">
                     Nenhum docente encontrado.
                   </TableCell>
                 </TableRow>
