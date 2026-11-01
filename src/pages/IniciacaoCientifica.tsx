@@ -82,7 +82,7 @@ export default function IniciacaoCientificaPage() {
     },
     {
       key: 'bolsa_cnpq' as any,
-      label: 'Bolsa CNPq',
+      label: 'Bolsa',
       render: (item) => {
         if (!item.bolsa_cnpq) return <span className="text-slate-400">—</span>
         return (

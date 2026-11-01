@@ -651,7 +651,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
               <Award className="h-6 w-6 text-primary shrink-0" />
-              <span>Norma de Recondução Docente</span>
+              <span>Credenciamento</span>
             </h1>
           </div>
         </div>

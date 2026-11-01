@@ -201,6 +201,13 @@ export type ProjetoDiscente = {
 
 export type NivelDisciplina = 'graduacao' | 'pos_graduacao'
 
+export type DisciplinaDocente = {
+  id: number
+  disciplina_id: number
+  docente_id: number
+  created_at?: string
+}
+
 export type Disciplina = {
   id: number
   nome: string
@@ -211,6 +218,7 @@ export type Disciplina = {
   observacoes: string
   docente_id?: number | null
   nivel?: NivelDisciplina | null
+  docentes_ids?: number[]
 }
 
 export type TipoIniciacaoCientifica =

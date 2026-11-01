@@ -120,7 +120,7 @@ const navSections: NavSection[] = [
         icon: <AlertTriangle className="h-5 w-5 shrink-0" />,
       },
       {
-        label: 'Recondução',
+        label: 'Credenciamento',
         href: '/reconducao',
         icon: <Award className="h-5 w-5 shrink-0" />,
       },
