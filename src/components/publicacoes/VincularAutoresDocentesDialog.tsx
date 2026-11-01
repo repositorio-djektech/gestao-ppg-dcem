@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
-  Sparkles,
+  Link2,
   CheckCircle2,
   AlertCircle,
   Search,
@@ -82,8 +82,8 @@ export function VincularAutoresDocentesDialog({
       }
       setSelecionadas(preSelecionadas)
     } catch (err: any) {
-      console.error('Erro ao gerar sugestões de casamento autor->docente:', err)
-      toast.error('Erro ao analisar publicações para casamento autor→docente.')
+      console.error('Erro ao gerar sugestões de vínculo autor->docente:', err)
+      toast.error('Erro ao analisar publicações para vínculo autor→docente.')
     } finally {
       setLoading(false)
     }
@@ -362,17 +362,16 @@ export function VincularAutoresDocentesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl md:max-h-[90vh] md:h-[85vh] flex flex-col p-0 overflow-hidden bg-white">
-        {' '}
+      <DialogContent className="max-w-4xl h-[85vh] max-h-[85vh] sm:max-h-[85vh] flex flex-col p-0 overflow-hidden bg-white gap-0">
         {/* Cabeçalho no padrão do sistema (#e9effc / primary) */}
         <DialogHeader className="p-4 md:p-5 pb-3 border-b border-slate-200 bg-[#e9effc] dark:bg-slate-900 shrink-0 pr-12">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-blue-600 text-white shadow-xs">
-              <Sparkles className="h-5 w-5" />
+              <Link2 className="h-5 w-5" />
             </div>
             <div>
               <DialogTitle className="text-primary font-bold text-lg md:text-xl text-left">
-                Casamento Automático Autor → Docente
+                Vínculo Automático Autor → Docente
               </DialogTitle>
               <p className="text-xs text-slate-600 mt-0.5">
                 Etapa D1: Vincula autores de publicações ao corpo docente cadastrado no PPG-DCEM.
@@ -504,8 +503,8 @@ export function VincularAutoresDocentesDialog({
             </div>
           </div>
         </div>
-        {/* Lista de Publicações e Sugestões (Scrollável) */}
-        <div className="flex-1 overflow-y-auto p-3 md:p-5 space-y-3 min-h-0 bg-slate-50/50">
+        {/* Lista de Publicações e Sugestões (Scrollável internamente) */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 md:p-5 space-y-3 bg-slate-50/50">
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -676,7 +675,7 @@ export function VincularAutoresDocentesDialog({
           )}
         </div>
         {/* Rodapé fixo */}
-        <div className="border-t border-slate-200 bg-white p-3 md:p-4 flex items-center justify-between gap-2 md:gap-3 shrink-0">
+        <div className="mt-auto border-t border-slate-200 bg-white p-3 md:p-4 flex items-center justify-between gap-2 md:gap-3 shrink-0">
           <Button
             type="button"
             variant="outline"

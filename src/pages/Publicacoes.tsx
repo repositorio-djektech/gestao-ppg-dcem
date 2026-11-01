@@ -539,7 +539,7 @@ export default function Publicacoes() {
                   variant="outline"
                   onClick={() => setIsVincularDocentesOpen(true)}
                   className="gap-2 shrink-0 bg-white h-9 border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
-                  title="Casamento Automático Autor → Docente (Etapa D1)"
+                  title="Vínculo Automático Autor → Docente (Etapa D1)"
                 >
                   <Sparkles className="h-4 w-4 text-blue-600" />
                   <span>Vincular Docentes</span>
@@ -1306,7 +1306,7 @@ export default function Publicacoes() {
         }}
       />
 
-      {/* Diálogo de Casamento Automático Autor -> Docente (Etapa D1) */}
+      {/* Diálogo de Vínculo Automático Autor -> Docente (Etapa D1) */}
       <VincularAutoresDocentesDialog
         open={isVincularDocentesOpen}
         onOpenChange={setIsVincularDocentesOpen}

@@ -412,8 +412,7 @@ export function SugerirQualisDialog({ open, onOpenChange, onSucesso }: SugerirQu
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[85vh] max-h-[90vh] flex flex-col p-0 overflow-hidden bg-white">
-        {' '}
+      <DialogContent className="max-w-4xl h-[85vh] max-h-[85vh] sm:max-h-[85vh] flex flex-col p-0 overflow-hidden bg-white gap-0">
         {/* Cabeçalho padrão (#e9effc / primary) */}
         <DialogHeader className="p-4 md:p-5 pb-3 border-b border-slate-200 bg-[#e9effc] dark:bg-slate-900 shrink-0 pr-12">
           <div className="flex items-center gap-2">
@@ -574,8 +573,8 @@ export function SugerirQualisDialog({ open, onOpenChange, onSucesso }: SugerirQu
             </div>
           </div>
         </div>
-        {/* Lista de Publicações com sugestão / sem métrica */}
-        <div className="flex-1 overflow-y-auto p-3 md:p-5 space-y-3 min-h-0 bg-slate-50/50">
+        {/* Lista de Publicações com sugestão / sem métrica (Scrollável internamente) */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 md:p-5 space-y-3 bg-slate-50/50">
           {loading ? (
             <div className="space-y-3">
               {progresso && (
@@ -773,7 +772,7 @@ export function SugerirQualisDialog({ open, onOpenChange, onSucesso }: SugerirQu
           )}
         </div>
         {/* Rodapé Fixo */}
-        <div className="border-t border-slate-200 bg-white p-3 md:p-4 flex items-center justify-between gap-2 md:gap-3 shrink-0">
+        <div className="mt-auto border-t border-slate-200 bg-white p-3 md:p-4 flex items-center justify-between gap-2 md:gap-3 shrink-0">
           <Button
             type="button"
             variant="outline"
