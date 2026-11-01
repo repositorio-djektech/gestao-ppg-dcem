@@ -379,300 +379,308 @@ export function VincularAutoresDocentesDialog({
             </div>
           </div>
         </DialogHeader>
-        {/* Barra de Estatísticas Resumidas */}
-        {relatorio && (
-          <div className="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 text-xs text-slate-700 shrink-0">
-            <div className="flex items-center gap-3 flex-wrap">
-              <span>
-                <strong>{relatorio.publicacoesAnalisadas}</strong> pubs analisadas
-              </span>
-              <span>•</span>
-              <span className="text-emerald-700 font-medium">
-                <strong>{relatorio.totalAltaConfianca}</strong> alta conf.
-              </span>
-              <span>•</span>
-              <span className="text-amber-700 font-medium">
-                <strong>{relatorio.totalMediaConfianca}</strong> média
-              </span>
-              {relatorio.totalBaixaConfianca > 0 && (
-                <>
-                  <span>•</span>
-                  <span className="text-slate-500">
-                    <strong>{relatorio.totalBaixaConfianca}</strong> baixa
-                  </span>
-                </>
-              )}
-              <span>•</span>
-              <span className="text-blue-700">
-                <strong>{relatorio.totalJaVinculadas}</strong> já vinculadas
-              </span>
-            </div>
+        {/* Corpo Rolante (um único bloco: estatísticas, filtros, ações em massa e lista) */}
+        <div className="flex-1 min-h-0 overflow-y-auto bg-slate-50/50">
+          {/* Barra de Estatísticas Resumidas */}
+          {relatorio && (
+            <div className="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 text-xs text-slate-700">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span>
+                  <strong>{relatorio.publicacoesAnalisadas}</strong> pubs analisadas
+                </span>
+                <span>•</span>
+                <span className="text-emerald-700 font-medium">
+                  <strong>{relatorio.totalAltaConfianca}</strong> alta conf.
+                </span>
+                <span>•</span>
+                <span className="text-amber-700 font-medium">
+                  <strong>{relatorio.totalMediaConfianca}</strong> média
+                </span>
+                {relatorio.totalBaixaConfianca > 0 && (
+                  <>
+                    <span>•</span>
+                    <span className="text-slate-500">
+                      <strong>{relatorio.totalBaixaConfianca}</strong> baixa
+                    </span>
+                  </>
+                )}
+                <span>•</span>
+                <span className="text-blue-700">
+                  <strong>{relatorio.totalJaVinculadas}</strong> já vinculadas
+                </span>
+              </div>
 
-            <div className="flex items-center gap-1.5">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={carregarSugestoes}
-                disabled={loading || processando}
-                className="h-7 text-xs text-slate-600 gap-1 px-2"
-                title="Reprocessar sugestões"
-              >
-                <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-                <span>Reprocessar</span>
-              </Button>
-            </div>
-          </div>
-        )}
-        {/* Filtros e Ações Rápidas de Seleção */}
-        <div className="p-3 md:px-5 border-b border-slate-200 bg-white space-y-2.5 shrink-0">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-              <Input
-                placeholder="Filtrar por docente, autor no artigo ou título..."
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                className="pl-8 text-xs h-8 bg-slate-50"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Select value={filtroConfianca} onValueChange={(v) => setFiltroConfianca(v as any)}>
-                <SelectTrigger className="text-xs h-8 w-[130px] bg-slate-50">
-                  <Filter className="h-3 w-3 mr-1 text-slate-500" />
-                  <SelectValue placeholder="Confiança" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todas">Todas confianças</SelectItem>
-                  <SelectItem value="alta">Apenas Alta</SelectItem>
-                  <SelectItem value="media">Apenas Média</SelectItem>
-                  <SelectItem value="baixa">Apenas Baixa</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filtroStatus} onValueChange={(v) => setFiltroStatus(v as any)}>
-                <SelectTrigger className="text-xs h-8 w-[130px] bg-slate-50">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pendentes">Pendentes</SelectItem>
-                  <SelectItem value="todas">Todas</SelectItem>
-                  <SelectItem value="vinculadas">Já Vinculadas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Botões rápidos de marcação em lote */}
-          <div className="flex items-center justify-between flex-wrap gap-2 pt-1 text-xs">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleSelecionarApenasAltaConfianca}
-                className="h-7 text-xs border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-              >
-                Marcar apenas Alta Confiança
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleSelecionarTodasPendentes}
-                className="h-7 text-xs"
-              >
-                Marcar todas ({totalPendentesFiltradas})
-              </Button>
-              {selecionadas.size > 0 && (
+              <div className="flex items-center gap-1.5">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={handleDesmarcarTodas}
-                  className="h-7 text-xs text-slate-500 hover:text-slate-700"
+                  onClick={carregarSugestoes}
+                  disabled={loading || processando}
+                  className="h-7 text-xs text-slate-600 gap-1 px-2"
+                  title="Reprocessar sugestões"
                 >
-                  Desmarcar
+                  <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+                  <span>Reprocessar</span>
                 </Button>
-              )}
-            </div>
-
-            <div className="text-xs font-semibold text-primary">
-              {selecionadas.size} selecionada(s)
-            </div>
-          </div>
-        </div>
-        {/* Lista de Publicações e Sugestões (Scrollável internamente) */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-3 md:p-5 space-y-3 bg-slate-50/50">
-          {loading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="p-4 rounded-lg border border-slate-200 bg-white space-y-2">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ))}
-            </div>
-          ) : itensFiltrados.length > 0 ? (
-            itensFiltrados.map((pub) => (
-              <div
-                key={pub.publicacaoId}
-                className="rounded-lg border border-slate-200 bg-white p-3.5 shadow-xs space-y-2.5 transition-colors hover:border-slate-300"
-              >
-                {/* Cabeçalho da publicação */}
-                <div className="space-y-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-1.5 flex-1">
-                      <BookOpen className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                      <h4 className="font-semibold text-slate-900 text-xs md:text-sm leading-snug">
-                        {pub.publicacaoTitulo}
-                      </h4>
-                    </div>
-                    <Badge variant="outline" className="text-[11px] shrink-0 font-mono">
-                      {pub.publicacaoAno}
-                    </Badge>
-                  </div>
-                  <p className="text-[11px] text-slate-500 line-clamp-2 pl-5.5">
-                    <strong>Autores no artigo:</strong> {pub.publicacaoAutoresTexto}
-                  </p>
-                </div>
-
-                {/* Lista de Sugestões de Docentes para esta publicação */}
-                <div className="space-y-1.5 pt-1 pl-2 md:pl-5">
-                  <div className="flex items-center gap-1.5">
-                    <GraduationCap className="h-3.5 w-3.5 text-blue-600" />
-                    <Label className="text-[11px] font-semibold text-blue-900">
-                      Sugestões de Docentes Encontradas:
-                    </Label>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {pub.sugestoes.map((sug) => {
-                      const chave = `${pub.publicacaoId}_${sug.docenteId}`
-                      const isSelecionada = selecionadas.has(chave)
-                      const desabilitada = sug.jaVinculado || sug.rejeitadoAnteriormente
-
-                      return (
-                        <div
-                          key={sug.docenteId}
-                          className={`rounded-md border p-2.5 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 transition-colors ${
-                            sug.jaVinculado
-                              ? 'bg-emerald-50/60 border-emerald-200 text-emerald-900'
-                              : sug.rejeitadoAnteriormente
-                                ? 'bg-slate-100/60 border-slate-200 text-slate-500 opacity-75'
-                                : isSelecionada
-                                  ? 'bg-blue-50/90 border-blue-300 shadow-2xs'
-                                  : 'bg-white border-slate-200 hover:bg-slate-50/80'
-                          }`}
-                        >
-                          {/* Lado Esquerdo: Checkbox + Detalhes do Match */}
-                          <div className="flex items-start gap-2.5 flex-1 min-w-0">
-                            {!desabilitada && (
-                              <Checkbox
-                                id={`check-${chave}`}
-                                checked={isSelecionada}
-                                onCheckedChange={() =>
-                                  toggleSelecao(pub.publicacaoId, sug.docenteId)
-                                }
-                                className="mt-0.5 shrink-0"
-                              />
-                            )}
-
-                            <div className="space-y-1 flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <DocenteNome
-                                  nome={sug.docenteNome}
-                                  status={sug.docenteStatus}
-                                  className="font-semibold text-slate-900"
-                                />
-                                {sug.docenteCategoria && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-[10px] py-0 px-1 capitalize"
-                                  >
-                                    {sug.docenteCategoria}
-                                  </Badge>
-                                )}
-                                {renderConfiancaBadge(sug.grauConfianca, sug.grauConfiancaScore)}
-                                {sug.jaVinculado && (
-                                  <Badge className="bg-emerald-600 text-white text-[10px] py-0 px-1.5 gap-1">
-                                    <CheckCircle2 className="h-3 w-3" />
-                                    Vínculo Existente
-                                  </Badge>
-                                )}
-                                {sug.rejeitadoAnteriormente && (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-slate-500 bg-slate-100 text-[10px] py-0 px-1.5"
-                                  >
-                                    Rejeitado
-                                  </Badge>
-                                )}
-                              </div>
-
-                              <p
-                                className="text-[11px] text-slate-600 break-words"
-                                title={sug.justificativa}
-                              >
-                                {sug.justificativa}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Lado Direito: Ações Individuais (Confirmar 1 clique / Rejeitar) */}
-                          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
-                            {!sug.jaVinculado && !sug.rejeitadoAnteriormente && (
-                              <>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  disabled={processando}
-                                  onClick={() =>
-                                    handleRejeitarIndividual(
-                                      pub.publicacaoId,
-                                      sug.docenteId,
-                                      sug.docenteNome,
-                                    )
-                                  }
-                                  className="h-7 text-[11px] text-slate-500 hover:text-red-600 hover:bg-red-50 px-2 gap-1"
-                                  title="Ignorar esta sugestão"
-                                >
-                                  <XCircle className="h-3 w-3" />
-                                  <span>Ignorar</span>
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  disabled={processando}
-                                  onClick={() => handleConfirmarIndividual(pub.publicacaoId, sug)}
-                                  className="h-7 text-[11px] gap-1 px-3 bg-blue-600 hover:bg-blue-700 min-h-[36px] sm:min-h-7"
-                                >
-                                  <CheckCircle2 className="h-3 w-3" />
-                                  <span>Confirmar</span>
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
               </div>
-            ))
-          ) : (
-            <div className="p-8 text-center text-slate-500 text-xs md:text-sm bg-white rounded-lg border border-dashed border-slate-200 space-y-1">
-              <p className="font-semibold text-slate-700">Nenhuma sugestão encontrada.</p>
-              <p>
-                {busca.trim() || filtroConfianca !== 'todas' || filtroStatus !== 'pendentes'
-                  ? 'Ajuste os filtros de busca ou confiança para visualizar outros registros.'
-                  : 'Todas as publicações já foram vinculadas aos docentes ou não possuem correspondência.'}
-              </p>
             </div>
           )}
+
+          {/* Filtros e Ações Rápidas de Seleção */}
+          <div className="p-3 md:px-5 border-b border-slate-200 bg-white space-y-2.5">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                <Input
+                  placeholder="Filtrar por docente, autor no artigo ou título..."
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  className="pl-8 text-xs h-8 bg-slate-50"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Select value={filtroConfianca} onValueChange={(v) => setFiltroConfianca(v as any)}>
+                  <SelectTrigger className="text-xs h-8 w-[130px] bg-slate-50">
+                    <Filter className="h-3 w-3 mr-1 text-slate-500" />
+                    <SelectValue placeholder="Confiança" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todas">Todas confianças</SelectItem>
+                    <SelectItem value="alta">Apenas Alta</SelectItem>
+                    <SelectItem value="media">Apenas Média</SelectItem>
+                    <SelectItem value="baixa">Apenas Baixa</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={filtroStatus} onValueChange={(v) => setFiltroStatus(v as any)}>
+                  <SelectTrigger className="text-xs h-8 w-[130px] bg-slate-50">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pendentes">Pendentes</SelectItem>
+                    <SelectItem value="todas">Todas</SelectItem>
+                    <SelectItem value="vinculadas">Já Vinculadas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Botões rápidos de marcação em lote */}
+            <div className="flex items-center justify-between flex-wrap gap-2 pt-1 text-xs">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSelecionarApenasAltaConfianca}
+                  className="h-7 text-xs border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                >
+                  Marcar apenas Alta Confiança
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSelecionarTodasPendentes}
+                  className="h-7 text-xs"
+                >
+                  Marcar todas ({totalPendentesFiltradas})
+                </Button>
+                {selecionadas.size > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDesmarcarTodas}
+                    className="h-7 text-xs text-slate-500 hover:text-slate-700"
+                  >
+                    Desmarcar
+                  </Button>
+                )}
+              </div>
+
+              <div className="text-xs font-semibold text-primary">
+                {selecionadas.size} selecionada(s)
+              </div>
+            </div>
+          </div>
+
+          {/* Lista de Publicações e Sugestões */}
+          <div className="p-3 md:p-5 space-y-3">
+            {loading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="p-4 rounded-lg border border-slate-200 bg-white space-y-2"
+                  >
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : itensFiltrados.length > 0 ? (
+              itensFiltrados.map((pub) => (
+                <div
+                  key={pub.publicacaoId}
+                  className="rounded-lg border border-slate-200 bg-white p-3.5 shadow-xs space-y-2.5 transition-colors hover:border-slate-300"
+                >
+                  {/* Cabeçalho da publicação */}
+                  <div className="space-y-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-1.5 flex-1">
+                        <BookOpen className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                        <h4 className="font-semibold text-slate-900 text-xs md:text-sm leading-snug">
+                          {pub.publicacaoTitulo}
+                        </h4>
+                      </div>
+                      <Badge variant="outline" className="text-[11px] shrink-0 font-mono">
+                        {pub.publicacaoAno}
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-slate-500 line-clamp-2 pl-5.5">
+                      <strong>Autores no artigo:</strong> {pub.publicacaoAutoresTexto}
+                    </p>
+                  </div>
+
+                  {/* Lista de Sugestões de Docentes para esta publicação */}
+                  <div className="space-y-1.5 pt-1 pl-2 md:pl-5">
+                    <div className="flex items-center gap-1.5">
+                      <GraduationCap className="h-3.5 w-3.5 text-blue-600" />
+                      <Label className="text-[11px] font-semibold text-blue-900">
+                        Sugestões de Docentes Encontradas:
+                      </Label>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {pub.sugestoes.map((sug) => {
+                        const chave = `${pub.publicacaoId}_${sug.docenteId}`
+                        const isSelecionada = selecionadas.has(chave)
+                        const desabilitada = sug.jaVinculado || sug.rejeitadoAnteriormente
+
+                        return (
+                          <div
+                            key={sug.docenteId}
+                            className={`rounded-md border p-2.5 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 transition-colors ${
+                              sug.jaVinculado
+                                ? 'bg-emerald-50/60 border-emerald-200 text-emerald-900'
+                                : sug.rejeitadoAnteriormente
+                                  ? 'bg-slate-100/60 border-slate-200 text-slate-500 opacity-75'
+                                  : isSelecionada
+                                    ? 'bg-blue-50/90 border-blue-300 shadow-2xs'
+                                    : 'bg-white border-slate-200 hover:bg-slate-50/80'
+                            }`}
+                          >
+                            {/* Lado Esquerdo: Checkbox + Detalhes do Match */}
+                            <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                              {!desabilitada && (
+                                <Checkbox
+                                  id={`check-${chave}`}
+                                  checked={isSelecionada}
+                                  onCheckedChange={() =>
+                                    toggleSelecao(pub.publicacaoId, sug.docenteId)
+                                  }
+                                  className="mt-0.5 shrink-0"
+                                />
+                              )}
+
+                              <div className="space-y-1 flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <DocenteNome
+                                    nome={sug.docenteNome}
+                                    status={sug.docenteStatus}
+                                    className="font-semibold text-slate-900"
+                                  />
+                                  {sug.docenteCategoria && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-[10px] py-0 px-1 capitalize"
+                                    >
+                                      {sug.docenteCategoria}
+                                    </Badge>
+                                  )}
+                                  {renderConfiancaBadge(sug.grauConfianca, sug.grauConfiancaScore)}
+                                  {sug.jaVinculado && (
+                                    <Badge className="bg-emerald-600 text-white text-[10px] py-0 px-1.5 gap-1">
+                                      <CheckCircle2 className="h-3 w-3" />
+                                      Vínculo Existente
+                                    </Badge>
+                                  )}
+                                  {sug.rejeitadoAnteriormente && (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-slate-500 bg-slate-100 text-[10px] py-0 px-1.5"
+                                    >
+                                      Rejeitado
+                                    </Badge>
+                                  )}
+                                </div>
+
+                                <p
+                                  className="text-[11px] text-slate-600 break-words"
+                                  title={sug.justificativa}
+                                >
+                                  {sug.justificativa}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Lado Direito: Ações Individuais (Confirmar 1 clique / Rejeitar) */}
+                            <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                              {!sug.jaVinculado && !sug.rejeitadoAnteriormente && (
+                                <>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={processando}
+                                    onClick={() =>
+                                      handleRejeitarIndividual(
+                                        pub.publicacaoId,
+                                        sug.docenteId,
+                                        sug.docenteNome,
+                                      )
+                                    }
+                                    className="h-7 text-[11px] text-slate-500 hover:text-red-600 hover:bg-red-50 px-2 gap-1"
+                                    title="Ignorar esta sugestão"
+                                  >
+                                    <XCircle className="h-3 w-3" />
+                                    <span>Ignorar</span>
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    disabled={processando}
+                                    onClick={() => handleConfirmarIndividual(pub.publicacaoId, sug)}
+                                    className="h-7 text-[11px] gap-1 px-3 bg-blue-600 hover:bg-blue-700 min-h-[36px] sm:min-h-7"
+                                  >
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    <span>Confirmar</span>
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-8 text-center text-slate-500 text-xs md:text-sm bg-white rounded-lg border border-dashed border-slate-200 space-y-1">
+                <p className="font-semibold text-slate-700">Nenhuma sugestão encontrada.</p>
+                <p>
+                  {busca.trim() || filtroConfianca !== 'todas' || filtroStatus !== 'pendentes'
+                    ? 'Ajuste os filtros de busca ou confiança para visualizar outros registros.'
+                    : 'Todas as publicações já foram vinculadas aos docentes ou não possuem correspondência.'}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
         {/* Rodapé fixo */}
         <div className="mt-auto border-t border-slate-200 bg-white p-3 md:p-4 flex items-center justify-between gap-2 md:gap-3 shrink-0">

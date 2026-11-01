@@ -21,13 +21,24 @@ describe('Estrutura de Header e Footer fixos e rolagem interna em modais de Publ
     expect(html).toContain('Sugestão Automática de Estrato Qualis (OpenAlex / Scopus)')
     expect(html).toContain('shrink-0 pr-12')
 
-    // Corpo central com flex-1 min-h-0 overflow-y-auto
+    // Corpo central com flex-1 min-h-0 overflow-y-auto (englobando estatísticas, filtros, ações em massa e lista)
     expect(html).toContain('flex-1 min-h-0 overflow-y-auto')
 
+    // Verifica que as barras de estatísticas e filtros estão dentro do contêiner de scroll e não têm shrink-0
+    const [headerParte, resto] = html.split('</header>')
+    const [corpoScroll, footerParte] = resto.split('mt-auto border-t border-slate-200')
+
+    expect(headerParte).toContain('Sugestão Automática de Estrato Qualis')
+    expect(headerParte).not.toContain('analisadas')
+    expect(headerParte).not.toContain('Filtrar por periódico')
+
+    expect(corpoScroll).toContain('analisadas')
+    expect(corpoScroll).toContain('Filtrar por periódico, título ou DOI...')
+    expect(corpoScroll).toContain('Marcar Alta Confiança')
+
     // Rodapé fixo na base (shrink-0 e mt-auto)
-    expect(html).toContain('mt-auto border-t border-slate-200')
-    expect(html).toContain('Fechar')
-    expect(html).toContain('Confirmar Selecionadas')
+    expect(footerParte).toContain('Fechar')
+    expect(footerParte).toContain('Confirmar Selecionadas')
   })
 
   it('VincularAutoresDocentesDialog possui header e footer fixos, corpo scrollável e textos "Vínculo"', () => {
@@ -50,9 +61,17 @@ describe('Estrutura de Header e Footer fixos e rolagem interna em modais de Publ
     // Corpo central com flex-1 min-h-0 overflow-y-auto
     expect(html).toContain('flex-1 min-h-0 overflow-y-auto')
 
+    const [headerParte, resto] = html.split('</header>')
+    const [corpoScroll, footerParte] = resto.split('mt-auto border-t border-slate-200')
+
+    expect(headerParte).toContain('Vínculo Automático Autor → Docente')
+    expect(headerParte).not.toContain('Filtrar por docente')
+
+    expect(corpoScroll).toContain('Filtrar por docente, autor no artigo ou título...')
+    expect(corpoScroll).toContain('Marcar apenas Alta Confiança')
+
     // Rodapé fixo (shrink-0 e mt-auto)
-    expect(html).toContain('mt-auto border-t border-slate-200')
-    expect(html).toContain('Fechar')
-    expect(html).toContain('Confirmar Selecionadas')
+    expect(footerParte).toContain('Fechar')
+    expect(footerParte).toContain('Confirmar Selecionadas')
   })
 })

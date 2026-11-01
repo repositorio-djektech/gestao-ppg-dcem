@@ -430,346 +430,354 @@ export function SugerirQualisDialog({ open, onOpenChange, onSucesso }: SugerirQu
             </div>
           </div>
         </DialogHeader>
-        {/* Barra de métricas ao vivo com contagens exigidas: analisadas, com sugestão, sem sugestão, já com estrato */}
-        <div className="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 text-xs text-slate-700 shrink-0">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span title="Publicações analisadas nesta rodada (ainda sem estrato)">
-              <strong>{estatisticas.analisadas}</strong> analisadas
-            </span>
-            <span>•</span>
-            <span
-              className="text-emerald-700 font-medium"
-              title="Publicações com sugestão de estrato calculada"
-            >
-              <strong>{estatisticas.comSugestao}</strong> com sugestão ({estatisticas.altaConf}{' '}
-              alta, {estatisticas.mediaConf} média)
-            </span>
-            <span>•</span>
-            <span
-              className="text-amber-700 font-medium"
-              title="Sem métricas disponíveis para sugestão automática"
-            >
-              <strong>{estatisticas.semSugestao}</strong> sem sugestão
-            </span>
-            <span>•</span>
-            <span
-              className="text-blue-700"
-              title="Publicações preservadas que já possuem estrato_qualis definido no banco"
-            >
-              <strong>{estatisticas.jaComEstrato}</strong> já com estrato
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                carregarContagensBanco()
-                carregarSugestoes()
-              }}
-              disabled={loading || processando}
-              className="h-7 text-xs text-slate-600 gap-1 px-2"
-              title="Recarregar estimativas"
-            >
-              <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-              <span>Recarregar</span>
-            </Button>
-          </div>
-        </div>
-        {/* Filtros e Controles de Seleção */}
-        <div className="p-3 md:px-5 border-b border-slate-200 bg-white space-y-2.5 shrink-0">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-              <Input
-                placeholder="Filtrar por periódico, título ou DOI..."
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                className="pl-8 text-xs h-8 bg-slate-50"
-              />
+        {/* Corpo Rolante (um único bloco: estatísticas, filtros, ações em massa e lista) */}
+        <div className="flex-1 min-h-0 overflow-y-auto bg-slate-50/50">
+          {/* Barra de métricas ao vivo com contagens exigidas: analisadas, com sugestão, sem sugestão, já com estrato */}
+          <div className="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 text-xs text-slate-700">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span title="Publicações analisadas nesta rodada (ainda sem estrato)">
+                <strong>{estatisticas.analisadas}</strong> analisadas
+              </span>
+              <span>•</span>
+              <span
+                className="text-emerald-700 font-medium"
+                title="Publicações com sugestão de estrato calculada"
+              >
+                <strong>{estatisticas.comSugestao}</strong> com sugestão ({estatisticas.altaConf}{' '}
+                alta, {estatisticas.mediaConf} média)
+              </span>
+              <span>•</span>
+              <span
+                className="text-amber-700 font-medium"
+                title="Sem métricas disponíveis para sugestão automática"
+              >
+                <strong>{estatisticas.semSugestao}</strong> sem sugestão
+              </span>
+              <span>•</span>
+              <span
+                className="text-blue-700"
+                title="Publicações preservadas que já possuem estrato_qualis definido no banco"
+              >
+                <strong>{estatisticas.jaComEstrato}</strong> já com estrato
+              </span>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              <Select
-                value={filtroPresencaMetrica}
-                onValueChange={(v) => setFiltroPresencaMetrica(v as any)}
+            <div className="flex items-center gap-1.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  carregarContagensBanco()
+                  carregarSugestoes()
+                }}
+                disabled={loading || processando}
+                className="h-7 text-xs text-slate-600 gap-1 px-2"
+                title="Recarregar estimativas"
               >
-                <SelectTrigger className="text-xs h-8 w-[140px] bg-slate-50">
-                  <SelectValue placeholder="Métrica" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todas as pubs</SelectItem>
-                  <SelectItem value="com_sugestao">Com sugestão</SelectItem>
-                  <SelectItem value="sem_sugestao">Sem métrica</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filtroConfianca} onValueChange={(v) => setFiltroConfianca(v as any)}>
-                <SelectTrigger className="text-xs h-8 w-[120px] bg-slate-50">
-                  <Filter className="h-3 w-3 mr-1 text-slate-500" />
-                  <SelectValue placeholder="Confiança" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todas">Todas</SelectItem>
-                  <SelectItem value="alta">Alta</SelectItem>
-                  <SelectItem value="media">Média</SelectItem>
-                  <SelectItem value="baixa">Baixa</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filtroTipo} onValueChange={setFiltroTipo}>
-                <SelectTrigger className="text-xs h-8 w-[130px] bg-slate-50">
-                  <SelectValue placeholder="Tipo produção" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos tipos</SelectItem>
-                  <SelectItem value="Artigo em periódico">Artigo periódico</SelectItem>
-                  <SelectItem value="Trabalho em anais">Trabalho anais</SelectItem>
-                  <SelectItem value="Capítulo">Capítulo</SelectItem>
-                  <SelectItem value="nenhum">Sem tipo</SelectItem>
-                </SelectContent>
-              </Select>
+                <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+                <span>Recarregar</span>
+              </Button>
             </div>
           </div>
 
-          {/* Botões de marcação em lote */}
-          <div className="flex items-center justify-between flex-wrap gap-2 pt-1 text-xs">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleSelecionarApenasAlta}
-                className="h-7 text-xs border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-              >
-                Marcar Alta Confiança ({estatisticas.altaConf})
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleSelecionarTodasComSugestao}
-                className="h-7 text-xs"
-              >
-                Marcar Todas c/ Sugestão ({estatisticas.comSugestao})
-              </Button>
-              {selecionadas.size > 0 && (
+          {/* Filtros e Controles de Seleção */}
+          <div className="p-3 md:px-5 border-b border-slate-200 bg-white space-y-2.5">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                <Input
+                  placeholder="Filtrar por periódico, título ou DOI..."
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  className="pl-8 text-xs h-8 bg-slate-50"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <Select
+                  value={filtroPresencaMetrica}
+                  onValueChange={(v) => setFiltroPresencaMetrica(v as any)}
+                >
+                  <SelectTrigger className="text-xs h-8 w-[140px] bg-slate-50">
+                    <SelectValue placeholder="Métrica" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas as pubs</SelectItem>
+                    <SelectItem value="com_sugestao">Com sugestão</SelectItem>
+                    <SelectItem value="sem_sugestao">Sem métrica</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={filtroConfianca} onValueChange={(v) => setFiltroConfianca(v as any)}>
+                  <SelectTrigger className="text-xs h-8 w-[120px] bg-slate-50">
+                    <Filter className="h-3 w-3 mr-1 text-slate-500" />
+                    <SelectValue placeholder="Confiança" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todas">Todas</SelectItem>
+                    <SelectItem value="alta">Alta</SelectItem>
+                    <SelectItem value="media">Média</SelectItem>
+                    <SelectItem value="baixa">Baixa</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+                  <SelectTrigger className="text-xs h-8 w-[130px] bg-slate-50">
+                    <SelectValue placeholder="Tipo produção" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos tipos</SelectItem>
+                    <SelectItem value="Artigo em periódico">Artigo periódico</SelectItem>
+                    <SelectItem value="Trabalho em anais">Trabalho anais</SelectItem>
+                    <SelectItem value="Capítulo">Capítulo</SelectItem>
+                    <SelectItem value="nenhum">Sem tipo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Botões de marcação em lote */}
+            <div className="flex items-center justify-between flex-wrap gap-2 pt-1 text-xs">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={handleDesmarcarTodas}
-                  className="h-7 text-xs text-slate-500 hover:text-slate-700"
+                  onClick={handleSelecionarApenasAlta}
+                  className="h-7 text-xs border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
                 >
-                  Desmarcar
+                  Marcar Alta Confiança ({estatisticas.altaConf})
                 </Button>
-              )}
-            </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSelecionarTodasComSugestao}
+                  className="h-7 text-xs"
+                >
+                  Marcar Todas c/ Sugestão ({estatisticas.comSugestao})
+                </Button>
+                {selecionadas.size > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDesmarcarTodas}
+                    className="h-7 text-xs text-slate-500 hover:text-slate-700"
+                  >
+                    Desmarcar
+                  </Button>
+                )}
+              </div>
 
-            <div className="text-xs font-semibold text-primary">
-              {selecionadas.size} selecionada(s) para confirmação
+              <div className="text-xs font-semibold text-primary">
+                {selecionadas.size} selecionada(s) para confirmação
+              </div>
             </div>
           </div>
-        </div>
-        {/* Lista de Publicações com sugestão / sem métrica (Scrollável internamente) */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-3 md:p-5 space-y-3 bg-slate-50/50">
-          {loading ? (
-            <div className="space-y-3">
-              {progresso && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 flex items-center justify-between">
-                  <span>
-                    Consultando OpenAlex/Scopus: {progresso.atual} de {progresso.total}...
-                  </span>
-                  <span className="font-mono">
-                    {Math.round((progresso.atual / progresso.total) * 100)}%
-                  </span>
-                </div>
-              )}
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="p-4 rounded-lg border border-slate-200 bg-white space-y-2">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ))}
-            </div>
-          ) : itensFiltrados.length > 0 ? (
-            itensFiltrados.map((item) => {
-              const temSugestao = Boolean(item.estratoSugerido)
-              const isSelecionada = selecionadas.has(item.publicacaoId)
-              const estratoManualEscolhido = estratosManuais.get(item.publicacaoId)
 
-              return (
-                <div
-                  key={item.publicacaoId}
-                  className={`rounded-lg border p-3.5 shadow-xs space-y-2.5 transition-colors ${
-                    temSugestao
-                      ? isSelecionada
-                        ? 'bg-blue-50/70 border-blue-300'
-                        : 'bg-white border-slate-200 hover:border-slate-300'
-                      : 'bg-amber-50/30 border-amber-200/70 hover:border-amber-300'
-                  }`}
-                >
-                  {/* Topo: Seleção + Título + Periódico */}
-                  <div className="flex items-start gap-2.5">
-                    {temSugestao ? (
-                      <Checkbox
-                        id={`check-qualis-${item.publicacaoId}`}
-                        checked={isSelecionada}
-                        onCheckedChange={() => toggleSelecao(item.publicacaoId)}
-                        className="mt-1 shrink-0"
-                      />
-                    ) : (
-                      <HelpCircle className="h-4 w-4 text-amber-500 mt-1 shrink-0" />
-                    )}
+          {/* Lista de Publicações com sugestão / sem métrica */}
+          <div className="p-3 md:p-5 space-y-3">
+            {loading ? (
+              <div className="space-y-3">
+                {progresso && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 flex items-center justify-between">
+                    <span>
+                      Consultando OpenAlex/Scopus: {progresso.atual} de {progresso.total}...
+                    </span>
+                    <span className="font-mono">
+                      {Math.round((progresso.atual / progresso.total) * 100)}%
+                    </span>
+                  </div>
+                )}
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="p-4 rounded-lg border border-slate-200 bg-white space-y-2"
+                  >
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : itensFiltrados.length > 0 ? (
+              itensFiltrados.map((item) => {
+                const temSugestao = Boolean(item.estratoSugerido)
+                const isSelecionada = selecionadas.has(item.publicacaoId)
+                const estratoManualEscolhido = estratosManuais.get(item.publicacaoId)
 
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex items-start justify-between gap-2 flex-wrap">
-                        <h4 className="font-semibold text-slate-900 text-xs md:text-sm leading-snug flex-1">
-                          {item.titulo}
-                        </h4>
-                        <Badge variant="outline" className="text-[11px] font-mono shrink-0">
-                          {item.ano}
-                        </Badge>
-                      </div>
+                return (
+                  <div
+                    key={item.publicacaoId}
+                    className={`rounded-lg border p-3.5 shadow-xs space-y-2.5 transition-colors ${
+                      temSugestao
+                        ? isSelecionada
+                          ? 'bg-blue-50/70 border-blue-300'
+                          : 'bg-white border-slate-200 hover:border-slate-300'
+                        : 'bg-amber-50/30 border-amber-200/70 hover:border-amber-300'
+                    }`}
+                  >
+                    {/* Topo: Seleção + Título + Periódico */}
+                    <div className="flex items-start gap-2.5">
+                      {temSugestao ? (
+                        <Checkbox
+                          id={`check-qualis-${item.publicacaoId}`}
+                          checked={isSelecionada}
+                          onCheckedChange={() => toggleSelecao(item.publicacaoId)}
+                          className="mt-1 shrink-0"
+                        />
+                      ) : (
+                        <HelpCircle className="h-4 w-4 text-amber-500 mt-1 shrink-0" />
+                      )}
 
-                      <div className="flex items-center gap-2 text-[11px] text-slate-600 flex-wrap">
-                        <span className="font-medium text-slate-800">
-                          <strong>Periódico:</strong> {item.periodico || '—'}
-                        </span>
-                        {item.tipoProducao && (
-                          <>
-                            <span>•</span>
-                            <span className="text-slate-500 bg-slate-100 px-1 py-0.2 rounded">
-                              {item.tipoProducao}
-                            </span>
-                          </>
-                        )}
-                        {item.doi && (
-                          <>
-                            <span>•</span>
-                            <a
-                              href={`https://doi.org/${item.doi.replace(/^https?:\/\/doi\.org\//i, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-mono text-primary hover:underline flex items-center gap-0.5"
-                            >
-                              DOI <ExternalLink className="h-2.5 w-2.5" />
-                            </a>
-                          </>
-                        )}
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-start justify-between gap-2 flex-wrap">
+                          <h4 className="font-semibold text-slate-900 text-xs md:text-sm leading-snug flex-1">
+                            {item.titulo}
+                          </h4>
+                          <Badge variant="outline" className="text-[11px] font-mono shrink-0">
+                            {item.ano}
+                          </Badge>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-[11px] text-slate-600 flex-wrap">
+                          <span className="font-medium text-slate-800">
+                            <strong>Periódico:</strong> {item.periodico || '—'}
+                          </span>
+                          {item.tipoProducao && (
+                            <>
+                              <span>•</span>
+                              <span className="text-slate-500 bg-slate-100 px-1 py-0.2 rounded">
+                                {item.tipoProducao}
+                              </span>
+                            </>
+                          )}
+                          {item.doi && (
+                            <>
+                              <span>•</span>
+                              <a
+                                href={`https://doi.org/${item.doi.replace(/^https?:\/\/doi\.org\//i, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-mono text-primary hover:underline flex items-center gap-0.5"
+                              >
+                                DOI <ExternalLink className="h-2.5 w-2.5" />
+                              </a>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Miolo: Métricas, Sugestão e Justificativa */}
-                  <div className="pl-6 md:pl-7 pt-1 border-t border-slate-100 space-y-2">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-medium text-slate-700">Sugestão:</span>
-                        {renderEstratoBadge(item.estratoSugerido)}
-                        {renderConfiancaBadge(item.grauConfianca)}
-                        <span className="text-[11px] text-slate-500 font-mono">
-                          [{item.metricasResumo}]
-                        </span>
+                    {/* Miolo: Métricas, Sugestão e Justificativa */}
+                    <div className="pl-6 md:pl-7 pt-1 border-t border-slate-100 space-y-2">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-medium text-slate-700">Sugestão:</span>
+                          {renderEstratoBadge(item.estratoSugerido)}
+                          {renderConfiancaBadge(item.grauConfianca)}
+                          <span className="text-[11px] text-slate-500 font-mono">
+                            [{item.metricasResumo}]
+                          </span>
+                        </div>
+
+                        {/* Botão de confirmação 1 clique para com sugestão */}
+                        {temSugestao && (
+                          <div className="flex items-center gap-1.5 self-end sm:self-center">
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={processando}
+                              onClick={() => handleConfirmarIndividual(item)}
+                              className="text-[11px] gap-1 px-3 bg-blue-600 hover:bg-blue-700 h-7"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              <span>Confirmar {item.estratoSugerido}</span>
+                            </Button>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Botão de confirmação 1 clique para com sugestão */}
-                      {temSugestao && (
-                        <div className="flex items-center gap-1.5 self-end sm:self-center">
+                      {/* Justificativa Legível */}
+                      <p className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded border border-slate-200/80">
+                        <strong>Justificativa da estimativa:</strong> {item.justificativa}
+                      </p>
+
+                      {/* Caso sem sugestão: Seção direta de atribuição manual na linha */}
+                      {!temSugestao && (
+                        <div className="flex items-center justify-between gap-2 p-2 bg-amber-50 rounded border border-amber-200/80 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-amber-900">
+                              Atribuir manualmente:
+                            </span>
+                            <Select
+                              value={estratoManualEscolhido || 'nenhum'}
+                              onValueChange={(val) =>
+                                val !== 'nenhum' &&
+                                handleSetEstratoManual(item.publicacaoId, val as EstratoQualis)
+                              }
+                            >
+                              <SelectTrigger className="h-7 w-[100px] text-xs bg-white border-amber-300">
+                                <SelectValue placeholder="Estrato" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="nenhum">Selecione</SelectItem>
+                                {qualisTabelaLista.length > 0 ? (
+                                  qualisTabelaLista.map((q) => (
+                                    <SelectItem key={q.id} value={q.estrato}>
+                                      {q.estrato}
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <>
+                                    <SelectItem value="A1">A1</SelectItem>
+                                    <SelectItem value="A2">A2</SelectItem>
+                                    <SelectItem value="A3">A3</SelectItem>
+                                    <SelectItem value="A4">A4</SelectItem>
+                                    <SelectItem value="B1">B1</SelectItem>
+                                    <SelectItem value="B2">B2</SelectItem>
+                                    <SelectItem value="B3">B3</SelectItem>
+                                    <SelectItem value="B4">B4</SelectItem>
+                                    <SelectItem value="C">C</SelectItem>
+                                  </>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
                           <Button
                             type="button"
                             size="sm"
-                            disabled={processando}
-                            onClick={() => handleConfirmarIndividual(item)}
-                            className="text-[11px] gap-1 px-3 bg-blue-600 hover:bg-blue-700 h-7"
+                            disabled={!estratoManualEscolhido || processando}
+                            onClick={() =>
+                              handleGravarManualIndividual(item.publicacaoId, item.titulo)
+                            }
+                            className="text-[11px] gap-1 bg-amber-600 hover:bg-amber-700 text-white h-7"
                           >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            <span>Confirmar {item.estratoSugerido}</span>
+                            <CheckCheck className="h-3.5 w-3.5" />
+                            <span>Gravar Manual</span>
                           </Button>
                         </div>
                       )}
                     </div>
-
-                    {/* Justificativa Legível */}
-                    <p className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded border border-slate-200/80">
-                      <strong>Justificativa da estimativa:</strong> {item.justificativa}
-                    </p>
-
-                    {/* Caso sem sugestão: Seção direta de atribuição manual na linha */}
-                    {!temSugestao && (
-                      <div className="flex items-center justify-between gap-2 p-2 bg-amber-50 rounded border border-amber-200/80 flex-wrap">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-amber-900">
-                            Atribuir manualmente:
-                          </span>
-                          <Select
-                            value={estratoManualEscolhido || 'nenhum'}
-                            onValueChange={(val) =>
-                              val !== 'nenhum' &&
-                              handleSetEstratoManual(item.publicacaoId, val as EstratoQualis)
-                            }
-                          >
-                            <SelectTrigger className="h-7 w-[100px] text-xs bg-white border-amber-300">
-                              <SelectValue placeholder="Estrato" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="nenhum">Selecione</SelectItem>
-                              {qualisTabelaLista.length > 0 ? (
-                                qualisTabelaLista.map((q) => (
-                                  <SelectItem key={q.id} value={q.estrato}>
-                                    {q.estrato}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <>
-                                  <SelectItem value="A1">A1</SelectItem>
-                                  <SelectItem value="A2">A2</SelectItem>
-                                  <SelectItem value="A3">A3</SelectItem>
-                                  <SelectItem value="A4">A4</SelectItem>
-                                  <SelectItem value="B1">B1</SelectItem>
-                                  <SelectItem value="B2">B2</SelectItem>
-                                  <SelectItem value="B3">B3</SelectItem>
-                                  <SelectItem value="B4">B4</SelectItem>
-                                  <SelectItem value="C">C</SelectItem>
-                                </>
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={!estratoManualEscolhido || processando}
-                          onClick={() =>
-                            handleGravarManualIndividual(item.publicacaoId, item.titulo)
-                          }
-                          className="text-[11px] gap-1 bg-amber-600 hover:bg-amber-700 text-white h-7"
-                        >
-                          <CheckCheck className="h-3.5 w-3.5" />
-                          <span>Gravar Manual</span>
-                        </Button>
-                      </div>
-                    )}
                   </div>
-                </div>
-              )
-            })
-          ) : (
-            <div className="p-8 text-center text-slate-500 text-xs md:text-sm bg-white rounded-lg border border-dashed border-slate-200 space-y-1">
-              <p className="font-semibold text-slate-700">
-                Nenhuma publicação pendente encontrada.
-              </p>
-              <p>
-                {busca.trim() || filtroConfianca !== 'todas' || filtroPresencaMetrica !== 'todos'
-                  ? 'Ajuste os filtros de busca para visualizar outros registros.'
-                  : 'Todas as publicações já possuem estrato Qualis definido no banco de dados!'}
-              </p>
-            </div>
-          )}
+                )
+              })
+            ) : (
+              <div className="p-8 text-center text-slate-500 text-xs md:text-sm bg-white rounded-lg border border-dashed border-slate-200 space-y-1">
+                <p className="font-semibold text-slate-700">
+                  Nenhuma publicação pendente encontrada.
+                </p>
+                <p>
+                  {busca.trim() || filtroConfianca !== 'todas' || filtroPresencaMetrica !== 'todos'
+                    ? 'Ajuste os filtros de busca para visualizar outros registros.'
+                    : 'Todas as publicações já possuem estrato Qualis definido no banco de dados!'}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
         {/* Rodapé Fixo */}
         <div className="mt-auto border-t border-slate-200 bg-white p-3 md:p-4 flex items-center justify-between gap-2 md:gap-3 shrink-0">
