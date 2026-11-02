@@ -69,12 +69,40 @@ export function extrairTermosDocente(nome: string): string[] {
 
 export function textoContemDocente(texto: string | null | undefined, termos: string[]): boolean {
   if (!texto) return false
+  if (termos.length === 0) return false
   const norm = texto
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-  if (termos.length === 0) return false
-  return termos.some((termo) => norm.includes(termo))
+  // Exige >= 2 termos do nome (ou o único, se só houver um): sobrenome comum isolado não casa.
+  const minimo = Math.min(2, termos.length)
+  return termos.filter((termo) => norm.includes(termo)).length >= minimo
+}
+
+// Ids dos docentes de uma disciplina: N:N (docentes_ids) + docente_id legado.
+export function idsDocentesDaDisciplina(d: any): number[] {
+  const ids = new Set<number>()
+  for (const id of d.docentes_ids ?? []) {
+    const n = Number(id)
+    if (n) ids.add(n)
+  }
+  if (d.docente_id) ids.add(Number(d.docente_id))
+  return [...ids]
+}
+
+// Critério I: orientação cancelada não conta; concluída conta pelo ano da defesa/fim;
+// em andamento conta se esteve vigente em algum ano do período (mesmo iniciada antes dele).
+export function orientacaoVigenteNoPeriodo(ori: any, inicio = ANO_INICIO, fim = ANO_FIM): boolean {
+  const status = (ori.status || '').toLowerCase().trim()
+  if (ori.cancelado === true || status === 'cancelado') return false
+
+  const concluida = status === 'concluido' || status === 'titulado' || Boolean(ori.data_defesa)
+  if (concluida) return anoNoPeriodo(obterAnoOrientacaoDefesa(ori), inicio, fim)
+
+  const anoIni = extrairAnoDeData(ori.inicio)
+  if (anoIni === null) return anoNoPeriodo(obterAnoOrientacaoDefesa(ori), inicio, fim)
+  const anoFim = extrairAnoDeData(ori.fim)
+  return anoIni <= fim && (anoFim === null || anoFim >= inicio)
 }
 
 export function isProjetoFinanciado(proj: any): boolean {
@@ -174,8 +202,7 @@ export function avaliarDocenteLogica(params: {
   const orientacoesDoDocente = orientacoes.filter((ori) => ori.docente_id === docente.id)
   const orientacoesPrincipaisNoPeriodo = orientacoesDoDocente.filter((ori) => {
     const isPrincipal = ori.flag_orientador_principal === true
-    const ano = obterAnoOrientacaoDefesa(ori)
-    const noPeriodo = anoNoPeriodo(ano, anoInicio, anoFim)
+    const noPeriodo = orientacaoVigenteNoPeriodo(ori, anoInicio, anoFim)
     return isPrincipal && noPeriodo
   })
 
@@ -189,7 +216,9 @@ export function avaliarDocenteLogica(params: {
   }
 
   // 2. Critério II: Ministrou disciplinas no programa
-  const disciplinasDoDocente = disciplinas.filter((disc) => disc.docente_id === docente.id)
+  const disciplinasDoDocente = disciplinas.filter((disc) =>
+    idsDocentesDaDisciplina(disc).includes(docente.id),
+  )
   const disciplinasNoPeriodo = disciplinasDoDocente.filter((disc) => {
     const ano = extrairAnoDeData(disc.ano_semestre)
     if (ano !== null) {
@@ -460,15 +489,18 @@ Deno.serve(async (req: Request) => {
       publicacoesRes,
       publicacoesDocentesRes,
       coautoresRes,
+      disciplinasDocentesRes,
     ] = await Promise.all([
       supabase
         .from('docentes')
-        .select('id, nome, categoria, scopus_id, id_lattes, openalex_id, indice_h, bolsa_cnpq')
+        .select(
+          'id, nome, categoria, status, scopus_id, id_lattes, openalex_id, indice_h, bolsa_cnpq',
+        )
         .order('nome', { ascending: true }),
       supabase
         .from('orientacoes')
         .select(
-          'id, tipo, inicio, fim, status, data_defesa, flag_orientador_principal, docente_id, discente_id',
+          'id, tipo, inicio, fim, status, cancelado, data_defesa, flag_orientador_principal, docente_id, discente_id',
         ),
       supabase.from('disciplinas').select('id, nome, codigo, creditos, ano_semestre, docente_id'),
       supabase
@@ -483,6 +515,7 @@ Deno.serve(async (req: Request) => {
       supabase
         .from('publicacoes_coautores_programa')
         .select('id, publicacao_id, discente_id, egresso_id, tipo, nome_citado, grau_confianca'),
+      supabase.from('disciplinas_docentes').select('disciplina_id, docente_id'),
     ])
 
     const erros = [
@@ -494,6 +527,7 @@ Deno.serve(async (req: Request) => {
       publicacoesRes.error,
       publicacoesDocentesRes.error,
       coautoresRes.error,
+      disciplinasDocentesRes.error,
     ].filter(Boolean)
 
     if (erros.length > 0) {
@@ -512,7 +546,13 @@ Deno.serve(async (req: Request) => {
 
     const docentes = docentesRes.data || []
     const orientacoes = orientacoesRes.data || []
-    const disciplinas = disciplinasRes.data || []
+    const vinculosDisciplinas = disciplinasDocentesRes.data || []
+    const disciplinas = (disciplinasRes.data || []).map((d: any) => ({
+      ...d,
+      docentes_ids: vinculosDisciplinas
+        .filter((v: any) => Number(v.disciplina_id) === Number(d.id))
+        .map((v: any) => Number(v.docente_id)),
+    }))
     const projetos = projetosRes.data || []
     const participantesProjetos = participantesRes.data || []
     const publicacoes = publicacoesRes.data || []

@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase/client'
 import type { RelatorioReconducaoResposta } from '@/lib/reconducao/types'
 import { consolidarAvaliacaoReconducao } from '@/lib/reconducao/calculo'
 import { ANO_INICIO, ANO_FIM } from '@/lib/reconducao/types'
+import { anexarDocentesNasDisciplinas } from '@/lib/disciplinas/docentes'
 import type {
   Docente,
   Orientacao,
@@ -81,15 +82,18 @@ export async function obterAvaliacaoReconducao(
       publicacoesRes,
       publicacoesDocentesRes,
       coautoresRes,
+      disciplinasDocentesRes,
     ] = await Promise.all([
       supabase
         .from('docentes')
-        .select('id, nome, categoria, scopus_id, id_lattes, openalex_id, indice_h, bolsa_cnpq')
+        .select(
+          'id, nome, categoria, status, scopus_id, id_lattes, openalex_id, indice_h, bolsa_cnpq',
+        )
         .order('nome', { ascending: true }),
       supabase
         .from('orientacoes')
         .select(
-          'id, tipo, inicio, fim, status, data_defesa, flag_orientador_principal, docente_id, discente_id',
+          'id, tipo, inicio, fim, status, cancelado, data_defesa, flag_orientador_principal, docente_id, discente_id',
         ),
       supabase.from('disciplinas').select('id, nome, codigo, creditos, ano_semestre, docente_id'),
       supabase
@@ -104,6 +108,7 @@ export async function obterAvaliacaoReconducao(
       (supabase.from as any)('publicacoes_coautores_programa').select(
         'id, publicacao_id, discente_id, egresso_id, tipo, nome_citado, grau_confianca',
       ),
+      (supabase.from as any)('disciplinas_docentes').select('disciplina_id, docente_id'),
     ])
 
     const erroEncontrado = [
@@ -115,6 +120,7 @@ export async function obterAvaliacaoReconducao(
       publicacoesRes.error,
       publicacoesDocentesRes.error,
       coautoresRes.error,
+      disciplinasDocentesRes.error,
     ].find(Boolean)
 
     if (erroEncontrado) {
@@ -127,7 +133,10 @@ export async function obterAvaliacaoReconducao(
     const relatorio = consolidarAvaliacaoReconducao({
       docentes: (docentesRes.data || []) as unknown as Docente[],
       orientacoes: (orientacoesRes.data || []) as unknown as Orientacao[],
-      disciplinas: (disciplinasRes.data || []) as unknown as Disciplina[],
+      disciplinas: anexarDocentesNasDisciplinas(
+        (disciplinasRes.data || []) as unknown as Disciplina[],
+        (disciplinasDocentesRes.data || []) as any[],
+      ),
       projetos: (projetosRes.data || []) as unknown as ProjetoPesquisa[],
       participantesProjetos: (participantesRes.data || []) as unknown as ProjetoParticipante[],
       publicacoes: (publicacoesRes.data || []) as unknown as Publicacao[],

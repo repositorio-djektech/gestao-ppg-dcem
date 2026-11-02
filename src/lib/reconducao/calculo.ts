@@ -1,5 +1,6 @@
 import { ANO_INICIO, ANO_FIM, extrairAnoNumerico } from '../lattes/quadrienio'
 import { calcularStatusEfetivoOrientacao } from '../orientacoes/status'
+import { idsDocentesDaDisciplina } from '../disciplinas/docentes'
 import type {
   Docente,
   Orientacao,
@@ -87,6 +88,41 @@ export function orientacaoNoPeriodo(ori: Orientacao, inicio = ANO_INICIO, fim = 
 }
 
 /**
+ * Verifica se a orientação conta no período para o Critério I (orientador principal).
+ * - Cancelada: nunca conta.
+ * - Concluída (status efetivo, status gravado ou data de defesa): conta pelo ano da defesa/fim.
+ * - Em andamento: conta se esteve vigente em qualquer ano do período (início <= fim do período
+ *   e, havendo fim, fim >= início do período), mesmo tendo começado antes do quadriênio.
+ */
+export function orientacaoVigenteNoPeriodo(
+  ori: Orientacao,
+  inicio = ANO_INICIO,
+  fim = ANO_FIM,
+): boolean {
+  const statusEfetivo =
+    ori.status_efetivo ||
+    calcularStatusEfetivoOrientacao({
+      status: ori.status,
+      fim: ori.fim,
+      cancelado: ori.cancelado,
+    })
+  if (statusEfetivo === 'cancelado') return false
+
+  const statusNorm = (ori.status || '').toLowerCase().trim()
+  const concluida =
+    statusEfetivo === 'concluido' ||
+    statusNorm === 'concluido' ||
+    statusNorm === 'titulado' ||
+    Boolean(ori.data_defesa)
+  if (concluida) return orientacaoNoPeriodo(ori, inicio, fim)
+
+  const anoIni = extrairAnoDeData(ori.inicio)
+  if (anoIni === null) return orientacaoNoPeriodo(ori, inicio, fim)
+  const anoFim = extrairAnoDeData(ori.fim)
+  return anoIni <= fim && (anoFim === null || anoFim >= inicio)
+}
+
+/**
  * Determina se uma orientação é de mestrado concluída.
  */
 export function isMestradoConcluido(ori: Orientacao): boolean {
@@ -148,15 +184,18 @@ export function extrairTermosDocente(nome: string): string[] {
 
 /**
  * Verifica se um texto de autores cita o docente.
+ * Exige ao menos 2 termos do nome (ou o \u00fanico termo, se o nome s\u00f3 tiver um) para que
+ * um sobrenome comum isolado ("Silva") n\u00e3o case com outro docente.
  */
 export function textoContemDocente(texto: string | null | undefined, termos: string[]): boolean {
   if (!texto) return false
+  if (termos.length === 0) return false
   const norm = texto
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-  if (termos.length === 0) return false
-  return termos.some((termo) => norm.includes(termo))
+  const minimo = Math.min(2, termos.length)
+  return termos.filter((termo) => norm.includes(termo)).length >= minimo
 }
 
 /**
@@ -295,7 +334,7 @@ export function avaliarDocente(params: DadosParaAvaliacao): AvaliacaoDocenteReco
 
   const orientacoesPrincipaisNoPeriodo = orientacoesDoDocente.filter((ori) => {
     const isPrincipal = ori.flag_orientador_principal === true
-    const noPeriodo = orientacaoNoPeriodo(ori, anoInicio, anoFim)
+    const noPeriodo = orientacaoVigenteNoPeriodo(ori, anoInicio, anoFim)
     return isPrincipal && noPeriodo
   })
 
@@ -312,7 +351,9 @@ export function avaliarDocente(params: DadosParaAvaliacao): AvaliacaoDocenteReco
   // --------------------------------------------------------------------------
   // CRITÉRIO II: Ministraram disciplinas no P²CEM
   // --------------------------------------------------------------------------
-  const disciplinasDoDocente = disciplinas.filter((disc) => disc.docente_id === docente.id)
+  const disciplinasDoDocente = disciplinas.filter((disc) =>
+    idsDocentesDaDisciplina(disc).includes(docente.id),
+  )
 
   // Filtro temporal em disciplinas
   const disciplinasNoPeriodo = disciplinasDoDocente.filter((disc) => {

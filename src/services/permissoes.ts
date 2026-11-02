@@ -34,9 +34,10 @@ export interface ContextoPermissaoRegistro {
  * - suporte, coordenador, auxiliar: pode criar em tudo.
  * - capes: não pode criar em nada.
  * - docente:
- *   - Não pode criar em docentes, discentes, egressos, eventos, impacto_social,
- *     linhas_pesquisa, mobilidade_docente, patentes, premiacoes, producao_tecnica, ppg, usuarios.
- *   - Pode criar em orientacoes, disciplinas, projetos_pesquisa, publicacoes, iniciacao_cientifica (onde a RLS permite vinculando ao docente).
+ *   - Não pode criar em docentes, eventos, impacto_social, linhas_pesquisa, mobilidade_docente,
+ *     patentes, premiacoes, producao_tecnica, ppg, usuarios, qualis.
+ *   - Pode criar em discentes, egressos, orientacoes, disciplinas, projetos_pesquisa, publicacoes,
+ *     iniciacao_cientifica (a RLS exige vincular ao próprio docente).
  */
 export function podeCriarNaTabela(
   role: Role | null | undefined,

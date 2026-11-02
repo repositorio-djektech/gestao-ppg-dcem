@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/client'
 import { ANO_INICIO, ANO_FIM } from '@/lib/reconducao/types'
 import { calcularTodosIndicadores } from '@/lib/capes/indicadores'
+import { anexarDocentesNasDisciplinas } from '@/lib/disciplinas/docentes'
 import type { RelatorioIndicadoresCapes, DadosEntradaIndicadores } from '@/lib/capes/types'
 import type {
   Docente,
@@ -56,6 +57,7 @@ export async function obterIndicadoresCapes(
       egressosRes,
       discentesRes,
       iniciacaoCientificaRes,
+      disciplinasDocentesRes,
     ] = await Promise.all([
       // 1. Docentes
       supabase
@@ -69,7 +71,7 @@ export async function obterIndicadoresCapes(
       supabase
         .from('orientacoes')
         .select(
-          'id, tipo, inicio, fim, status, data_defesa, flag_orientador_principal, docente_id, discente_id',
+          'id, tipo, inicio, fim, status, cancelado, data_defesa, flag_orientador_principal, docente_id, discente_id',
         ),
 
       // 3. Disciplinas (com nível)
@@ -105,7 +107,7 @@ export async function obterIndicadoresCapes(
       supabase
         .from('patentes')
         .select(
-          'id, titulo, status, autores, inpi, created_at, link_comprovacao, observacoes, ambito',
+          'id, titulo, status, autores, inpi, created_at, link_comprovacao, observacoes, ambito, ano_deposito',
         ),
 
       // 10. Egressos
@@ -120,6 +122,9 @@ export async function obterIndicadoresCapes(
       (supabase.from as any)('iniciacao_cientifica').select(
         'id, tipo, ano, discente_id, discente_nome, docente_orientador_id, projeto_id, titulo',
       ),
+
+      // 13. Vínculos N:N Disciplinas <-> Docentes
+      (supabase.from as any)('disciplinas_docentes').select('disciplina_id, docente_id'),
     ])
 
     const erro = [
@@ -135,6 +140,7 @@ export async function obterIndicadoresCapes(
       egressosRes.error,
       discentesRes.error,
       iniciacaoCientificaRes.error,
+      disciplinasDocentesRes.error,
     ].find(Boolean)
 
     if (erro) {
@@ -150,7 +156,10 @@ export async function obterIndicadoresCapes(
       anoFim,
       docentes: (docentesRes.data || []) as unknown as Docente[],
       orientacoes: (orientacoesRes.data || []) as unknown as Orientacao[],
-      disciplinas: (disciplinasRes.data || []) as unknown as Disciplina[],
+      disciplinas: anexarDocentesNasDisciplinas(
+        (disciplinasRes.data || []) as unknown as Disciplina[],
+        (disciplinasDocentesRes.data || []) as any[],
+      ),
       projetos: (projetosRes.data || []) as unknown as ProjetoPesquisa[],
       projetosParticipantes: (participantesRes.data || []) as unknown as ProjetoParticipante[],
       publicacoes: (publicacoesRes.data || []) as unknown as Publicacao[],

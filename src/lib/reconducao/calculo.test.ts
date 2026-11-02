@@ -583,7 +583,7 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
         participantesProjetos: [],
         publicacoes: [pubEstruturada],
         publicacoesDocentes: [{ publicacao_id: 901, docente_id: 77 }],
-        coautoresPrograma: [{ publicacao_id: 901, tipo: 'discente', nome_citado: 'Aluno Teste' }],
+        coautoresPrograma: [{ publicacao_id: 901, tipo: 'orientando', nome_citado: 'Aluno Teste' }],
       })
 
       // Identificou via publicacoes_docentes e coautores confirmados
@@ -628,7 +628,7 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
         publicacoes: [pubFallback],
         publicacoesDocentes: [],
         coautoresPrograma: [
-          { publicacao_id: 902, tipo: 'discente', nome_citado: 'Aluno Fallback' },
+          { publicacao_id: 902, tipo: 'orientando', nome_citado: 'Aluno Fallback' },
         ],
       })
 

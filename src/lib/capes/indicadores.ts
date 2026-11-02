@@ -1,6 +1,8 @@
 import { ANO_INICIO, ANO_FIM } from '../reconducao/types'
 import {
   extrairAnoDeData,
+  extrairTermosDocente,
+  textoContemDocente,
   isMestradoConcluido,
   isDoutoradoConcluido,
   orientacaoNoPeriodo,
@@ -8,6 +10,7 @@ import {
 } from '../reconducao/calculo'
 import { calcularStatusEfetivoOrientacao } from '../orientacoes/status'
 import { calcularResumoJdpPrograma } from './jdp'
+import { idsDocentesDaDisciplina } from '../disciplinas/docentes'
 import type { Docente, Orientacao, Disciplina, Publicacao, Patente } from '@/types/database'
 import type {
   DadosEntradaIndicadores,
@@ -45,43 +48,49 @@ function anoPublicacao(pub: Publicacao): number | null {
 }
 
 /**
- * Extrai ano de patente (a partir de created_at, observações ou inpi)
+ * Ano da patente: `ano_deposito` quando informado; para registros legados, cai no ano de
+ * cadastro (`created_at`), que é só aproximação e deve ser substituído preenchendo o campo.
  */
 function anoPatente(pat: Patente): number | null {
+  const ano = Number(pat.ano_deposito)
+  if (Number.isInteger(ano) && ano >= 1900 && ano <= 2100) return ano
   if (pat.created_at) {
     const a = extrairAnoDeData(pat.created_at)
-    if (a) return a
-  }
-  if (pat.observacoes) {
-    const a = extrairAnoDeData(pat.observacoes)
     if (a) return a
   }
   return null
 }
 
+const normalizarNomeTermos = extrairTermosDocente
+const textoContemNome = textoContemDocente
+
 /**
- * Normaliza termos de busca de autor a partir do nome
+ * Classifica a patente em um único âmbito: `ambito` explícito; senão pelo prefixo do registro
+ * (BR = nacional; PCT/US/EP/WO = internacional; outro registro preenchido = nacional).
+ * Sem âmbito e sem registro, não é classificada.
  */
-function normalizarNomeTermos(nome: string): string[] {
-  return nome
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\w\s]/g, ' ')
-    .split(/\s+/)
-    .filter(
-      (p) =>
-        p.length > 2 && !['dr', 'dra', 'prof', 'profa', 'dos', 'das', 'da', 'de', 'do'].includes(p),
-    )
+function classificarAmbitoPatente(p: Patente): 'nacional' | 'internacional' | null {
+  const amb = normStr(p.ambito)
+  if (amb === 'nacional' || amb === 'internacional') return amb
+  const inpi = (p.inpi || '').toUpperCase().trim()
+  if (!inpi) return null
+  if (/^(PCT|US|EP|WO)/.test(inpi)) return 'internacional'
+  return 'nacional'
 }
 
-function textoContemNome(texto: string | null | undefined, termos: string[]): boolean {
-  if (!texto || termos.length === 0) return false
-  const n = texto
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-  return termos.some((t) => n.includes(t))
+/**
+ * Projeto vigente no ano: início <= ano e (sem fim ou fim >= ano).
+ * Sem nenhuma data não há evidência para excluir, então é considerado vigente.
+ */
+function projetoVigenteNoAno(
+  p: { inicio?: string | null; fim?: string | null },
+  ano: number,
+): boolean {
+  const ini = extrairAnoDeData(p.inicio)
+  const fim = extrairAnoDeData(p.fim)
+  if (ini !== null && ano < ini) return false
+  if (fim !== null && ano > fim) return false
+  return true
 }
 
 /**
@@ -280,10 +289,7 @@ export function calcularTodosIndicadores(
   // DPI / DPIDE1 / DPIDE2 / DPI2
   // Pesos: A1=1.0, A2=0.875, A3=0.75, A4=0.675, B1=0.5 (sat: min(B1, DP)), B2..C=0.0
   // =========================================================================
-  function calcularPontuacaoQualisComSaturacao(
-    publicacoesSubset: Publicacao[],
-    somarPorDocentePermanente = false,
-  ): {
+  function calcularPontuacaoQualisComSaturacao(publicacoesSubset: Publicacao[]): {
     a1: number
     a2: number
     a3: number
@@ -308,9 +314,8 @@ export function calcularTodosIndicadores(
 
     for (const p of publicacoesSubset) {
       const e = (p.estrato_qualis || '').toUpperCase().trim()
-      const fatorMultiplicador = somarPorDocentePermanente
-        ? Math.max(1, pubPertenceADocentePermanente(p).docIds.length)
-        : 1
+      // Cada publicação conta uma única vez, independentemente de quantos DPs a assinam.
+      const fatorMultiplicador = 1
 
       if (e === 'A1') a1 += fatorMultiplicador
       else if (e === 'A2') a2 += fatorMultiplicador
@@ -358,9 +363,8 @@ export function calcularTodosIndicadores(
         concedidas++
       } else if (st === 'pendente' || st === 'depositada' || st === 'depositadas') {
         depositadas++
-      } else {
-        depositadas++
       }
+      // Status desconhecido (ex.: arquivada) não pontua.
     }
 
     const pontos = Number((licenciadas + 0.6 * concedidas + 0.3 * depositadas).toFixed(3))
@@ -756,26 +760,25 @@ export function calcularTodosIndicadores(
     const docsPg = new Set<number>()
     for (const d of dados.disciplinas) {
       const niv = normStr(d.nivel)
-      if (d.docente_id && (niv === 'pos_graduacao' || niv === '')) {
+      if (niv === 'pos_graduacao' || niv === '') {
         if (discNoAno(d, ano)) {
-          docsPg.add(d.docente_id)
+          for (const docId of idsDocentesDaDisciplina(d)) docsPg.add(docId)
         }
       }
     }
 
-    // 3. Projetos de pesquisa no ano
+    // 3. Projetos de pesquisa vigentes no ano (coordenador ou participante)
     const docsProj = new Set<number>()
+    const projetosVigentesIds = new Set<number>()
     for (const p of dados.projetos) {
-      const ini = extrairAnoDeData(p.inicio)
-      const fim = extrairAnoDeData(p.fim)
-      const noAno =
-        ini !== null && fim !== null ? ano >= ini && ano <= fim : ini !== null ? ano <= ano : true
-      if (noAno) {
-        if (p.coordenador_id) docsProj.add(p.coordenador_id)
-      }
+      if (!projetoVigenteNoAno(p, ano)) continue
+      projetosVigentesIds.add(p.id)
+      if (p.coordenador_id) docsProj.add(p.coordenador_id)
     }
     for (const part of dados.projetosParticipantes) {
-      if (part.docente_id) docsProj.add(part.docente_id)
+      if (part.docente_id && projetosVigentesIds.has(part.projeto_id)) {
+        docsProj.add(part.docente_id)
+      }
     }
 
     // 4. Publicações em periódicos no ano
@@ -865,7 +868,8 @@ export function calcularTodosIndicadores(
 
     const disciplinasPosAno = dados.disciplinas.filter((d) => {
       const niv = normStr(d.nivel)
-      const vinculado = d.docente_id ? idsPermanentesSet.has(d.docente_id) : true
+      const idsDocentes = idsDocentesDaDisciplina(d)
+      const vinculado = idsDocentes.length ? idsDocentes.some((id) => idsPermanentesSet.has(id)) : true
       return (niv === 'pos_graduacao' || niv === '') && vinculado && discNoAno(d, ano)
     })
 
@@ -1010,8 +1014,8 @@ export function calcularTodosIndicadores(
     } else {
       const docsComGrad = new Set<number>()
       for (const d of disciplinasGradAno) {
-        if (d.docente_id && idsPermanentesSet.has(d.docente_id)) {
-          docsComGrad.add(d.docente_id)
+        for (const docId of idsDocentesDaDisciplina(d)) {
+          if (idsPermanentesSet.has(docId)) docsComGrad.add(docId)
         }
       }
       const docsSemGrad = permanentes.filter((d) => !docsComGrad.has(d.id)).length
@@ -1233,7 +1237,7 @@ export function calcularTodosIndicadores(
       }
     } else {
       const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
-        calcularPontuacaoQualisComSaturacao(pubsAno, true)
+        calcularPontuacaoQualisComSaturacao(pubsAno)
       const val = Number((pontosNumerador / denominadorEfetivo).toFixed(3))
 
       dpiAnos[ano] = {
@@ -1241,10 +1245,10 @@ export function calcularTodosIndicadores(
         status: 'calculado',
         valorCalculado: val,
         decomposicao: [
-          { termo: 'A1 (peso 1.0)', descricao: 'Artigos A1 somados por docente', valor: a1 },
-          { termo: 'A2 (peso 0.875)', descricao: 'Artigos A2 somados por docente', valor: a2 },
-          { termo: 'A3 (peso 0.75)', descricao: 'Artigos A3 somados por docente', valor: a3 },
-          { termo: 'A4 (peso 0.675)', descricao: 'Artigos A4 somados por docente', valor: a4 },
+          { termo: 'A1 (peso 1.0)', descricao: 'Artigos A1', valor: a1 },
+          { termo: 'A2 (peso 0.875)', descricao: 'Artigos A2', valor: a2 },
+          { termo: 'A3 (peso 0.75)', descricao: 'Artigos A3', valor: a3 },
+          { termo: 'A4 (peso 0.675)', descricao: 'Artigos A4', valor: a4 },
           {
             termo: 'min(B1, DP) (peso 0.5)',
             descricao: `B1 saturado (${b1Bruto} brutos, teto ${DP})`,
@@ -1314,7 +1318,7 @@ export function calcularTodosIndicadores(
       let anais = 0
       let capitulos = 0
       for (const p of pubsAno) {
-        const docsVinculadosQtd = Math.max(1, pubPertenceADocentePermanente(p).docIds.length)
+        const docsVinculadosQtd = 1
         const tp = normStr(p.tipo_producao)
         if (tp === 'artigo em periódico' || tp === '' || Boolean(p.periodico)) {
           periodicos += docsVinculadosQtd
@@ -1337,7 +1341,7 @@ export function calcularTodosIndicadores(
           { termo: 'Periódicos', descricao: `Periódicos em ${ano}`, valor: periodicos },
           { termo: 'Anais', descricao: `Anais em ${ano}`, valor: anais },
           { termo: 'Capítulos', descricao: `Capítulos em ${ano}`, valor: capitulos },
-          { termo: 'Total', descricao: 'Soma ponderada por docente', valor: totalItens },
+          { termo: 'Total', descricao: 'Soma (cada publicação conta uma vez)', valor: totalItens },
           { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
         ],
       }
@@ -1398,7 +1402,7 @@ export function calcularTodosIndicadores(
       }
     } else {
       const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
-        calcularPontuacaoQualisComSaturacao(pubsAno, true)
+        calcularPontuacaoQualisComSaturacao(pubsAno)
       const val = Number((pontosNumerador / denominadorEfetivo).toFixed(3))
 
       dpide1Anos[ano] = {
@@ -1475,7 +1479,7 @@ export function calcularTodosIndicadores(
       }
     } else {
       const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
-        calcularPontuacaoQualisComSaturacao(pubsAnoN2, true)
+        calcularPontuacaoQualisComSaturacao(pubsAnoN2)
       const val = Number((pontosNumerador / denominadorEfetivo).toFixed(3))
 
       dpide2Anos[ano] = {
@@ -1554,7 +1558,7 @@ export function calcularTodosIndicadores(
       }
     } else {
       const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
-        calcularPontuacaoQualisComSaturacao(pubsAnoN2, true)
+        calcularPontuacaoQualisComSaturacao(pubsAnoN2)
       const val = Number((pontosNumerador / denominadorEfetivo).toFixed(3))
 
       dpi2Anos[ano] = {
@@ -1606,26 +1610,10 @@ export function calcularTodosIndicadores(
   // =========================================================================
   // QUESITO 3.1: PATENTES (DPPn e DPPi) — com MMA por decisão do programa
   // =========================================================================
-  const patentesNacionais = dados.patentes.filter((p) => {
-    const amb = normStr((p as any).ambito)
-    if (amb === 'nacional') return true
-    if (amb === 'internacional') return false
-    const inpi = (p.inpi || '').toUpperCase().trim()
-    return inpi.startsWith('BR') || inpi.length > 0
-  })
-
-  const patentesInternacionais = dados.patentes.filter((p) => {
-    const amb = normStr((p as any).ambito)
-    if (amb === 'internacional') return true
-    if (amb === 'nacional') return false
-    const inpi = (p.inpi || '').toUpperCase().trim()
-    return (
-      inpi.startsWith('PCT') ||
-      inpi.startsWith('US') ||
-      inpi.startsWith('EP') ||
-      inpi.startsWith('WO')
-    )
-  })
+  const patentesNacionais = dados.patentes.filter((p) => classificarAmbitoPatente(p) === 'nacional')
+  const patentesInternacionais = dados.patentes.filter(
+    (p) => classificarAmbitoPatente(p) === 'internacional',
+  )
 
   // --- DPPn: Patentes Nacionais ---
   const dppnAnos: Record<number, ResultadoAnoIndicador> = {}

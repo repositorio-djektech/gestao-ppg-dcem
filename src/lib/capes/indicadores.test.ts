@@ -404,12 +404,13 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
     expect(termoMediano?.valor).toBe(13.5)
   })
 
-  it('calcula pesos dos estratos A1 a C no DPI e soma por docentes permanentes vinculados ano a ano', () => {
+  it('calcula pesos dos estratos A1 a C no DPI contando cada publicação uma única vez, ano a ano', () => {
     // DP = 4, JDP = 1 => DP - JDP = 3
     // 2025:
-    // Pub 101: A1, vinculada a Doc 1 e Doc 2 (2 DPs) => 2 * 1.0 = 2.0
+    // Regra do produto: cada publicação conta uma única vez, mesmo com vários DPs vinculados.
+    // Pub 101: A1, vinculada a Doc 1 e Doc 2 (2 DPs) => 1 * 1.0 = 1.0
     // Pub 102: A2, vinculada a Doc 1 => 1 * 0.875 = 0.875
-    // Numerador 2025 = 2.875 => DPI 2025 = 2.875 / 3 = 0.958
+    // Numerador 2025 = 1.875 => DPI 2025 = 1.875 / 3 = 0.625
     // 2026:
     // Pub 103: A3, vinculada a Doc 3 => 1 * 0.75 = 0.75
     // Pub 104: A4, vinculada a Doc 1 => 1 * 0.675 = 0.675
@@ -417,7 +418,7 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
     // 2027:
     // Pub 105: B1, Doc 1 => 1 * 0.5 = 0.5; Pubs 106 a 109: B2-C => 0.0
     // Numerador 2027 = 0.5 => DPI 2027 = 0.5 / 3 = 0.167
-    // MMA (2025, 2026, 2027) = (0.958 + 0.475 + 0.167) / 3 = 0.533
+    // MMA (2025, 2026, 2027) = (0.625 + 0.475 + 0.167) / 3 = 0.422
     const pubs: any[] = [
       { id: 101, ano: 2025, estrato_qualis: 'A1', tipo_producao: 'Artigo em periódico' },
       { id: 102, ano: 2025, estrato_qualis: 'A2', tipo_producao: 'Artigo em periódico' },
@@ -451,22 +452,22 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
 
     const dpi = rel.todosIndicadores.find((i) => i.codigo === 'DPI')
     expect(dpi?.status).toBe('calculado')
-    expect(dpi?.anos?.[2025].valorCalculado).toBe(0.958)
+    expect(dpi?.anos?.[2025].valorCalculado).toBe(0.625)
     expect(dpi?.anos?.[2026].valorCalculado).toBe(0.475)
     expect(dpi?.anos?.[2027].valorCalculado).toBe(0.167)
-    expect(dpi?.valorCalculado).toBe(0.533)
+    expect(dpi?.valorCalculado).toBe(0.422)
 
     // DPT anual:
-    // 2025: pub 101 (2 DPs) + pub 102 (1 DP) = 3 produções => 3 / 3 = 1.0
+    // 2025: pub 101 + pub 102 = 2 produções (cada uma conta 1 vez) => 2 / 3 = 0.667
     // 2026: pub 103 (1) + pub 104 (1) = 2 produções => 2 / 3 = 0.667
     // 2027: 5 pubs = 5 produções => 5 / 3 = 1.667
-    // MMA = (1.0 + 0.667 + 1.667) / 3 = 1.111
+    // MMA = (0.667 + 0.667 + 1.667) / 3 = 1.0
     const dpt = rel.todosIndicadores.find((i) => i.codigo === 'DPT')
     expect(dpt?.status).toBe('calculado')
-    expect(dpt?.anos?.[2025].valorCalculado).toBe(1.0)
+    expect(dpt?.anos?.[2025].valorCalculado).toBe(0.667)
     expect(dpt?.anos?.[2026].valorCalculado).toBe(0.667)
     expect(dpt?.anos?.[2027].valorCalculado).toBe(1.667)
-    expect(dpt?.valorCalculado).toBe(1.111)
+    expect(dpt?.valorCalculado).toBe(1)
   })
 
   it('exibe "aguardando insumo" quando publicações não têm estrato Qualis definido, nunca zero', () => {
@@ -568,7 +569,7 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
     expect(ade?.metodologia).toBe('estoque')
     expect(ade?.anos).toBeUndefined()
     expect(ade?.mma).toBeUndefined()
-    expect(ade?.valorCalculado).toBe(80)
+    expect(ade?.valorCalculado).toBe(66.67) // DP 4 / (4 + 1 + 1), igual ao primeiro teste do arquivo
 
     const h2 = rel.todosIndicadores.find((i) => i.codigo === 'H2')
     expect(h2?.metodologia).toBe('estoque')
