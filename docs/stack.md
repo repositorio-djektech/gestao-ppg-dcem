@@ -8,25 +8,25 @@ Este documento detalha o conjunto de tecnologias, bibliotecas, ferramentas de co
 
 | Camada                       | Tecnologia / Ferramenta         | Versão / Padrão      | Propósito Principal                                                            |
 | :--------------------------- | :------------------------------ | :------------------- | :----------------------------------------------------------------------------- |
-| **Linguagem Principal**      | TypeScript                      | `~5.6`               | Tipagem estática em 100% da base de código frontend e edge functions           |
-| **Framework SPA**            | React                           | `^18.3.1`            | Biblioteca de interface reativa para a Single Page Application                 |
-| **Build & Bundler**          | Vite                            | `^5.4.11`            | Compilador ultrarrápido com Hot Module Replacement (HMR) e bundling otimizado  |
-| **Roteamento**               | React Router DOM                | `^6.28.0`            | Roteamento declarativo no cliente com suporte a guards e search params         |
-| **Estilização**              | Tailwind CSS + Tailwind Animate | `^3.4.15`            | Framework utilitário de estilização atômica com tema customizado               |
+| **Linguagem Principal**      | TypeScript                      | `^6.0`               | Tipagem estática em 100% da base de código frontend e edge functions           |
+| **Framework SPA**            | React                           | `^19.2`            | Biblioteca de interface reativa para a Single Page Application                 |
+| **Build & Bundler**          | Vite                            | `8.0`            | Compilador ultrarrápido com Hot Module Replacement (HMR) e bundling otimizado  |
+| **Roteamento**               | React Router DOM                | `^7.18`            | Roteamento declarativo no cliente com suporte a guards e search params         |
+| **Estilização**              | Tailwind CSS + Tailwind Animate | `^3.4`            | Framework utilitário de estilização atômica com tema customizado               |
 | **Design System**            | shadcn/ui (Radix UI)            | Primitivas completas | Componentes acessíveis, responsivos e customizáveis                            |
-| **Ícones**                   | Lucide React                    | `^0.460.0`           | Conjunto consistente de ícones vetoriais em SVG                                |
-| **Notificações / Toasts**    | Sonner + shadcn toast           | `^1.7.0`             | Alertas dinâmicos e não-bloqueantes de sucesso, aviso e erro                   |
+| **Ícones**                   | Lucide React                    | `^0.577`           | Conjunto consistente de ícones vetoriais em SVG                                |
+| **Notificações / Toasts**    | Sonner + shadcn toast           | `^2.0`             | Alertas dinâmicos e não-bloqueantes de sucesso, aviso e erro                   |
 | **Manipulação de ZIP/XML**   | JSZip                           | `^3.10.1`            | Leitura e descompactação de arquivos `.zip` do Lattes diretamente no browser   |
 | **Backend & Banco de Dados** | Supabase (PostgreSQL 15+)       | Hospedado            | Banco relacional com RLS, Auth, Storage e APIs PostgREST geradas               |
-| **Cliente de Banco**         | `@supabase/supabase-js`         | `^2.46.2`            | SDK oficial para comunicação com o PostgreSQL, Auth e Edge Functions           |
+| **Cliente de Banco**         | `@supabase/supabase-js`         | `^2.110`            | SDK oficial para comunicação com o PostgreSQL, Auth e Edge Functions           |
 | **Computação Serverless**    | Supabase Edge Functions         | Deno Runtime         | Execução de rotinas de backend protegidas (Scopus, lacunas, admin de usuários) |
-| **Suíte de Testes**          | Vitest                          | `^2.1.8`             | Testes unitários e de integração de lógica de negócio e componentes React      |
+| **Suíte de Testes**          | Vitest + jsdom                  | `5.0` / `^30`             | Testes unitários e de integração de lógica de negócio e componentes React      |
 
 ---
 
 ## 2. Frontend: Arquitetura e Decisões
 
-### 2.1 React 18 e TypeScript Estrito
+### 2.1 React 19 e TypeScript Estrito
 
 - Toda a base de código é escrita em TypeScript estrito (`.ts` e `.tsx`).
 - O arquivo `src/types/database.ts` espelha as entidades do banco de dados e adiciona tipos compostos utilitários para as regras de negócio acadêmicas.
@@ -78,3 +78,6 @@ Funções executadas em ambiente serverless Deno protegidas por variáveis de am
   - Testes dos indicadores CAPES (Ficha Engenharias II): `src/lib/capes/indicadores.test.ts`
   - Testes do sistema de permissões de papéis: `src/services/permissoes.test.ts`
   - Testes de componentes visuais e modais: `src/components/**/*.test.tsx`
+- **Ambiente de testes:** `vitest.config.ts` reaproveita o `vite.config.ts` (alias `@/`) e define `environment: 'jsdom'` com `globals: true` (necessário para o `@testing-library/react` limpar o DOM entre testes). Os testes que importam o cliente Supabase precisam do `.env` presente ou de mock de `@/lib/supabase/client`.
+- **Paridade com a Edge Function:** `src/lib/reconducao/paridade-edge.test.ts` roda os mesmos cenários em `calculo.ts` e em `supabase/functions/avaliacao-reconducao/logica.ts` e exige o mesmo resultado, porque a Edge Function não pode importar de `src/`.
+- **Testes de verificação:** `*.verificacao.test.ts` (indicadores, recondução e serviços) fixam as regras corrigidas em 2026-11-01: publicação contada uma vez, vigência de projetos no DP4A, ano e âmbito de patentes, disciplinas N:N e Critério I.

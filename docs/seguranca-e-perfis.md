@@ -105,7 +105,7 @@ Toda operação relevante de criação, edição ou exclusão disparada pelos co
 
 | Categoria                     | Onde Reside                           | Como é Acessado                       | Exemplo                                       |
 | :---------------------------- | :------------------------------------ | :------------------------------------ | :-------------------------------------------- |
-| **Público / Cliente**         | Variáveis Vite (`VITE_*`)             | `import.meta.env.VITE_*`              | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` |
+| **Público / Cliente**         | Variáveis Vite (`VITE_*`)             | `import.meta.env.VITE_*`              | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` |
 | **Segredos Privados de API**  | Supabase Edge Functions Secrets Vault | `Deno.env.get('NOME')`                | `SCOPUS_API_KEY`                              |
 | **Credencial Administrativa** | Supabase Auth Service Role            | Automático em Edge Functions internas | `SUPABASE_SERVICE_ROLE_KEY`                   |
 

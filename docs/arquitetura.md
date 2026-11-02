@@ -90,9 +90,10 @@ src/
 │   │   ├── jdp.ts              # Regras de Jovem Docente Permanente (limites de 4 e 10 anos)
 │   │   ├── exportacao.ts       # Geradores de HTML para impressão e exportação CSV
 │   │   └── types.ts            # Tipos de quesitos, insumos e decomposições
+│   ├── disciplinas/            # Helpers da N:N disciplinas_docentes (idsDocentesDaDisciplina, anexarDocentesNasDisciplinas)
 │   ├── docentes/               # Geração de dossiê completo de impressão do docente via iframe
-│   ├── lacunas/                # Motor de 26 regras de lacunas em 11 tabelas
-│   │   ├── regras.ts           # Definição funcional das 26 regras de auditoria
+│   ├── lacunas/                # Motor de 34 regras de lacunas em 10 tabelas
+│   │   ├── regras.ts           # Definição funcional das 34 regras de auditoria
 │   │   ├── imprimirLacunasIframe.ts # Relatório impresso de pendências
 │   │   └── types.ts            # Tipagens de severidade, grupos e relatórios
 │   ├── lattes/                 # Pipeline completo de leitura e parse de currículos Lattes
@@ -133,7 +134,7 @@ src/
 │   ├── Mobilidade.tsx          # Mobilidade docente e discente nacional/internacional
 │   ├── ImpactoSocial.tsx       # Mapeamento de ações de impacto social e seus vínculos
 │   ├── Premiacoes.tsx          # Prêmios e distinções acadêmicas recebidas
-│   ├── Lacunas.tsx             # Painel de auditoria cadastral com 26 regras em 11 tabelas
+│   ├── Lacunas.tsx             # Painel de auditoria cadastral com 34 regras em 10 tabelas
 │   ├── Reconducao.tsx          # Painel de avaliação de credenciamento/recondução docente
 │   ├── Indicadores.tsx         # Painel de indicadores CAPES da Área Engenharias II
 │   ├── Usuarios.tsx            # Administração de usuários, papéis e permissões
@@ -226,13 +227,13 @@ Determinadas páginas exigem fluxos mais ricos do que um CRUD genérico:
 ### 4.3 Recondução e Credenciamento (`src/pages/Reconducao.tsx`)
 
 - Tela de acompanhamento do cumprimento dos 4 critérios da Norma PPG-DCEM (§ 4º).
-- Tabela analítica com cards de veredito (**Apto**, **Alerta**, **Inapto**).
+- Tabela analítica com cards de veredito (**Reconduzido**, **Não atende**, **PDQ insuficiente**, **Não aplicável**).
 - Exibição transparente do cálculo do índice PDQ (`NP / (MSc + DSc)`).
 - Relatório de recondução com exportação em PDF via iframe e CSV.
 
 ### 4.4 Lacunas Cadastrais (`src/pages/Lacunas.tsx`)
 
-- Painel de auditoria com 26 regras ativas distribuídas em 11 tabelas.
+- Painel de auditoria com 34 regras ativas distribuídas em 10 tabelas.
 - Agrupamento em cartões visuais temáticos (Identificadores e Métricas, Fomento e Bolsas, Produção, Situação Acadêmica, etc.).
 - Correção de pendências em um clique com abertura do diálogo de edição ou deep-link.
 

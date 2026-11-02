@@ -8,7 +8,7 @@ Este diretório reúne o mapeamento técnico completo, arquitetural, de engenhar
 
 1. **[Visão Geral e Stack Tecnológica](stack.md)**
    - Tecnologias de frontend e backend.
-   - Padrões adotados (React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui, Supabase, Deno Edge Functions).
+   - Padrões adotados (React 19, Vite, TypeScript, Tailwind CSS, shadcn/ui, Supabase, Deno Edge Functions).
    - Dependências principais, bibliotecas utilitárias e ferramentas de teste (Vitest).
 
 2. **[Arquitetura do Sistema e Estrutura de Código](arquitetura.md)**
@@ -49,8 +49,8 @@ Este diretório reúne o mapeamento técnico completo, arquitetural, de engenhar
    - Gestão de credenciais e segredos (Vite client envs vs. Supabase Edge Functions Secrets).
 
 7. **[Módulos Especializados e Regras de Negócio](regras-de-negocio-e-modulos.md)**
-   - **Módulo de Lacunas (`/lacunas`):** 26 regras de auditoria em 11 tabelas, severidades (crítica, atenção, informativo), agrupamento visual, correção inline ou direcionada, exportação e impressão de relatório via iframe.
-   - **Módulo de Recondução e Credenciamento (`/reconducao`):** cálculo dos 4 critérios da Norma PPG-DCEM (§ 4º), índice PDQ (`NP / (MSc + DSc) >= 1.0`), vereditos automáticos (Apto, Alerta, Inapto), relatório com justificativas.
+   - **Módulo de Lacunas (`/lacunas`):** 34 regras de auditoria em 10 tabelas, severidades (crítica e atenção), agrupamento visual, correção inline ou direcionada, exportação e impressão de relatório via iframe.
+   - **Módulo de Recondução e Credenciamento (`/reconducao`):** cálculo dos 4 critérios da Norma PPG-DCEM (§ 4º), índice PDQ (`NP / (MSc + DSc) >= 1.0`), vereditos automáticos (Reconduzido, Não atende, PDQ insuficiente, Não aplicável), relatório com justificativas.
    - **Módulo de Indicadores CAPES (`/indicadores`):** Ficha de Avaliação da Área Engenharias II (2025), recorte 2025–2028, MMA (Média das Médias Anuais), cálculo com DP, JDP, pesos de Qualis com saturação em B1.
    - **Módulo de Egressos e Discentes:** acompanhamento de titulação, vínculos e inserção profissional.
    - **Módulo de Impacto Social:** vinculação transversal de impactos a produções, patentes e projetos.

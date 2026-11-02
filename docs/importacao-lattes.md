@@ -5,6 +5,8 @@
 **Status da Etapa 1:** 100% implementada e validada em memória (1A parser, 1B pipeline de leitura/filtro/dedupe, 1C interface de upload e tela de revisão, 1D auditoria e testes).  
 **Status da Etapa 2:** 100% CONCLUÍDA e validada no banco de dados com dados reais (2A coluna `id_lattes` e serviço `gravar.ts`; 2B integração UI com confirmação e gravação; 2C gravação completa nas 9 tabelas do Supabase, resolução automática de discentes, dedupe idempotente e proteção a dados manuais).
 
+> **Nota (2026-11):** a tabela `bancas` foi removida do banco (v0.0.164). O parser ainda lê as bancas do XML e a tela de revisão ainda exibe a aba "Bancas", mas a gravação (`gravarBancas`) é um *no-op* seguro: os itens são contados como ignorados e nada é gravado. As demais referências a bancas neste documento descrevem a versão 0.0.53 e são históricas. Na prática, a gravação cobre 8 tabelas (`docentes`, `publicacoes`, `orientacoes`, `projetos_pesquisa`, `premiacoes`, `producao_tecnica`, `patentes`, `eventos`) mais a criação automática de `discentes`.
+
 ---
 
 ## 1. Visão Geral

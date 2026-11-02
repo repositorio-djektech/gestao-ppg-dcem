@@ -322,7 +322,7 @@ Bolsistas e voluntários de IC, IT e Iniciação em Extensão.
 
 ### 2.4 Demais Produções e Extensão
 
-- **`patentes`:** `id`, `titulo`, `status` ('Concessão', 'Licenciamento', 'Pendente'), `autores`, `inpi`, `ambito` ('nacional', 'internacional'), `tipo` ('PI', 'MU', etc.), `link_comprovacao`, `observacoes`.
+- **`patentes`:** `id`, `titulo`, `status` ('Concessão', 'Licenciamento', 'Pendente'), `autores`, `inpi`, `ambito` ('nacional', 'internacional'), `ano_deposito` (inteiro opcional, 1900–2100: ano de depósito ou concessão usado em DPPn/DPPi; sem ele os indicadores usam o ano de cadastro `created_at` como aproximação legada), `tipo` ('PI', 'MU', etc.), `link_comprovacao`, `observacoes`.
 - **`producao_tecnica`:** `id`, `titulo`, `ano`, `autores`, `tipo` ('Software', 'Relatório', 'Patente'), `link_comprovacao`, `observacoes`.
 - **`premiacoes`:** `id`, `titulo`, `ano`, `nome_premiado`, `instituicao`, `link_comprovacao`, `observacoes`.
 - **`eventos`:** `id`, `docente`, `evento`, `local_data`, `papel`, `tipo` ('Trabalho completo', 'Resumo'), `nacionalidade` ('Nacional', 'Internacional'), `link_comprovacao`, `observacoes`.
