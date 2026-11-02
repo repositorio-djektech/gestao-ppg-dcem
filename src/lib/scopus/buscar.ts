@@ -126,7 +126,8 @@ export function montarScopusQuery(
   filtroAfiliacao?: string,
   opcoes?: { usarFallbackSobrenome?: boolean },
 ): string {
-  const termoLimpo = normalizarNomeParaScopus(termo)
+  // A normalização troca a vírgula por espaço, então "Sobrenome, Nome" precisa ser reordenado antes.
+  const termoLimpo = normalizarNomeParaScopus(reordenarNomeSeComVirgula(termo))
   if (!termoLimpo) return ''
 
   // Se for ID numérico direto
