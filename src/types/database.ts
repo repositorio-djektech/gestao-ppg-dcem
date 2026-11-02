@@ -110,6 +110,8 @@ export type Patente = {
   created_at?: string
   ambito?: 'nacional' | 'internacional' | string | null
   tipo?: PatenteTipoInpi | string | null
+  /** Ano de depósito (ou concessão) usado nos indicadores CAPES. */
+  ano_deposito?: number | null
 }
 
 export type Discente = {

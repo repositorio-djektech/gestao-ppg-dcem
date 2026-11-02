@@ -206,6 +206,13 @@ export default function PatentesPage() {
       placeholder: 'Número do registro no INPI',
     },
     {
+      key: 'ano_deposito',
+      label: 'Ano de Depósito / Concessão',
+      type: 'number',
+      placeholder: 'Ex: 2025',
+      helperText: 'Usado nos indicadores CAPES (DPPn/DPPi). Sem ele, usa-se o ano de cadastro.',
+    },
+    {
       key: 'link_comprovacao',
       label: 'Link de Comprovação (INPI / Carta Patente)',
       type: 'url',

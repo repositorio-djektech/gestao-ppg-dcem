@@ -643,6 +643,7 @@ export type Database = {
       patentes: {
         Row: {
           ambito: string | null
+          ano_deposito: number | null
           autores: string
           created_at: string
           id: number
@@ -655,6 +656,7 @@ export type Database = {
         }
         Insert: {
           ambito?: string | null
+          ano_deposito?: number | null
           autores: string
           created_at?: string
           id?: number
@@ -667,6 +669,7 @@ export type Database = {
         }
         Update: {
           ambito?: string | null
+          ano_deposito?: number | null
           autores?: string
           created_at?: string
           id?: number
