@@ -113,7 +113,7 @@ describe('Service obterAvaliacaoReconducao (Etapa C)', () => {
         discente_id: 4,
         tipo: 'Mestrado',
         inicio: '2026',
-        fim: '2026',
+        fim: '',
         status: 'ativo',
         flag_orientador_principal: true,
         link_comprovacao: '',
@@ -125,7 +125,7 @@ describe('Service obterAvaliacaoReconducao (Etapa C)', () => {
         discente_id: 5,
         tipo: 'Doutorado',
         inicio: '2025',
-        fim: '2025',
+        fim: '',
         status: 'ativo',
         flag_orientador_principal: true,
         link_comprovacao: '',
@@ -198,8 +198,10 @@ describe('Service obterAvaliacaoReconducao (Etapa C)', () => {
       expect(resultado.criterio_i.atendido).toBe(true)
       expect(resultado.criterio_i.quantidade).toBe(2)
 
-      // NP contabilizado (2 publicações com JCR 7.4 e 11.1 >= 1.0)
-      expect(resultado.pdq_detalhes.np).toBe(2)
+      // NP estrito só conta publicações com coautoria confirmada (nenhuma aqui);
+      // as 2 publicações com JCR 7.4 e 11.1 >= 1.0 entram no NP teto como pendentes
+      expect(resultado.pdq_detalhes.np).toBe(0)
+      expect(resultado.pdq_detalhes.np_teto).toBe(2)
 
       // Orientações ainda ativas (não concluídas): titulações MSc + DSc = 0 < 2
       expect(resultado.pdq_detalhes.titulacoes_total).toBe(0)
@@ -216,8 +218,8 @@ describe('Service obterAvaliacaoReconducao (Etapa C)', () => {
     it('avalia Ledjane integrando vínculos estruturados sem erro e mantendo consistência', () => {
       // Mock de vínculos estruturados R4
       const publicacoesDocentesLedjane = [
-        { publicacao_id: 1, docente_id: docenteLedjane.id },
         { publicacao_id: 2, docente_id: docenteLedjane.id },
+        { publicacao_id: 3, docente_id: docenteLedjane.id },
       ]
       const participantesProjetosLedjane = [
         { projeto_id: 1, docente_id: docenteLedjane.id, papel: 'coordenador' },
@@ -236,8 +238,10 @@ describe('Service obterAvaliacaoReconducao (Etapa C)', () => {
       expect(resultado.nome).toBe('Ledjane Silva Barreto')
       expect(resultado.scopus_id).toBe('7005598575')
       expect(resultado.categoria).toBe('permanente')
-      // Ledjane não quebra e mantém consistência com os vínculos
-      expect(resultado.criterio_iii.atendido).toBe(true)
+      // Vínculos estruturados definem as publicações do docente (NP teto = 2)
+      expect(resultado.pdq_detalhes.np_teto).toBe(2)
+      // O projeto EVOCER é coordenado por Ledjane, mas não tem financiamento: Critério III não atendido
+      expect(resultado.criterio_iii.atendido).toBe(false)
     })
 
     it('quando Ledjane tem titulações concluídas e projeto financiado, atinge RECONDUZIDO', () => {
@@ -306,6 +310,11 @@ describe('Service obterAvaliacaoReconducao (Etapa C)', () => {
         projetos: projetosFinanciados,
         participantesProjetos: [],
         publicacoes: publicacoesLedjane,
+        // NP estrito exige coautoria confirmada com orientando/egresso do programa
+        coautoresPrograma: [
+          { publicacao_id: 2, tipo: 'orientando', nome_citado: 'Hericles Campos dos Santos' },
+          { publicacao_id: 3, tipo: 'egresso', nome_citado: 'Iara de Fatima Gimenez' },
+        ],
       })
 
       expect(resultado.criterio_i.atendido).toBe(true)

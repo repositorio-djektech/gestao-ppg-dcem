@@ -39,7 +39,8 @@ describe('Regras de Lacunas - Etapa 1', () => {
       licenca: '',
       id_lattes: '3104369029830651',
       openalex_id: 'A5012512598',
-    }
+      total_participacoes_projetos: 1,
+    } as Docente
 
     const docenteSemIdentificadores: Docente = {
       id: 99,
@@ -123,7 +124,9 @@ describe('Regras de Lacunas - Etapa 1', () => {
       link_lattes: 'http://lattes.cnpq.br/1234567890123456',
       link_comprovacao: '',
       observacoes: '',
-    }
+      docente_orientador_id: 4,
+      total_projetos_vinculados: 1,
+    } as Discente
 
     const discenteIncompleto: Discente = {
       id: 10,
@@ -176,8 +179,8 @@ describe('Regras de Lacunas - Etapa 1', () => {
   })
 
   describe('Regras das 8 tabelas restantes (Etapa 5) e R4', () => {
-    it('totaliza 31 regras no sistema (9 doc + 6 disc + 4 pub + 3 ori + 3 proj + 2 ev + 2 mob + 2 pat + 2 prem + 1 pt)', () => {
-      expect(TODAS_AS_REGRAS).toHaveLength(31)
+    it('totaliza 34 regras no sistema (9 doc + 6 disc + 4 pub + 3 ori + 3 proj + 2 ev + 2 mob + 2 pat + 2 prem + 1 pt)', () => {
+      expect(TODAS_AS_REGRAS).toHaveLength(34)
     })
 
     it('identifica docente JDP com prazo expirado', () => {
@@ -546,8 +549,8 @@ describe('Regras de Lacunas - Etapa 1', () => {
       })
 
       expect(relatorio.gerado_em).toBe('2026-10-10T12:00:00.000Z')
-      expect(relatorio.resumo).toHaveLength(31) // Todas as 31 regras consolidadas (+2 regras JDP)
-      expect(relatorio.lacunas).toHaveLength(31)
+      expect(relatorio.resumo).toHaveLength(34) // Todas as 34 regras consolidadas
+      expect(relatorio.lacunas).toHaveLength(34)
 
       // Verificar que Ledjane NÃO aparece na lacuna de Scopus, mas Euler aparece
       const lacunaScopus = relatorio.lacunas.find((l) => l.regra_id === 'docente_sem_scopus_id')!

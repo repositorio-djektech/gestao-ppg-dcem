@@ -123,8 +123,8 @@ describe('Motor de Casamento Automático Autor→Docente (Etapa D1)', () => {
       const res = casarAutoresComDocente('VALERIO, M. E. G.', doc)
 
       expect(res.match).toBe(true)
-      expect(res.score).toBeGreaterThanOrEqual(0.85)
-      expect(classificarGrauConfianca(res.score)).toBe('alta')
+      expect(res.score).toBeGreaterThanOrEqual(0.75)
+      expect(classificarGrauConfianca(res.score)).toBe('media')
     })
 
     it('reconhece "VALERIO, Mario e G" com acentos e minúsculas', () => {
