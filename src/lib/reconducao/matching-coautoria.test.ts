@@ -10,7 +10,8 @@ import {
 describe('Matching Tolerante de Coautoria com Discentes/Egressos (Item 1)', () => {
   describe('Normalização e divisão de nomes', () => {
     it('normaliza acentos, maiúsculas e caracteres especiais', () => {
-      expect(normalizarTextoNome('Élvia Soraya dos Santos')).toBe('elvia soraya santos')
+      // A normalização só trata acentos, caixa e símbolos; as stopwords ("dos") saem na tokenização.
+      expect(normalizarTextoNome('Élvia Soraya dos Santos')).toBe('elvia soraya dos santos')
       expect(normalizarTextoNome('FÉLIX RAMAN SILVA SILVEIRA')).toBe('felix raman silva silveira')
       expect(normalizarTextoNome('Jander Lopes Fonseca')).toBe('jander lopes fonseca')
     })

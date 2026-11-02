@@ -329,8 +329,9 @@ describe('Gerador do Relatório de Recondução Impresso (Etapa E)', () => {
 
   it('inclui na nota metodológica as ressalvas do NP estrito, coautorias pendentes e fontes cadastrais', () => {
     const html = gerarHtmlRelatorioReconducao(relatorioExemplo)
-    expect(html).toContain('publicacoes_coautores_programa')
-    expect(html).toContain('demandam deliberação do Colegiado')
+    // A nota do critério IV vem do próprio relatório (relatorioExemplo.nota_metodologica)
+    expect(html).toContain('O NP estrito considera somente coautorias confirmadas')
+    expect(html).toContain('Coautorias Pendentes e Deliberação do Colegiado')
     expect(html).toContain('declarações do programa')
   })
 

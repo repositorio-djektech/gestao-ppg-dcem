@@ -34,7 +34,7 @@ describe('Regras de JDP (Jovem Doutor Pesquisador)', () => {
     expect(status.expiradoPorPrazoJdp).toBe(true)
     expect(status.isExpirado).toBe(true)
     expect(status.isValido).toBe(false)
-    expect(status.motivoExpiracao).toContain('desde 2020')
+    expect(status.motivoExpiracao).toContain('início em 2020')
   })
 
   it('deve marcar como expirado quando ano_doutorado + 10 < ano_corrente (ex: doutorado em 2014)', () => {
