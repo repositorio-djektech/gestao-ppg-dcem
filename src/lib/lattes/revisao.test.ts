@@ -6,7 +6,7 @@ import { mapearDadosParaRevisao } from './revisao'
 describe('Subetapa 1C - Revisão por Tabela Lattes', () => {
   const xmlPath = 'docs/3104369029830651.xml'
 
-  it('mapeia todas as 9 tabelas alvo e agrupa contagens e amostras corretamente', async () => {
+  it('mapeia todas as 8 tabelas alvo e agrupa contagens e amostras corretamente', async () => {
     const rawBuffer = fs.readFileSync(xmlPath)
     const xmlFile = new File([rawBuffer], '3104369029830651.xml', { type: 'text/xml' })
 
@@ -21,7 +21,6 @@ describe('Subetapa 1C - Revisão por Tabela Lattes', () => {
       'docentes',
       'publicacoes',
       'orientacoes',
-      'bancas',
       'projetos_pesquisa',
       'premiacoes',
       'producao_tecnica',
@@ -49,13 +48,6 @@ describe('Subetapa 1C - Revisão por Tabela Lattes', () => {
     const primeiraOri = tabelas.orientacoes.itens[0] as any
     expect(primeiraOri.orientando).toBeTruthy()
     expect(primeiraOri.status).toMatch(/Concluída|Em andamento/)
-
-    // 4. Bancas
-    expect(tabelas.bancas.inseridos).toBeGreaterThan(0)
-    expect(tabelas.bancas.itens.length).toBe(tabelas.bancas.inseridos)
-    const primeiraBanca = tabelas.bancas.itens[0] as any
-    expect(primeiraBanca.titulo).toBeTruthy()
-    expect(primeiraBanca.ano).toBeGreaterThanOrEqual(2022)
 
     // 5. Projetos de Pesquisa
     expect(tabelas.projetos_pesquisa.inseridos).toBeGreaterThanOrEqual(0)
@@ -89,7 +81,6 @@ describe('Subetapa 1C - Revisão por Tabela Lattes', () => {
       docentes: true,
       publicacoes: true,
       orientacoes: false,
-      bancas: false,
       projetos_pesquisa: false,
       premiacoes: false,
       producao_tecnica: false,

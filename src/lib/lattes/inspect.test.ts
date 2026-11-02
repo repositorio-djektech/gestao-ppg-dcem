@@ -103,7 +103,6 @@ describe('Pipeline Lattes - subetapa 1A', () => {
     console.log(`Docente: ${resultado.nome_docente} (ID: ${resultado.id_lattes})`)
     console.log(`Publicações inseríveis: ${resultado.publicacoes.length}`)
     console.log(`Orientações inseríveis: ${resultado.orientacoes.length}`)
-    console.log(`Bancas inseríveis: ${resultado.bancas.length}`)
     console.log(`Projetos inseríveis: ${resultado.projetos.length}`)
     console.log(`Premiações inseríveis: ${resultado.premiacoes.length}`)
     console.log(`Produções técnicas: ${resultado.producoes_tecnicas.length}`)
@@ -119,15 +118,6 @@ describe('Pipeline Lattes - subetapa 1A', () => {
       (p) => p.ano,
     )
     expect(pubsQuad.totalDentro).toBe(resultado.publicacoes.length)
-
-    // Bancas
-    const bancasQuad = filtrarPorQuadrienio(resultado.bancas, (b) => b.ano, ANO_INICIO, ANO_FIM)
-    const bancasDedupe = deduplicarItens(
-      bancasQuad.dentro,
-      (b) => b.titulo_trabalho,
-      (b) => b.ano,
-    )
-    expect(bancasQuad.totalDentro).toBe(resultado.bancas.length)
 
     // Orientações (pós-filtro quadriênio por ano de conclusão ou início)
     const oriQuad = filtrarPorQuadrienio(
@@ -145,9 +135,6 @@ describe('Pipeline Lattes - subetapa 1A', () => {
     console.log('--- RESULTADOS PÓS-FILTRO E PÓS-DEDUPE ---')
     console.log(
       `Publicações únicas (${ANO_INICIO}-${ANO_FIM}): ${pubsDedupe.totalUnicos} (descartadas: ${pubsDedupe.totalDuplicatas})`,
-    )
-    console.log(
-      `Bancas únicas (${ANO_INICIO}-${ANO_FIM}): ${bancasDedupe.totalUnicos} (descartadas: ${bancasDedupe.totalDuplicatas})`,
     )
     console.log(
       `Orientações únicas (${ANO_INICIO}-${ANO_FIM}): ${oriDedupe.totalUnicos} (descartadas: ${oriDedupe.totalDuplicatas})`,
@@ -189,7 +176,6 @@ describe('Pipeline Lattes - subetapa 1A', () => {
       publicacoesValidos: processado.resumoGeral.secoes.publicacoes.totalValidos,
       publicacoesFora: processado.resumoGeral.secoes.publicacoes.totalForaQuadrienio,
       orientacoesValidos: processado.resumoGeral.secoes.orientacoes.totalValidos,
-      bancasValidos: processado.resumoGeral.secoes.bancas.totalValidos,
       projetosValidos: processado.resumoGeral.secoes.projetos.totalValidos,
       premiacoesValidos: processado.resumoGeral.secoes.premiacoes.totalValidos,
       producoesTecnicasValidos: processado.resumoGeral.secoes.producoes_tecnicas.totalValidos,
@@ -216,10 +202,6 @@ describe('Pipeline Lattes - subetapa 1A', () => {
     expect(tabelasDuplicadas.publicacoes.itens.length).toBe(tabelas.publicacoes.itens.length)
     expect(tabelasDuplicadas.publicacoes.inseridos).toBe(tabelas.publicacoes.inseridos)
 
-    // Bancas: deduplicadas por chave normalizada
-    expect(tabelasDuplicadas.bancas.itens.length).toBe(tabelas.bancas.itens.length)
-    expect(tabelasDuplicadas.bancas.inseridos).toBe(tabelas.bancas.inseridos)
-
     // Orientações: deduplicadas
     expect(tabelasDuplicadas.orientacoes.itens.length).toBe(tabelas.orientacoes.itens.length)
     expect(tabelasDuplicadas.orientacoes.inseridos).toBe(tabelas.orientacoes.inseridos)
@@ -232,7 +214,6 @@ describe('Pipeline Lattes - subetapa 1A', () => {
     expect(tabelas.orientacoes.inseridos).toBe(
       processado.resumoGeral.secoes.orientacoes.totalValidos,
     )
-    expect(tabelas.bancas.inseridos).toBe(processado.resumoGeral.secoes.bancas.totalValidos)
     expect(tabelas.projetos_pesquisa.inseridos).toBe(
       processado.resumoGeral.secoes.projetos.totalValidos,
     )

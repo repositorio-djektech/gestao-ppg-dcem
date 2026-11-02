@@ -3,7 +3,6 @@ import type {
   LattesDocente,
   LattesPublicacao,
   LattesOrientacao,
-  LattesBanca,
   LattesProjeto,
   LattesPremiacao,
   LattesProducaoTecnica,
@@ -44,16 +43,6 @@ export interface ItemAmostraOrientacao {
   ano: number | string
   status: string
   tipo_orientacao: string
-}
-
-export interface ItemAmostraBanca {
-  id: string
-  docenteNome: string
-  nivel: string
-  titulo: string
-  candidato: string
-  instituicao: string
-  ano: number
 }
 
 export interface ItemAmostraProjeto {
@@ -111,7 +100,6 @@ export type ItemAmostraGenerico =
   | ItemAmostraDocente
   | ItemAmostraPublicacao
   | ItemAmostraOrientacao
-  | ItemAmostraBanca
   | ItemAmostraProjeto
   | ItemAmostraPremiacao
   | ItemAmostraProducaoTecnica
@@ -154,15 +142,6 @@ export function mapearDadosParaRevisao(
       id: 'orientacoes',
       titulo: 'Orientações',
       descricao: 'Orientações concluídas e em andamento (Mestrado, Doutorado, etc.)',
-      inseridos: 0,
-      atualizados: 0,
-      ignorados: 0,
-      itens: [],
-    },
-    bancas: {
-      id: 'bancas',
-      titulo: 'Bancas',
-      descricao: 'Participações em bancas de mestrado, doutorado e exames de qualificação',
       inseridos: 0,
       atualizados: 0,
       ignorados: 0,
@@ -275,21 +254,6 @@ export function mapearDadosParaRevisao(
     })
     tabelas.orientacoes.inseridos += resArq.estatisticas.orientacoes.a_inserir
     tabelas.orientacoes.ignorados += resArq.estatisticas.orientacoes.ignorados
-
-    // 4. Bancas
-    resArq.bancas.forEach((banca, idx) => {
-      tabelas.bancas.itens.push({
-        id: `banca-${resArq.id_lattes}-${idx}`,
-        docenteNome: nomeDocente,
-        nivel: banca.tipo,
-        titulo: banca.titulo_trabalho,
-        candidato: banca.candidato || '-',
-        instituicao: banca.instituicao || '-',
-        ano: banca.ano,
-      } as ItemAmostraBanca)
-    })
-    tabelas.bancas.inseridos += resArq.estatisticas.bancas.a_inserir
-    tabelas.bancas.ignorados += resArq.estatisticas.bancas.ignorados
 
     // 5. Projetos de Pesquisa
     resArq.projetos.forEach((proj, idx) => {

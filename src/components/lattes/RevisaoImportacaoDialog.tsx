@@ -25,7 +25,6 @@ import {
   Users,
   FileText,
   Users2,
-  ClipboardList,
   FlaskConical,
   Award,
   Wrench,
@@ -53,7 +52,6 @@ import {
   type ItemAmostraDocente,
   type ItemAmostraPublicacao,
   type ItemAmostraOrientacao,
-  type ItemAmostraBanca,
   type ItemAmostraProjeto,
   type ItemAmostraPremiacao,
   type ItemAmostraProducaoTecnica,
@@ -67,7 +65,6 @@ import {
   converterLattesDocente,
   converterLattesPublicacao,
   converterLattesOrientacao,
-  converterLattesBanca,
   converterLattesProjeto,
   converterLattesPremiacao,
   converterLattesProducaoTecnica,
@@ -106,7 +103,6 @@ const TABELAS_ORDEM: Array<{
   { id: 'docentes', rotulo: 'Docentes', icone: Users },
   { id: 'publicacoes', rotulo: 'Publicações', icone: FileText },
   { id: 'orientacoes', rotulo: 'Orientações', icone: Users2 },
-  { id: 'bancas', rotulo: 'Bancas', icone: ClipboardList },
   { id: 'projetos_pesquisa', rotulo: 'Projetos', icone: FlaskConical },
   { id: 'premiacoes', rotulo: 'Premiações', icone: Award },
   { id: 'producao_tecnica', rotulo: 'Produção Técnica', icone: Wrench },
@@ -129,7 +125,6 @@ export function RevisaoImportacaoDialog({
     docentes: true,
     publicacoes: true,
     orientacoes: true,
-    bancas: true,
     projetos_pesquisa: true,
     premiacoes: true,
     producao_tecnica: true,
@@ -298,7 +293,6 @@ export function RevisaoImportacaoDialog({
     docentes: ITENS_POR_PAGINA,
     publicacoes: ITENS_POR_PAGINA,
     orientacoes: ITENS_POR_PAGINA,
-    bancas: ITENS_POR_PAGINA,
     projetos_pesquisa: ITENS_POR_PAGINA,
     premiacoes: ITENS_POR_PAGINA,
     producao_tecnica: ITENS_POR_PAGINA,
@@ -349,7 +343,6 @@ export function RevisaoImportacaoDialog({
       docentes: marcarTodas,
       publicacoes: marcarTodas,
       orientacoes: marcarTodas,
-      bancas: marcarTodas,
       projetos_pesquisa: marcarTodas,
       premiacoes: marcarTodas,
       producao_tecnica: marcarTodas,
@@ -372,7 +365,6 @@ export function RevisaoImportacaoDialog({
         docentes: [],
         publicacoes: [],
         orientacoes: [],
-        bancas: [],
         projetos_pesquisa: [],
         premiacoes: [],
         producao_tecnica: [],
@@ -510,11 +502,6 @@ export function RevisaoImportacaoDialog({
         )
       : []
 
-    // 4. Bancas se marcadas
-    const listaBancas = tabelasSelecionadas.bancas
-      ? resList.flatMap((r) => (Array.isArray(r.bancas) ? r.bancas : [])).map(converterLattesBanca)
-      : []
-
     // 5. Projetos de pesquisa se marcados
     const listaProjetos = tabelasSelecionadas.projetos_pesquisa
       ? resList.flatMap((r) =>
@@ -567,7 +554,6 @@ export function RevisaoImportacaoDialog({
       docentes: listaDocentes,
       publicacoes: listaPublicacoes,
       orientacoes: listaOrientacoes,
-      bancas: listaBancas,
       projetos_pesquisa: listaProjetos,
       premiacoes: listaPremiacoes,
       producao_tecnica: listaProducoesTecnicas,
@@ -592,7 +578,6 @@ export function RevisaoImportacaoDialog({
     itensParaGravar.docentes.length +
     itensParaGravar.publicacoes.length +
     itensParaGravar.orientacoes.length +
-    itensParaGravar.bancas.length +
     itensParaGravar.projetos_pesquisa.length +
     itensParaGravar.premiacoes.length +
     itensParaGravar.producao_tecnica.length +
@@ -619,8 +604,6 @@ export function RevisaoImportacaoDialog({
         relatorio.publicacoes.atualizados > 0 ||
         relatorio.orientacoes.inseridos > 0 ||
         relatorio.orientacoes.atualizados > 0 ||
-        relatorio.bancas.inseridos > 0 ||
-        relatorio.bancas.atualizados > 0 ||
         relatorio.projetos_pesquisa.inseridos > 0 ||
         relatorio.projetos_pesquisa.atualizados > 0 ||
         relatorio.premiacoes.inseridos > 0 ||
@@ -1144,16 +1127,6 @@ function renderCabecalhoTabela(tabelaId: TabelaAlvoId) {
           <TableHead className="w-[12%]">Situação</TableHead>
         </TableRow>
       )
-    case 'bancas':
-      return (
-        <TableRow>
-          <TableHead className="w-[12%]">Nível</TableHead>
-          <TableHead className="w-[38%]">Título da Banca / Trabalho</TableHead>
-          <TableHead className="w-[20%]">Candidato</TableHead>
-          <TableHead className="w-[20%]">Instituição</TableHead>
-          <TableHead className="w-[10%]">Ano</TableHead>
-        </TableRow>
-      )
     case 'projetos_pesquisa':
       return (
         <TableRow>
@@ -1583,29 +1556,6 @@ function renderLinhasTabela(tabelaId: TabelaAlvoId, itens: any[], opcoes: Opcoes
               >
                 {textoSeguro(item.status)}
               </Badge>
-            </TableCell>
-          </TableRow>
-        )
-      })
-
-    case 'bancas':
-      return itens.map((b: ItemAmostraBanca, idx: number) => {
-        const item = b ?? ({} as Partial<ItemAmostraBanca>)
-        const key = item.id ?? `banca-${idx}`
-        return (
-          <TableRow key={key}>
-            <TableCell>
-              <Badge variant="outline" className="text-[10px] bg-slate-50 border-slate-200">
-                {textoSeguro(item.nivel)}
-              </Badge>
-            </TableCell>
-            <TableCell className="font-medium text-slate-900">{textoSeguro(item.titulo)}</TableCell>
-            <TableCell className="text-slate-700 text-xs">{textoSeguro(item.candidato)}</TableCell>
-            <TableCell className="text-slate-600 text-xs">
-              {textoSeguro(item.instituicao)}
-            </TableCell>
-            <TableCell className="text-slate-600 font-mono text-xs">
-              {textoSeguro(item.ano)}
             </TableCell>
           </TableRow>
         )

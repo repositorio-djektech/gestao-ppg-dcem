@@ -3,7 +3,6 @@ import {
   gravarDocentes,
   gravarPublicacoes,
   gravarOrientacoes,
-  gravarBancas,
   gravarProjetosPesquisa,
   gravarPremiacoes,
   gravarProducaoTecnica,
@@ -14,7 +13,6 @@ import {
   converterLattesDocente,
   converterLattesPublicacao,
   converterLattesOrientacao,
-  converterLattesBanca,
   converterLattesProjeto,
   converterLattesPremiacao,
   converterLattesProducaoTecnica,
@@ -23,7 +21,6 @@ import {
   type DocenteParaGravar,
   type PublicacaoParaGravar,
   type OrientacaoParaGravar,
-  type BancaParaGravar,
   type ProjetoPesquisaParaGravar,
   type PremiacaoParaGravar,
   type ProducaoTecnicaParaGravar,
@@ -35,7 +32,6 @@ import type {
   LattesDocente,
   LattesPublicacao,
   LattesOrientacao,
-  LattesBanca,
   LattesProjeto,
   LattesPremiacao,
   LattesProducaoTecnica,
@@ -44,7 +40,7 @@ import type {
 } from './types'
 
 /**
- * Cria um mock completo em memória do cliente Supabase para todas as 9 tabelas + discentes.
+ * Cria um mock completo em memória do cliente Supabase para todas as 8 tabelas + discentes.
  * Não acessa rede nem banco real.
  */
 function createMockSupabaseClient(initialState?: {
@@ -57,13 +53,6 @@ function createMockSupabaseClient(initialState?: {
     discente_id?: number | null
     tipo: string
     inicio: string
-    [key: string]: unknown
-  }>
-  bancas?: Array<{
-    id: number
-    titulo_trabalho: string
-    data: string
-    tipo: string
     [key: string]: unknown
   }>
   projetos_pesquisa?: Array<{ id: number; titulo: string; inicio: string; [key: string]: unknown }>
@@ -98,7 +87,6 @@ function createMockSupabaseClient(initialState?: {
     publicacoes: [...(initialState?.publicacoes || [])],
     discentes: [...(initialState?.discentes || [])],
     orientacoes: [...(initialState?.orientacoes || [])],
-    bancas: [...(initialState?.bancas || [])],
     projetos_pesquisa: [...(initialState?.projetos_pesquisa || [])],
     premiacoes: [...(initialState?.premiacoes || [])],
     producao_tecnica: [...(initialState?.producao_tecnica || [])],
@@ -111,7 +99,6 @@ function createMockSupabaseClient(initialState?: {
     publicacoes: [],
     discentes: [],
     orientacoes: [],
-    bancas: [],
     projetos_pesquisa: [],
     premiacoes: [],
     producao_tecnica: [],
@@ -124,7 +111,6 @@ function createMockSupabaseClient(initialState?: {
     publicacoes: [],
     discentes: [],
     orientacoes: [],
-    bancas: [],
     projetos_pesquisa: [],
     premiacoes: [],
     producao_tecnica: [],
@@ -184,7 +170,7 @@ function createMockSupabaseClient(initialState?: {
 
 describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => {
   describe('Funções de conversão', () => {
-    it('converte LattesOrientacao, LattesBanca, LattesProjeto, Premiacao, ProducaoTecnica, Patente e Evento corretamente', () => {
+    it('converte LattesOrientacao, LattesProjeto, Premiacao, ProducaoTecnica, Patente e Evento corretamente', () => {
       // 1. Orientação
       const ori: LattesOrientacao = {
         tipo: 'MESTRADO',
@@ -206,19 +192,6 @@ describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => 
       expect(oriConv.inicio).toBe('2022')
       expect(oriConv.fim).toBe('2024')
       expect(oriConv.docente_identificador).toBe('123')
-
-      // 2. Banca
-      const banca: LattesBanca = {
-        tipo: 'DOUTORADO',
-        titulo_trabalho: 'Defesa de Doutorado em Materiais',
-        ano: 2023,
-        candidato: 'Candidato A',
-        participantes: 'Prof A, Prof B',
-      }
-      const bancaConv = converterLattesBanca(banca)
-      expect(bancaConv.tipo).toBe('Doutorado')
-      expect(bancaConv.titulo_trabalho).toBe('Defesa de Doutorado em Materiais')
-      expect(bancaConv.candidato_nome).toBe('Candidato A')
 
       // 3. Projeto
       const proj: LattesProjeto = {
@@ -789,32 +762,6 @@ describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => 
       expect(mock.database.discentes.some((d) => d.nome === 'Aluno Novo Inedito')).toBe(true)
     })
 
-    it('cenário 9: bancas -> descontinuado / no-op seguro (tabela removida do banco)', async () => {
-      const mock = createMockSupabaseClient()
-
-      const listaBancas: BancaParaGravar[] = [
-        {
-          titulo_trabalho: 'Banca Original de Mestrado',
-          data: '2023',
-          tipo: 'Mestrado',
-          membros: 'Prof A; Prof B',
-        },
-        {
-          titulo_trabalho: 'Nova Banca Doutorado 2024',
-          data: '2024',
-          tipo: 'Doutorado',
-          membros: 'Prof C',
-        },
-      ]
-
-      const res = await gravarBancas(listaBancas, mock.client)
-
-      expect(res.contagem.atualizados).toBe(0)
-      expect(res.contagem.inseridos).toBe(0)
-      expect(res.contagem.ignorados).toBe(2)
-      expect(res.erros).toHaveLength(0)
-    })
-
     it('cenário 10: projetos de pesquisa -> vincula coordenador e dedupe por título + início', async () => {
       const mock = createMockSupabaseClient({
         docentes: [{ id: 5, nome: 'Coordenador Teste', id_lattes: '9999999999999999' }],
@@ -961,8 +908,8 @@ describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => 
     })
   })
 
-  describe('gravarDadosLattes (coordenação geral 9 tabelas)', () => {
-    it('executa em lote todas as 9 tabelas e retorna relatório consolidado', async () => {
+  describe('gravarDadosLattes (coordenação geral 8 tabelas)', () => {
+    it('executa em lote todas as 8 tabelas e retorna relatório consolidado', async () => {
       const mock = createMockSupabaseClient({
         docentes: [{ id: 1, nome: 'Docente Cadastrado', id_lattes: '1111111111111111' }],
         publicacoes: [{ id: 10, titulo: 'Artigo Existente', ano: 2023 }],
@@ -993,14 +940,6 @@ describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => 
               tipo: 'Mestrado',
               inicio: '2023',
               status: 'ativo',
-            },
-          ],
-          bancas: [
-            {
-              titulo_trabalho: 'Banca Teste',
-              data: '2023',
-              tipo: 'Mestrado',
-              membros: 'Prof',
             },
           ],
           projetos_pesquisa: [
@@ -1059,7 +998,6 @@ describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => 
       })
 
       expect(relatorio.orientacoes.inseridos).toBe(1)
-      expect(relatorio.bancas.ignorados).toBe(1)
       expect(relatorio.projetos_pesquisa.inseridos).toBe(1)
       expect(relatorio.premiacoes.inseridos).toBe(1)
       expect(relatorio.producao_tecnica.inseridos).toBe(1)

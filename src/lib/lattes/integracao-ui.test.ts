@@ -48,7 +48,6 @@ describe('Subetapa 2B - Integração UI de Gravação (Lógica Offline)', () => 
             tipo_orientacao: 'ORIENTADOR_PRINCIPAL',
           },
         ],
-        bancas: [],
         projetos: [],
         producoes_tecnicas: [],
         patentes: [],
@@ -58,7 +57,6 @@ describe('Subetapa 2B - Integração UI de Gravação (Lógica Offline)', () => 
         estatisticas: {
           publicacoes: { a_inserir: 2, ignorados: 0 },
           orientacoes: { a_inserir: 1, ignorados: 0 },
-          bancas: { a_inserir: 0, ignorados: 0 },
           projetos: { a_inserir: 0, ignorados: 0 },
           producoes_tecnicas: { a_inserir: 0, ignorados: 0 },
           patentes: { a_inserir: 0, ignorados: 0 },
@@ -79,7 +77,6 @@ describe('Subetapa 2B - Integração UI de Gravação (Lógica Offline)', () => 
       docentes: false,
       publicacoes: true,
       orientacoes: true, // Não implementada no gravar.ts
-      bancas: true,
     }
 
     const docentesParaGravar = tabelasSelecionadas.docentes
@@ -193,12 +190,11 @@ describe('Subetapa 2B - Integração UI de Gravação (Lógica Offline)', () => 
     expect(gravouAlgo).toBe(true)
   })
 
-  it('4. Subetapa 2C: grava todas as 9 tabelas selecionadas quando fornecidas', async () => {
+  it('4. Subetapa 2C: grava todas as 8 tabelas selecionadas quando fornecidas', async () => {
     const tabelasMockData: Record<string, any[]> = {
       docentes: [],
       publicacoes: [],
       orientacoes: [],
-      bancas: [],
       projetos_pesquisa: [],
       premiacoes: [],
       producao_tecnica: [],
@@ -244,14 +240,6 @@ describe('Subetapa 2B - Integração UI de Gravação (Lógica Offline)', () => 
             inicio: '2023',
             status: 'concluido',
             docente_identificador: '3104369029830651',
-          },
-        ],
-        bancas: [
-          {
-            titulo_trabalho: 'Banca Dissertação',
-            data: '2023',
-            tipo: 'Mestrado',
-            membros: 'Prof 1',
           },
         ],
         projetos_pesquisa: [
@@ -302,7 +290,6 @@ describe('Subetapa 2B - Integração UI de Gravação (Lógica Offline)', () => 
     expect(relatorio.docentes.inseridos).toBe(1)
     expect(relatorio.publicacoes.inseridos).toBe(1)
     expect(relatorio.orientacoes.inseridos).toBe(1)
-    expect(relatorio.bancas.inseridos).toBe(1)
     expect(relatorio.projetos_pesquisa.inseridos).toBe(1)
     expect(relatorio.premiacoes.inseridos).toBe(1)
     expect(relatorio.producao_tecnica.inseridos).toBe(1)

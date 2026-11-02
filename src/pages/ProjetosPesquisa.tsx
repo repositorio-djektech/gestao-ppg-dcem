@@ -366,7 +366,6 @@ export default function ProjetosPesquisa() {
         }
         delete payload.participantes_docentes
         delete payload.discentes_vinculados
-        delete payload.bancas_vinculadas_ids
         delete payload.iniciacoes_vinculadas_ids
 
         const novo = (await projetosPesquisaService.create(payload)) as ProjetoPesquisa
@@ -411,7 +410,6 @@ export default function ProjetosPesquisa() {
         }
         delete payload.participantes_docentes
         delete payload.discentes_vinculados
-        delete payload.bancas_vinculadas_ids
         delete payload.iniciacoes_vinculadas_ids
 
         const atualizado = (await projetosPesquisaService.update(

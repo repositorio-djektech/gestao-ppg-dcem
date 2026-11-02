@@ -5,7 +5,6 @@ import type {
   LattesDocente,
   LattesPublicacao,
   LattesOrientacao,
-  LattesBanca,
   LattesProjeto,
   LattesPremiacao,
   LattesProducaoTecnica,
@@ -24,7 +23,6 @@ export interface RelatorioGravacaoLattes {
   docentes: RelatorioContagemTabela
   publicacoes: RelatorioContagemTabela
   orientacoes: RelatorioContagemTabela
-  bancas: RelatorioContagemTabela
   projetos_pesquisa: RelatorioContagemTabela
   premiacoes: RelatorioContagemTabela
   producao_tecnica: RelatorioContagemTabela
@@ -99,18 +97,6 @@ export interface OrientacaoParaGravar {
   ano_referencia?: number | null
   data_defesa?: string | null
   flag_orientador_principal?: boolean
-}
-
-export interface BancaParaGravar {
-  titulo_trabalho: string
-  data: string
-  discente_id?: number | null
-  candidato_nome?: string | null
-  membros: string
-  tipo: 'Mestrado' | 'Doutorado' | 'Qualificação'
-  ano_referencia?: number | null
-  link_comprovacao?: string | null
-  observacoes?: string | null
 }
 
 export interface ProjetoPesquisaParaGravar {
@@ -271,41 +257,6 @@ export function converterLattesOrientacao(
     ano_referencia: anoRef,
     data_defesa: o.data_defesa ?? null,
     flag_orientador_principal: flagOrientadorPrincipal,
-  }
-}
-
-/**
- * Converte LattesBanca para o formato da tabela bancas.
- * Deriva o tipo estrito: 'Mestrado' | 'Doutorado' | 'Qualificação'.
- */
-export function converterLattesBanca(b: LattesBanca): BancaParaGravar {
-  let tipoDb: 'Mestrado' | 'Doutorado' | 'Qualificação' = 'Mestrado'
-  if (b.tipo === 'DOUTORADO') {
-    tipoDb = 'Doutorado'
-  } else if (b.tipo === 'QUALIFICACAO') {
-    tipoDb = 'Qualificação'
-  } else {
-    // MESTRADO, GRADUACAO ou OUTRA -> padrão 'Mestrado' (respeitando CHECK constraint)
-    tipoDb = 'Mestrado'
-  }
-
-  const anoNum = typeof b.ano === 'number' ? b.ano : parseInt(String(b.ano), 10) || null
-  const dataStr = anoNum ? String(anoNum) : ''
-
-  const obsPartes: string[] = []
-  if (b.tipo === 'GRADUACAO') obsPartes.push('Banca de Graduação / TCC')
-  if (b.instituicao) obsPartes.push(`Instituição: ${b.instituicao}`)
-  if (b.curso) obsPartes.push(`Curso: ${b.curso}`)
-
-  return {
-    titulo_trabalho: b.titulo_trabalho ? b.titulo_trabalho.trim() : '',
-    tipo: tipoDb,
-    data: dataStr,
-    candidato_nome: b.candidato ? b.candidato.trim() : null,
-    membros: b.participantes ? b.participantes.trim() : '',
-    ano_referencia: anoNum,
-    link_comprovacao: '',
-    observacoes: obsPartes.join(' | '),
   }
 }
 
@@ -1206,26 +1157,6 @@ export async function gravarOrientacoes(
 }
 
 /**
- * Grava bancas no Supabase:
- * - Dedupe: por título normalizado + ano (ou título normalizado);
- * - Resolve discente_id pelo candidato_nome se presente;
- * - Tipo mapeado estritamente para 'Mestrado' | 'Doutorado' | 'Qualificação'.
- */
-export async function gravarBancas(
-  bancas: BancaParaGravar[],
-  _client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
-): Promise<{ contagem: RelatorioContagemTabela; erros: RelatorioGravacaoLattes['erros'] }> {
-  // A tabela bancas foi descontinuada e removida do banco conforme decisão de negócio.
-  // O parser Lattes continua lendo bancas do XML, mas a persistência foi desativada (no-op seguro).
-  const contagem: RelatorioContagemTabela = {
-    inseridos: 0,
-    atualizados: 0,
-    ignorados: bancas ? bancas.length : 0,
-  }
-  return { contagem, erros: [] }
-}
-
-/**
  * Grava disciplinas no Supabase:
  * A importação de disciplinas via Lattes foi DESATIVADA por decisão da cliente:
  * a página Disciplinas e os vínculos disciplina↔docente são gerenciados exclusivamente
@@ -1830,7 +1761,6 @@ export async function gravarDadosLattes(
     docentes?: DocenteParaGravar[]
     publicacoes?: PublicacaoParaGravar[]
     orientacoes?: OrientacaoParaGravar[]
-    bancas?: BancaParaGravar[]
     projetos_pesquisa?: ProjetoPesquisaParaGravar[]
     premiacoes?: PremiacaoParaGravar[]
     producao_tecnica?: ProducaoTecnicaParaGravar[]
@@ -1844,7 +1774,6 @@ export async function gravarDadosLattes(
     docentes: { inseridos: 0, atualizados: 0, ignorados: 0 },
     publicacoes: { inseridos: 0, atualizados: 0, ignorados: 0 },
     orientacoes: { inseridos: 0, atualizados: 0, ignorados: 0 },
-    bancas: { inseridos: 0, atualizados: 0, ignorados: 0 },
     projetos_pesquisa: { inseridos: 0, atualizados: 0, ignorados: 0 },
     premiacoes: { inseridos: 0, atualizados: 0, ignorados: 0 },
     producao_tecnica: { inseridos: 0, atualizados: 0, ignorados: 0 },
@@ -1900,12 +1829,6 @@ export async function gravarDadosLattes(
       })
       relatorio.orientacoes.ignorados += dados.orientacoes.length
     }
-  }
-
-  // 4. Bancas (tabela removida: gravação desativada, parser continua preservado)
-  if (dados.bancas && dados.bancas.length > 0) {
-    const resBan = await gravarBancas(dados.bancas, client)
-    relatorio.bancas = resBan.contagem
   }
 
   // 5. Projetos de pesquisa

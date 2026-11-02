@@ -162,7 +162,7 @@ export function ImportarLattesDialog({
           </DialogTitle>{' '}
           <DialogDescription className="text-slate-600">
             Selecione arquivos XML ou ZIP exportados da Plataforma Lattes (CNPq). O sistema extrairá
-            as produções, orientações e bancas referentes ao recorte do quadriênio CAPES (
+            as produções e orientações referentes ao recorte do quadriênio CAPES (
             {ANO_INICIO}–{ANO_FIM}).
           </DialogDescription>
         </DialogHeader>

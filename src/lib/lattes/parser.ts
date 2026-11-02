@@ -2,7 +2,6 @@ import type {
   LattesDocente,
   LattesPublicacao,
   LattesOrientacao,
-  LattesBanca,
   LattesProjeto,
   LattesPremiacao,
   LattesProducaoTecnica,
@@ -120,7 +119,6 @@ export function parseLattesXml(
       sucesso: false,
       publicacoes: [],
       orientacoes: [],
-      bancas: [],
       projetos: [],
       premiacoes: [],
       producoes_tecnicas: [],
@@ -129,7 +127,6 @@ export function parseLattesXml(
       estatisticas: {
         publicacoes: { a_inserir: 0, ignorados: 0 },
         orientacoes: { a_inserir: 0, ignorados: 0 },
-        bancas: { a_inserir: 0, ignorados: 0 },
         projetos: { a_inserir: 0, ignorados: 0 },
         premiacoes: { a_inserir: 0, ignorados: 0 },
         producoes_tecnicas: { a_inserir: 0, ignorados: 0 },
@@ -150,7 +147,6 @@ export function parseLattesXml(
       sucesso: false,
       publicacoes: [],
       orientacoes: [],
-      bancas: [],
       projetos: [],
       premiacoes: [],
       producoes_tecnicas: [],
@@ -159,7 +155,6 @@ export function parseLattesXml(
       estatisticas: {
         publicacoes: { a_inserir: 0, ignorados: 0 },
         orientacoes: { a_inserir: 0, ignorados: 0 },
-        bancas: { a_inserir: 0, ignorados: 0 },
         projetos: { a_inserir: 0, ignorados: 0 },
         premiacoes: { a_inserir: 0, ignorados: 0 },
         producoes_tecnicas: { a_inserir: 0, ignorados: 0 },
@@ -611,92 +606,6 @@ export function parseLattesXml(
     })
 
   // ==========================================
-  // 4. BANCAS (Mestrado, Doutorado, Qualificações, Graduação)
-  // ==========================================
-  const bancas: LattesBanca[] = []
-  const chavesBancas = new Set<string>()
-  let bancasIgnoradas = 0
-
-  const bancaTags = [
-    'PARTICIPACAO-EM-BANCA-DE-MESTRADO',
-    'PARTICIPACAO-EM-BANCA-DE-DOUTORADO',
-    'PARTICIPACAO-EM-BANCA-DE-EXAME-QUALIFICACAO',
-    'PARTICIPACAO-EM-BANCA-DE-GRADUACAO',
-    'PARTICIPACAO-EM-BANCA-DE-APERFEICOAMENTO-ESPECIALIZACAO',
-    'OUTRAS-PARTICIPACOES-EM-BANCA-JULGADORA',
-  ]
-
-  raiz.querySelectorAll(bancaTags.join(', ')).forEach((bEl) => {
-    const tag = bEl.tagName.toUpperCase()
-    let tipo: LattesBanca['tipo'] = 'OUTRA'
-    if (tag.includes('MESTRADO')) tipo = 'MESTRADO'
-    else if (tag.includes('DOUTORADO')) tipo = 'DOUTORADO'
-    else if (tag.includes('QUALIFICACAO')) tipo = 'QUALIFICACAO'
-    else if (tag.includes('GRADUACAO')) tipo = 'GRADUACAO'
-
-    const dadosBasicos =
-      bEl.querySelector(
-        'DADOS-BASICOS-DA-PARTICIPACAO-EM-BANCA-DE-MESTRADO, DADOS-BASICOS-DA-PARTICIPACAO-EM-BANCA-DE-DOUTORADO, DADOS-BASICOS-DA-PARTICIPACAO-EM-BANCA-DE-EXAME-QUALIFICACAO, DADOS-BASICOS-DA-PARTICIPACAO-EM-BANCA-DE-GRADUACAO, DADOS-BASICOS-DA-PARTICIPACAO-EM-BANCA-DE-APERFEICOAMENTO-ESPECIALIZACAO, DADOS-BASICOS-DE-OUTRAS-PARTICIPACOES-EM-BANCA-JULGADORA',
-      ) || bEl.children[0]
-    const detalhamento =
-      bEl.querySelector(
-        'DETALHAMENTO-DA-PARTICIPACAO-EM-BANCA-DE-MESTRADO, DETALHAMENTO-DA-PARTICIPACAO-EM-BANCA-DE-DOUTORADO, DETALHAMENTO-DA-PARTICIPACAO-EM-BANCA-DE-EXAME-QUALIFICACAO, DETALHAMENTO-DA-PARTICIPACAO-EM-BANCA-DE-GRADUACAO, DETALHAMENTO-DA-PARTICIPACAO-EM-BANCA-DE-APERFEICOAMENTO-ESPECIALIZACAO, DETALHAMENTO-DE-OUTRAS-PARTICIPACOES-EM-BANCA-JULGADORA',
-      ) || bEl.children[1]
-
-    const titulo = limparTexto(dadosBasicos?.getAttribute('TITULO') || bEl.getAttribute('TITULO'))
-    const ano = parseInt(dadosBasicos?.getAttribute('ANO') || bEl.getAttribute('ANO') || '', 10)
-    const candidato = limparTexto(
-      detalhamento?.getAttribute('NOME-DO-CANDIDATO') || bEl.getAttribute('NOME-DO-CANDIDATO'),
-    )
-    const inst = limparTexto(
-      detalhamento?.getAttribute('NOME-INSTITUICAO') || bEl.getAttribute('NOME-INSTITUICAO'),
-    )
-    const curso = limparTexto(
-      detalhamento?.getAttribute('NOME-CURSO') || bEl.getAttribute('NOME-CURSO'),
-    )
-    const participantes = extrairAutores(bEl)
-
-    if (!titulo || !ano) {
-      bancasIgnoradas++
-      return
-    }
-
-    if (!noQuadrienio(ano, anoInicio, anoFim)) {
-      bancasIgnoradas++
-      itensIgnorados.push({
-        tabela: 'bancas',
-        identificador: `${titulo} (${candidato || 'Sem candidato'})`,
-        motivo: 'FORA_QUADRIENIO',
-        ano,
-      })
-      return
-    }
-
-    const chave = `${normalizarChave(titulo)}|${ano}`
-    if (chavesBancas.has(chave)) {
-      bancasIgnoradas++
-      itensIgnorados.push({
-        tabela: 'bancas',
-        identificador: titulo,
-        motivo: 'DUPLICADO',
-        ano,
-      })
-      return
-    }
-
-    chavesBancas.add(chave)
-    bancas.push({
-      tipo,
-      titulo_trabalho: titulo,
-      candidato,
-      ano,
-      instituicao: inst,
-      curso,
-      participantes,
-    })
-  })
-
-  // ==========================================
   // 5. PROJETOS DE PESQUISA
   // ==========================================
   const projetos: LattesProjeto[] = []
@@ -1139,7 +1048,6 @@ export function parseLattesXml(
     docente,
     publicacoes,
     orientacoes,
-    bancas,
     projetos,
     premiacoes,
     producoes_tecnicas: producoesTecnicas,
@@ -1148,7 +1056,6 @@ export function parseLattesXml(
     estatisticas: {
       publicacoes: { a_inserir: publicacoes.length, ignorados: pubIgnorados },
       orientacoes: { a_inserir: orientacoes.length, ignorados: oriIgnorados },
-      bancas: { a_inserir: bancas.length, ignorados: bancasIgnoradas },
       projetos: { a_inserir: projetos.length, ignorados: projetosIgnorados },
       premiacoes: { a_inserir: premiacoes.length, ignorados: premIgnorados },
       producoes_tecnicas: { a_inserir: producoesTecnicas.length, ignorados: prodTecIgnorados },

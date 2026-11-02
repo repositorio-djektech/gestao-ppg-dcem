@@ -146,19 +146,6 @@ export type Egresso = {
   nacionalidade?: string | null
 }
 
-export type Banca = {
-  id: number
-  titulo_trabalho: string
-  data: string
-  discente_id: number | null
-  docente_orientador_id?: number | null
-  projeto_id?: number | null
-  membros: string
-  tipo: 'Mestrado' | 'Doutorado' | 'Qualificação'
-  link_comprovacao: string
-  observacoes: string
-}
-
 export type Orientacao = {
   id: number
   docente_id: number | null

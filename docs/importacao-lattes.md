@@ -5,7 +5,7 @@
 **Status da Etapa 1:** 100% implementada e validada em memória (1A parser, 1B pipeline de leitura/filtro/dedupe, 1C interface de upload e tela de revisão, 1D auditoria e testes).  
 **Status da Etapa 2:** 100% CONCLUÍDA e validada no banco de dados com dados reais (2A coluna `id_lattes` e serviço `gravar.ts`; 2B integração UI com confirmação e gravação; 2C gravação completa nas 9 tabelas do Supabase, resolução automática de discentes, dedupe idempotente e proteção a dados manuais).
 
-> **Nota (2026-11):** a tabela `bancas` foi removida do banco (v0.0.164). O parser ainda lê as bancas do XML e a tela de revisão ainda exibe a aba "Bancas", mas a gravação (`gravarBancas`) é um *no-op* seguro: os itens são contados como ignorados e nada é gravado. As demais referências a bancas neste documento descrevem a versão 0.0.53 e são históricas. Na prática, a gravação cobre 8 tabelas (`docentes`, `publicacoes`, `orientacoes`, `projetos_pesquisa`, `premiacoes`, `producao_tecnica`, `patentes`, `eventos`) mais a criação automática de `discentes`.
+> **Nota (2026-11):** a tabela `bancas` foi removida do banco (v0.0.164). O parser, o processador, a tela de revisão e `gravar.ts` não tratam mais bancas (tipos, aba, conversão e `gravarBancas` foram removidos). As demais referências a bancas neste documento descrevem a versão 0.0.53 e são históricas. Na prática, a gravação cobre 8 tabelas (`docentes`, `publicacoes`, `orientacoes`, `projetos_pesquisa`, `premiacoes`, `producao_tecnica`, `patentes`, `eventos`) mais a criação automática de `discentes`.
 
 ---
 
@@ -40,7 +40,7 @@ Devido às restrições oficiais do CNPq (apenas o docente autenticado consegue 
 5. **Abertura da Tela de Revisão:**
    - Clique em **"Revisar registros por tabela"** ou **"Revisar dados"** para abrir o modal em tela cheia de conferência detalhada.
 6. **Inspeção e Seleção na Tela de Revisão:**
-   - Navegue pelas 9 abas de tabelas: **Docentes**, **Publicações**, **Orientações**, **Bancas**, **Projetos**, **Premiações**, **Produção Técnica**, **Patentes** e **Eventos**.
+   - Navegue pelas 8 abas de tabelas: **Docentes**, **Publicações**, **Orientações**, **Projetos**, **Premiações**, **Produção Técnica**, **Patentes** e **Eventos**.
    - Cada aba conta com um badge dinâmico indicando o número de registros novos para aquela categoria no quadriênio 2025–2028.
    - Controle quais tabelas devem ser gravadas através dos checkboxes individuais de cada aba ou usando os atalhos rápidos **"Marcar todas"** e **"Desmarcar todas"**.
    - Inspecione a tabela de amostra paginada. Para visualizar mais dados, clique em **"Carregar mais 10 registros"** no rodapé.

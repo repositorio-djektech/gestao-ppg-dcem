@@ -66,14 +66,6 @@ export async function processarArquivosLattes(
       totalDuplicados: 0,
       totalForaQuadrienio: 0,
     },
-    bancas: {
-      chave: 'bancas',
-      rotulo: 'Bancas',
-      totalLidos: 0,
-      totalValidos: 0,
-      totalDuplicados: 0,
-      totalForaQuadrienio: 0,
-    },
     projetos: {
       chave: 'projetos',
       rotulo: 'Projetos de Pesquisa',
@@ -162,14 +154,6 @@ export async function processarArquivosLattes(
         (o) => o.ano_conclusao || o.ano_inicio || null,
       )
 
-      // Bancas
-      const banQuad = filtrarPorQuadrienio(parsed.bancas, (b) => b.ano, ANO_INICIO, ANO_FIM)
-      const banDedupe = deduplicarItens(
-        banQuad.dentro,
-        (b) => b.titulo_trabalho,
-        (b) => b.ano,
-      )
-
       // Projetos
       const projQuad = filtrarPorQuadrienio(
         parsed.projetos,
@@ -230,7 +214,6 @@ export async function processarArquivosLattes(
         ...parsed,
         publicacoes: pubDedupe.unicos,
         orientacoes: oriDedupe.unicos,
-        bancas: banDedupe.unicos,
         projetos: projDedupe.unicos,
         producoes_tecnicas: prodDedupe.unicos,
         patentes: patDedupe.unicos,
@@ -250,13 +233,6 @@ export async function processarArquivosLattes(
               parsed.estatisticas.orientacoes.ignorados +
               oriQuad.totalIgnorados +
               oriDedupe.totalDuplicatas,
-          },
-          bancas: {
-            a_inserir: banDedupe.unicos.length,
-            ignorados:
-              parsed.estatisticas.bancas.ignorados +
-              banQuad.totalIgnorados +
-              banDedupe.totalDuplicatas,
           },
           projetos: {
             a_inserir: projDedupe.unicos.length,
@@ -308,11 +284,6 @@ export async function processarArquivosLattes(
       secoesResumo.orientacoes.totalDuplicados += oriDedupe.totalDuplicatas
       secoesResumo.orientacoes.totalForaQuadrienio += oriQuad.totalIgnorados
       secoesResumo.orientacoes.totalLidos += parsed.orientacoes.length
-
-      secoesResumo.bancas.totalValidos += banDedupe.unicos.length
-      secoesResumo.bancas.totalDuplicados += banDedupe.totalDuplicatas
-      secoesResumo.bancas.totalForaQuadrienio += banQuad.totalIgnorados
-      secoesResumo.bancas.totalLidos += parsed.bancas.length
 
       secoesResumo.projetos.totalValidos += projDedupe.unicos.length
       secoesResumo.projetos.totalDuplicados += projDedupe.totalDuplicatas

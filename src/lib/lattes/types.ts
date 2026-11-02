@@ -53,16 +53,6 @@ export interface LattesOrientacao {
   agencia_fomento?: string | null
 }
 
-export interface LattesBanca {
-  tipo: 'MESTRADO' | 'DOUTORADO' | 'QUALIFICACAO' | 'GRADUACAO' | 'OUTRA'
-  titulo_trabalho: string
-  candidato?: string | null
-  ano: number
-  instituicao?: string | null
-  curso?: string | null
-  participantes?: string | null
-}
-
 export interface LattesProjeto {
   nome: string
   ano_inicio?: number | null
@@ -127,7 +117,6 @@ export interface LattesArquivoResultado {
   docente?: LattesDocente | null
   publicacoes: LattesPublicacao[]
   orientacoes: LattesOrientacao[]
-  bancas: LattesBanca[]
   projetos: LattesProjeto[]
   premiacoes: LattesPremiacao[]
   producoes_tecnicas: LattesProducaoTecnica[]
@@ -137,7 +126,6 @@ export interface LattesArquivoResultado {
   estatisticas: {
     publicacoes: { a_inserir: number; ignorados: number }
     orientacoes: { a_inserir: number; ignorados: number }
-    bancas: { a_inserir: number; ignorados: number }
     projetos: { a_inserir: number; ignorados: number }
     premiacoes: { a_inserir: number; ignorados: number }
     producoes_tecnicas: { a_inserir: number; ignorados: number }
@@ -157,7 +145,6 @@ export type TabelaAlvoId =
   | 'docentes'
   | 'publicacoes'
   | 'orientacoes'
-  | 'bancas'
   | 'projetos_pesquisa'
   | 'producao_tecnica'
   | 'patentes'

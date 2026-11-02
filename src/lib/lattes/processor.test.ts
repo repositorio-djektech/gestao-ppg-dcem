@@ -24,7 +24,6 @@ describe('Subetapa 1B - processarArquivosLattes', () => {
 
     // Seções
     expect(resultado.resumoGeral.secoes.publicacoes.totalValidos).toBeGreaterThan(0)
-    expect(resultado.resumoGeral.secoes.bancas.totalValidos).toBeGreaterThan(0)
     expect(resultado.resumoGeral.secoes.orientacoes.totalValidos).toBeGreaterThan(0)
   })
 
