@@ -94,6 +94,32 @@ function projetoVigenteNoAno(
 }
 
 /**
+ * Anos posteriores ao ano de referência ainda não aconteceram: orientações em andamento, projetos
+ * sem fim e afins seriam apenas projetados para eles, e o resultado entraria na média como se fosse
+ * um ano medido (por exemplo, 0% de DP4A em 2028). Esses anos ficam 'indefinido' e fora da MMA.
+ */
+function descartarAnosFuturos(
+  anosResultados: Record<number, ResultadoAnoIndicador>,
+  anoReferencia: number,
+): Record<number, ResultadoAnoIndicador> {
+  const resultado: Record<number, ResultadoAnoIndicador> = {}
+  for (const [chave, r] of Object.entries(anosResultados)) {
+    const ano = Number(chave)
+    resultado[ano] =
+      ano > anoReferencia
+        ? {
+            ano,
+            status: 'indefinido',
+            motivoIndefinido: `ano ${ano} ainda não iniciado (ano de referência ${anoReferencia})`,
+            valorCalculado: null,
+            decomposicao: [],
+          }
+        : r
+  }
+  return resultado
+}
+
+/**
  * Agrega resultados anuais calculando a MMA (Média das Médias Anuais).
  * Regras prescritivas:
  * - Anos sem insumo ficam 'indefinido' e NÃO entram como 0 na média.
@@ -101,7 +127,7 @@ function projetoVigenteNoAno(
  * - Se nenhum ano tiver insumo, MMA é nula e o indicador fica indefinido.
  * - completo: true somente se todos os 4 anos (2025..2028) estiverem calculados.
  */
-function agregarComMMA(
+function agregarAnosComMMA(
   anosResultados: Record<number, ResultadoAnoIndicador>,
   anosQuadrienio: number[],
   metodologia: 'anual_mma' | 'quadrienio_mma',
@@ -180,6 +206,10 @@ export function calcularTodosIndicadores(
   for (let a = anoInicio; a <= anoFim; a++) {
     anosQuadrienio.push(a)
   }
+
+  // Todos os indicadores anuais passam por aqui: anos futuros não entram na MMA.
+  const agregarComMMA: typeof agregarAnosComMMA = (anosResultados, anos, metodologia, base) =>
+    agregarAnosComMMA(descartarAnosFuturos(anosResultados, anoReferencia), anos, metodologia, base)
 
   // 1. Classificação do Corpo Docente
   const { docentes } = dados
@@ -564,8 +594,9 @@ export function calcularTodosIndicadores(
           fim: ori.fim,
           cancelado: ori.cancelado,
         })
-      if (statusEfetivo === 'cancelado') return false
-      if (statusEfetivo !== 'em_andamento' && normStr(ori.status) !== 'ativo') return false
+      // Só conta quem está em andamento: sem data de fim ou com fim futuro. O rótulo gravado
+      // ('ativo' ou 'em_andamento') não importa; fim já passado é orientação concluída.
+      if (statusEfetivo !== 'em_andamento') return false
       const ini = extrairAnoDeData(ori.inicio)
       const fim = extrairAnoDeData(ori.fim) || extrairAnoDeData(ori.data_defesa)
       if (ini !== null && fim !== null) {
@@ -745,8 +776,7 @@ export function calcularTodosIndicadores(
           fim: o.fim,
           cancelado: o.cancelado,
         })
-      const isAtiva =
-        stEfetivo === 'em_andamento' || (stEfetivo !== 'cancelado' && normStr(o.status) === 'ativo')
+      const isAtiva = stEfetivo === 'em_andamento'
       if (isAtiva && o.docente_id) {
         const ini = extrairAnoDeData(o.inicio)
         const fim = extrairAnoDeData(o.fim) || extrairAnoDeData(o.data_defesa)

@@ -123,7 +123,7 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
     // 2026: M=1, D=0 => Numerador = 1; Denominador = 3 => 1/3 = 0.333
     // 2027 e 2028: sem defesas cadastradas => status 'indefinido' (aguardando insumo), NÃO zeram
     // MMA dos anos com insumo (2025 e 2026): (1.333 + 0.333) / 2 = 0.833
-    const rel = calcularTodosIndicadores(dadosComOrientacoes)
+    const rel = calcularTodosIndicadores({ ...dadosComOrientacoes, anoReferencia: 2028 })
     const ori = rel.todosIndicadores.find((i) => i.codigo === 'ORI')
 
     expect(ori?.status).toBe('calculado')
@@ -165,7 +165,7 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
       publicacoes: pubs,
     }
 
-    const rel = calcularTodosIndicadores(dadosPubs)
+    const rel = calcularTodosIndicadores({ ...dadosPubs, anoReferencia: 2028 })
     const dpi = rel.todosIndicadores.find((i) => i.codigo === 'DPI')
 
     expect(dpi?.status).toBe('calculado')
@@ -210,6 +210,7 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
 
     const rel = calcularTodosIndicadores({
       ...dadosMinimos,
+      anoReferencia: 2028,
       publicacoes: pubs,
       publicacoesCoautores: coautores,
       orientacoes: oris,
@@ -245,6 +246,7 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
 
     const rel = calcularTodosIndicadores({
       ...dadosMinimos,
+      anoReferencia: 2028,
       publicacoes: pubs,
     })
 
@@ -366,6 +368,7 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
 
     const rel = calcularTodosIndicadores({
       ...dadosMinimos,
+      anoReferencia: 2028,
       patentes,
     })
 
@@ -446,6 +449,7 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
 
     const rel = calcularTodosIndicadores({
       ...dadosMinimos,
+      anoReferencia: 2028,
       publicacoes: pubs,
       publicacoesDocentes: pubsDocentes,
     })
@@ -551,6 +555,7 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
 
     const rel = calcularTodosIndicadores({
       ...dadosMinimos,
+      anoReferencia: 2028,
       publicacoes: pubs4Anos,
     })
 

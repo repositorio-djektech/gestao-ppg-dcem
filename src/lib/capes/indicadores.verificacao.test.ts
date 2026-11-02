@@ -224,3 +224,54 @@ describe('V5 — ORI conta titulações do programa (ficha: "total de dissertaç
     expect(ind(rel, 'ORI').anos?.[2025].valorCalculado).toBe(0.333)
   })
 })
+
+describe('V10 — orientação em andamento e anos futuros (SO e DP4A)', () => {
+  const ori = (extra: Record<string, any>) =>
+    ({ id: 1, docente_id: 1, discente_id: 1, tipo: 'Mestrado', inicio: '2025', ...extra }) as any
+
+  it('sem data de fim conta como em andamento no SO', () => {
+    const rel = calcularTodosIndicadores(dados({ orientacoes: [ori({ fim: '', status: 'ativo' })] }))
+    expect(ind(rel, 'SO').anos?.[2026].valorCalculado).toBe(33.33)
+  })
+
+  it('com data de fim futura conta como em andamento no SO', () => {
+    const rel = calcularTodosIndicadores(
+      dados({ orientacoes: [ori({ fim: '2099-12-31', status: 'em_andamento' })] }),
+    )
+    expect(ind(rel, 'SO').anos?.[2026].valorCalculado).toBe(33.33)
+  })
+
+  it.each(['ativo', 'em_andamento'])(
+    'fim já passado não conta como em andamento, qualquer que seja o rótulo gravado (%s)',
+    (status) => {
+      const rel = calcularTodosIndicadores(
+        dados({ orientacoes: [ori({ fim: '2025-06-30', status })] }),
+      )
+      expect(ind(rel, 'SO').anos?.[2026].status).toBe('indefinido')
+      expect(ind(rel, 'SO').anos?.[2025].status).toBe('indefinido')
+    },
+  )
+
+  it('anos posteriores ao ano de referência ficam indefinidos e fora da MMA', () => {
+    const rel = calcularTodosIndicadores(
+      dados({
+        orientacoes: [ori({ fim: '', status: 'ativo' })],
+        disciplinas: [
+          { id: 1, nome: 'Disc', docente_id: 1, ano_semestre: '2026/1', nivel: 'pos_graduacao' },
+        ] as any,
+        projetos: [{ id: 1, titulo: 'P', inicio: '2025', fim: '', coordenador_id: 1 }] as any,
+        publicacoes: [pub(1, 2026, 'A1')],
+        publicacoesDocentes: [{ id: 1, publicacao_id: 1, docente_id: 1 }],
+      }),
+    )
+    for (const codigo of ['SO', 'DP4A']) {
+      const i = ind(rel, codigo)
+      expect(i.anos?.[2027].status, `${codigo} 2027`).toBe('indefinido')
+      expect(i.anos?.[2028].status, `${codigo} 2028`).toBe('indefinido')
+      expect(i.mma?.anosConsiderados, codigo).toEqual([2025, 2026])
+      expect(i.mma?.completo, codigo).toBe(false)
+    }
+    // 2026: o DP 1 cumpre as 4 atividades => 1 de 3 DP
+    expect(ind(rel, 'DP4A').anos?.[2026].valorCalculado).toBe(33.33)
+  })
+})
