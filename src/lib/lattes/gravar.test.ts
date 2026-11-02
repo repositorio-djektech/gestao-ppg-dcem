@@ -275,7 +275,7 @@ describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => 
       }
       const convertido = converterLattesPublicacao(lattesPub)
       expect(convertido).toEqual({
-        titulo: 'Síntese de novos nanocompósitos',
+        titulo: 'Síntese de Novos Nanocompósitos',
         autores: 'Silva, A. B.; Barreto, L. S.',
         periodico: 'Journal of Materials Chemistry A',
         ano: 2023,

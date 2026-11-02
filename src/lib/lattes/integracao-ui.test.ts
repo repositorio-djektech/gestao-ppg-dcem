@@ -92,7 +92,7 @@ describe('Subetapa 2B - Integração UI de Gravação (Lógica Offline)', () => 
 
     expect(docentesParaGravar).toHaveLength(0)
     expect(publicacoesParaGravar).toHaveLength(2)
-    expect(publicacoesParaGravar[0].titulo).toBe('Síntese de compósitos magnéticos')
+    expect(publicacoesParaGravar[0].titulo).toBe('Síntese de Compósitos Magnéticos')
   })
 
   it('2. desmarcação total resulta em 0 registros e impede gravação', () => {

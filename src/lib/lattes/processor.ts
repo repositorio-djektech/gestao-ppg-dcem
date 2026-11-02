@@ -309,6 +309,18 @@ export async function processarArquivosLattes(
       secoesResumo.premiacoes.totalDuplicados += premDedupe.totalDuplicatas
       secoesResumo.premiacoes.totalForaQuadrienio += premQuad.totalIgnorados
       secoesResumo.premiacoes.totalLidos += parsed.premiacoes.length
+
+      // O parser já descarta o que está fora do quadriênio; somamos esses itens ao resumo
+      const foraDoQuadrienio = (tabela: string) =>
+        parsed.itens_ignorados.filter((i) => i.tabela === tabela && i.motivo === 'FORA_QUADRIENIO')
+          .length
+      secoesResumo.publicacoes.totalForaQuadrienio += foraDoQuadrienio('publicacoes')
+      secoesResumo.orientacoes.totalForaQuadrienio += foraDoQuadrienio('orientacoes')
+      secoesResumo.projetos.totalForaQuadrienio += foraDoQuadrienio('projetos_pesquisa')
+      secoesResumo.producoes_tecnicas.totalForaQuadrienio += foraDoQuadrienio('producao_tecnica')
+      secoesResumo.patentes.totalForaQuadrienio += foraDoQuadrienio('patentes')
+      secoesResumo.eventos.totalForaQuadrienio += foraDoQuadrienio('eventos')
+      secoesResumo.premiacoes.totalForaQuadrienio += foraDoQuadrienio('premiacoes')
     } catch (err) {
       erros.push({
         arquivo: arq.nomeArquivo,

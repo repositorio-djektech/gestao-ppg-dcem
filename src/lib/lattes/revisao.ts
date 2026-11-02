@@ -217,6 +217,15 @@ export function mapearDadosParaRevisao(
         } as ItemAmostraDocente)
       } else {
         tabelas.docentes.ignorados += 1
+        // Mesmo currículo enviado mais de uma vez: nenhum item é repetido na revisão
+        tabelas.publicacoes.ignorados += resArq.estatisticas.publicacoes.a_inserir
+        tabelas.orientacoes.ignorados += resArq.estatisticas.orientacoes.a_inserir
+        tabelas.projetos_pesquisa.ignorados += resArq.estatisticas.projetos.a_inserir
+        tabelas.premiacoes.ignorados += resArq.estatisticas.premiacoes.a_inserir
+        tabelas.producao_tecnica.ignorados += resArq.estatisticas.producoes_tecnicas.a_inserir
+        tabelas.patentes.ignorados += resArq.estatisticas.patentes.a_inserir
+        tabelas.eventos.ignorados += resArq.estatisticas.eventos.a_inserir
+        return
       }
     }
 

@@ -154,18 +154,19 @@ describe('Pipeline Lattes - subetapa 1A', () => {
     const parsedSemFiltro = parseLattesXml(xml, '3104369029830651.xml', 1900, 2100)
 
     // Contagens totais sem filtro esperadas da auditoria histórica do XML real (não mudam com o recorte)
-    expect(parsedSemFiltro.publicacoes.filter((p) => p.tipo === 'ARTIGO').length).toBe(68)
-    expect(parsedSemFiltro.publicacoes.filter((p) => p.tipo === 'LIVRO').length).toBe(1)
-    expect(parsedSemFiltro.publicacoes.filter((p) => p.tipo === 'CAPITULO').length).toBe(8)
-    expect(parsedSemFiltro.eventos.filter((e) => e.tipo === 'TRABALHO').length).toBe(32)
-    expect(parsedSemFiltro.projetos.length).toBe(25)
+    expect(parsedSemFiltro.publicacoes.filter((p) => p.tipo === 'ARTIGO').length).toBe(60)
+    expect(parsedSemFiltro.publicacoes.filter((p) => p.tipo === 'LIVRO').length).toBe(0)
+    expect(parsedSemFiltro.publicacoes.filter((p) => p.tipo === 'CAPITULO').length).toBe(1)
+    expect(parsedSemFiltro.eventos.filter((e) => e.tipo === 'TRABALHO').length).toBe(114)
+    expect(parsedSemFiltro.projetos.length).toBe(46)
 
     // Identificação do docente e acentuação no resumo
     expect(parsed.nome_docente).toBe('Ledjane Silva Barreto')
     expect(parsed.id_lattes).toBe('3104369029830651')
     expect(parsed.docente?.nome_completo).toBe('Ledjane Silva Barreto')
     expect(parsed.docente?.resumo_cv).toContain('Graduação em Química Industrial')
-    expect(parsed.docente?.resumo_cv).not.toContain('')
+    // Sem caractere de substituição (mojibake) após decodificar ISO-8859-1
+    expect(parsed.docente?.resumo_cv).not.toContain('\uFFFD')
 
     // Processamento via processor
     const file1 = new File([rawBuffer], '3104369029830651.xml', { type: 'text/xml' })

@@ -50,3 +50,4 @@ core.[0-9]*
 
 # Serena (cache local do MCP)
 .serena/
+audit-counts.json
