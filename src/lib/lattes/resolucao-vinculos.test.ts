@@ -5,6 +5,7 @@ import {
   resolverDocenteOrientador,
   LIMIAR_ALTA_CONFIANCA,
 } from './resolucao-vinculos'
+import { LIMIAR_MEDIA_CONFIANCA } from '@/lib/publicacoes/matching-docentes'
 
 describe('Etapa R3: Auto-resolução de vínculos por nome', () => {
   const docentes = [
@@ -34,12 +35,16 @@ describe('Etapa R3: Auto-resolução de vínculos por nome', () => {
 
     expect(sugestoes.length).toBe(2)
     expect(sugestoes[0].nome).toBe('Ledjane Silva Barreto')
-    expect(sugestoes[0].grauConfianca).toBeGreaterThanOrEqual(LIMIAR_ALTA_CONFIANCA)
-    expect(sugestoes[0].altaConfianca).toBe(true)
-    expect(sugestoes[0].aceita).toBe(true)
+    // "Sobrenome, Iniciais" é confiança média: exige confirmação manual, nunca aceita sozinho,
+    // porque um vínculo errado infla DPI e DPIDE da avaliação oficial
+    expect(sugestoes[0].grauConfianca).toBeGreaterThanOrEqual(LIMIAR_MEDIA_CONFIANCA)
+    expect(sugestoes[0].grauConfianca).toBeLessThan(LIMIAR_ALTA_CONFIANCA)
+    expect(sugestoes[0].altaConfianca).toBe(false)
+    expect(sugestoes[0].aceita).toBe(false)
 
     expect(sugestoes[1].nome).toBe('Carlos Alberto Santos')
-    expect(sugestoes[1].altaConfianca).toBe(true)
+    expect(sugestoes[1].altaConfianca).toBe(false)
+    expect(sugestoes[1].aceita).toBe(false)
   })
 
   it('detecta coautores discentes e egressos em publicações', () => {

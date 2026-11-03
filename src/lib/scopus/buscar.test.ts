@@ -87,9 +87,9 @@ describe('Serviço Scopus - Pipeline em Duas Etapas (Search → Abstract Retriev
       expect(matchParcial.casouTodosTokensTermo).toBe(true)
       expect(matchParcial.casouSobrenome).toBe(true)
 
-      // Homônimo com apenas 1 token
+      // Homônimo que só divide o primeiro nome: ruído na lista de candidatos, é descartado
       const matchHomonimo = calcularSemelhancaNomeTermo('Ledjane Lima Sobrinho', 'Ledjane Barreto')
-      expect(matchHomonimo.casou).toBe(true)
+      expect(matchHomonimo.casou).toBe(false)
       expect(matchHomonimo.casouTodosTokensTermo).toBe(false)
       expect(matchHomonimo.casouSobrenome).toBe(false)
     })
