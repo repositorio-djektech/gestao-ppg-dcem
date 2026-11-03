@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import React from 'react'
-import { renderToString } from 'react-dom/server'
+import { render, cleanup, waitFor, screen, fireEvent } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { VisualizarDocenteDialog } from './VisualizarDocenteDialog'
 import { ModalSelecaoAbasImpressao } from './ModalSelecaoAbasImpressao'
 import { DocentePrintDocument } from './DocentePrintDocument'
@@ -12,20 +13,44 @@ import type { Docente } from '@/types/database'
 import type { DadosDocenteCompleto, TabKey } from './DocentePrintDocument'
 import { User, FileText, Users2 } from 'lucide-react'
 
-// Mock supabase client
+// Mock supabase client: as consultas devolvem mockState.rows (vazio por padrão)
+const mockState = vi.hoisted(() => ({ rows: [] as Array<Record<string, unknown>> }))
+
 vi.mock('@/lib/supabase/client', () => ({
   supabase: {
     from: () => ({
       select: () => ({
         eq: () => ({
-          order: () => Promise.resolve({ data: [] }),
+          order: () => Promise.resolve({ data: mockState.rows }),
           maybeSingle: () => Promise.resolve({ data: null }),
         }),
-        order: () => Promise.resolve({ data: [] }),
+        order: () => Promise.resolve({ data: mockState.rows }),
       }),
     }),
   },
 }))
+
+// Os diálogos (Radix) renderizam num portal no body e a página usa useNavigate: monta de verdade
+// com Router e lê o HTML do document.body. renderToString também não serve ao DocentePrintDocument,
+// porque o React 19 insere comentários entre os nós de texto (ex.: "Periódicos (<!-- -->1<!-- -->)").
+afterEach(() => {
+  cleanup()
+  mockState.rows = []
+})
+
+function renderHtml(el: React.ReactElement): string {
+  render(<MemoryRouter>{el}</MemoryRouter>)
+  return document.body.innerHTML
+}
+
+// O diálogo do docente mostra "Carregando dados curriculares..." até as consultas terminarem
+async function renderAposCarregar(el: React.ReactElement): Promise<string> {
+  const html = renderHtml(el)
+  await waitFor(() =>
+    expect(document.body.textContent).not.toContain('Carregando dados curriculares'),
+  )
+  return html && document.body.innerHTML
+}
 
 describe('VisualizarDocenteDialog', () => {
   const docenteMock: Docente = {
@@ -104,8 +129,8 @@ describe('VisualizarDocenteDialog', () => {
     impacto_social: true,
   }
 
-  it('renderiza o botão Imprimir ao lado do botão Fechar no rodapé do diálogo do docente', () => {
-    const html = renderToString(
+  it('renderiza o botão Imprimir ao lado do botão Fechar no rodapé do diálogo do docente', async () => {
+    const html = await renderAposCarregar(
       <VisualizarDocenteDialog open={true} onOpenChange={vi.fn()} docente={docenteMock} />,
     )
 
@@ -114,8 +139,8 @@ describe('VisualizarDocenteDialog', () => {
     expect(html).toContain('Maria Silva')
   })
 
-  it('renderiza o modal com fundo claro na área entre o header e o rodapé', () => {
-    const html = renderToString(
+  it('renderiza o modal com fundo claro na área entre o header e o rodapé', async () => {
+    const html = await renderAposCarregar(
       <VisualizarDocenteDialog open={true} onOpenChange={vi.fn()} docente={docenteMock} />,
     )
 
@@ -124,14 +149,14 @@ describe('VisualizarDocenteDialog', () => {
     expect(html).toContain('Resumo dos Registros Associados no Banco')
   })
 
-  it('renderiza o Modal de Seleção de Abas montado no nível da página', () => {
+  it('renderiza o Modal de Seleção de Abas montado no nível da página', async () => {
     const abasDef = [
       { id: 'geral' as TabKey, rotulo: 'Dados Cadastrais', icone: User, total: 1 },
       { id: 'publicacoes' as TabKey, rotulo: 'Publicações', icone: FileText, total: 1 },
       { id: 'orientacoes' as TabKey, rotulo: 'Orientações', icone: Users2, total: 1 },
     ]
 
-    const html = renderToString(
+    const html = await renderAposCarregar(
       <ModalSelecaoAbasImpressao
         open={true}
         onOpenChange={vi.fn()}
@@ -143,7 +168,7 @@ describe('VisualizarDocenteDialog', () => {
       />,
     )
 
-    expect(html).toContain('Imprimir Dados do Docente')
+    expect(html).toContain('Selecionar Seções para Impressão')
     expect(html).toContain('Selecionar todas as abas')
     expect(html).toContain('Cancelar')
     expect(html).toContain('Gerar Impressão')
@@ -153,7 +178,7 @@ describe('VisualizarDocenteDialog', () => {
   })
 
   it('renderiza o DocentePrintDocument estruturado com cabeçalho institucional, seções por aba e tabelas ABNT', () => {
-    const html = renderToString(
+    const html = renderHtml(
       <DocentePrintDocument
         docente={docenteMock}
         dados={dadosCompletosMock}
@@ -165,7 +190,9 @@ describe('VisualizarDocenteDialog', () => {
     expect(html).toContain(
       'Programa de Pós-Graduação em Ciência e Engenharia de Materiais — PPG DCEM',
     )
-    expect(html).toContain('Relatório Curricular Individual — Prof. Dra. Maria Silva')
+    // O nome vai num <span> (destaque para docente inativo), então o título é conferido em partes
+    expect(html).toContain('Relatório Curricular Individual —')
+    expect(html).toContain('Prof. Dra. Maria Silva')
     expect(html).toContain('Data de emissão:')
 
     // Classes de quebra de página e seções estruturadas
@@ -202,7 +229,7 @@ describe('VisualizarDocenteDialog', () => {
       impacto_social: false,
     }
 
-    const html = renderToString(
+    const html = renderHtml(
       <DocentePrintDocument
         docente={docenteMock}
         dados={dadosCompletosMock}
@@ -510,13 +537,21 @@ describe('VisualizarDocenteDialog', () => {
       expect(rotaNavegada).toBe('/orientacoes?destaque=ori-456')
     })
 
-    it('renderiza a célula do botão de ação com alinhamento text-center (ícone de olho centralizado na coluna) e cabeçalho text-left', () => {
-      const html = renderToString(
+    it('renderiza a célula do botão de ação com alinhamento text-center (ícone de olho centralizado na coluna) e cabeçalho text-left', async () => {
+      // A tabela só aparece quando há registros na aba
+      mockState.rows = [
+        { id: 1, titulo: 'Artigo sobre Nanomateriais', ano: 2024, periodico: 'Journal', autores: 'Silva, M.' },
+      ]
+      await renderAposCarregar(
         <VisualizarDocenteDialog open={true} onOpenChange={vi.fn()} docente={docenteMock} />,
       )
 
+      // As tabelas ficam nas abas de registros (só a aba ativa é montada): abre Publicações
+      fireEvent.mouseDown(screen.getByRole('tab', { name: /Publicações/ }), { button: 0 })
+      const cabecalhoAcoes = await screen.findAllByText('Ações')
+
       // Cabeçalho da coluna Ações permanece alinhado à esquerda
-      expect(html).toContain('Ações')
+      expect(cabecalhoAcoes[0].className).toContain('text-left')
     })
   })
 })

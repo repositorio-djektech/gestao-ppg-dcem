@@ -1,10 +1,27 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import React from 'react'
-import { renderToString } from 'react-dom/server'
+import { render, cleanup } from '@testing-library/react'
 import { VincularOpenAlexDialog } from './VincularOpenAlexDialog'
 import type { OpenAlexAutorCandidato } from '@/lib/openalex/buscar'
 import type { ScopusAutorCandidato } from '@/lib/scopus/buscar'
 import type { Docente } from '@/types/database'
+
+// O diálogo (Radix) renderiza num portal no body: renderToString não o enxerga, então monta de
+// verdade e lê o HTML do document.body.
+// Ao abrir, o diálogo já dispara a busca no OpenAlex: o fetch fica pendente para não ir à rede
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
+})
+
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
+
+function renderHtml(el: React.ReactElement): string {
+  render(el)
+  return document.body.innerHTML
+}
 
 describe('VincularOpenAlexDialog (UI de busca e vinculação OpenAlex / Scopus)', () => {
   const docenteMock: Docente = {
@@ -53,7 +70,7 @@ describe('VincularOpenAlexDialog (UI de busca e vinculação OpenAlex / Scopus)'
   })
 
   it('2. renderiza o modal fechado sem quebrar quando open=false', () => {
-    const html = renderToString(
+    const html = renderHtml(
       React.createElement(VincularOpenAlexDialog, {
         open: false,
         onOpenChange: vi.fn(),
@@ -61,11 +78,13 @@ describe('VincularOpenAlexDialog (UI de busca e vinculação OpenAlex / Scopus)'
         onVincular: vi.fn(),
       }),
     )
-    expect(html).toBe('')
+    // Fechado: nada é montado (nem no portal)
+    expect(document.body.textContent).toBe('')
+    expect(html).not.toContain('Vincular Identificadores')
   })
 
   it('3. renderiza abas OpenAlex e Scopus e docente selecionado quando open=true', () => {
-    const html = renderToString(
+    const html = renderHtml(
       React.createElement(VincularOpenAlexDialog, {
         open: true,
         onOpenChange: vi.fn(),
@@ -75,15 +94,16 @@ describe('VincularOpenAlexDialog (UI de busca e vinculação OpenAlex / Scopus)'
       }),
     )
 
-    expect(html).toContain('Vincular Perfil Acadêmico (OpenAlex / Scopus)')
+    expect(html).toContain('Vincular Identificadores Acadêmicos')
     expect(html).toContain('Ledjane Silva Barreto')
     expect(html).toContain('OpenAlex')
     expect(html).toContain('Elsevier Scopus')
-    expect(html).toContain('Buscar OpenAlex')
+    // A busca inicial já está em andamento ao abrir; depois dela o botão volta a "Buscar OpenAlex"
+    expect(html).toMatch(/Buscar OpenAlex|Buscando\.\.\./)
   })
 
   it('4. exibe badges de ambos os IDs se docente já tiver vinculações', () => {
-    const html = renderToString(
+    const html = renderHtml(
       React.createElement(VincularOpenAlexDialog, {
         open: true,
         onOpenChange: vi.fn(),
@@ -121,7 +141,7 @@ describe('VincularOpenAlexDialog (UI de busca e vinculação OpenAlex / Scopus)'
 
   it('7. detecta ID numérico e exibe card de vinculação direta imediata sem bloquear', () => {
     // Quando docente possui termo ou o diálogo é aberto na aba Scopus
-    const html = renderToString(
+    const html = renderHtml(
       React.createElement(VincularOpenAlexDialog, {
         open: true,
         onOpenChange: vi.fn(),
@@ -134,6 +154,6 @@ describe('VincularOpenAlexDialog (UI de busca e vinculação OpenAlex / Scopus)'
 
     // A aba scopus está presente
     expect(html).toContain('Elsevier Scopus')
-    expect(html).toContain('Vincular Perfil Acadêmico')
+    expect(html).toContain('Vincular Identificadores Acadêmicos')
   })
 })
