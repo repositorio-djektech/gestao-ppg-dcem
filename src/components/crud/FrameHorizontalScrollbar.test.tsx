@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import { FrameHorizontalScrollbar, resolveScrollElement } from './FrameHorizontalScrollbar'
 
 function setElementDimensions(
@@ -195,7 +195,7 @@ describe('FrameHorizontalScrollbar', () => {
     expect(thumb.style.left).toBe('0%')
   })
 
-  it('atualiza a posição do thumb ao disparar evento de scroll no contêiner', () => {
+  it('atualiza a posição do thumb ao disparar evento de scroll no contêiner', async () => {
     const ref = { current: mockContainer }
     render(<FrameHorizontalScrollbar targetRef={ref} />)
 
@@ -208,8 +208,9 @@ describe('FrameHorizontalScrollbar', () => {
       mockContainer.dispatchEvent(new Event('scroll'))
     })
 
+    // A atualização é agrupada em requestAnimationFrame, então o resultado é assíncrono
     // Com thumb de 50% (1000/2000), o espaço restante é 50%, 50% do espaço = 25%
-    expect(thumb.style.left).toBe('25%')
+    await waitFor(() => expect(thumb.style.left).toBe('25%'))
   })
 
   it('posiciona o scroll ao clicar em um ponto do trilho', () => {

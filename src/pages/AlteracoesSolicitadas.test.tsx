@@ -12,7 +12,9 @@ describe('Alterações solicitadas pelo usuário', () => {
   it('1. Na página Iniciações (/iniciacoes), o cabeçalho da coluna mostra "Bolsa" em vez de "Bolsa CNPq"', () => {
     const html = renderToString(
       <MemoryRouter>
-        <IniciacaoCientificaPage />
+        <AuthProvider>
+          <IniciacaoCientificaPage />
+        </AuthProvider>
       </MemoryRouter>,
     )
 
@@ -25,7 +27,9 @@ describe('Alterações solicitadas pelo usuário', () => {
   it('2. Na página Disciplinas (/disciplinas), a coluna "Docentes" existe no cabeçalho da tabela', () => {
     const html = renderToString(
       <MemoryRouter>
-        <Disciplinas />
+        <AuthProvider>
+          <Disciplinas />
+        </AuthProvider>
       </MemoryRouter>,
     )
 

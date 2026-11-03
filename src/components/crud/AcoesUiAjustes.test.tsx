@@ -29,6 +29,7 @@ vi.mock('@/hooks/use-crud-data', () => ({
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
   useLocation: () => ({ search: '' }),
+  useSearchParams: () => [new URLSearchParams(), vi.fn()],
 }))
 
 describe('Ajustes de UI - Coluna Ações e Larguras (Critérios de Aceite)', () => {

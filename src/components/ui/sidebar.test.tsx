@@ -4,6 +4,7 @@ import { renderToString } from 'react-dom/server'
 import { MemoryRouter } from 'react-router-dom'
 import { SidebarProvider, useSidebar } from './sidebar'
 import { AppSidebar } from '../AppSidebar'
+import { TooltipProvider } from './tooltip'
 
 // Mock useAuth
 vi.mock('@/hooks/use-auth', () => ({
@@ -91,10 +92,13 @@ describe('Tarefa B - Sidebar aberta por padrão', () => {
   })
 
   it('No modo recolhido (open=false), renderiza ícones com Tooltip no desktop e sem quebrar estrutura', () => {
+    // Como no App.tsx, os Tooltips dependem de um TooltipProvider na raiz
     const html = renderToString(
-      <MemoryRouter initialEntries={['/']}>
-        <AppSidebar open={false} />
-      </MemoryRouter>,
+      <TooltipProvider>
+        <MemoryRouter initialEntries={['/']}>
+          <AppSidebar open={false} />
+        </MemoryRouter>
+      </TooltipProvider>,
     )
 
     // Quando recolhida, o LogoIcon é renderizado

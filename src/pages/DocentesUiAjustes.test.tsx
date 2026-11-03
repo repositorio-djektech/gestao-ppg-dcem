@@ -15,6 +15,7 @@ vi.mock('@/hooks/use-auth', () => ({
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
   useLocation: () => ({ search: '' }),
+  useSearchParams: () => [new URLSearchParams(), vi.fn()],
 }))
 
 vi.mock('@/lib/supabase/client', () => ({

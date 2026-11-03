@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import React from 'react'
-import { renderToString } from 'react-dom/server'
+import { renderHtmlDoBody } from '@/test/render-html'
 import { SugerirQualisDialog } from './SugerirQualisDialog'
 import { VincularAutoresDocentesDialog } from './VincularAutoresDocentesDialog'
 
 describe('Estrutura de Header e Footer fixos e rolagem interna em modais de Publicações', () => {
   it('SugerirQualisDialog possui header e footer fixos e corpo scrollável interno', () => {
-    const html = renderToString(
+    const html = renderHtmlDoBody(
       <SugerirQualisDialog open={true} onOpenChange={() => {}} onSucesso={() => {}} />,
     )
 
@@ -25,7 +25,8 @@ describe('Estrutura de Header e Footer fixos e rolagem interna em modais de Publ
     expect(html).toContain('flex-1 min-h-0 overflow-y-auto')
 
     // Verifica que as barras de estatísticas e filtros estão dentro do contêiner de scroll e não têm shrink-0
-    const [headerParte, resto] = html.split('</header>')
+    // O DialogHeader é um <div>: o corpo rolável (flex-1 min-h-0 overflow-y-auto) separa header e corpo
+    const [headerParte, resto] = html.split('flex-1 min-h-0 overflow-y-auto')
     const [corpoScroll, footerParte] = resto.split('mt-auto border-t border-slate-200')
 
     expect(headerParte).toContain('Sugestão Automática de Estrato Qualis')
@@ -42,7 +43,7 @@ describe('Estrutura de Header e Footer fixos e rolagem interna em modais de Publ
   })
 
   it('VincularAutoresDocentesDialog possui header e footer fixos, corpo scrollável e textos "Vínculo"', () => {
-    const html = renderToString(
+    const html = renderHtmlDoBody(
       <VincularAutoresDocentesDialog open={true} onOpenChange={() => {}} onSucesso={() => {}} />,
     )
 
@@ -61,7 +62,7 @@ describe('Estrutura de Header e Footer fixos e rolagem interna em modais de Publ
     // Corpo central com flex-1 min-h-0 overflow-y-auto
     expect(html).toContain('flex-1 min-h-0 overflow-y-auto')
 
-    const [headerParte, resto] = html.split('</header>')
+    const [headerParte, resto] = html.split('flex-1 min-h-0 overflow-y-auto')
     const [corpoScroll, footerParte] = resto.split('mt-auto border-t border-slate-200')
 
     expect(headerParte).toContain('Vínculo Automático Autor → Docente')

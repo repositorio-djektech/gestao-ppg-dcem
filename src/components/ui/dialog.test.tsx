@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import React from 'react'
-import { renderToString } from 'react-dom/server'
+import { renderHtmlDoBody } from '@/test/render-html'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './dialog'
 
 describe('Dialog responsivo para mobile e desktop', () => {
   it('DialogContent possui classes max-h-[90dvh] e overflow-y-auto para rolagem interna', () => {
-    const html = renderToString(
+    const html = renderHtmlDoBody(
       <Dialog open={true}>
         <DialogContent>
           <DialogHeader>
