@@ -73,6 +73,7 @@ Armazena o corpo docente vinculado ao programa (Permanentes, Colaboradores, Visi
 - `jdp`: `boolean DEFAULT false` — Flag de Jovem Docente Permanente
 - `jdp_desde`: `integer` — Ano de entrada como JDP (limite CAPES de 4 anos)
 - `ano_doutorado`: `integer` — Ano de obtenção do doutorado (limite CAPES de 10 anos para JDP)
+- `programas_permanente`: `integer NOT NULL DEFAULT 1` (≥ 1) — Número de programas em que o docente é permanente, incluindo o PPG-DCEM. A produção sem coautoria de discente ou egresso é dividida por esse número em DPI, DPT e DPI2 (Ficha CAPES, item 2.4.1). Migration `20261102120000_docentes_programas_permanente.sql`
 - `categoria`: `text` — `'permanente'`, `'colaborador'`, `'visitante'`, `'jdp'`
 - `id_lattes`: `text` — Identificador estável de 16 dígitos do CNPq (possui índice único `idx_docentes_id_lattes_unique`)
 - `openalex_id`: `text` — Identificador OpenAlex (índice único `idx_docentes_openalex_id_unique`)

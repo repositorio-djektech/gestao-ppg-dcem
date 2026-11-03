@@ -29,6 +29,8 @@ export type Docente = {
   orc_id?: string | null
   jdp_desde?: number | null
   ano_doutorado?: number | null
+  /** Nº de programas em que é docente permanente, incluindo o PPG-DCEM (mínimo 1) */
+  programas_permanente?: number | null
 }
 
 export type EstratoQualis = 'A1' | 'A2' | 'A3' | 'A4' | 'B1' | 'B2' | 'B3' | 'B4' | 'C'

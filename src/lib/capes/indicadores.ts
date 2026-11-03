@@ -343,6 +343,21 @@ export function calcularTodosIndicadores(
     }
   }
 
+  // Item 2.4.1 (obs.): a produção de DP sem coautoria de discente ou egresso conta dividida pelo
+  // número de programas em que o docente é permanente. A publicação continua contando uma vez:
+  // com vários DP autores, vale o mais exclusivo (menor número de programas).
+  const programasPorDocente = new Map<number, number>()
+  for (const d of docentes) {
+    const n = Math.floor(Number(d.programas_permanente))
+    programasPorDocente.set(d.id, Number.isFinite(n) && n >= 1 ? n : 1)
+  }
+  const fatorProgramasDaPublicacao = (pub: Publicacao): number => {
+    if (pubTemCoautoriaValida(pub)) return 1
+    const { docIds } = pubPertenceADocentePermanente(pub)
+    if (docIds.length === 0) return 1
+    return 1 / Math.min(...docIds.map((id) => programasPorDocente.get(id) ?? 1))
+  }
+
   // Publicações no quadriênio
   const pubsNoQuadrienio = dados.publicacoes.filter((p) => {
     const a = anoPublicacao(p)
@@ -372,7 +387,10 @@ export function calcularTodosIndicadores(
   // DPI / DPIDE1 / DPIDE2 / DPI2
   // Pesos: A1=1.0, A2=0.875, A3=0.75, A4=0.675, B1=0.5 (sat: min(B1, DP)), B2..C=0.0
   // =========================================================================
-  function calcularPontuacaoQualisComSaturacao(publicacoesSubset: Publicacao[]): {
+  function calcularPontuacaoQualisComSaturacao(
+    publicacoesSubset: Publicacao[],
+    fatorDaPublicacao?: (pub: Publicacao) => number,
+  ): {
     a1: number
     a2: number
     a3: number
@@ -398,7 +416,8 @@ export function calcularTodosIndicadores(
     for (const p of publicacoesSubset) {
       const e = (p.estrato_qualis || '').toUpperCase().trim()
       // Cada publicação conta uma única vez, independentemente de quantos DPs a assinam.
-      const fatorMultiplicador = 1
+      // O fator só reduz o peso por programas do DP (item 2.4.1), nunca multiplica por autores.
+      const fatorMultiplicador = fatorDaPublicacao ? fatorDaPublicacao(p) : 1
 
       if (e === 'A1') a1 += fatorMultiplicador
       else if (e === 'A2') a2 += fatorMultiplicador
@@ -1320,7 +1339,7 @@ export function calcularTodosIndicadores(
       }
     } else {
       const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
-        calcularPontuacaoQualisComSaturacao(pubsAno)
+        calcularPontuacaoQualisComSaturacao(pubsAno, fatorProgramasDaPublicacao)
       const val = Number((pontosNumerador / denominadorDoAno(ano)).toFixed(3))
 
       dpiAnos[ano] = {
@@ -1401,7 +1420,7 @@ export function calcularTodosIndicadores(
       let anais = 0
       let capitulos = 0
       for (const p of pubsAno) {
-        const docsVinculadosQtd = 1
+        const docsVinculadosQtd = fatorProgramasDaPublicacao(p)
         const tp = normStr(p.tipo_producao)
         if (tp === 'artigo em periódico' || tp === '' || Boolean(p.periodico)) {
           periodicos += docsVinculadosQtd
@@ -1728,7 +1747,7 @@ export function calcularTodosIndicadores(
       }
     } else {
       const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
-        calcularPontuacaoQualisComSaturacao(pubsAnoN2)
+        calcularPontuacaoQualisComSaturacao(pubsAnoN2, fatorProgramasDaPublicacao)
       const val = Number((pontosNumerador / denominadorDoAno(ano)).toFixed(3))
 
       dpi2Anos[ano] = {
@@ -2143,6 +2162,15 @@ export function calcularTodosIndicadores(
         'O item 3.3.2 é avaliado de forma qualitativa/comparativa; o FOR é um dos descritores citados na ficha e não define a nota sozinho.',
     }
   })()
+
+  // DPI, DPT e DPI2: explicam a divisão por programas quando algum DP é permanente em outro programa
+  const dpComOutrosProgramas = permanentes.filter((d) => (programasPorDocente.get(d.id) ?? 1) > 1)
+  if (dpComOutrosProgramas.length > 0) {
+    const textoProgramas = `Produção sem coautoria de discente ou egresso dividida pelo nº de programas do DP (item 2.4.1): ${dpComOutrosProgramas.length} DP em mais de um programa. Com vários DP autores, vale o mais exclusivo.`
+    for (const ind of [dpiIndicador, dptIndicador, dpi2Indicador]) {
+      ind.observacoes = ind.observacoes ? `${ind.observacoes} ${textoProgramas}` : textoProgramas
+    }
+  }
 
   // Indicadores com coautoria de discente/egresso: explicam a janela e avisam sobre dados faltantes
   const textoJanela =

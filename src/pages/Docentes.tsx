@@ -1083,6 +1083,29 @@ export default function Docentes() {
                     </SelectContent>
                   </Select>
                 </div>
+                {formData.categoria === 'permanente' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="programasPermanente">Programas em que é permanente</Label>
+                    <Input
+                      id="programasPermanente"
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={formData.programas_permanente ?? 1}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          programas_permanente: Math.max(1, Math.floor(Number(e.target.value)) || 1),
+                        })
+                      }
+                      className="bg-white"
+                    />
+                    <p className="text-xs text-slate-500">
+                      Conte o PPG-DCEM. A produção sem coautoria de discente ou egresso é dividida
+                      por esse número nos indicadores DPI e DPT (Ficha CAPES, item 2.4.1).
+                    </p>
+                  </div>
+                )}
                 {/* Controle de Jovem Doutor Pesquisador (JDP) */}
                 <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 space-y-3">
                   <div className="flex items-center justify-between">

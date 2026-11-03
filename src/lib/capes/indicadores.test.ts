@@ -684,4 +684,44 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
     expect(dptde1?.insumos.some((i) => i.descricao.includes('sem ano de titulação'))).toBe(true)
     expect(dptde1?.observacoes).toContain('até 5 anos')
   })
+  it('divide a produção sem coautoria discente pelo nº de programas do DP (DPI e DPT)', () => {
+    // Docente Um é permanente em 2 programas: sua produção sem coautoria discente conta 1/2
+    // Docente Dois é permanente só aqui. DP - JDP = 3.
+    const docentes = baseDocentes.map((d) =>
+      d.id === 1 ? { ...d, programas_permanente: 2 } : d,
+    )
+    const pubs: any[] = [
+      // só do Docente Um, sem coautoria: 0.5
+      { id: 1, ano: 2025, tipo_producao: 'Artigo em periódico', autores: 'Docente Um', estrato_qualis: 'A1' },
+      // Docente Um + Docente Dois, sem coautoria: vale o mais exclusivo (1), conta uma vez
+      { id: 2, ano: 2025, tipo_producao: 'Artigo em periódico', autores: 'Docente Um; Docente Dois', estrato_qualis: 'A1' },
+      // Docente Um com coautoria de orientando: exceção da ficha, conta 1
+      { id: 3, ano: 2025, tipo_producao: 'Artigo em periódico', autores: 'Docente Um', estrato_qualis: 'A1' },
+    ]
+    const coautores: any[] = [{ publicacao_id: 3, tipo: 'orientando', discente_id: 9 }]
+
+    const rel = calcularTodosIndicadores({
+      ...dadosMinimos,
+      anoReferencia: 2025,
+      docentes,
+      publicacoes: pubs,
+      publicacoesCoautores: coautores,
+    })
+
+    const dpi = rel.todosIndicadores.find((i) => i.codigo === 'DPI')
+    // (0.5 + 1 + 1) A1 / 3 = 0.833
+    expect(dpi?.anos?.[2025].valorCalculado).toBe(0.833)
+    const dpt = rel.todosIndicadores.find((i) => i.codigo === 'DPT')
+    expect(dpt?.anos?.[2025].valorCalculado).toBe(0.833)
+    expect(dpi?.observacoes).toContain('nº de programas')
+
+    // Sem o campo (ou com 1), nada muda: 3 publicações / 3 = 1
+    const semCampo = calcularTodosIndicadores({
+      ...dadosMinimos,
+      anoReferencia: 2025,
+      publicacoes: pubs,
+      publicacoesCoautores: coautores,
+    })
+    expect(semCampo.todosIndicadores.find((i) => i.codigo === 'DPI')?.anos?.[2025].valorCalculado).toBe(1)
+  })
 })
