@@ -1,8 +1,18 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import React from 'react'
-import { renderToString } from 'react-dom/server'
+import { render, cleanup, waitFor } from '@testing-library/react'
 import Reconducao from './Reconducao'
 import type { RelatorioReconducaoResposta } from '@/lib/reconducao/types'
+
+// A página carrega os dados em useEffect: espera o fim do carregamento (o botão volta de
+// "Atualizando..." para "Atualizar") antes de inspecionar o HTML.
+afterEach(cleanup)
+
+async function renderPagina(el: React.ReactElement): Promise<string> {
+  const { container } = render(el)
+  await waitFor(() => expect(container.textContent).not.toContain('Atualizando...'))
+  return container.innerHTML
+}
 
 describe('Página Recondução (Etapa D)', () => {
   const dadosMock: RelatorioReconducaoResposta = {
@@ -243,8 +253,8 @@ describe('Página Recondução (Etapa D)', () => {
     ],
   }
 
-  it('renderiza o cabeçalho, descrição institucional e botões da página Recondução', () => {
-    const html = renderToString(
+  it('renderiza o cabeçalho, descrição institucional e botões da página Recondução', async () => {
+    const html = await renderPagina(
       <Reconducao
         carregarDadosFn={() =>
           Promise.resolve({
@@ -263,8 +273,8 @@ describe('Página Recondução (Etapa D)', () => {
     expect(html).toContain('data-testid="btn-imprimir-relatorio-reconducao"')
   })
 
-  it('renderiza os 5 cards de métricas no topo com números fiéis ao ResumoReconducao', () => {
-    const html = renderToString(
+  it('renderiza os 5 cards de métricas no topo com números fiéis ao ResumoReconducao', async () => {
+    const html = await renderPagina(
       <Reconducao
         carregarDadosFn={() =>
           Promise.resolve({
@@ -298,8 +308,8 @@ describe('Página Recondução (Etapa D)', () => {
     expect(html).toContain('Não Aplicáveis')
   })
 
-  it('renderiza os vereditos com badges coloridos e estilizados', () => {
-    const html = renderToString(
+  it('renderiza os vereditos com badges coloridos e estilizados', async () => {
+    const html = await renderPagina(
       <Reconducao
         carregarDadosFn={() =>
           Promise.resolve({
@@ -317,8 +327,8 @@ describe('Página Recondução (Etapa D)', () => {
     expect(html).toContain('NÃO APLICÁVEL')
   })
 
-  it('exibe badges de categoria adequados (azul Permanente, âmbar Colaborador)', () => {
-    const html = renderToString(
+  it('exibe badges de categoria adequados (azul Permanente, âmbar Colaborador)', async () => {
+    const html = await renderPagina(
       <Reconducao
         carregarDadosFn={() =>
           Promise.resolve({
@@ -336,8 +346,8 @@ describe('Página Recondução (Etapa D)', () => {
     expect(html).toContain('bg-amber-50')
   })
 
-  it('exibe o estado indefinido do PDQ com traço e motivo legível quando precondição < 2', () => {
-    const html = renderToString(
+  it('exibe o estado indefinido do PDQ com traço e motivo legível quando precondição < 2', async () => {
+    const html = await renderPagina(
       <Reconducao
         carregarDadosFn={() =>
           Promise.resolve({
@@ -354,8 +364,8 @@ describe('Página Recondução (Etapa D)', () => {
     expect(html).toContain('&lt;2 titulações (0)')
   })
 
-  it('ordena os docentes seguindo a regra: Reconduzidos -> Não Atendem -> Insuficientes -> Não Aplicáveis', () => {
-    const html = renderToString(
+  it('ordena os docentes seguindo a regra: Reconduzidos -> Não Atendem -> Insuficientes -> Não Aplicáveis', async () => {
+    const html = await renderPagina(
       <Reconducao
         carregarDadosFn={() =>
           Promise.resolve({
@@ -383,8 +393,8 @@ describe('Página Recondução (Etapa D)', () => {
     expect(idxInsuficiente).toBeLessThan(idxNaoAplicavel)
   })
 
-  it('renderiza estado de erro com botão "Tentar novamente" em caso de falha', () => {
-    const html = renderToString(
+  it('renderiza estado de erro com botão "Tentar novamente" em caso de falha', async () => {
+    const html = await renderPagina(
       <Reconducao
         carregarDadosFn={() =>
           Promise.resolve({

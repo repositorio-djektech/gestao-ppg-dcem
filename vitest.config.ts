@@ -8,6 +8,7 @@ export default defineConfig((env) =>
       environment: 'jsdom',
       // globals: o @testing-library/react só limpa o DOM entre testes se afterEach for global
       globals: true,
+      setupFiles: ['./src/test/setup.ts'],
       include: ['src/**/*.test.{ts,tsx}'],
     },
   }),

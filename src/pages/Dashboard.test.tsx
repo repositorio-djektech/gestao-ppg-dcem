@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderToString } from 'react-dom/server'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, cleanup, act } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import Dashboard from './Dashboard'
 import type { ResultadoRelatorioLacunas } from '@/services/lacunas'
@@ -30,8 +30,20 @@ vi.mock('@/lib/supabase/client', () => ({
   },
 }))
 
+// O Dashboard carrega contadores e lacunas em efeitos assíncronos: renderiza e descarrega as
+// promessas pendentes antes de inspecionar o HTML.
+afterEach(cleanup)
+
+async function renderPagina(el: React.ReactElement): Promise<string> {
+  const { container } = render(el)
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+  return container.innerHTML
+}
+
 describe('Dashboard — Card de Status Lacunas de Dados', () => {
-  it('renderiza o card no Dashboard APENAS quando há pendências críticas (severidade crítica > 0)', () => {
+  it('renderiza o card no Dashboard APENAS quando há pendências críticas (severidade crítica > 0)', async () => {
     const mockLacunasCriticas: ResultadoRelatorioLacunas = {
       sucesso: true,
       dados: {
@@ -61,7 +73,7 @@ describe('Dashboard — Card de Status Lacunas de Dados', () => {
       origem: 'edge_function',
     }
 
-    const html = renderToString(
+    const html = await renderPagina(
       <MemoryRouter>
         <Dashboard obterLacunasFn={() => Promise.resolve(mockLacunasCriticas)} />
       </MemoryRouter>,
@@ -77,7 +89,7 @@ describe('Dashboard — Card de Status Lacunas de Dados', () => {
     expect(html).toContain('Clique para revisar no Relatório de Lacunas')
   })
 
-  it('NÃO renderiza o card quando não houver pendências críticas (críticas zeradas)', () => {
+  it('NÃO renderiza o card quando não houver pendências críticas (críticas zeradas)', async () => {
     const mockLacunasZeradas: ResultadoRelatorioLacunas = {
       sucesso: true,
       dados: {
@@ -98,7 +110,7 @@ describe('Dashboard — Card de Status Lacunas de Dados', () => {
       origem: 'edge_function',
     }
 
-    const html = renderToString(
+    const html = await renderPagina(
       <MemoryRouter>
         <Dashboard obterLacunasFn={() => Promise.resolve(mockLacunasZeradas)} />
       </MemoryRouter>,
@@ -109,14 +121,14 @@ describe('Dashboard — Card de Status Lacunas de Dados', () => {
     expect(html).not.toContain('Pendências de Dados')
   })
 
-  it('não bloqueia nem quebra o Dashboard quando a consulta de lacunas falhar (card não aparece)', () => {
+  it('não bloqueia nem quebra o Dashboard quando a consulta de lacunas falhar (card não aparece)', async () => {
     const mockFalha: ResultadoRelatorioLacunas = {
       sucesso: false,
       dados: null,
       mensagemErro: 'Falha temporária de rede no serviço de lacunas',
     }
 
-    const html = renderToString(
+    const html = await renderPagina(
       <MemoryRouter>
         <Dashboard obterLacunasFn={() => Promise.resolve(mockFalha)} />
       </MemoryRouter>,
@@ -130,8 +142,8 @@ describe('Dashboard — Card de Status Lacunas de Dados', () => {
     expect(html).not.toContain('data-testid="card-status-lacunas"')
   })
 
-  it('renderiza os cards do grupo Pessoas no Dashboard com tema rosa (pink-200, pink-500, pink-600)', () => {
-    const html = renderToString(
+  it('renderiza os cards do grupo Pessoas no Dashboard com tema rosa (pink-200, pink-500, pink-600)', async () => {
+    const html = await renderPagina(
       <MemoryRouter>
         <Dashboard obterLacunasFn={() => Promise.resolve({ sucesso: true, dados: null })} />
       </MemoryRouter>,
@@ -170,9 +182,9 @@ describe('Dashboard — Card de Status Lacunas de Dados', () => {
       origem: 'edge_function',
     }
 
-    it('NÃO exibe o card de Pendências de Dados para papel "docente" em nenhuma hipótese', () => {
+    it('NÃO exibe o card de Pendências de Dados para papel "docente" em nenhuma hipótese', async () => {
       mockRole = 'docente'
-      const html = renderToString(
+      const html = await renderPagina(
         <MemoryRouter>
           <Dashboard obterLacunasFn={() => Promise.resolve(mockLacunasCriticas)} />
         </MemoryRouter>,
@@ -184,9 +196,9 @@ describe('Dashboard — Card de Status Lacunas de Dados', () => {
 
     it.each<Role>(['suporte', 'coordenador', 'auxiliar', 'capes'])(
       'exibe o card de Pendências de Dados para papel "%s" quando houver críticas',
-      (papelPermitido) => {
+      async (papelPermitido) => {
         mockRole = papelPermitido
-        const html = renderToString(
+        const html = await renderPagina(
           <MemoryRouter>
             <Dashboard obterLacunasFn={() => Promise.resolve(mockLacunasCriticas)} />
           </MemoryRouter>,
