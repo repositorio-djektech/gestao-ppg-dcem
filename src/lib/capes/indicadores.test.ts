@@ -797,4 +797,35 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
     expect(dest?.decomposicao.find((d) => d.termo === 'Faixa 2020–2024')?.valor).toBe('5/5')
     expect(dest?.decomposicao.find((d) => d.termo === 'Fora das faixas')?.valor).toBe(1)
   })
+  it('calcula DPEX (% de DP só neste programa) e compara com o mínimo de 50% para MB', () => {
+    // DP = 4 (Docentes 1 a 4, o 4 é JDP): 2 em dois programas => 2 de 4 = 50%
+    const docentes = baseDocentes.map((d) =>
+      d.id === 1 || d.id === 2 ? { ...d, programas_permanente: 2 } : d,
+    )
+    const rel = calcularTodosIndicadores({ ...dadosMinimos, docentes })
+    const dpex = rel.todosIndicadores.find((i) => i.codigo === 'DPEX')
+
+    expect(dpex?.quesito).toBe('1')
+    expect(dpex?.itemFicha).toBe('1.2.2')
+    expect(dpex?.metodologia).toBe('estoque')
+    expect(dpex?.valorCalculado).toBe(50)
+    expect(dpex?.decomposicao.find((d) => d.termo === 'Meta MB')?.descricao).toContain('Atinge')
+
+    // 3 de 4 em dois programas => 25%, abaixo da meta
+    const abaixo = calcularTodosIndicadores({
+      ...dadosMinimos,
+      docentes: baseDocentes.map((d) =>
+        d.id <= 3 ? { ...d, programas_permanente: 2 } : d,
+      ),
+    })
+    const dpexAbaixo = abaixo.todosIndicadores.find((i) => i.codigo === 'DPEX')
+    expect(dpexAbaixo?.valorCalculado).toBe(25)
+    expect(dpexAbaixo?.decomposicao.find((d) => d.termo === 'Meta MB')?.descricao).toContain('Abaixo')
+
+    // Sem o campo, todos contam como exclusivos
+    expect(
+      calcularTodosIndicadores(dadosMinimos).todosIndicadores.find((i) => i.codigo === 'DPEX')
+        ?.valorCalculado,
+    ).toBe(100)
+  })
 })

@@ -2373,6 +2373,67 @@ export function calcularTodosIndicadores(
   })()
 
   // =========================================================================
+  // QUESITO 1 (item 1.2.2): DPEX = % de DP que atua como permanente somente neste programa
+  // Estoque. A ficha pede mínimo de 50% para conceito MB. O DP inclui os JDP.
+  // =========================================================================
+  const META_DPEX_MB = 50
+  const dpexIndicador: ResultadoIndicador = (() => {
+    const base = {
+      id: 'dpex',
+      codigo: 'DPEX',
+      nome: 'DP Atuando Somente no Programa (DPEX)',
+      quesito: '1' as const,
+      itemFicha: '1.2.2',
+      pesoPercentual: 10,
+      pesoQuesitoGeral: '35%',
+      formulaTexto: 'DPEX = DP permanentes só neste programa / DP (mínimo de 50% para MB)',
+      unidade: '%',
+      metodologia: 'estoque' as const,
+    }
+    const insumos: InsumoStatus[] = [
+      {
+        totalExistente: DP,
+        descricao: `${DP} docentes permanentes (DP, inclui ${JDP_validos} JDP válidos)`,
+        atendido: DP > 0,
+      },
+    ]
+    if (DP === 0) {
+      return {
+        ...base,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes',
+        valorCalculado: null,
+        decomposicao: [],
+        insumos,
+      }
+    }
+    const exclusivos = permanentes.filter((d) => (programasPorDocente.get(d.id) ?? 1) === 1).length
+    const valor = Number(((exclusivos / DP) * 100).toFixed(2))
+    return {
+      ...base,
+      status: 'calculado',
+      valorCalculado: valor,
+      decomposicao: [
+        { termo: 'DP só neste programa', descricao: 'Permanentes com 1 programa', valor: exclusivos },
+        {
+          termo: 'DP em mais de um programa',
+          descricao: 'Permanentes também em outro programa',
+          valor: DP - exclusivos,
+        },
+        { termo: 'DP', descricao: 'Docentes Permanentes', valor: DP },
+        {
+          termo: 'Meta MB',
+          descricao: valor >= META_DPEX_MB ? 'Atinge o mínimo de 50%' : 'Abaixo do mínimo de 50%',
+          valor: `${META_DPEX_MB}%`,
+        },
+      ],
+      insumos,
+      observacoes:
+        'Item 1.2.2 (10%) é qualitativo; este é o descritor numérico citado na ficha. Depende de `programas_permanente` no cadastro do docente (padrão 1).',
+    }
+  })()
+
+  // =========================================================================
   // QUESITO 3.3 (apoio ao item 3.3.2): FOR = % de DP com bolsa PQ + DT do CNPq
   // Níveis: 1 (SR, 1A–1D) e 2 (PQ-2, DT-2). Indicador de estoque.
   // =========================================================================
@@ -2466,6 +2527,7 @@ export function calcularTodosIndicadores(
   // Agrupamento em Quesitos
   const todosIndicadores: ResultadoIndicador[] = [
     adeIndicador,
+    dpexIndicador,
     oriIndicador,
     atdIndicador,
     dpiIndicador,
@@ -2496,7 +2558,7 @@ export function calcularTodosIndicadores(
     quesito: '1',
     titulo: 'Quesito 1 — Programa: Adequação e Perfil Docente',
     pesoTotalPercentual: 35,
-    indicadores: [adeIndicador],
+    indicadores: [adeIndicador, dpexIndicador],
   }
 
   const quesito2: ResumoQuesito = {

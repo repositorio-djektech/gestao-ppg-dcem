@@ -98,11 +98,12 @@ O painel de **Indicadores CAPES** reproduz a Ficha de Avaliação da **Área Eng
 
 ### 3.2 Indicadores Implementados (`src/lib/capes/indicadores.ts`)
 
-São 25 indicadores. Os pesos (`pesoPercentual`) seguem a configuração do código; ADE, H2, FOR e os indicadores de egressos são de **estoque** (sem anualização) e os demais são calculados **ano a ano** e agregados pela MMA.
+São 26 indicadores. Os pesos (`pesoPercentual`) seguem a configuração do código; ADE, DPEX, H2, FOR e os indicadores de egressos são de **estoque** (sem anualização) e os demais são calculados **ano a ano** e agregados pela MMA.
 
 | Código | Indicador | Item da ficha | Peso (%) | Fórmula resumida |
 | :-- | :-- | :-- | :--: | :-- |
 | ADE | Adequação do corpo docente | 1.2.1 | 15 | DP / (DP + DC + DV), em % (estoque) |
+| DPEX | DP atuando só neste programa | 1.2.2 | 10 | DP com `programas_permanente = 1` / DP, em % (estoque); mínimo de 50% para MB |
 | ORI | Titulações por docente permanente | 2.1.1 | 10 | (M + 3D) / (DP − JDP) |
 | ATD | Artigos A1–A4 com discente/egresso por titulação | 2.1.2 | 10 | artigos A1–A4 com coautoria / (M + 2D) |
 | DPIDE1 | DPI com coautoria de discentes e egressos | 2.2.1 | 10 | fórmula do DPI sobre publicações com coautoria |
