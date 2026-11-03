@@ -18,6 +18,8 @@ const emptyForm = {
   status: 'Pendente',
   autores: '',
   inpi: '',
+  com_discente_egresso: false,
+  discentes_egressos: '',
   link_comprovacao: '',
   observacoes: '',
   impactos_vinculados_ids: [] as number[],
@@ -211,6 +213,19 @@ export default function PatentesPage() {
       type: 'number',
       placeholder: 'Ex: 2025',
       helperText: 'Usado nos indicadores CAPES (DPPn/DPPi). Sem ele, usa-se o ano de cadastro.',
+    },
+    {
+      key: 'com_discente_egresso',
+      label: 'Com autoria de discente ou egresso',
+      type: 'switch',
+      helperText: 'Entra no DPPDE (Ficha CAPES, item 2.2.3), além do DPPn/DPPi.',
+    },
+    {
+      key: 'discentes_egressos',
+      label: 'Discentes / Egressos autores',
+      type: 'text',
+      placeholder: 'Ex: Maria Souza (egressa 2023); João Lima (discente)',
+      helperText: 'Nomes e vínculo, como evidência para a avaliação.',
     },
     {
       key: 'link_comprovacao',

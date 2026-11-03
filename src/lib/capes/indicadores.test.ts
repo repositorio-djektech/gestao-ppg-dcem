@@ -724,4 +724,77 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
     })
     expect(semCampo.todosIndicadores.find((i) => i.codigo === 'DPI')?.anos?.[2025].valorCalculado).toBe(1)
   })
+  it('calcula DPPDE só com patentes com discente ou egresso, sem separar nacional/internacional', () => {
+    // DP - JDP = 3 em 2025: (0,6 concedida + 0,3 depositada) / 3 = 0.3; a patente sem marcação não entra
+    const patentes: any[] = [
+      { id: 1, status: 'Concessão', ano_deposito: 2025, com_discente_egresso: true, inpi: 'BR 1' },
+      { id: 2, status: 'Pendente', ano_deposito: 2025, com_discente_egresso: true, inpi: 'PCT/US 2' },
+      { id: 3, status: 'Concessão', ano_deposito: 2025, com_discente_egresso: false, inpi: 'BR 3' },
+    ]
+    const rel = calcularTodosIndicadores({ ...dadosMinimos, anoReferencia: 2025, patentes })
+    const dppde = rel.todosIndicadores.find((i) => i.codigo === 'DPPDE')
+
+    expect(dppde?.itemFicha).toBe('2.2.3')
+    expect(dppde?.pesoPercentual).toBe(3)
+    expect(dppde?.anos?.[2025].valorCalculado).toBe(0.3)
+    expect(dppde?.valorCalculado).toBe(0.3)
+
+    const semMarcacao = calcularTodosIndicadores({
+      ...dadosMinimos,
+      anoReferencia: 2025,
+      patentes: patentes.map((p) => ({ ...p, com_discente_egresso: false })),
+    })
+    expect(semMarcacao.todosIndicadores.find((i) => i.codigo === 'DPPDE')?.status).toBe('indefinido')
+  })
+
+  it('calcula os indicadores de egressos (2.3.1 a 2.3.3) sobre os titulados nos últimos 10 anos', () => {
+    // Referência 2026: janela 2017-2026. Egresso de 2010 fica fora.
+    const egressos: any[] = [
+      { id: 1, tipo_curso: 'Mestrado', ano_titulacao: 2020, atuacao_setor: 'ensino_superior', atuacao_pais: 'brasil' },
+      { id: 2, tipo_curso: 'Doutorado', ano_titulacao: 2018, atuacao_setor: 'industria_servicos', atuacao_pais: 'exterior' },
+      { id: 3, tipo_curso: 'Mestrado', ano_titulacao: 2022, atuacao_setor: 'nao_atua_na_area', atuacao_pais: 'brasil' },
+      { id: 4, tipo_curso: 'Mestrado', ano_titulacao: 2024, atuacao_setor: '', atuacao_pais: '' },
+      { id: 5, tipo_curso: 'Mestrado', ano_titulacao: 2010, atuacao_setor: 'ensino_superior', atuacao_pais: 'brasil' },
+    ]
+    const rel = calcularTodosIndicadores({ ...dadosMinimos, anoReferencia: 2026, egressos })
+    const valor = (cod: string) => rel.todosIndicadores.find((i) => i.codigo === cod)
+
+    // 4 titulados na janela (ids 1 a 4); 3 com atuação informada; 2 na área
+    expect(valor('EGR-AREA')?.valorCalculado).toBe(50)
+    expect(valor('EGR-BR')?.valorCalculado).toBe(25)
+    expect(valor('EGR-EXT')?.valorCalculado).toBe(25)
+    expect(valor('EGR-AREA')?.itemFicha).toBe('2.3.1')
+    expect(valor('EGR-AREA')?.observacoes).toContain('Cobertura parcial')
+    expect(valor('EGR-AREA')?.insumos[0].atendido).toBe(false)
+
+    // Nenhuma atuação informada: aguardando insumo, nunca 0%
+    const semAtuacao = calcularTodosIndicadores({
+      ...dadosMinimos,
+      anoReferencia: 2026,
+      egressos: egressos.map((e) => ({ ...e, atuacao_setor: '', atuacao_pais: '' })),
+    })
+    expect(semAtuacao.todosIndicadores.find((i) => i.codigo === 'EGR-AREA')?.status).toBe('indefinido')
+  })
+
+  it('limita os destaques de egressos a 5 por faixa e exige justificativa (2.3.4)', () => {
+    const mk = (id: number, ano: number, just: string) => ({
+      id,
+      ano_titulacao: ano,
+      destaque: true,
+      destaque_justificativa: just,
+    })
+    const egressos: any[] = [
+      ...[1, 2, 3, 4, 5, 6].map((n) => mk(n, 2021, 'Pesquisador na área')), // 6 na faixa 2020-24: conta 5
+      mk(7, 2022, ''), // sem justificativa: não conta
+      mk(8, 2016, 'Professor na UFS'), // faixa 2015-19: 1
+      mk(9, 2005, 'Fora das faixas'), // não conta
+    ]
+    const rel = calcularTodosIndicadores({ ...dadosMinimos, anoReferencia: 2026, egressos })
+    const dest = rel.todosIndicadores.find((i) => i.codigo === 'EGR-DEST')
+
+    expect(dest?.itemFicha).toBe('2.3.4')
+    expect(dest?.valorCalculado).toBe(6) // 5 + 1 + 0
+    expect(dest?.decomposicao.find((d) => d.termo === 'Faixa 2020–2024')?.valor).toBe('5/5')
+    expect(dest?.decomposicao.find((d) => d.termo === 'Fora das faixas')?.valor).toBe(1)
+  })
 })

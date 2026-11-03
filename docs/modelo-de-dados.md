@@ -114,6 +114,9 @@ Acompanhamento dos profissionais titulados pelo programa.
 - `ano_ingresso`: `text`
 - `tipo_curso`: `text` — `'Mestrado'` ou `'Doutorado'`
 - `atuacao_profissional`: `text DEFAULT ''`
+- `atuacao_setor`: `text NOT NULL DEFAULT ''` — `'ensino_superior'`, `'instituicao_pesquisa'`, `'industria_servicos'`, `'outro'`, `'nao_atua_na_area'` ou `''` (não informado); indicadores 2.3.1 a 2.3.3
+- `atuacao_pais`: `text NOT NULL DEFAULT ''` — `'brasil'`, `'exterior'` ou `''`
+- `destaque`: `boolean NOT NULL DEFAULT false` e `destaque_justificativa`: `text NOT NULL DEFAULT ''` — destaques do item 2.3.4 (até 5 por faixa: 2020–2024, 2015–2019, 2010–2014). Migration `20261102130000_patentes_discente_egresso_e_egressos_atuacao.sql`
 - `lattes_id`: `text`
 - `link_lattes`: `text DEFAULT ''`
 - `orientador`: `text DEFAULT ''`
@@ -323,7 +326,7 @@ Bolsistas e voluntários de IC, IT e Iniciação em Extensão.
 
 ### 2.4 Demais Produções e Extensão
 
-- **`patentes`:** `id`, `titulo`, `status` ('Concessão', 'Licenciamento', 'Pendente'), `autores`, `inpi`, `ambito` ('nacional', 'internacional'), `ano_deposito` (inteiro opcional, 1900–2100: ano de depósito ou concessão usado em DPPn/DPPi; sem ele os indicadores usam o ano de cadastro `created_at` como aproximação legada), `tipo` ('PI', 'MU', etc.), `link_comprovacao`, `observacoes`.
+- **`patentes`:** `id`, `titulo`, `status` ('Concessão', 'Licenciamento', 'Pendente'), `autores`, `inpi`, `ambito` ('nacional', 'internacional'), `ano_deposito` (inteiro opcional, 1900–2100: ano de depósito ou concessão usado em DPPn/DPPi; sem ele os indicadores usam o ano de cadastro `created_at` como aproximação legada), `com_discente_egresso` (boolean, padrão `false`: patente com autoria de discente ou egresso, usada no DPPDE) e `discentes_egressos` (texto com nomes e vínculo, como evidência), `tipo` ('PI', 'MU', etc.), `link_comprovacao`, `observacoes`.
 - **`producao_tecnica`:** `id`, `titulo`, `ano`, `autores`, `tipo` ('Software', 'Relatório', 'Patente'), `link_comprovacao`, `observacoes`.
 - **`premiacoes`:** `id`, `titulo`, `ano`, `nome_premiado`, `instituicao`, `link_comprovacao`, `observacoes`.
 - **`eventos`:** `id`, `docente`, `evento`, `local_data`, `papel`, `tipo` ('Trabalho completo', 'Resumo'), `nacionalidade` ('Nacional', 'Internacional'), `link_comprovacao`, `observacoes`.

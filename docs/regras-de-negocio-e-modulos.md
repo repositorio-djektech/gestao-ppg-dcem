@@ -98,7 +98,7 @@ O painel de **Indicadores CAPES** reproduz a Ficha de Avaliação da **Área Eng
 
 ### 3.2 Indicadores Implementados (`src/lib/capes/indicadores.ts`)
 
-São 20 indicadores. Os pesos (`pesoPercentual`) seguem a configuração do código; ADE, H2 e FOR são de **estoque** (sem anualização) e os demais são calculados **ano a ano** e agregados pela MMA.
+São 25 indicadores. Os pesos (`pesoPercentual`) seguem a configuração do código; ADE, H2, FOR e os indicadores de egressos são de **estoque** (sem anualização) e os demais são calculados **ano a ano** e agregados pela MMA.
 
 | Código | Indicador | Item da ficha | Peso (%) | Fórmula resumida |
 | :-- | :-- | :-- | :--: | :-- |
@@ -107,7 +107,12 @@ São 20 indicadores. Os pesos (`pesoPercentual`) seguem a configuração do cód
 | ATD | Artigos A1–A4 com discente/egresso por titulação | 2.1.2 | 10 | artigos A1–A4 com coautoria / (M + 2D) |
 | DPIDE1 | DPI com coautoria de discentes e egressos | 2.2.1 | 10 | fórmula do DPI sobre publicações com coautoria |
 | DPTDE1 | DPT com coautoria de discentes e egressos | 2.2.1 | 0 (ver nota) | (periódicos + anais + capítulos com coautoria) / (DP − JDP) |
-| DPIDE2 | DPI das publicações nível 2 com discentes | 2.2.2 | 12 | fórmula do DPI sobre nível 2 com coautoria |
+| DPIDE2 | DPI das publicações nível 2 com discentes | 2.2.2 | 12 |
+| DPPDE | Patentes com discentes e egressos | 2.2.3 | 3 | [licenciadas + 0,6·concedidas + 0,3·depositadas] / (DP − JDP), só patentes com `com_discente_egresso` |
+| EGR-AREA | Egressos empregados na área | 2.3.1 | 2,5 | M+D titulados nos últimos 10 anos com atuação na área / total de M+D titulados (estoque) |
+| EGR-BR | Egressos atuando no Brasil | 2.3.2 | 2,5 | idem, na área e no Brasil (estoque) |
+| EGR-EXT | Egressos atuando no exterior | 2.3.3 | 2,5 | idem, na área e no exterior (estoque) |
+| EGR-DEST | Destaques de egressos | 2.3.4 | 2,5 | destaques com justificativa, máx. 5 por faixa (2020–24, 2015–19, 2010–14) | fórmula do DPI sobre nível 2 com coautoria |
 | DPI | Produção docente ponderada | 2.4.1 | 6 | [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP) |
 | DPT | Produção total dos docentes | 2.4.1 | 2 | (periódicos + anais + capítulos) / (DP − JDP) |
 | DPD | Distribuição da produção qualificada | 2.4.2 | 3 | % dos DP com publicação A1–A4 no ano |
@@ -125,6 +130,8 @@ São 20 indicadores. Os pesos (`pesoPercentual`) seguem a configuração do cód
 
 Notas:
 
+- **Egressos (2.3.x):** a janela de 10 anos termina no ano de referência (limitado ao fim do quadriênio). "Na área" é qualquer setor informado diferente de `nao_atua_na_area`. Egresso sem atuação informada entra no denominador e a tela mostra a cobertura; se nenhum estiver informado o indicador fica aguardando insumo, nunca 0%.
+- **DPPDE:** considera todas as patentes marcadas com discente ou egresso, sem separar nacional e internacional, e usa o mesmo ano e a mesma MMA do DPPn/DPPi.
 - **DPTDE1:** a ficha dá 10% ao item 2.2.1 sem dividir entre DPIDE1 e DPTDE1; o peso fica no DPIDE1 e o DPTDE1 aparece com peso 0 para não contar duas vezes.
 - **FOR:** o item 3.3.2 é qualitativo/comparativo (25% dentro do quesito 3.3, que vale 40%). O FOR é só um dos descritores citados na ficha; separa nível 1 (PQ-SR, 1A–1D, DT 1A–1B) e nível 2 (PQ 2, DT 2) e ignora colaboradores e visitantes.
 

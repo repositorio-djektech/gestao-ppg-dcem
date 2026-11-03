@@ -1965,6 +1965,283 @@ export function calcularTodosIndicadores(
       'A ficha CAPES define o índice de patentes para o quadriênio como um todo. Por decisão formal do PPG-DCEM, adota-se cálculo anual com agregação MMA.',
   })
 
+  // --- DPPDE: patentes com discente ou egresso (nacionais e internacionais) ---
+  const patentesComDiscenteEgresso = dados.patentes.filter((p) => p.com_discente_egresso === true)
+
+  // --- DPPDE: patentes com autoria de discentes e egressos (item 2.2.3) ---
+  const dppdeAnos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    if (denominadorDoAno(ano) === 0) {
+      dppdeAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes regulares',
+        valorCalculado: null,
+        decomposicao: [],
+      }
+      continue
+    }
+
+    const patsAno = patentesComDiscenteEgresso.filter((p) => {
+      const a = anoPatente(p)
+      // Se não tem ano inferível na patente, só associa ao primeiro ano caso seja anoReferencia
+      return a === ano
+    })
+
+    if (patsAno.length === 0) {
+      dppdeAnos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando insumo de patentes com discentes ou egressos em ${ano}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      const { licenciadas, concedidas, depositadas, pontos } = calcularPontuacaoPatentes(patsAno)
+      const val = Number((pontos / denominadorDoAno(ano)).toFixed(3))
+      dppdeAnos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          {
+            termo: 'Depositadas (peso 0.3)',
+            descricao: `Depositadas em ${ano}`,
+            valor: depositadas,
+          },
+          { termo: 'Concedidas (peso 0.6)', descricao: `Concedidas em ${ano}`, valor: concedidas },
+          {
+            termo: 'Licenciadas (peso 1.0)',
+            descricao: `Licenciadas em ${ano}`,
+            valor: licenciadas,
+          },
+          { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontos },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorDoAno(ano) },
+        ],
+      }
+    }
+  }
+
+  const dppdeIndicador = agregarComMMA(dppdeAnos, anosQuadrienio, 'quadrienio_mma', {
+    id: 'dppde',
+    codigo: 'DPPDE',
+    nome: 'Patentes com Discentes e Egressos (DPPDE)',
+    quesito: '2',
+    itemFicha: '2.2.3',
+    pesoPercentual: 3,
+    pesoQuesitoGeral: '25%',
+    formulaTexto:
+      'DPPDE = [N(licenciadas) + 0,6·N(concedidas) + 0,3·N(depositadas)] / (DP − JDP), só patentes com discente/egresso [MMA]',
+    unidade: '',
+    decomposicao: [
+      { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+    ],
+    insumos: [
+      {
+        totalExistente: patentesComDiscenteEgresso.length,
+        descricao: `${patentesComDiscenteEgresso.length} patentes com discente ou egresso cadastradas`,
+        atendido: patentesComDiscenteEgresso.length > 0,
+      },
+    ],
+    observacoes:
+      'A ficha CAPES define o índice de patentes para o quadriênio como um todo. Por decisão formal do PPG-DCEM, aplica-se o cálculo anual e a agregação via MMA.',
+  })
+
+  // =========================================================================
+  // QUESITO 2.3: DESTINO E ATUAÇÃO DOS EGRESSOS (estoque)
+  // Janela de 10 anos de titulação terminando no ano de referência (limitado ao fim do quadriênio).
+  // Percentuais sobre o total de M+D titulados na janela; sem atuação informada fica "aguardando".
+  // =========================================================================
+  const anoFimJanelaEgressos = Math.min(anoReferencia, anoFim)
+  const anoInicioJanelaEgressos = anoFimJanelaEgressos - 9
+  const egressosJanela = (dados.egressos || []).filter((e) => {
+    if (typeof e.ano_titulacao !== 'number') return false
+    const tipo = normStr(e.tipo_curso)
+    const mestreOuDoutor = tipo === '' || tipo.includes('mestrado') || tipo.includes('doutorado')
+    return (
+      mestreOuDoutor &&
+      e.ano_titulacao >= anoInicioJanelaEgressos &&
+      e.ano_titulacao <= anoFimJanelaEgressos
+    )
+  })
+  const SETORES_NA_AREA = ['ensino_superior', 'instituicao_pesquisa', 'industria_servicos', 'outro']
+  const egressosComAtuacao = egressosJanela.filter((e) => normStr(e.atuacao_setor) !== '')
+  const egressosNaArea = egressosComAtuacao.filter((e) =>
+    SETORES_NA_AREA.includes(normStr(e.atuacao_setor)),
+  )
+
+  const montarIndicadorEgressos = (cfg: {
+    id: string
+    codigo: string
+    nome: string
+    itemFicha: string
+    formulaTexto: string
+    numerador: number
+  }): ResultadoIndicador => {
+    const totalJanela = egressosJanela.length
+    const informados = egressosComAtuacao.length
+    const janelaTexto = `${anoInicioJanelaEgressos}–${anoFimJanelaEgressos}`
+    const base = {
+      id: cfg.id,
+      codigo: cfg.codigo,
+      nome: cfg.nome,
+      quesito: '2' as const,
+      itemFicha: cfg.itemFicha,
+      pesoPercentual: 2.5,
+      pesoQuesitoGeral: '10%',
+      formulaTexto: cfg.formulaTexto,
+      unidade: '%',
+      metodologia: 'estoque' as const,
+      insumos: [
+        {
+          totalEsperado: totalJanela,
+          totalExistente: informados,
+          descricao: `${informados} de ${totalJanela} egressos titulados em ${janelaTexto} com atuação informada`,
+          atendido: totalJanela > 0 && informados === totalJanela,
+        },
+      ] as InsumoStatus[],
+    }
+    if (totalJanela === 0) {
+      return {
+        ...base,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando egressos (M+D) titulados em ${janelaTexto}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    }
+    if (informados === 0) {
+      return {
+        ...base,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando insumo de atuação dos egressos (0 de ${totalJanela} informados)`,
+        valorCalculado: null,
+        decomposicao: [
+          { termo: 'M+D titulados', descricao: `Titulados em ${janelaTexto}`, valor: totalJanela },
+        ],
+      }
+    }
+    const valor = Number(((cfg.numerador / totalJanela) * 100).toFixed(2))
+    return {
+      ...base,
+      status: 'calculado',
+      valorCalculado: valor,
+      decomposicao: [
+        { termo: 'Egressos no critério', descricao: 'Numerador', valor: cfg.numerador },
+        { termo: 'M+D titulados', descricao: `Titulados em ${janelaTexto}`, valor: totalJanela },
+        { termo: 'Com atuação informada', descricao: 'Cobertura do cadastro', valor: informados },
+      ],
+      observacoes:
+        informados < totalJanela
+          ? `Cobertura parcial: ${totalJanela - informados} egresso(s) sem atuação informada entram no denominador, então o valor é um mínimo.`
+          : undefined,
+    }
+  }
+
+  const egrAreaIndicador = montarIndicadorEgressos({
+    id: 'egr_area',
+    codigo: 'EGR-AREA',
+    nome: 'Egressos Empregados na Área (últimos 10 anos)',
+    itemFicha: '2.3.1',
+    formulaTexto: 'EGR-AREA = egressos M+D empregados na área / M+D titulados nos últimos 10 anos',
+    numerador: egressosNaArea.length,
+  })
+  const egrBrasilIndicador = montarIndicadorEgressos({
+    id: 'egr_brasil',
+    codigo: 'EGR-BR',
+    nome: 'Egressos em Atuação no Brasil (últimos 10 anos)',
+    itemFicha: '2.3.2',
+    formulaTexto: 'EGR-BR = egressos M+D atuando no Brasil na área / M+D titulados nos últimos 10 anos',
+    numerador: egressosNaArea.filter((e) => normStr(e.atuacao_pais) === 'brasil').length,
+  })
+  const egrExteriorIndicador = montarIndicadorEgressos({
+    id: 'egr_exterior',
+    codigo: 'EGR-EXT',
+    nome: 'Egressos em Atuação no Exterior (últimos 10 anos)',
+    itemFicha: '2.3.3',
+    formulaTexto: 'EGR-EXT = egressos M+D atuando no exterior na área / M+D titulados nos últimos 10 anos',
+    numerador: egressosNaArea.filter((e) => normStr(e.atuacao_pais) === 'exterior').length,
+  })
+
+  // 2.3.4: até 5 destaques por faixa de tempo (faixas definidas pela ficha), com justificativa
+  const FAIXAS_DESTAQUE = [
+    { rotulo: '2020–2024', inicio: 2020, fim: 2024 },
+    { rotulo: '2015–2019', inicio: 2015, fim: 2019 },
+    { rotulo: '2010–2014', inicio: 2010, fim: 2014 },
+  ]
+  const LIMITE_DESTAQUES_FAIXA = 5
+  const egressosDestaque = (dados.egressos || []).filter((e) => e.destaque === true)
+  const egrDestaqueIndicador: ResultadoIndicador = (() => {
+    const base = {
+      id: 'egr_destaque',
+      codigo: 'EGR-DEST',
+      nome: 'Destaques de Egressos por Faixa de Titulação',
+      quesito: '2' as const,
+      itemFicha: '2.3.4',
+      pesoPercentual: 2.5,
+      pesoQuesitoGeral: '10%',
+      formulaTexto: 'EGR-DEST = destaques com justificativa, no máximo 5 por faixa (3 faixas, máx. 15)',
+      unidade: '',
+      metodologia: 'estoque' as const,
+    }
+    const insumos: InsumoStatus[] = [
+      {
+        totalExistente: egressosDestaque.length,
+        descricao: `${egressosDestaque.length} egressos marcados como destaque`,
+        atendido: egressosDestaque.length > 0,
+      },
+    ]
+    if (egressosDestaque.length === 0) {
+      return {
+        ...base,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando egressos marcados como destaque do programa',
+        valorCalculado: null,
+        decomposicao: [],
+        insumos,
+      }
+    }
+    let totalValidos = 0
+    const decomposicao: TermoDecomposicao[] = []
+    for (const f of FAIXAS_DESTAQUE) {
+      const naFaixa = egressosDestaque.filter(
+        (e) =>
+          typeof e.ano_titulacao === 'number' &&
+          e.ano_titulacao >= f.inicio &&
+          e.ano_titulacao <= f.fim,
+      )
+      const comJustificativa = naFaixa.filter((e) => (e.destaque_justificativa || '').trim() !== '')
+      const validos = Math.min(comJustificativa.length, LIMITE_DESTAQUES_FAIXA)
+      totalValidos += validos
+      decomposicao.push({
+        termo: `Faixa ${f.rotulo}`,
+        descricao: `${naFaixa.length} marcados, ${comJustificativa.length} com justificativa (limite ${LIMITE_DESTAQUES_FAIXA})`,
+        valor: `${validos}/${LIMITE_DESTAQUES_FAIXA}`,
+      })
+    }
+    const foraDasFaixas = egressosDestaque.filter(
+      (e) =>
+        typeof e.ano_titulacao !== 'number' ||
+        !FAIXAS_DESTAQUE.some((f) => e.ano_titulacao! >= f.inicio && e.ano_titulacao! <= f.fim),
+    ).length
+    if (foraDasFaixas > 0) {
+      decomposicao.push({
+        termo: 'Fora das faixas',
+        descricao: 'Destaques sem ano de titulação ou fora de 2010–2024 (não contam)',
+        valor: foraDasFaixas,
+      })
+    }
+    return {
+      ...base,
+      status: 'calculado',
+      valorCalculado: totalValidos,
+      decomposicao,
+      insumos,
+      observacoes:
+        'A ficha pede até 5 destaques por faixa de tempo, cada um com justificativa; excedentes e destaques sem justificativa não contam.',
+    }
+  })()
+
   // =========================================================================
   // BLOCO BIBLIOMÉTRICO (ESTOQUE): ÍNDICE-H DO CORPO DOCENTE (Scopus)
   // Regra 3: Indicadores de estoque (ADE, H2, H médio, H mediano, JDP) SEM anualização.
@@ -2206,6 +2483,11 @@ export function calcularTodosIndicadores(
     ndiscIndicador,
     dppnIndicador,
     dppiIndicador,
+    dppdeIndicador,
+    egrAreaIndicador,
+    egrBrasilIndicador,
+    egrExteriorIndicador,
+    egrDestaqueIndicador,
     h2Indicador,
     forIndicador,
   ]
@@ -2229,6 +2511,11 @@ export function calcularTodosIndicadores(
       dpide1Indicador,
       dptde1Indicador,
       dpide2Indicador,
+      dppdeIndicador,
+      egrAreaIndicador,
+      egrBrasilIndicador,
+      egrExteriorIndicador,
+      egrDestaqueIndicador,
       dpi2Indicador,
       dpdIndicador,
       soIndicador,

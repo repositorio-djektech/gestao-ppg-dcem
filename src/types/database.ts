@@ -114,6 +114,9 @@ export type Patente = {
   tipo?: PatenteTipoInpi | string | null
   /** Ano de depósito (ou concessão) usado nos indicadores CAPES. */
   ano_deposito?: number | null
+  /** Patente com autoria de discente ou egresso (DPPDE, item 2.2.3) */
+  com_discente_egresso?: boolean | null
+  discentes_egressos?: string | null
 }
 
 export type Discente = {
@@ -132,6 +135,13 @@ export type Discente = {
   docente_orientador_id?: number | null
 }
 
+export type EgressoAtuacaoSetor =
+  | 'ensino_superior'
+  | 'instituicao_pesquisa'
+  | 'industria_servicos'
+  | 'outro'
+  | 'nao_atua_na_area'
+
 export type Egresso = {
   id: number
   nome: string
@@ -146,6 +156,12 @@ export type Egresso = {
   orientador?: string | null
   lattes_id?: string | null
   nacionalidade?: string | null
+  /** Atuação atual (itens 2.3.1 a 2.3.3): '' = não informado */
+  atuacao_setor?: EgressoAtuacaoSetor | '' | null
+  atuacao_pais?: 'brasil' | 'exterior' | '' | null
+  /** Destaque do programa por faixa de titulação (item 2.3.4) */
+  destaque?: boolean | null
+  destaque_justificativa?: string | null
 }
 
 export type Orientacao = {

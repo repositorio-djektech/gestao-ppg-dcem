@@ -161,6 +161,7 @@ export type Database = {
       docentes: {
         Row: {
           ano_doutorado: number | null
+          programas_permanente: number
           bolsa_cnpq: string
           categoria: string | null
           cpf: string | null
@@ -181,6 +182,7 @@ export type Database = {
         }
         Insert: {
           ano_doutorado?: number | null
+          programas_permanente?: number
           bolsa_cnpq?: string
           categoria?: string | null
           cpf?: string | null
@@ -201,6 +203,7 @@ export type Database = {
         }
         Update: {
           ano_doutorado?: number | null
+          programas_permanente?: number
           bolsa_cnpq?: string
           categoria?: string | null
           cpf?: string | null
@@ -260,6 +263,10 @@ export type Database = {
       egressos: {
         Row: {
           ano_ingresso: string | null
+          atuacao_pais: string
+          atuacao_setor: string
+          destaque: boolean
+          destaque_justificativa: string
           ano_titulacao: number | null
           atuacao_profissional: string
           created_at: string
@@ -275,6 +282,10 @@ export type Database = {
         }
         Insert: {
           ano_ingresso?: string | null
+          atuacao_pais?: string
+          atuacao_setor?: string
+          destaque?: boolean
+          destaque_justificativa?: string
           ano_titulacao?: number | null
           atuacao_profissional?: string
           created_at?: string
@@ -290,6 +301,10 @@ export type Database = {
         }
         Update: {
           ano_ingresso?: string | null
+          atuacao_pais?: string
+          atuacao_setor?: string
+          destaque?: boolean
+          destaque_justificativa?: string
           ano_titulacao?: number | null
           atuacao_profissional?: string
           created_at?: string
@@ -643,6 +658,8 @@ export type Database = {
       patentes: {
         Row: {
           ambito: string | null
+          com_discente_egresso: boolean
+          discentes_egressos: string
           ano_deposito: number | null
           autores: string
           created_at: string
@@ -656,6 +673,8 @@ export type Database = {
         }
         Insert: {
           ambito?: string | null
+          com_discente_egresso?: boolean
+          discentes_egressos?: string
           ano_deposito?: number | null
           autores: string
           created_at?: string
@@ -669,6 +688,8 @@ export type Database = {
         }
         Update: {
           ambito?: string | null
+          com_discente_egresso?: boolean
+          discentes_egressos?: string
           ano_deposito?: number | null
           autores?: string
           created_at?: string
