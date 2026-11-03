@@ -290,6 +290,7 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
                 <SelectItem value="1">Quesito 1 (ADE)</SelectItem>
                 <SelectItem value="2">Quesito 2 (Produção/Formação)</SelectItem>
                 <SelectItem value="3.1">Quesito 3.1 (Patentes/Índice-H)</SelectItem>
+                <SelectItem value="3.3">Quesito 3.3 (Bolsas PQ/DT)</SelectItem>
               </SelectContent>
             </Select>
           </div>

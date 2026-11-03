@@ -1477,6 +1477,93 @@ export function calcularTodosIndicadores(
       'A ficha CAPES define DPIDE1 originalmente como total do quadriênio. Por decisão formal do programa PPG-DCEM, adota-se o cálculo anual com MMA.',
   })
 
+  // --- DPTDE1: DPT apenas com coautoria discente/egresso (item 2.2.1) ---
+  const dptde1Anos: Record<number, ResultadoAnoIndicador> = {}
+  for (const ano of anosQuadrienio) {
+    if (denominadorEfetivo === 0) {
+      dptde1Anos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes (DP - JDP = 0)',
+        valorCalculado: null,
+        decomposicao: [],
+      }
+      continue
+    }
+
+    const pubsAno = pubsNoQuadrienio.filter((p) => {
+      if (anoPublicacao(p) !== ano) return false
+      return mapaCoautoriaPub.get(p.id)?.temDiscenteOuEgresso === true
+    })
+
+    if (pubsAno.length === 0) {
+      dptde1Anos[ano] = {
+        ano,
+        status: 'indefinido',
+        motivoIndefinido: `aguardando coautorias com discentes/egressos no ano ${ano}`,
+        valorCalculado: null,
+        decomposicao: [],
+      }
+    } else {
+      let periodicos = 0
+      let anais = 0
+      let capitulos = 0
+      for (const p of pubsAno) {
+        const docsVinculadosQtd = 1
+        const tp = normStr(p.tipo_producao)
+        if (tp === 'artigo em periódico' || tp === '' || Boolean(p.periodico)) {
+          periodicos += docsVinculadosQtd
+        } else if (tp === 'trabalho em anais') {
+          anais += docsVinculadosQtd
+        } else if (tp === 'capítulo') {
+          capitulos += docsVinculadosQtd
+        } else {
+          periodicos += docsVinculadosQtd
+        }
+      }
+      const totalItens = periodicos + anais + capitulos
+      const val = Number((totalItens / denominadorEfetivo).toFixed(3))
+
+      dptde1Anos[ano] = {
+        ano,
+        status: 'calculado',
+        valorCalculado: val,
+        decomposicao: [
+          { termo: 'Periódicos', descricao: `Periódicos em ${ano}`, valor: periodicos },
+          { termo: 'Anais', descricao: `Anais em ${ano}`, valor: anais },
+          { termo: 'Capítulos', descricao: `Capítulos em ${ano}`, valor: capitulos },
+          { termo: 'Total', descricao: 'Soma (cada publicação conta uma vez)', valor: totalItens },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+        ],
+      }
+    }
+  }
+
+  const dptde1Indicador = agregarComMMA(dptde1Anos, anosQuadrienio, 'quadrienio_mma', {
+    id: 'dptde1',
+    codigo: 'DPTDE1',
+    nome: 'DPT com Coautoria de Discentes e Egressos (Nível 1)',
+    quesito: '2',
+    itemFicha: '2.2.1',
+    pesoPercentual: 0,
+    pesoQuesitoGeral: '25%',
+    formulaTexto:
+      'DPTDE1 = (artigos completos (periódicos + anais) + capítulos c/ discentes e egressos) / (DP − JDP) [MMA]',
+    unidade: '',
+    decomposicao: [
+      { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+    ],
+    insumos: [
+      {
+        totalExistente: denominadorEfetivo,
+        descricao: `Denominador DP − JDP: ${denominadorEfetivo}`,
+        atendido: denominadorEfetivo > 0,
+      },
+    ],
+    observacoes:
+      'Item 2.2.1 (10%): a ficha não divide o peso entre DPIDE1 e DPTDE1, então o peso fica concentrado no DPIDE1. Cálculo anual com agregação MMA por decisão formal do PPG-DCEM.',
+  })
+
   // --- DPIDE2: DPI de publicações Nível 2 com discentes ---
   const dpide2Anos: Record<number, ResultadoAnoIndicador> = {}
   for (const ano of anosQuadrienio) {
@@ -1936,6 +2023,74 @@ export function calcularTodosIndicadores(
     }
   })()
 
+  // =========================================================================
+  // QUESITO 3.3 (apoio ao item 3.3.2): FOR = % de DP com bolsa PQ + DT do CNPq
+  // Níveis: 1 (SR, 1A–1D) e 2 (PQ-2, DT-2). Indicador de estoque.
+  // =========================================================================
+  const forIndicador: ResultadoIndicador = (() => {
+    const base = {
+      id: 'for',
+      codigo: 'FOR',
+      nome: 'Docentes Permanentes com Bolsa PQ/DT CNPq (FOR)',
+      quesito: '3.3' as const,
+      itemFicha: '3.3.2',
+      pesoPercentual: 25,
+      pesoQuesitoGeral: '40%',
+      formulaTexto: 'FOR = (DP com bolsa PQ ou DT do CNPq) / DP',
+      unidade: '%',
+      metodologia: 'estoque' as const,
+    }
+    const insumos: InsumoStatus[] = [
+      {
+        totalExistente: DP,
+        descricao: `${DP} docentes permanentes (DP)`,
+        atendido: DP > 0,
+      },
+    ]
+
+    if (DP === 0) {
+      return {
+        ...base,
+        status: 'indefinido',
+        motivoIndefinido: 'aguardando insumo de docentes permanentes',
+        valorCalculado: null,
+        decomposicao: [],
+        insumos,
+      }
+    }
+
+    let nivel1 = 0
+    let nivel2 = 0
+    let dt = 0
+    for (const d of permanentes) {
+      const bolsa = normStr(d.bolsa_cnpq).replace(/[\s_]+/g, '-')
+      const ehPq = bolsa.startsWith('pq')
+      const ehDt = bolsa.startsWith('dt')
+      if (!ehPq && !ehDt) continue
+      if (ehDt) dt++
+      if (bolsa.endsWith('-2')) nivel2++
+      else nivel1++
+    }
+    const comBolsa = nivel1 + nivel2
+    const valor = Number(((comBolsa / DP) * 100).toFixed(2))
+
+    return {
+      ...base,
+      status: 'calculado',
+      valorCalculado: valor,
+      decomposicao: [
+        { termo: 'DP com PQ/DT', descricao: 'Permanentes com bolsa PQ ou DT', valor: comBolsa },
+        { termo: 'Nível 1', descricao: 'PQ-SR, PQ 1A–1D e DT 1A–1B', valor: nivel1 },
+        { termo: 'Nível 2', descricao: 'PQ 2 e DT 2', valor: nivel2 },
+        { termo: 'dos quais DT', descricao: 'Bolsas de desenvolvimento tecnológico', valor: dt },
+        { termo: 'DP', descricao: 'Docentes Permanentes', valor: DP },
+      ],
+      insumos,
+      observacoes:
+        'O item 3.3.2 é avaliado de forma qualitativa/comparativa; o FOR é um dos descritores citados na ficha e não define a nota sozinho.',
+    }
+  })()
+
   // Agrupamento em Quesitos
   const todosIndicadores: ResultadoIndicador[] = [
     adeIndicador,
@@ -1944,6 +2099,7 @@ export function calcularTodosIndicadores(
     dpiIndicador,
     dptIndicador,
     dpide1Indicador,
+    dptde1Indicador,
     dpide2Indicador,
     dpi2Indicador,
     dpdIndicador,
@@ -1956,6 +2112,7 @@ export function calcularTodosIndicadores(
     dppnIndicador,
     dppiIndicador,
     h2Indicador,
+    forIndicador,
   ]
 
   const quesito1: ResumoQuesito = {
@@ -1975,6 +2132,7 @@ export function calcularTodosIndicadores(
       dpiIndicador,
       dptIndicador,
       dpide1Indicador,
+      dptde1Indicador,
       dpide2Indicador,
       dpi2Indicador,
       dpdIndicador,
@@ -1992,6 +2150,13 @@ export function calcularTodosIndicadores(
     titulo: 'Quesito 3.1 — Impacto, Propriedade Intelectual e Bibliometria',
     pesoTotalPercentual: 30,
     indicadores: [dppnIndicador, dppiIndicador, h2Indicador],
+  }
+
+  const quesito33: ResumoQuesito = {
+    quesito: '3.3',
+    titulo: 'Quesito 3.3 — Internacionalização e Inserção (descritores do item 3.3.2)',
+    pesoTotalPercentual: 40,
+    indicadores: [forIndicador],
   }
 
   const calculados = todosIndicadores.filter((i) => i.status === 'calculado').length
@@ -2012,7 +2177,7 @@ export function calcularTodosIndicadores(
       totalJdpValidos: JDP_validos,
       denominadorEfetivo,
     },
-    quesitos: [quesito1, quesito2, quesito31],
+    quesitos: [quesito1, quesito2, quesito31, quesito33],
     todosIndicadores,
   }
 }

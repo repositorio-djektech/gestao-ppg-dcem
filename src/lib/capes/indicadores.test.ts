@@ -582,4 +582,66 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
     expect(h2?.mma).toBeUndefined()
     expect(h2?.valorCalculado).toBe(4)
   })
+  it('calcula DPTDE1 apenas com publicações com coautoria de discente ou egresso', () => {
+    // DP - JDP = 3; em 2025: periódico + anais + capítulo com coautoria = 3; o periódico sem coautoria não conta
+    // DPTDE1 2025 = 3 / 3 = 1.0; demais anos sem insumo (aguardando)
+    const pubs: any[] = [
+      { id: 1, ano: 2025, tipo_producao: 'Artigo em periódico', autores: 'Docente Um' },
+      { id: 2, ano: 2025, tipo_producao: 'Artigo em periódico', autores: 'Docente Dois' },
+      { id: 3, ano: 2025, tipo_producao: 'Trabalho em anais', autores: 'Docente Um' },
+      { id: 4, ano: 2025, tipo_producao: 'Capítulo', autores: 'Docente Tres' },
+    ]
+    const coautores: any[] = [
+      { publicacao_id: 1, tipo: 'orientando' },
+      { publicacao_id: 3, tipo: 'orientando' },
+      { publicacao_id: 4, tipo: 'egresso' },
+    ]
+
+    const rel = calcularTodosIndicadores({
+      ...dadosMinimos,
+      anoReferencia: 2028,
+      publicacoes: pubs,
+      publicacoesCoautores: coautores,
+    })
+
+    const dptde1 = rel.todosIndicadores.find((i) => i.codigo === 'DPTDE1')
+    expect(dptde1?.itemFicha).toBe('2.2.1')
+    expect(dptde1?.status).toBe('calculado')
+    expect(dptde1?.anos?.[2025].valorCalculado).toBe(1.0)
+    expect(dptde1?.anos?.[2026].status).toBe('indefinido')
+    expect(dptde1?.valorCalculado).toBe(1.0)
+
+    // Sem coautorias registradas, o indicador fica aguardando insumo (nunca zero)
+    const semCoautoria = calcularTodosIndicadores({
+      ...dadosMinimos,
+      anoReferencia: 2028,
+      publicacoes: pubs,
+    })
+    expect(semCoautoria.todosIndicadores.find((i) => i.codigo === 'DPTDE1')?.status).toBe(
+      'indefinido',
+    )
+  })
+
+  it('calcula FOR (% de DP com bolsa PQ ou DT) separando níveis 1 e 2', () => {
+    const docentes = [
+      criarDocente(1, 'Docente Um', 'permanente', { bolsa_cnpq: 'PQ-1A' }),
+      criarDocente(2, 'Docente Dois', 'permanente', { bolsa_cnpq: 'PQ 2' }),
+      criarDocente(3, 'Docente Tres', 'permanente', { bolsa_cnpq: '' }),
+      criarDocente(4, 'Docente Quatro', 'permanente', { bolsa_cnpq: 'DT-2' }),
+      criarDocente(5, 'Docente Cinco', 'colaborador', { bolsa_cnpq: 'PQ-1A' }),
+    ]
+
+    const rel = calcularTodosIndicadores({ ...dadosMinimos, docentes })
+    const forInd = rel.todosIndicadores.find((i) => i.codigo === 'FOR')
+
+    expect(forInd?.quesito).toBe('3.3')
+    expect(forInd?.itemFicha).toBe('3.3.2')
+    expect(forInd?.metodologia).toBe('estoque')
+    expect(forInd?.valorCalculado).toBe(75) // 3 de 4 DP; colaborador não conta
+    const termo = (t: string) => forInd?.decomposicao.find((d) => d.termo === t)?.valor
+    expect(termo('Nível 1')).toBe(1)
+    expect(termo('Nível 2')).toBe(2)
+    expect(termo('dos quais DT')).toBe(1)
+    expect(rel.quesitos.map((q) => q.quesito)).toContain('3.3')
+  })
 })

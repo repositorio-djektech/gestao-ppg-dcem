@@ -98,7 +98,7 @@ O painel de **Indicadores CAPES** reproduz a Ficha de Avaliação da **Área Eng
 
 ### 3.2 Indicadores Implementados (`src/lib/capes/indicadores.ts`)
 
-São 18 indicadores. Os pesos (`pesoPercentual`) seguem a configuração do código; ADE e H2 são de **estoque** (sem anualização) e os demais são calculados **ano a ano** e agregados pela MMA.
+São 20 indicadores. Os pesos (`pesoPercentual`) seguem a configuração do código; ADE, H2 e FOR são de **estoque** (sem anualização) e os demais são calculados **ano a ano** e agregados pela MMA.
 
 | Código | Indicador | Item da ficha | Peso (%) | Fórmula resumida |
 | :-- | :-- | :-- | :--: | :-- |
@@ -106,6 +106,7 @@ São 18 indicadores. Os pesos (`pesoPercentual`) seguem a configuração do cód
 | ORI | Titulações por docente permanente | 2.1.1 | 10 | (M + 3D) / (DP − JDP) |
 | ATD | Artigos A1–A4 com discente/egresso por titulação | 2.1.2 | 10 | artigos A1–A4 com coautoria / (M + 2D) |
 | DPIDE1 | DPI com coautoria de discentes e egressos | 2.2.1 | 10 | fórmula do DPI sobre publicações com coautoria |
+| DPTDE1 | DPT com coautoria de discentes e egressos | 2.2.1 | 0 (ver nota) | (periódicos + anais + capítulos com coautoria) / (DP − JDP) |
 | DPIDE2 | DPI das publicações nível 2 com discentes | 2.2.2 | 12 | fórmula do DPI sobre nível 2 com coautoria |
 | DPI | Produção docente ponderada | 2.4.1 | 6 | [A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, DP)] / (DP − JDP) |
 | DPT | Produção total dos docentes | 2.4.1 | 2 | (periódicos + anais + capítulos) / (DP − JDP) |
@@ -120,12 +121,18 @@ São 18 indicadores. Os pesos (`pesoPercentual`) seguem a configuração do cód
 | DPPn | Patentes nacionais | 3.1.1 | 8 | [licenciadas + 0,6·concedidas + 0,3·depositadas] / (DP − JDP) |
 | DPPi | Patentes internacionais | 3.1.1 | 10 | idem, patentes internacionais |
 | H2 | Índice H2 do programa | 3.1.1 | 12 | maior h tal que h permanentes tenham índice-h ≥ h (estoque) |
+| FOR | DP com bolsa PQ ou DT do CNPq | 3.3.2 | 25 | DP com PQ/DT / DP, em % (estoque; quesito 3.3) |
+
+Notas:
+
+- **DPTDE1:** a ficha dá 10% ao item 2.2.1 sem dividir entre DPIDE1 e DPTDE1; o peso fica no DPIDE1 e o DPTDE1 aparece com peso 0 para não contar duas vezes.
+- **FOR:** o item 3.3.2 é qualitativo/comparativo (25% dentro do quesito 3.3, que vale 40%). O FOR é só um dos descritores citados na ficha; separa nível 1 (PQ-SR, 1A–1D, DT 1A–1B) e nível 2 (PQ 2, DT 2) e ignora colaboradores e visitantes.
 
 Regras comuns a todos os cálculos:
 
 - **JDP (`src/lib/capes/jdp.ts`):** categoria permanente com `jdp = true`, no máximo 4 anos como JDP (`jdp_desde + 4 ≥ ano de referência`) e doutorado há no máximo 10 anos. JDP válidos entram no DP e saem do denominador efetivo (DP − JDP).
 - **Pesos Qualis:** A1 = 1,0; A2 = 0,875; A3 = 0,75; A4 = 0,675; B1 = 0,5 com saturação `min(B1, DP)`; B2 a C = 0.
-- **Publicação conta uma única vez** em DPI, DPT, DPIDE1, DPIDE2 e DPI2, mesmo vinculada a vários docentes permanentes.
+- **Publicação conta uma única vez** em DPI, DPT, DPIDE1, DPTDE1, DPIDE2 e DPI2, mesmo vinculada a vários docentes permanentes.
 - **Patentes:** o ano vem de `patentes.ano_deposito`; sem ele, cai no ano de cadastro (`created_at`), que é só uma aproximação. O âmbito é `ambito` ou, na falta, o prefixo do registro (BR = nacional; PCT/US/EP/WO = internacional). Status fora de Licenciamento, Concessão e Pendente/Depositada não pontua.
 - **DP4A:** projeto (coordenador ou participante) só conta nos anos em que está vigente. Disciplinas consideram `docente_id` e a N:N `disciplinas_docentes`.
 - **Casamento de autores:** o vínculo estruturado (`publicacoes_docentes`) é preferencial; o casamento textual exige ao menos 2 termos do nome.

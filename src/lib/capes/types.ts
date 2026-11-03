@@ -11,7 +11,7 @@ import type {
   IniciacaoCientifica,
 } from '@/types/database'
 
-export type QuesitoFicha = '1' | '2' | '3.1'
+export type QuesitoFicha = '1' | '2' | '3.1' | '3.3'
 
 export interface TermoDecomposicao {
   termo: string
