@@ -147,6 +147,11 @@ export const GRUPOS_VISUAIS: GrupoVisualConfig[] = [
 export function mapearGrupoParaVisual(grupoOuTabela: string): GrupoVisualId {
   const norm = grupoOuTabela.toLowerCase()
 
+  // Mobilidade é Difusão mesmo quando o nome cita "docente" (ex.: mobilidade_docente)
+  if (norm.includes('mobili')) {
+    return 'difusao'
+  }
+
   // Pessoas (Docentes e Discentes)
   if (
     norm.includes('pessoa') ||

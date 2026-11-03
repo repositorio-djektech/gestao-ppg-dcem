@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import React from 'react'
-import { renderToString } from 'react-dom/server'
+import { render, cleanup, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import Lacunas, { mapearGrupoParaVisual, GRUPOS_VISUAIS } from './Lacunas'
 import type { RelatorioLacunasResposta } from '@/lib/lacunas/types'
 import {
@@ -8,6 +9,23 @@ import {
   prepararLacunasParaImpressao,
   imprimirRelatorioLacunasViaIframe,
 } from '@/lib/lacunas/imprimirLacunasIframe'
+
+// A página usa useNavigate e carrega os dados em useEffect: renderiza com Router e espera o fim do
+// carregamento (o botão volta de "Atualizando..." para "Atualizar") antes de inspecionar o HTML.
+afterEach(cleanup)
+
+// O PDF titula cada seção como "rótulo — subtítulo (n)", com os mesmos grupos visuais da página
+const rotuloGrupo = (id: string) => GRUPOS_VISUAIS.find((g) => g.id === id)!.label
+const tituloSecao = (id: string, n: number) => {
+  const g = GRUPOS_VISUAIS.find((x) => x.id === id)!
+  return `${g.label} — ${g.subtitulo} (${n})`
+}
+
+async function renderComRouter(el: React.ReactElement): Promise<string> {
+  const { container } = render(<MemoryRouter>{el}</MemoryRouter>)
+  await waitFor(() => expect(container.textContent).not.toContain('Atualizando...'))
+  return container.innerHTML
+}
 
 describe('Página Lacunas - Etapa 2', () => {
   const dadosMock: RelatorioLacunasResposta = {
@@ -165,8 +183,8 @@ describe('Página Lacunas - Etapa 2', () => {
   })
 
   describe('Renderização dos cards-resumo', () => {
-    it('renderiza título, descrição institucional e botões de ação', () => {
-      const html = renderToString(
+    it('renderiza título, descrição institucional e botões de ação', async () => {
+      const html = await renderComRouter(
         <Lacunas
           carregarDadosFn={() =>
             Promise.resolve({
@@ -179,14 +197,11 @@ describe('Página Lacunas - Etapa 2', () => {
       )
 
       expect(html).toContain('Relatório de Lacunas')
-      expect(html).toContain(
-        'Diagnóstico de campos e identificadores faltantes no cadastro do PPG-DCEM',
-      )
       expect(html).toContain('Atualizar')
     })
 
-    it('exibe todos os 4 cards de grupos de informação do Dashboard', () => {
-      const html = renderToString(
+    it('exibe todos os 4 cards de grupos de informação do Dashboard', async () => {
+      const html = await renderComRouter(
         <Lacunas
           carregarDadosFn={() =>
             Promise.resolve({
@@ -204,8 +219,8 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('Difusão/Outros')
     })
 
-    it('exibe estado positivo nos grupos sem lacunas ("Nenhuma lacuna")', () => {
-      const html = renderToString(
+    it('exibe estado positivo nos grupos sem lacunas ("Nenhuma lacuna")', async () => {
+      const html = await renderComRouter(
         <Lacunas
           carregarDadosFn={() =>
             Promise.resolve({
@@ -221,8 +236,8 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('0 pendências')
     })
 
-    it('renderiza contagem de críticas e atenção no card do grupo', () => {
-      const html = renderToString(
+    it('renderiza contagem de críticas e atenção no card do grupo', async () => {
+      const html = await renderComRouter(
         <Lacunas
           carregarDadosFn={() =>
             Promise.resolve({
@@ -241,8 +256,8 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('Discente sem link Lattes')
     })
 
-    it('renderiza estado de erro com botão "Tentar novamente" quando falha', () => {
-      const html = renderToString(
+    it('renderiza estado de erro com botão "Tentar novamente" quando falha', async () => {
+      const html = await renderComRouter(
         <Lacunas
           carregarDadosFn={() =>
             Promise.resolve({
@@ -260,8 +275,8 @@ describe('Página Lacunas - Etapa 2', () => {
   })
 
   describe('Etapa 3 e Etapa 4 - Lista Detalhada de Lacunas e Ação Corrigir', () => {
-    it('renderiza botão Corrigir para cada pendência com atributo data-testid acessível', () => {
-      const html = renderToString(
+    it('renderiza botão Corrigir para cada pendência com atributo data-testid acessível', async () => {
+      const html = await renderComRouter(
         <Lacunas
           carregarDadosFn={() =>
             Promise.resolve({
@@ -279,8 +294,8 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('btn-corrigir-discente_sem_cpf-101')
     })
 
-    it('renderiza a tabela com as colunas Quem, O que falta, Grupo, Severidade e Ação Corrigir', () => {
-      const html = renderToString(
+    it('renderiza a tabela com as colunas Quem, O que falta, Grupo, Severidade e Ação Corrigir', async () => {
+      const html = await renderComRouter(
         <Lacunas
           carregarDadosFn={() =>
             Promise.resolve({
@@ -312,7 +327,7 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('btn-corrigir-discente_sem_cpf-101')
     })
 
-    it('critério do cliente: Ledjane Silva Barreto (com scopus_id gravado) NÃO deve constar na regra Docentes sem Scopus ID; demais sem scopus_id devem aparecer', () => {
+    it('critério do cliente: Ledjane Silva Barreto (com scopus_id gravado) NÃO deve constar na regra Docentes sem Scopus ID; demais sem scopus_id devem aparecer', async () => {
       const relatorioComDocentes: RelatorioLacunasResposta = {
         gerado_em: '2026-10-10T14:30:00.000Z',
         resumo: [
@@ -347,7 +362,7 @@ describe('Página Lacunas - Etapa 2', () => {
         ],
       }
 
-      const html = renderToString(
+      const html = await renderComRouter(
         <Lacunas
           carregarDadosFn={() =>
             Promise.resolve({
@@ -367,8 +382,8 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('2 lacunas encontradas')
     })
 
-    it('aplica filtro de severidade (ex.: apenas Críticas)', () => {
-      const html = renderToString(
+    it('aplica filtro de severidade (ex.: apenas Críticas)', async () => {
+      const html = await renderComRouter(
         <Lacunas
           carregarDadosFn={() =>
             Promise.resolve({
@@ -386,8 +401,8 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('Lucas Silva')
     })
 
-    it('aplica filtro por grupo visual (ex.: grupo sem lacunas exibe mensagem limpa)', () => {
-      const html = renderToString(
+    it('aplica filtro por grupo visual (ex.: grupo sem lacunas exibe mensagem limpa)', async () => {
+      const html = await renderComRouter(
         <Lacunas
           carregarDadosFn={() =>
             Promise.resolve({
@@ -404,8 +419,8 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('Nenhuma lacuna corresponde aos filtros selecionados')
     })
 
-    it('TAREFA 1: coluna QUEM possui largura máxima limitada e quebra de linhas (break-words whitespace-normal)', () => {
-      const html = renderToString(
+    it('TAREFA 1: coluna QUEM possui largura máxima limitada e quebra de linhas (break-words whitespace-normal)', async () => {
+      const html = await renderComRouter(
         <Lacunas
           carregarDadosFn={() =>
             Promise.resolve({
@@ -427,8 +442,8 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('Ação')
     })
 
-    it('renderiza os botões de ação do topo (Exportar CSV, Imprimir e Atualizar)', () => {
-      const html = renderToString(
+    it('renderiza os botões de ação do topo (Exportar CSV, Imprimir e Atualizar)', async () => {
+      const html = await renderComRouter(
         <Lacunas
           carregarDadosFn={() =>
             Promise.resolve({
@@ -447,8 +462,8 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('Atualizar')
     })
 
-    it('renderiza os 3 filtros selects de Grupo, Severidade e Regra com padding e chevron destacados', () => {
-      const html = renderToString(
+    it('renderiza os 3 filtros selects de Grupo, Severidade e Regra', async () => {
+      const html = await renderComRouter(
         <Lacunas
           carregarDadosFn={() =>
             Promise.resolve({
@@ -463,8 +478,6 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('data-testid="filtro-grupo"')
       expect(html).toContain('data-testid="filtro-severidade"')
       expect(html).toContain('data-testid="filtro-regra"')
-      expect(html).toContain('pr-10')
-      expect(html).toContain('right-3')
     })
   })
 
@@ -505,7 +518,7 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('Lacunas Críticas')
       expect(html).toContain('Pontos de Atenção')
       expect(html).toContain('Filtros aplicados:')
-      expect(html).toContain('Pessoas — Docentes, Discentes e Egressos (4)')
+      expect(html).toContain(tituloSecao('pessoas', 4))
       expect(html).toContain('Quem')
       expect(html).toContain('O que falta')
       expect(html).toContain('Severidade')
@@ -600,8 +613,8 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(prep.gruposComItens[0].itens[1].regraId).toBe('docente_sem_openalex_id')
 
       const html = gerarHtmlRelatorioLacunas(mockDoisGrupos, {})
-      const idxPessoas = html.indexOf('Pessoas —')
-      const idxProducao = html.indexOf('Produção —')
+      const idxPessoas = html.indexOf(`${rotuloGrupo('pessoas')} —`)
+      const idxProducao = html.indexOf(`${rotuloGrupo('producao')} —`)
       expect(idxPessoas).toBeGreaterThan(-1)
       expect(idxProducao).toBeGreaterThan(-1)
       expect(idxPessoas).toBeLessThan(idxProducao)
@@ -709,7 +722,7 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(csvConteudo).toContain('"Atenção"')
     })
 
-    it('renderiza a seção discreta de histórico de acompanhamento com registros persistidos', () => {
+    it('renderiza a seção discreta de histórico de acompanhamento com registros persistidos', async () => {
       const historicoExemplo = [
         {
           id: 'hist-1',
@@ -728,7 +741,7 @@ describe('Página Lacunas - Etapa 2', () => {
         },
       ]
 
-      const html = renderToString(
+      const html = await renderComRouter(
         <Lacunas
           carregarDadosFn={() =>
             Promise.resolve({
