@@ -543,9 +543,10 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
 
   it('quadriênio 100% preenchido fecha MMA completa', () => {
     // 1 publicação A1 em cada ano: 2025, 2026, 2027, 2028
-    // DP - JDP = 3
-    // Cada ano tem 1 A1 => DPI_ano = 1 / 3 = 0.333
-    // MMA = (0.333 * 4) / 4 = 0.333
+    // O JDP (Docente Quatro, desde 2024) completa 4 anos em 2028 e volta ao denominador:
+    // DP - JDP = 3 em 2025-2027 e 4 em 2028
+    // DPI_ano = 1 / 3 = 0.333 (2025-2027) e 1 / 4 = 0.25 (2028)
+    // MMA = (0.333 * 3 + 0.25) / 4 = 0.312
     const pubs4Anos: any[] = [
       { id: 401, ano: 2025, autores: 'Docente Um', estrato_qualis: 'A1' },
       { id: 402, ano: 2026, autores: 'Docente Um', estrato_qualis: 'A1' },
@@ -564,7 +565,9 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
     expect(dpi?.mma?.completo).toBe(true)
     expect(dpi?.mma?.anosConsiderados).toEqual([2025, 2026, 2027, 2028])
     expect(dpi?.mma?.anosAguardando).toEqual([])
-    expect(dpi?.valorCalculado).toBe(0.333)
+    expect(dpi?.anos?.[2027].valorCalculado).toBe(0.333)
+    expect(dpi?.anos?.[2028].valorCalculado).toBe(0.25)
+    expect(dpi?.valorCalculado).toBe(0.312)
   })
 
   it('indicadores de estoque (ADE, H2) não possuem decomposição anual ou MMA', () => {
@@ -643,5 +646,42 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
     expect(termo('Nível 2')).toBe(2)
     expect(termo('dos quais DT')).toBe(1)
     expect(rel.quesitos.map((q) => q.quesito)).toContain('3.3')
+  })
+  it('aplica a janela de 5 anos aos egressos coautores (ano da publicação ≤ titulação + 5)', () => {
+    // Egresso 1 titulado em 2018 (janela até 2023): fora em 2025
+    // Egresso 2 titulado em 2022 (janela até 2027): dentro
+    // Egresso 3 sem ano de titulação: conta, mas gera aviso de insumo
+    // Pub 3 tem orientando (discente em formação): sempre vale
+    const pubs: any[] = [
+      { id: 1, ano: 2025, tipo_producao: 'Artigo em periódico', autores: 'Docente Um' },
+      { id: 2, ano: 2025, tipo_producao: 'Artigo em periódico', autores: 'Docente Um' },
+      { id: 3, ano: 2025, tipo_producao: 'Artigo em periódico', autores: 'Docente Dois' },
+      { id: 4, ano: 2025, tipo_producao: 'Artigo em periódico', autores: 'Docente Tres' },
+    ]
+    const coautores: any[] = [
+      { publicacao_id: 1, tipo: 'egresso', egresso_id: 1 },
+      { publicacao_id: 2, tipo: 'egresso', egresso_id: 2 },
+      { publicacao_id: 3, tipo: 'orientando', discente_id: 9 },
+      { publicacao_id: 4, tipo: 'egresso', egresso_id: 3 },
+    ]
+    const egressos: any[] = [
+      { id: 1, nome: 'Egresso Antigo', ano_titulacao: 2018 },
+      { id: 2, nome: 'Egresso Recente', ano_titulacao: 2022 },
+      { id: 3, nome: 'Egresso Sem Ano', ano_titulacao: null },
+    ]
+
+    const rel = calcularTodosIndicadores({
+      ...dadosMinimos,
+      anoReferencia: 2028,
+      publicacoes: pubs,
+      publicacoesCoautores: coautores,
+      egressos,
+    })
+
+    const dptde1 = rel.todosIndicadores.find((i) => i.codigo === 'DPTDE1')
+    // pubs 2, 3 e 4 contam (3 de 3 = 1.0); a pub 1 (egresso titulado há mais de 5 anos) fica de fora
+    expect(dptde1?.anos?.[2025].valorCalculado).toBe(1.0)
+    expect(dptde1?.insumos.some((i) => i.descricao.includes('sem ano de titulação'))).toBe(true)
+    expect(dptde1?.observacoes).toContain('até 5 anos')
   })
 })

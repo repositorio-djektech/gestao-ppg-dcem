@@ -69,23 +69,23 @@ export function avaliarStatusJdpDocente(
     }
   }
 
-  // Regra CAPES: Prazo máximo de 4 anos como JDP
-  // Exemplo: se jdp_desde = 2020 e anoReferencia = 2025, 2020 + 4 = 2024 < 2025 -> expirou
-  const expiradoPorPrazoJdp = jdpDesde !== null && jdpDesde + 4 < anoReferencia
+  // Regra CAPES: no máximo 4 anos consecutivos como JDP, contados por ano civil.
+  // Exemplo: jdp_desde = 2025 vale em 2025, 2026, 2027 e 2028; em 2029 completou 4 anos e saiu.
+  const expiradoPorPrazoJdp = jdpDesde !== null && jdpDesde + 4 <= anoReferencia
 
-  // Regra CAPES: Doutorado obtido há menos de 10 anos
-  // Exemplo: se ano_doutorado = 2014 e anoReferencia = 2025, 2014 + 10 = 2024 < 2025 -> expirou
-  const expiradoPorDoutorado = anoDoutorado !== null && anoDoutorado + 10 < anoReferencia
+  // Regra CAPES: doutorado há menos de 10 anos; "completar 10 anos" encerra a condição.
+  // Exemplo: ano_doutorado = 2016 vale até 2025; em 2026 completou 10 anos e saiu.
+  const expiradoPorDoutorado = anoDoutorado !== null && anoDoutorado + 10 <= anoReferencia
 
   const isExpirado = expiradoPorPrazoJdp || expiradoPorDoutorado
 
   let motivoExpiracao: string | undefined
   if (expiradoPorPrazoJdp && expiradoPorDoutorado) {
-    motivoExpiracao = `JDP há mais de 4 anos (desde ${jdpDesde}) e doutorado há mais de 10 anos (${anoDoutorado})`
+    motivoExpiracao = `JDP com 4 anos completos (desde ${jdpDesde}) e doutorado com 10 anos completos (${anoDoutorado})`
   } else if (expiradoPorPrazoJdp) {
-    motivoExpiracao = `JDP há mais de 4 anos (início em ${jdpDesde}, limite de 4 anos atingido)`
+    motivoExpiracao = `JDP com 4 anos completos (início em ${jdpDesde}, limite da CAPES)`
   } else if (expiradoPorDoutorado) {
-    motivoExpiracao = `Doutorado obtido há mais de 10 anos (${anoDoutorado})`
+    motivoExpiracao = `Doutorado com 10 anos completos (${anoDoutorado})`
   }
 
   // Válido: é JDP, categoria permanente, não expirou e possui os dados de início

@@ -130,7 +130,8 @@ Notas:
 
 Regras comuns a todos os cálculos:
 
-- **JDP (`src/lib/capes/jdp.ts`):** categoria permanente com `jdp = true`, no máximo 4 anos como JDP (`jdp_desde + 4 ≥ ano de referência`) e doutorado há no máximo 10 anos. JDP válidos entram no DP e saem do denominador efetivo (DP − JDP).
+- **JDP (`src/lib/capes/jdp.ts`):** categoria permanente com `jdp = true`, no máximo 4 anos civis como JDP (`jdp_desde = 2025` vale de 2025 a 2028 e sai em 2029) e doutorado há menos de 10 anos (`ano_doutorado = 2016` vale até 2025 e sai em 2026). JDP válidos entram no DP e saem do denominador efetivo (DP − JDP). A validade é avaliada **ano a ano** do quadriênio, então quem completa o prazo volta ao denominador naquele ano. A regra de Lacunas `docente_jdp_expirado` usa o mesmo critério.
+- **Janela dos egressos (ATD, DPIDE1, DPIDE2, DPTDE1):** a coautoria de egresso só vale se `ano da publicação ≤ ano de titulação + 5`; discente em formação (orientando) sempre vale. Egresso sem `ano_titulacao` continua contando e gera um aviso nos insumos do indicador.
 - **Pesos Qualis:** A1 = 1,0; A2 = 0,875; A3 = 0,75; A4 = 0,675; B1 = 0,5 com saturação `min(B1, DP)`; B2 a C = 0.
 - **Publicação conta uma única vez** em DPI, DPT, DPIDE1, DPTDE1, DPIDE2 e DPI2, mesmo vinculada a vários docentes permanentes.
 - **Patentes:** o ano vem de `patentes.ano_deposito`; sem ele, cai no ano de cadastro (`created_at`), que é só uma aproximação. O âmbito é `ambito` ou, na falta, o prefixo do registro (BR = nacional; PCT/US/EP/WO = internacional). Status fora de Licenciamento, Concessão e Pendente/Depositada não pontua.

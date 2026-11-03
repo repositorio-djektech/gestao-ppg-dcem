@@ -167,7 +167,7 @@ export const REGRAS_DOCENTES: RegraLacuna<Docente>[] = [
     tabela: 'docentes',
     campos: ['jdp', 'jdp_desde', 'ano_doutorado'],
     descricao:
-      'Docente marcado como JDP com condição expirada (4 anos como JDP ou doutorado há mais de 10 anos)',
+      'Docente marcado como JDP com condição expirada (4 anos completos como JDP ou 10 anos completos de doutorado)',
     severidade: 'atencao',
     grupo: 'Identificação Cadastral',
     avaliar: (docente) => {
@@ -176,18 +176,18 @@ export const REGRAS_DOCENTES: RegraLacuna<Docente>[] = [
       const jdpDesde = docente.jdp_desde ? Number(docente.jdp_desde) : null
       const anoDoutorado = docente.ano_doutorado ? Number(docente.ano_doutorado) : null
 
-      const expiradoJdp = jdpDesde !== null && !isNaN(jdpDesde) && jdpDesde + 4 < anoCorrente
+      const expiradoJdp = jdpDesde !== null && !isNaN(jdpDesde) && jdpDesde + 4 <= anoCorrente
       const expiradoDoutorado =
-        anoDoutorado !== null && !isNaN(anoDoutorado) && anoDoutorado + 10 < anoCorrente
+        anoDoutorado !== null && !isNaN(anoDoutorado) && anoDoutorado + 10 <= anoCorrente
 
       const tem = expiradoJdp || expiradoDoutorado
       let motivo: string | undefined
       if (expiradoJdp && expiradoDoutorado) {
-        motivo = `Condição JDP expirada: início há mais de 4 anos (${jdpDesde}) e doutorado há mais de 10 anos (${anoDoutorado})`
+        motivo = `Condição JDP expirada: 4 anos completos como JDP (desde ${jdpDesde}) e 10 anos completos de doutorado (${anoDoutorado})`
       } else if (expiradoJdp) {
-        motivo = `Condição JDP expirada: início em ${jdpDesde} (limite máximo CAPES de 4 anos atingido)`
+        motivo = `Condição JDP expirada: início em ${jdpDesde} (4 anos completos, limite máximo da CAPES)`
       } else if (expiradoDoutorado) {
-        motivo = `Condição JDP expirada: doutorado obtido em ${anoDoutorado} (mais de 10 anos do ano corrente)`
+        motivo = `Condição JDP expirada: doutorado obtido em ${anoDoutorado} (10 anos completos de doutorado)`
       }
 
       return {

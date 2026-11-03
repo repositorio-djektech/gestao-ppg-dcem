@@ -228,6 +228,23 @@ export function calcularTodosIndicadores(
   const JDP_validos = resumoJdp.totalJdpValidos
   const denominadorEfetivo = Math.max(0, DP - JDP_validos) // (DP - JDP)
 
+  // O JDP é avaliado ano a ano: quem completa 4 anos como JDP (ou 10 de doutorado) deixa de ser JDP
+  // naquele ano e volta ao denominador. O resumo do ano de referência segue em resumoJdp/JDP_validos.
+  const jdpPorAno = new Map<number, ReturnType<typeof calcularResumoJdpPrograma>>()
+  const jdpDoAno = (ano: number) => {
+    let resumo = jdpPorAno.get(ano)
+    if (!resumo) {
+      resumo = calcularResumoJdpPrograma(docentes, ano)
+      jdpPorAno.set(ano, resumo)
+    }
+    return resumo
+  }
+  const denominadorDoAno = (ano: number) => Math.max(0, DP - jdpDoAno(ano).totalJdpValidos)
+  const regularesDoAno = (ano: number) => {
+    const idsJdp = new Set(jdpDoAno(ano).jdpValidos.map((j) => j.id))
+    return permanentes.filter((d) => !idsJdp.has(d.id))
+  }
+
   // Mapas de lookup
   const idsPermanentesSet = new Set<number>(permanentes.map((d) => d.id))
   const termosNomePermanentes = new Map<number, string[]>()
@@ -271,7 +288,13 @@ export function calcularTodosIndicadores(
   const coautoresList = dados.publicacoesCoautores || []
   const mapaCoautoriaPub = new Map<
     number,
-    { temDiscenteOuEgresso: boolean; tipos: string[]; discenteIds: number[]; egressoIds: number[] }
+    {
+      temDiscenteOuEgresso: boolean
+      tipos: string[]
+      discenteIds: number[]
+      egressoIds: number[]
+      coautores: Array<{ tipo: string; egressoId: number | null }>
+    }
   >()
   for (const c of coautoresList) {
     const entry = mapaCoautoriaPub.get(c.publicacao_id) || {
@@ -279,6 +302,7 @@ export function calcularTodosIndicadores(
       tipos: [],
       discenteIds: [],
       egressoIds: [],
+      coautores: [],
     }
     const t = normStr(c.tipo)
     if (t === 'orientando' || t === 'egresso' || t === 'discente') {
@@ -286,8 +310,37 @@ export function calcularTodosIndicadores(
       entry.tipos.push(c.tipo)
       if (c.discente_id) entry.discenteIds.push(c.discente_id)
       if (c.egresso_id) entry.egressoIds.push(c.egresso_id)
+      entry.coautores.push({ tipo: t, egressoId: c.egresso_id ?? null })
     }
     mapaCoautoriaPub.set(c.publicacao_id, entry)
+  }
+
+  // Janela dos egressos (itens 2.1.2 e 2.2.1): "titulado até 5 anos". Conta-se pelo ano da
+  // publicação: vale se ano_publicacao <= ano_titulacao + 5. Discente em formação sempre vale.
+  const JANELA_EGRESSO_ANOS = 5
+  const anoTitulacaoPorEgresso = new Map<number, number | null>()
+  for (const e of dados.egressos || []) {
+    anoTitulacaoPorEgresso.set(e.id, e.ano_titulacao ?? null)
+  }
+  const pubTemCoautoriaValida = (pub: Publicacao): boolean => {
+    const info = mapaCoautoriaPub.get(pub.id)
+    if (!info) return false
+    const anoPub = anoPublicacao(pub)
+    return info.coautores.some((c) => {
+      if (c.tipo !== 'egresso') return true
+      const anoTit = c.egressoId !== null ? (anoTitulacaoPorEgresso.get(c.egressoId) ?? null) : null
+      // Sem ano de titulação não há como aplicar a janela: o dado real não é descartado
+      if (anoTit === null || anoPub === null) return true
+      return anoPub <= anoTit + JANELA_EGRESSO_ANOS
+    })
+  }
+  const egressosCoautoresSemAno = new Set<string>()
+  for (const c of coautoresList) {
+    if (normStr(c.tipo) !== 'egresso') continue
+    const anoTit = c.egresso_id != null ? (anoTitulacaoPorEgresso.get(c.egresso_id) ?? null) : null
+    if (anoTit === null) {
+      egressosCoautoresSemAno.add(c.egresso_id != null ? `id:${c.egresso_id}` : `nome:${c.nome_citado ?? c.publicacao_id}`)
+    }
   }
 
   // Publicações no quadriênio
@@ -665,7 +718,7 @@ export function calcularTodosIndicadores(
   // --- PSA: % DP SEM titulações M ou D no ano (exclui JDP) ---
   const psaAnos: Record<number, ResultadoAnoIndicador> = {}
   for (const ano of anosQuadrienio) {
-    if (totalRegulares === 0) {
+    if (regularesDoAno(ano).length === 0) {
       psaAnos[ano] = {
         ano,
         status: 'indefinido',
@@ -708,8 +761,8 @@ export function calcularTodosIndicadores(
       for (const ori of defesasAno) {
         if (ori.docente_id) docsComDefesa.add(ori.docente_id)
       }
-      const docsSemDefesa = permanentesRegulares.filter((d) => !docsComDefesa.has(d.id)).length
-      const val = Number(((docsSemDefesa / totalRegulares) * 100).toFixed(2))
+      const docsSemDefesa = regularesDoAno(ano).filter((d) => !docsComDefesa.has(d.id)).length
+      const val = Number(((docsSemDefesa / regularesDoAno(ano).length) * 100).toFixed(2))
 
       psaAnos[ano] = {
         ano,
@@ -721,7 +774,7 @@ export function calcularTodosIndicadores(
             descricao: `Permanentes regulares sem titulação em ${ano}`,
             valor: docsSemDefesa,
           },
-          { termo: 'DP regulares', descricao: 'Permanentes excluindo JDP', valor: totalRegulares },
+          { termo: 'DP regulares', descricao: 'Permanentes excluindo JDP', valor: regularesDoAno(ano).length },
         ],
       }
     }
@@ -1102,7 +1155,7 @@ export function calcularTodosIndicadores(
   // --- ORI: (M + 3D) / (DP − JDP) ---
   const oriAnos: Record<number, ResultadoAnoIndicador> = {}
   for (const ano of anosQuadrienio) {
-    if (denominadorEfetivo === 0) {
+    if (denominadorDoAno(ano) === 0) {
       oriAnos[ano] = {
         ano,
         status: 'indefinido',
@@ -1126,7 +1179,7 @@ export function calcularTodosIndicadores(
         decomposicao: [],
       }
     } else {
-      const val = Number(((mAno + 3 * dAno) / denominadorEfetivo).toFixed(3))
+      const val = Number(((mAno + 3 * dAno) / denominadorDoAno(ano)).toFixed(3))
       oriAnos[ano] = {
         ano,
         status: 'calculado',
@@ -1135,7 +1188,7 @@ export function calcularTodosIndicadores(
           { termo: 'M', descricao: `Mestrados em ${ano}`, valor: mAno },
           { termo: 'D', descricao: `Doutorados em ${ano}`, valor: dAno },
           { termo: 'M + 3D', descricao: 'Numerador ponderado', valor: mAno + 3 * dAno },
-          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorDoAno(ano) },
         ],
       }
     }
@@ -1179,7 +1232,7 @@ export function calcularTodosIndicadores(
       if (anoPublicacao(p) !== ano) return false
       const estrato = (p.estrato_qualis || '').toUpperCase()
       const isA1A4 = ['A1', 'A2', 'A3', 'A4'].includes(estrato)
-      const temCoautoria = mapaCoautoriaPub.get(p.id)?.temDiscenteOuEgresso === true
+      const temCoautoria = pubTemCoautoriaValida(p)
       return isA1A4 && temCoautoria
     })
 
@@ -1236,7 +1289,7 @@ export function calcularTodosIndicadores(
   // --- DPI: Produção dos DPs no ano ---
   const dpiAnos: Record<number, ResultadoAnoIndicador> = {}
   for (const ano of anosQuadrienio) {
-    if (denominadorEfetivo === 0) {
+    if (denominadorDoAno(ano) === 0) {
       dpiAnos[ano] = {
         ano,
         status: 'indefinido',
@@ -1268,7 +1321,7 @@ export function calcularTodosIndicadores(
     } else {
       const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
         calcularPontuacaoQualisComSaturacao(pubsAno)
-      const val = Number((pontosNumerador / denominadorEfetivo).toFixed(3))
+      const val = Number((pontosNumerador / denominadorDoAno(ano)).toFixed(3))
 
       dpiAnos[ano] = {
         ano,
@@ -1286,7 +1339,7 @@ export function calcularTodosIndicadores(
           },
           { termo: 'B2..C', descricao: 'Artigos sem pontuação', valor: b2 + b3 + b4 + c },
           { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontosNumerador },
-          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorDoAno(ano) },
         ],
       }
     }
@@ -1319,7 +1372,7 @@ export function calcularTodosIndicadores(
   // --- DPT: artigos completos (periódicos + anais) + capítulos / (DP − JDP) ---
   const dptAnos: Record<number, ResultadoAnoIndicador> = {}
   for (const ano of anosQuadrienio) {
-    if (denominadorEfetivo === 0) {
+    if (denominadorDoAno(ano) === 0) {
       dptAnos[ano] = {
         ano,
         status: 'indefinido',
@@ -1361,7 +1414,7 @@ export function calcularTodosIndicadores(
         }
       }
       const totalItens = periodicos + anais + capitulos
-      const val = Number((totalItens / denominadorEfetivo).toFixed(3))
+      const val = Number((totalItens / denominadorDoAno(ano)).toFixed(3))
 
       dptAnos[ano] = {
         ano,
@@ -1372,7 +1425,7 @@ export function calcularTodosIndicadores(
           { termo: 'Anais', descricao: `Anais em ${ano}`, valor: anais },
           { termo: 'Capítulos', descricao: `Capítulos em ${ano}`, valor: capitulos },
           { termo: 'Total', descricao: 'Soma (cada publicação conta uma vez)', valor: totalItens },
-          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorDoAno(ano) },
         ],
       }
     }
@@ -1405,7 +1458,7 @@ export function calcularTodosIndicadores(
   // --- DPIDE1: DPI apenas com coautoria discente/egresso ---
   const dpide1Anos: Record<number, ResultadoAnoIndicador> = {}
   for (const ano of anosQuadrienio) {
-    if (denominadorEfetivo === 0) {
+    if (denominadorDoAno(ano) === 0) {
       dpide1Anos[ano] = {
         ano,
         status: 'indefinido',
@@ -1418,7 +1471,7 @@ export function calcularTodosIndicadores(
 
     const pubsAno = pubsNoQuadrienio.filter((p) => {
       if (anoPublicacao(p) !== ano) return false
-      return mapaCoautoriaPub.get(p.id)?.temDiscenteOuEgresso === true
+      return pubTemCoautoriaValida(p)
     })
     const pubsAnoComQualis = pubsAno.filter((p) => Boolean((p.estrato_qualis || '').trim()))
 
@@ -1433,7 +1486,7 @@ export function calcularTodosIndicadores(
     } else {
       const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
         calcularPontuacaoQualisComSaturacao(pubsAno)
-      const val = Number((pontosNumerador / denominadorEfetivo).toFixed(3))
+      const val = Number((pontosNumerador / denominadorDoAno(ano)).toFixed(3))
 
       dpide1Anos[ano] = {
         ano,
@@ -1446,7 +1499,7 @@ export function calcularTodosIndicadores(
           { termo: 'A4 c/ discente', descricao: `Artigos A4 em ${ano}`, valor: a4 },
           { termo: 'min(B1, DP)', descricao: `B1 saturado (${b1Bruto} brutos)`, valor: b1Saturado },
           { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontosNumerador },
-          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorDoAno(ano) },
         ],
       }
     }
@@ -1480,7 +1533,7 @@ export function calcularTodosIndicadores(
   // --- DPTDE1: DPT apenas com coautoria discente/egresso (item 2.2.1) ---
   const dptde1Anos: Record<number, ResultadoAnoIndicador> = {}
   for (const ano of anosQuadrienio) {
-    if (denominadorEfetivo === 0) {
+    if (denominadorDoAno(ano) === 0) {
       dptde1Anos[ano] = {
         ano,
         status: 'indefinido',
@@ -1493,7 +1546,7 @@ export function calcularTodosIndicadores(
 
     const pubsAno = pubsNoQuadrienio.filter((p) => {
       if (anoPublicacao(p) !== ano) return false
-      return mapaCoautoriaPub.get(p.id)?.temDiscenteOuEgresso === true
+      return pubTemCoautoriaValida(p)
     })
 
     if (pubsAno.length === 0) {
@@ -1522,7 +1575,7 @@ export function calcularTodosIndicadores(
         }
       }
       const totalItens = periodicos + anais + capitulos
-      const val = Number((totalItens / denominadorEfetivo).toFixed(3))
+      const val = Number((totalItens / denominadorDoAno(ano)).toFixed(3))
 
       dptde1Anos[ano] = {
         ano,
@@ -1533,7 +1586,7 @@ export function calcularTodosIndicadores(
           { termo: 'Anais', descricao: `Anais em ${ano}`, valor: anais },
           { termo: 'Capítulos', descricao: `Capítulos em ${ano}`, valor: capitulos },
           { termo: 'Total', descricao: 'Soma (cada publicação conta uma vez)', valor: totalItens },
-          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorDoAno(ano) },
         ],
       }
     }
@@ -1567,7 +1620,7 @@ export function calcularTodosIndicadores(
   // --- DPIDE2: DPI de publicações Nível 2 com discentes ---
   const dpide2Anos: Record<number, ResultadoAnoIndicador> = {}
   for (const ano of anosQuadrienio) {
-    if (denominadorEfetivo === 0) {
+    if (denominadorDoAno(ano) === 0) {
       dpide2Anos[ano] = {
         ano,
         status: 'indefinido',
@@ -1581,7 +1634,7 @@ export function calcularTodosIndicadores(
     const pubsAnoN2 = pubsNoQuadrienio.filter((p) => {
       if (anoPublicacao(p) !== ano) return false
       const isNivel2 = p.indicacao_nivel === 2
-      const temCoautoria = mapaCoautoriaPub.get(p.id)?.temDiscenteOuEgresso === true
+      const temCoautoria = pubTemCoautoriaValida(p)
       return isNivel2 && temCoautoria
     })
     const pubsAnoN2ComQualis = pubsAnoN2.filter((p) => Boolean((p.estrato_qualis || '').trim()))
@@ -1597,7 +1650,7 @@ export function calcularTodosIndicadores(
     } else {
       const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
         calcularPontuacaoQualisComSaturacao(pubsAnoN2)
-      const val = Number((pontosNumerador / denominadorEfetivo).toFixed(3))
+      const val = Number((pontosNumerador / denominadorDoAno(ano)).toFixed(3))
 
       dpide2Anos[ano] = {
         ano,
@@ -1614,7 +1667,7 @@ export function calcularTodosIndicadores(
             valor: b1Saturado,
           },
           { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontosNumerador },
-          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorDoAno(ano) },
         ],
       }
     }
@@ -1648,7 +1701,7 @@ export function calcularTodosIndicadores(
   // --- DPI2: todas as publicações Nível 2 dos DPs ---
   const dpi2Anos: Record<number, ResultadoAnoIndicador> = {}
   for (const ano of anosQuadrienio) {
-    if (denominadorEfetivo === 0) {
+    if (denominadorDoAno(ano) === 0) {
       dpi2Anos[ano] = {
         ano,
         status: 'indefinido',
@@ -1676,7 +1729,7 @@ export function calcularTodosIndicadores(
     } else {
       const { a1, a2, a3, a4, b1Bruto, b1Saturado, b2, b3, b4, c, pontosNumerador } =
         calcularPontuacaoQualisComSaturacao(pubsAnoN2)
-      const val = Number((pontosNumerador / denominadorEfetivo).toFixed(3))
+      const val = Number((pontosNumerador / denominadorDoAno(ano)).toFixed(3))
 
       dpi2Anos[ano] = {
         ano,
@@ -1693,7 +1746,7 @@ export function calcularTodosIndicadores(
             valor: b1Saturado,
           },
           { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontosNumerador },
-          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorDoAno(ano) },
         ],
       }
     }
@@ -1735,7 +1788,7 @@ export function calcularTodosIndicadores(
   // --- DPPn: Patentes Nacionais ---
   const dppnAnos: Record<number, ResultadoAnoIndicador> = {}
   for (const ano of anosQuadrienio) {
-    if (denominadorEfetivo === 0) {
+    if (denominadorDoAno(ano) === 0) {
       dppnAnos[ano] = {
         ano,
         status: 'indefinido',
@@ -1762,7 +1815,7 @@ export function calcularTodosIndicadores(
       }
     } else {
       const { licenciadas, concedidas, depositadas, pontos } = calcularPontuacaoPatentes(patsAno)
-      const val = Number((pontos / denominadorEfetivo).toFixed(3))
+      const val = Number((pontos / denominadorDoAno(ano)).toFixed(3))
       dppnAnos[ano] = {
         ano,
         status: 'calculado',
@@ -1780,7 +1833,7 @@ export function calcularTodosIndicadores(
             valor: licenciadas,
           },
           { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontos },
-          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorDoAno(ano) },
         ],
       }
     }
@@ -1814,7 +1867,7 @@ export function calcularTodosIndicadores(
   // --- DPPi: Patentes Internacionais ---
   const dppiAnos: Record<number, ResultadoAnoIndicador> = {}
   for (const ano of anosQuadrienio) {
-    if (denominadorEfetivo === 0) {
+    if (denominadorDoAno(ano) === 0) {
       dppiAnos[ano] = {
         ano,
         status: 'indefinido',
@@ -1840,7 +1893,7 @@ export function calcularTodosIndicadores(
       }
     } else {
       const { licenciadas, concedidas, depositadas, pontos } = calcularPontuacaoPatentes(patsAno)
-      const val = Number((pontos / denominadorEfetivo).toFixed(3))
+      const val = Number((pontos / denominadorDoAno(ano)).toFixed(3))
       dppiAnos[ano] = {
         ano,
         status: 'calculado',
@@ -1862,7 +1915,7 @@ export function calcularTodosIndicadores(
             valor: licenciadas,
           },
           { termo: 'Numerador', descricao: 'Pontos ponderados', valor: pontos },
-          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorEfetivo },
+          { termo: 'DP − JDP', descricao: 'Denominador efetivo', valor: denominadorDoAno(ano) },
         ],
       }
     }
@@ -2090,6 +2143,20 @@ export function calcularTodosIndicadores(
         'O item 3.3.2 é avaliado de forma qualitativa/comparativa; o FOR é um dos descritores citados na ficha e não define a nota sozinho.',
     }
   })()
+
+  // Indicadores com coautoria de discente/egresso: explicam a janela e avisam sobre dados faltantes
+  const textoJanela =
+    'Coautoria de egresso só vale até 5 anos após a titulação (ano da publicação ≤ ano de titulação + 5); discentes em formação sempre valem.'
+  for (const ind of [atdIndicador, dpide1Indicador, dptde1Indicador, dpide2Indicador]) {
+    ind.observacoes = ind.observacoes ? `${ind.observacoes} ${textoJanela}` : textoJanela
+    if (egressosCoautoresSemAno.size > 0) {
+      ind.insumos.push({
+        totalExistente: egressosCoautoresSemAno.size,
+        descricao: `${egressosCoautoresSemAno.size} egresso(s) coautor(es) sem ano de titulação: contados sem aplicar a janela de 5 anos`,
+        atendido: false,
+      })
+    }
+  }
 
   // Agrupamento em Quesitos
   const todosIndicadores: ResultadoIndicador[] = [

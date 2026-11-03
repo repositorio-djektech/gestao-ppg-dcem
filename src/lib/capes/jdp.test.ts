@@ -25,8 +25,8 @@ describe('Regras de JDP (Jovem Doutor Pesquisador)', () => {
     expect(status.isExpirado).toBe(false)
   })
 
-  it('deve marcar como expirado quando jdp_desde + 4 < ano_corrente (ex: início em 2020)', () => {
-    // 2020 + 4 = 2024 < 2025 -> expirou
+  it('deve marcar como expirado quando jdp_desde + 4 <= ano (ex: início em 2020)', () => {
+    // 2020 + 4 = 2024 <= 2025 -> expirou
     const status = avaliarStatusJdpDocente(
       { jdp: true, categoria: 'permanente', jdp_desde: 2020, ano_doutorado: 2019 },
       anoReferencia,
@@ -37,8 +37,8 @@ describe('Regras de JDP (Jovem Doutor Pesquisador)', () => {
     expect(status.motivoExpiracao).toContain('início em 2020')
   })
 
-  it('deve marcar como expirado quando ano_doutorado + 10 < ano_corrente (ex: doutorado em 2014)', () => {
-    // 2014 + 10 = 2024 < 2025 -> expirou
+  it('deve marcar como expirado quando ano_doutorado + 10 <= ano (ex: doutorado em 2014)', () => {
+    // 2014 + 10 = 2024 <= 2025 -> expirou
     const status = avaliarStatusJdpDocente(
       { jdp: true, categoria: 'permanente', jdp_desde: 2023, ano_doutorado: 2014 },
       anoReferencia,
@@ -56,6 +56,23 @@ describe('Regras de JDP (Jovem Doutor Pesquisador)', () => {
     expect(status.isJdp).toBe(true)
     expect(status.isPermanente).toBe(false)
     expect(status.isValido).toBe(false)
+  })
+
+  it('conta 4 anos civis como JDP: desde 2025 vale até 2028 e sai em 2029', () => {
+    const doc = { jdp: true, categoria: 'permanente', jdp_desde: 2025, ano_doutorado: 2022 } as const
+    expect(avaliarStatusJdpDocente(doc, 2025).isValido).toBe(true)
+    expect(avaliarStatusJdpDocente(doc, 2028).isValido).toBe(true)
+    const em2029 = avaliarStatusJdpDocente(doc, 2029)
+    expect(em2029.expiradoPorPrazoJdp).toBe(true)
+    expect(em2029.isValido).toBe(false)
+  })
+
+  it('doutorado há menos de 10 anos: 2016 vale até 2025 e completa 10 anos em 2026', () => {
+    const doc = { jdp: true, categoria: 'permanente', jdp_desde: 2025, ano_doutorado: 2016 } as const
+    expect(avaliarStatusJdpDocente(doc, 2025).isValido).toBe(true)
+    const em2026 = avaliarStatusJdpDocente(doc, 2026)
+    expect(em2026.expiradoPorDoutorado).toBe(true)
+    expect(em2026.isValido).toBe(false)
   })
 
   it('calcula métricas do programa e limite de 20% do DP', () => {
