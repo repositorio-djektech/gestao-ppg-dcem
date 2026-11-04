@@ -4,14 +4,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import {
-  Sparkles,
   ExternalLink,
   Code2,
   Award,
@@ -21,6 +19,7 @@ import {
   FileText,
 } from 'lucide-react'
 import type { ImpactoSocial, ProducaoTecnica, Patente, Premicao } from '@/types/database'
+import { ehLinkReal } from '@/lib/link-real'
 
 export interface DetalhesImpactoModalProps {
   open: boolean
@@ -48,7 +47,6 @@ export function DetalhesImpactoModal({
       <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-4 border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center gap-2 text-emerald-700 font-semibold text-xs uppercase tracking-wider">
-            <Sparkles className="h-4 w-4" />
             Impacto Social & Registros Vinculados
           </div>
           <DialogTitle className="text-xl font-bold text-slate-900 mt-1">
@@ -69,7 +67,8 @@ export function DetalhesImpactoModal({
               {totalVinculos} produção(ões) vinculada(s)
             </Badge>
           </div>
-          {impacto.link_comprovacao && (
+          {/* Só mostra o link quando ele leva a um site de verdade (não aos endereços de exemplo) */}
+          {ehLinkReal(impacto.link_comprovacao) && (
             <div className="pt-2">
               <a
                 href={impacto.link_comprovacao}
@@ -154,7 +153,7 @@ export function DetalhesImpactoModal({
                           <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
                             {pt.autores && <span>Autores: {pt.autores}</span>}
                             {pt.ano && <span>Ano: {pt.ano}</span>}
-                            {pt.link_comprovacao && (
+                            {ehLinkReal(pt.link_comprovacao) && (
                               <a
                                 href={pt.link_comprovacao}
                                 target="_blank"
@@ -211,7 +210,7 @@ export function DetalhesImpactoModal({
                               <span className="font-mono text-slate-700">INPI: {pat.inpi}</span>
                             )}
                             {pat.autores && <span>Autores: {pat.autores}</span>}
-                            {pat.link_comprovacao && (
+                            {ehLinkReal(pat.link_comprovacao) && (
                               <a
                                 href={pat.link_comprovacao}
                                 target="_blank"
@@ -258,7 +257,7 @@ export function DetalhesImpactoModal({
                           <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
                             {prem.nome_premiado && <span>Premiado: {prem.nome_premiado}</span>}
                             {prem.instituicao && <span>Instituição: {prem.instituicao}</span>}
-                            {prem.link_comprovacao && (
+                            {ehLinkReal(prem.link_comprovacao) && (
                               <a
                                 href={prem.link_comprovacao}
                                 target="_blank"
