@@ -84,7 +84,14 @@ Suporte, coordenador e auxiliar não mudam. O papel **docente** vê:
 | Credenciamento | Os 5 cards gerais e só a própria linha (`lib/reconducao/escopo-docente.ts`), inclusive na impressão. |
 | Docentes | CPF e SIAPE só do próprio registro, na tabela, no modal e na busca (`podeVerDadosPessoaisDocente`). "Editar Identificação" só no próprio (`podeEditarRegistro`). |
 | Discentes | Os que orienta, os que coorienta e os sem orientador (`lib/discentes/visibilidade.ts`). |
+| Orientações | Só as próprias e coorientações (`lib/orientacoes/exibicao.ts`). |
+| Linhas de Pesquisa | Sem a coluna Ações. |
+| Projetos de Pesquisa | Os que coordena e aqueles em que participa; edita e apaga só como coordenador (`lib/projetos/visibilidade.ts`). |
+| Publicações | Só as vinculadas a ele (`lib/publicacoes/visibilidade.ts`); ao salvar fica sempre vinculado. |
+| Patentes e Produção Técnica | Só as vinculadas a ele, por `patentes_docentes` e `producao_tecnica_docentes` (`lib/registros/visibilidade.ts`, `hooks/use-autoria-docente.tsx`). |
+| Impressão `/imprimir/*` | Mesma visão restrita (`lib/impressao/escopo-docente.ts`). |
 
+**RLS de escrita (migração `20261105130000`, aplicada em 04/11):** em patentes e produção técnica o docente insere, e edita/apaga só o que está vinculado a ele; o docente vincula só a si mesmo (a coordenação vincula os demais); `projetos_pesquisa_update` aceita coordenação ou o coordenador do projeto (participante não edita).
 > **Limite importante (P-20):** é restrição de interface. A RLS de leitura segue `USING (true)`; quem consultar a API ainda lê esses dados. Proteção real exige restringir `SELECT` no banco.
 
 ### 2.6 Texto do item 1.3 (H-10)

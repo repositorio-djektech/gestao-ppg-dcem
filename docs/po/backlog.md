@@ -1,6 +1,6 @@
 # Backlog do MVP — PPG-DCEM
 
-Versão: 1.2 · 2026-11-04 · Formato: histórias no padrão "Como [ator], quero [ação], para [benefício]", com critérios em Given/When/Then.
+Versão: 1.3 · 2026-11-04 · Formato: histórias no padrão "Como [ator], quero [ação], para [benefício]", com critérios em Given/When/Then.
 
 Fluxos de aceite (D-08):
 - **F-01** O docente importa o próprio Lattes e confirma seus vínculos.
@@ -15,7 +15,7 @@ Fluxos de aceite (D-08):
 - **E-03 Import Lattes em duas etapas**: H-04.
 - **E-04 Cálculo confiável**: H-07, H-08.
 - **E-05 Conformidade CAPES no MVP**: H-09, H-10.
-- **E-06 Visão restrita do docente e status do discente**: H-11 a H-15.
+- **E-06 Visão restrita do docente e status do discente**: H-11 a H-22.
 
 ## Histórias
 
@@ -36,6 +36,13 @@ Fluxos de aceite (D-08):
 | H-13 | Como docente, quero que o CPF e o SIAPE dos outros docentes não apareçam para mim, e só editar a minha identificação. | E-06 | — | 1 | **Em validação** (código e testes prontos) |
 | H-14 | Como docente, quero ver só os discentes que oriento, que coorienta e os sem orientador (para assumir). | E-06 | — | 1 | **Em validação** (código e testes prontos) |
 | H-15 | Como coordenador, quero registrar a data de conclusão do discente e ter o status (Em andamento, Titulado, Desligado) definido por ela. | E-06 | — | 1 | **Em validação** (código e testes prontos; migração `20261105120000` aguarda aplicação, P-21) |
+| H-16 | Como docente, quero ver só as minhas orientações e coorientações, com o tipo em badge, a coluna Término e "—" quando não há data. | E-06 | — | 1 | **Em validação** (código e testes prontos) |
+| H-17 | Como docente, não quero a coluna Ações nas Linhas de Pesquisa. | E-06 | — | 1 | **Em validação** (código e testes prontos) |
+| H-18 | Como docente, quero ver os projetos que coordeno e aqueles em que participo, e editar só os que coordeno. | E-06 | — | 1 | **Em validação** (código e testes prontos; migração `20261105130000` aplicada em 04/11) |
+| H-19 | Como docente, quero ver e fazer CRUD só nas minhas publicações. | E-06 | — | 1 | **Em validação** (código e testes prontos) |
+| H-20 | Como docente, quero ver e fazer CRUD só nas minhas produções técnicas. | E-06 | — | 1 | **Em validação** (código e testes prontos; migração `20261105130000` aplicada em 04/11) |
+| H-21 | Como docente, quero ver e fazer CRUD só nas minhas patentes. | E-06 | — | 1 | **Em validação** (código e testes prontos; migração `20261105130000` aplicada em 04/11) |
+| H-22 | Ajustes visuais: Atuação Profissional de Egressos à esquerda e sem o ícone de estrelinhas no Impacto Social. | E-06 | — | 2 | **Em validação** (código e testes prontos) |
 
 ## Critérios de aceite das histórias de prioridade 1
 
@@ -89,6 +96,24 @@ Fluxos de aceite (D-08):
 **H-14 — Discentes do docente.** Vê os que orienta, os que coorienta (orientação dele com o discente) e os sem orientador (para poder assumir, H-01). A coluna CPF não quebra linha. O docente não tem ação de se incluir como coorientador. Testes: `discentes/visibilidade.test.ts`, `AcoesVinculoOrientacao.test.tsx`.
 
 **H-15 — Status e data de conclusão do discente.** Só três status: Em andamento, Titulado, Desligado. Sem data de conclusão ou data futura = Em andamento; data de hoje ou passada = Titulado; Desligado é marcado à mão e prevalece. O status é recalculado na leitura (uma data futura vira passada com o tempo). Dados antigos só com `ano_conclusao` e status concluído/titulado continuam titulados. Testes: `discentes/status.test.ts`. Banco: migração `20261105120000_discentes_data_conclusao_e_status.sql` (coluna `data_conclusao`, status antigos mapeados, CHECK recriada), **ainda não aplicada**.
+
+## Critérios de aceite: visão restrita do docente em Orientações, Linhas, Projetos, Publicações, Patentes e Produção Técnica (D-27)
+
+> Suporte, coordenador e auxiliar mantêm os mesmos poderes. Restrição de leitura **só de interface** (P-20).
+
+**H-16 — Orientações.** Docente vê só as orientações e coorientações com o `docente_id` dele. Tipo em badge (Mestrado e Doutorado com cores diferentes). Coluna Término ao lado de Início. Início, Término e Status mostram "—" quando não há data (Status só se também não houver cancelamento). Datas completas em dd/mm/aaaa. Testes: `orientacoes/exibicao.test.ts`, `pages/Orientacoes.test.tsx`.
+
+**H-17 — Linhas de Pesquisa.** Docente não vê a coluna Ações (`ocultarAcoesParaDocente` no `CrudPage`). Teste: `pages/AjustesVisuaisTabelas.test.tsx`.
+
+**H-18 — Projetos.** Docente vê os que coordena e os em que participa; edita e apaga só como coordenador; como participante apenas visualiza. RLS de UPDATE ajustada na `20261105130000`. Testes: `projetos/visibilidade.test.ts`, `permissoes.test.ts` (D-27).
+
+**H-19 — Publicações.** Docente vê só as vinculadas a ele (incluindo as compartilhadas com coautores docentes). Ao salvar, o docente é sempre vinculado à própria publicação (senão ela some da lista). As regras de limite do Nível 2 e 3 seguem olhando todas as publicações. Testes: `publicacoes/visibilidade.test.ts`, `pages/PublicacoesVisaoDocente.test.tsx`.
+
+**H-20 e H-21 — Produção Técnica e Patentes.** Tabelas de vínculo `producao_tecnica_docentes` e `patentes_docentes`. Docente vê só os vinculados a ele; cria (o vínculo dele é gravado antes dos impactos sociais) e edita/apaga só os vinculados. A coordenação escolhe os docentes autores no formulário (sugestão pelo nome em `autores`). Os registros existentes ficam sem vínculo até a coordenação vincular (P-25). Testes: `registros/visibilidade.test.ts`, `services/vinculos-docentes-registro.test.ts`, `pages/AutoriaDocente.test.tsx`, `permissoes.test.ts`.
+
+**H-22 — Visuais.** Atuação Profissional (Egressos) alinhada à esquerda; sem o ícone Sparkles no título dos registros de Impacto Social. Teste: `pages/AjustesVisuaisTabelas.test.tsx`.
+
+**Impressão.** `/imprimir/<módulo>` aplica a mesma visão restrita (discentes, orientações, projetos, publicações, patentes, produção técnica). Testes: `impressao/escopo-docente.test.ts`, `pages/PrintViewDocente.test.tsx`.
 
 ## Requisitos não funcionais (pendentes)
 - **RNF-01 LGPD:** dados pessoais, incluindo CPF de discentes. Depende de P-07 (responsável por backup e acesso). Sem história ainda.

@@ -1,6 +1,6 @@
 # 00 — Decisões, pendências e riscos
 
-Versão: 1.6 · Atualizado em 2026-11-04 · Fonte de verdade para decisões de produto no repositório.
+Versão: 1.8 · Atualizado em 2026-11-04 · Fonte de verdade para decisões de produto no repositório.
 Cópia de trabalho também no projeto do claude.ai (PO PPG-DCEM).
 
 Legenda de origem: **[Decisão]** = resposta da coordenação. **[Fato]** = documento ou código.
@@ -35,6 +35,7 @@ Legenda de origem: **[Decisão]** = resposta da coordenação. **[Fato]** = docu
 | D-24 | **Coorientador não edita o discente** (confirma D-15). | Decisão (04/11, PO) | Fecha P-11. |
 | D-25 | **Visão restrita do docente.** O docente vê só o que é dele: Lacunas (só os números dele em todos os cards), Credenciamento (5 cards gerais, só o próprio nome na lista), Docentes (CPF e SIAPE só do próprio; "Editar Identificação" só no próprio) e Discentes (os que orienta, os que coorienta e os sem orientador). Suporte, coordenador e auxiliar não mudam. **O docente não se inclui mais como coorientador:** a coordenação vincula pela tela Orientações. Supera a parte de coorientação da D-11/D-15 (sem editá-las). | Decisão (04/11, PO) | H-11 a H-14. Restrição só de interface (P-20). |
 | D-26 | **Status do discente:** Em andamento, Titulado ou Desligado. A data de conclusão define: sem data ou futura = Em andamento; hoje ou passada = Titulado. Desligado é manual e prevalece. "Concluído" deixa de existir (vira Titulado). | Decisão (04/11, PO) | H-15. Migração `20261105120000` (P-21). |
+| D-27 | **Visão restrita do docente em mais telas.** Orientações: só as próprias e coorientações (com badges por tipo, coluna Término, "—" sem data). Linhas de Pesquisa: sem coluna Ações. Projetos de Pesquisa: vê os que coordena e aqueles em que participa; **edita e apaga só como coordenador, participante apenas visualiza**. Publicações: só as vinculadas a ele (CRUD nas próprias). Patentes e Produção Técnica: só as vinculadas a ele (CRUD nas próprias), por **novas tabelas de vínculo** (`patentes_docentes`, `producao_tecnica_docentes`), como em publicações. Impressão (`/imprimir/*`) aplica a mesma visão. Visuais: Atuação Profissional de Egressos à esquerda; sem ícone de estrelinhas no Impacto Social. | Decisão (04/11, PO) | H-16 a H-22. Migração `20261105130000` (aplicada em 04/11). Restrição de leitura só de interface (P-20). |
 
 ## Pendências
 
@@ -63,6 +64,9 @@ Legenda de origem: **[Decisão]** = resposta da coordenação. **[Fato]** = docu
 | P-21 | Migração `20261105120000_discentes_data_conclusao_e_status.sql` (H-15) **não aplicada**. Ela recria a CHECK `discentes_status_check`, que existe no banco real mas **não está nas migrações do repositório** (divergência). Aplicar junto da publicação do frontend novo (o novo grava `em_andamento`, o antigo grava `ativo`). Conferido em leitura: 39 discentes, todos `ativo`, sem `ano_conclusao`. | Aberta | Responsável pelo banco |
 | P-22 | Interpretações assumidas na D-25: "CIAP" = **SIAPE** (não existe CIAP no sistema) e "o nome do próprio discente" no Credenciamento = próprio **docente**. Confirmar. | Aberta (confirmação) | Coordenação |
 | P-23 | No relatório de Lacunas do docente, registros por nome em texto (eventos, patentes, premiações, produção técnica, mobilidade) só entram se o nome dele aparecer **por extenso** (H-06); autores abreviados ("Barreto, L. S.") não contam. Os números dele podem ficar menores que o real nessas tabelas. | Aberta (aceito) | Coordenação |
+| P-24 | Aplicar a migração `20261105130000_patentes_producao_tecnica_docentes_e_projetos.sql` (D-27). | **Fechada (04/11):** aplicada com `supabase db push` e conferida em `pg_policies` (RLS ativa nas duas tabelas novas, políticas antigas `*_staff` de patentes e produção técnica substituídas). Dados inalterados: 4 patentes, 2 produções técnicas, 9 projetos, 0 vínculos. | — |
+| P-25 | **Patentes e produções técnicas já cadastradas ficam sem vínculo a docente** (só existe o nome em texto em `autores`; hoje são 4 patentes e 2 produções técnicas, sem nenhum vínculo). O docente não as vê até a coordenação vincular os docentes autores no formulário (a tela sugere pelo nome). Nada é preenchido automaticamente por nome. | Aberta | Coordenação |
+| P-26 | O docente só vincula **a si mesmo** em patentes e produção técnica (a RLS segue o molde de `publicacoes_docentes`); a coordenação vincula os demais coautores. | Aberta (confirmar) | Coordenação |
 
 ## Riscos
 
@@ -90,3 +94,6 @@ Legenda de origem: **[Decisão]** = resposta da coordenação. **[Fato]** = docu
 | 8 | Ficha, itens 2.1.1, 2.1.2, 2.5.1 a 2.5.3: ORI e ATD contam dissertações e teses; SO, PSA e DP4A falam em orientações/titulações do DP. Nenhum menciona coorientação. | `indicadores.ts` somava toda linha de `orientacoes`, inclusive coorientação (a dissertação podia contar duas vezes em ORI). | Corrigido pela D-19. A ficha não decide SO/PSA/DP4A; vale a decisão do PO. |
 | 9 | Banco: `orientacoes.flag_orientador_principal` é `NOT NULL DEFAULT false`; a tela de Orientações não grava a flag. | Orientação manual fica com `false`, indistinguível de coorientação só pela flag. | A D-19 usa também o orientador do discente. Ver P-12 e P-19. |
 | 10 | Banco real tem a CHECK `discentes_status_check` (ativo, concluido, titulado, desligado). | Nenhuma migração do repositório a cria. | Será recriada pela `20261105120000` (P-21). |
+| 11 | Projetos de Pesquisa: o código e a RLS (`projetos_pesquisa_update`) deixavam o **participante** editar. | D-27: participante só visualiza. | Código corrigido; RLS corrigida pela `20261105130000` (aplicada em 04/11). |
+| 12 | Impressão (`/imprimir/<módulo>`) lia os serviços direto, sem a visão restrita. | Um docente poderia imprimir a lista completa (inclusive CPF de discentes) e contornar os filtros das telas. | Corrigido: a impressão aplica os mesmos filtros e espera o papel carregar. |
+| 13 | Impactos sociais (`impactos_vinculos`) só aceitam escrita da coordenação. | Um docente criando patente ou produção técnica falharia na etapa dos impactos. | Tratado pela `20261105130000` (aplicada em 04/11): política só para registros a que o docente está vinculado. |

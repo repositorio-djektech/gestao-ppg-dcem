@@ -171,3 +171,7 @@ Obrigatório em 2025–2028. No MVP é **só um texto** (até 4000 caracteres), 
 - **Docente:** vê só o que é dele em Lacunas, Credenciamento (cards gerais + própria linha), Docentes (CPF e SIAPE próprios) e Discentes (orientados, coorientados e sem orientador). O docente não se inclui como coorientador. Restrição de interface (P-20).
 - **Status do discente:** Em andamento, Titulado ou Desligado, definido pela data de conclusão (`src/lib/discentes/status.ts`). Sem data ou futura = Em andamento; hoje ou passada = Titulado; Desligado é manual.
 
+### 5.1 Autoria por docente (D-27)
+
+Patentes e produções técnicas só tinham o nome em texto (`autores`). A autoria agora vem das tabelas de vínculo `patentes_docentes` e `producao_tecnica_docentes`, escolhidas pela coordenação (a tela sugere pelo nome) e gravadas automaticamente para o docente que cria o registro. Registros antigos ficam sem vínculo até a coordenação vincular (P-25). Em Projetos de Pesquisa, o participante só visualiza; edita quem coordena.
+

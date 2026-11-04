@@ -137,6 +137,14 @@ Dados institucionais do programa.
 - `uf`: `text DEFAULT 'SE'` (ou default 'SP' no legado)
 - `created_at`: `timestamp with time zone DEFAULT now()`
 
+#### `patentes_docentes` e `producao_tecnica_docentes`
+
+Vínculo registro ↔ docente (autoria), no molde de `publicacoes_docentes`. Migração `20261105130000`, aplicada em 04/11.
+
+- `id`: `bigint` (identity), `patente_id` ou `producao_tecnica_id`: `bigint` (FK com `ON DELETE CASCADE`), `docente_id`: `bigint` (FK com `ON DELETE CASCADE`), `created_at`.
+- `UNIQUE (patente_id, docente_id)` / `UNIQUE (producao_tecnica_id, docente_id)`.
+- RLS: leitura para autenticados; INSERT/DELETE da coordenação ou do docente sobre a própria linha.
+
 #### `ppg_textos`
 
 Textos curtos do programa por chave (H-10). Hoje só o item 1.3 da ficha (políticas afirmativas). Migração `20261104130000` aplicada em 04/11.
