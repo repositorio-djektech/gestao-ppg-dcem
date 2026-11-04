@@ -27,6 +27,7 @@ import Premiacoes from '@/pages/Premiacoes'
 import Lacunas from '@/pages/Lacunas'
 import Reconducao from '@/pages/Reconducao'
 import Indicadores from '@/pages/Indicadores'
+import PoliticasAfirmativas from '@/pages/PoliticasAfirmativas'
 import Usuarios from '@/pages/Usuarios'
 import PrintView from '@/pages/PrintView'
 import NotFound from '@/pages/NotFound'
@@ -71,6 +72,7 @@ const App = () => {
               <Route path="/lacunas" element={<Lacunas />} />
               <Route path="/reconducao" element={<Reconducao />} />
               <Route path="/indicadores" element={<Indicadores />} />
+              <Route path="/politicas-afirmativas" element={<PoliticasAfirmativas />} />
               <Route path="/docentes" element={<Docentes />} />
               <Route path="/discentes" element={<Discentes />} />
               <Route path="/egressos" element={<Egressos />} />

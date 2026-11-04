@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
 import {
+  Accessibility,
   LayoutDashboard,
   AlertTriangle,
   Award,
@@ -49,6 +50,7 @@ export const PAGE_ICONS: Record<string, React.ComponentType<{ className?: string
   '/lacunas': AlertTriangle,
   '/reconducao': Award,
   '/indicadores': BarChart3,
+  '/politicas-afirmativas': Accessibility,
   '/docentes': GraduationCap,
   '/discentes': Users,
   '/egressos': UserCheck,
@@ -128,6 +130,11 @@ const navSections: NavSection[] = [
         label: 'Indicadores',
         href: '/indicadores',
         icon: <BarChart3 className="h-5 w-5 shrink-0" />,
+      },
+      {
+        label: 'Políticas afirmativas',
+        href: '/politicas-afirmativas',
+        icon: <Accessibility className="h-5 w-5 shrink-0" />,
       },
     ],
   },
