@@ -9,6 +9,7 @@ import {
   obterAnoOrientacaoDefesa,
 } from '../reconducao/calculo'
 import { calcularStatusEfetivoOrientacao } from '../orientacoes/status'
+import { filtrarOrientacoesPrincipais } from '../orientacoes/principal'
 import { calcularResumoJdpPrograma } from './jdp'
 import { idsDocentesDaDisciplina } from '../disciplinas/docentes'
 import type { Docente, Orientacao, Disciplina, Publicacao, Patente } from '@/types/database'
@@ -364,8 +365,11 @@ export function calcularTodosIndicadores(
     return anoDentro(a, anoInicio, anoFim)
   })
 
+  // Coorientação não conta em ORI, ATD, SO, PSA e DP4A (P-12): todos usam só orientações principais.
+  const orientacoesPrincipais = filtrarOrientacoesPrincipais(dados.orientacoes, dados.discentes)
+
   // Orientações concluídas no quadriênio com orientador permanente (usa status efetivo derivado)
-  const oriConcluidasNoQuadrienio = dados.orientacoes.filter((o) => {
+  const oriConcluidasNoQuadrienio = orientacoesPrincipais.filter((o) => {
     const noPeriodo = orientacaoNoPeriodo(o, anoInicio, anoFim)
     const statusEfetivo =
       o.status_efetivo ||
@@ -658,7 +662,7 @@ export function calcularTodosIndicadores(
     }
 
     // Orientações ativas no ano (seja por status efetivo 'em_andamento'/ativo ou vigência temporal)
-    const ativasAno = dados.orientacoes.filter((ori) => {
+    const ativasAno = orientacoesPrincipais.filter((ori) => {
       const statusEfetivo =
         ori.status_efetivo ||
         calcularStatusEfetivoOrientacao({
@@ -749,7 +753,7 @@ export function calcularTodosIndicadores(
     }
 
     // Defesas M ou D concluídas exatamente no ano
-    const defesasAno = dados.orientacoes.filter((ori) => {
+    const defesasAno = orientacoesPrincipais.filter((ori) => {
       const a = obterAnoOrientacaoDefesa(ori)
       const statusEfetivo =
         ori.status_efetivo ||
@@ -840,7 +844,7 @@ export function calcularTodosIndicadores(
 
     // 1. Orientações ativas no ano
     const docsOri = new Set<number>()
-    for (const o of dados.orientacoes) {
+    for (const o of orientacoesPrincipais) {
       const stEfetivo =
         o.status_efetivo ||
         calcularStatusEfetivoOrientacao({

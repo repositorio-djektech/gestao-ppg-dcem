@@ -828,4 +828,88 @@ describe('Motor de Cálculo de Indicadores CAPES (Ficha Engenharias II)', () => 
         ?.valorCalculado,
     ).toBe(100)
   })
+
+  describe('P-12 — coorientação não conta nos cálculos (ORI, ATD, SO, PSA, DP4A)', () => {
+    const discentesFicticios = [{ id: 1, docente_orientador_id: 1 } as any]
+    const principalConcluida = {
+      id: 1,
+      discente_id: 1,
+      docente_id: 1,
+      flag_orientador_principal: true,
+      tipo: 'Mestrado',
+      status: 'concluido',
+      fim: '2025',
+      data_defesa: '2025-04-10',
+    } as any
+    const coorientacaoConcluida = {
+      ...principalConcluida,
+      id: 2,
+      docente_id: 2,
+      flag_orientador_principal: false,
+    } as any
+    const principalAtiva = {
+      id: 3,
+      discente_id: 1,
+      docente_id: 1,
+      flag_orientador_principal: true,
+      tipo: 'Doutorado',
+      status: 'ativo',
+      inicio: '2025-01-01',
+    } as any
+    const coorientacaoAtiva = {
+      ...principalAtiva,
+      id: 4,
+      docente_id: 2,
+      flag_orientador_principal: false,
+    } as any
+
+    function calcular(orientacoes: any[], discentes: any[]) {
+      return calcularTodosIndicadores({
+        ...dadosMinimos,
+        anoReferencia: 2025,
+        orientacoes,
+        discentes,
+      })
+    }
+
+    it('ORI: a dissertação conta uma vez, não duas (ficha: M+3D é total de dissertações e teses)', () => {
+      const rel = calcular([principalConcluida, coorientacaoConcluida], discentesFicticios)
+      // M=1; DP−JDP = 3 => 0,333 (com a coorientação contando seria 0,667)
+      expect(
+        rel.todosIndicadores.find((i) => i.codigo === 'ORI')?.anos?.[2025].valorCalculado,
+      ).toBe(0.333)
+    })
+
+    it('SO: só o orientador principal tem "orientação ativa"', () => {
+      const rel = calcular([principalAtiva, coorientacaoAtiva], discentesFicticios)
+      // 1 de 4 DP (inclui JDP) = 25% (com a coorientação seria 50%)
+      expect(rel.todosIndicadores.find((i) => i.codigo === 'SO')?.anos?.[2025].valorCalculado).toBe(
+        25,
+      )
+    })
+
+    it('PSA: o coorientador segue "sem titulação" no ano', () => {
+      const rel = calcular([principalConcluida, coorientacaoConcluida], discentesFicticios)
+      // 3 DP regulares; só o docente 1 tem defesa => 2/3 sem titulação = 66,67% (com co seria 33,33%)
+      expect(
+        rel.todosIndicadores.find((i) => i.codigo === 'PSA')?.anos?.[2025].valorCalculado,
+      ).toBe(66.67)
+    })
+
+    it('orientação manual (flag false) do próprio orientador do discente continua contando', () => {
+      const manual = { ...principalConcluida, flag_orientador_principal: false } as any
+      const rel = calcular([manual], discentesFicticios)
+      expect(
+        rel.todosIndicadores.find((i) => i.codigo === 'ORI')?.anos?.[2025].valorCalculado,
+      ).toBe(0.333)
+    })
+
+    it('sem discente/orientador conhecido nada some do cálculo (comportamento anterior)', () => {
+      const semFlag = { ...principalConcluida, flag_orientador_principal: undefined } as any
+      const rel = calcular([semFlag, coorientacaoConcluida], [])
+      expect(
+        rel.todosIndicadores.find((i) => i.codigo === 'ORI')?.anos?.[2025].valorCalculado,
+      ).toBe(0.667)
+    })
+  })
 })
