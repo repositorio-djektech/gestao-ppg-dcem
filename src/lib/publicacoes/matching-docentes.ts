@@ -57,76 +57,37 @@ export interface RelatorioCasamentoGeral {
   itens: SugestaoPublicacaoCasamento[]
 }
 
+/** Abaixo disso o motor padrão está apoiado só em sobrenome + inicial (0,75): não vincula. */
+const SCORE_MINIMO_NOME_POR_EXTENSO = 0.9
+
+const SEM_MATCH = { match: false, score: 0, motivo: '' }
+
 /**
- * Analisa uma lista de autores em formato de texto livre contra a lista de docentes,
- * detectando todas as variações e calculando o score tolerante.
+ * Casa um trecho de autores (texto livre) com um docente. H-06: **sobrenome com inicial NÃO vincula**.
+ * Em sobrenome comum ("Silva, R.", "Santos, M.") isso atribuía a publicação ao docente errado.
  *
- * Suporta:
- * - Ledjane Silva Barreto (exato)
- * - Barreto, Ledjane Silva (ordem trocada com vírgula)
- * - BARRETO, L. S. ou Barreto, L. (sobrenome + iniciais)
- * - VALERIO, Mario e G (iniciais compostas)
- * - Macedo, Z.S. (iniciais coladas com ponto)
- * - Acentos e normalização (Zélia vs ZELIA, Mário vs Mario)
- * - Homônimos parciais discriminados pelo score (Silva sozinho pontua baixo se não casar primeiro nome/inicial)
+ * Só casa quando o nome do docente aparece por extenso, o que exige o PRIMEIRO NOME completo
+ * (não basta inicial nem só sobrenomes). Aceita:
+ * - Ledjane Silva Barreto (exato) e Barreto, Ledjane Silva (ordem trocada com vírgula)
+ * - MACEDO, ZELIA S. / Zelia S. Macedo (primeiro nome + sobrenome; o resto pode ser inicial)
+ * - Acentos e caixa (Zélia vs ZELIA, Mário vs Mario)
+ * Não casa: Macedo, Z.S. | VALERIO, M. E. G. | Silva, R. | Santos Silva (sem primeiro nome).
+ * O texto é só uma sugestão: o vínculo definitivo é confirmado pelo docente ou pela coordenação.
  */
 export function casarAutoresComDocente(
   autorTrecho: string,
   docente: Pick<Docente, 'id' | 'nome'>,
 ): { match: boolean; score: number; motivo: string } {
-  // 1. Testa com o motor padrão de matching
-  const baseSim = calcularSimilaridadeNome(autorTrecho, docente.nome)
-  if (baseSim.match && baseSim.score >= 0.7) {
-    return baseSim
-  }
+  const base = calcularSimilaridadeNome(autorTrecho, docente.nome)
+  if (!base.match || base.score < SCORE_MINIMO_NOME_POR_EXTENSO) return SEM_MATCH
 
-  // 2. Extensão para casos com iniciais coladas, ex: "Macedo, Z.S." ou "Valerio, M. E. G."
-  const partesAutor = decomporNome(autorTrecho)
-  const partesDocente = decomporNome(docente.nome)
+  const autor = decomporNome(autorTrecho)
+  const alvo = decomporNome(docente.nome)
+  const primeiroNomePorExtenso =
+    alvo.primeiroNome.length > 1 && autor.tokens.includes(alvo.primeiroNome)
+  if (!primeiroNomePorExtenso) return SEM_MATCH
 
-  if (partesAutor.tokens.length === 0 || partesDocente.tokens.length === 0) {
-    return { match: false, score: 0, motivo: '' }
-  }
-
-  // Verifica se o último sobrenome coincide ou está contido
-  const mesmoSobrenome =
-    partesAutor.ultimoSobrenome.length > 2 &&
-    (partesAutor.ultimoSobrenome === partesDocente.ultimoSobrenome ||
-      partesDocente.tokens.includes(partesAutor.ultimoSobrenome))
-
-  if (mesmoSobrenome) {
-    // Compara inicial do primeiro nome
-    const inicialDoc = partesDocente.primeiroNome ? partesDocente.primeiroNome[0] : ''
-    const inicialAut = partesAutor.primeiroNome ? partesAutor.primeiroNome[0] : ''
-
-    // Se as iniciais batem
-    if (inicialDoc && inicialAut && inicialDoc === inicialAut) {
-      // Se autor tem tokens adicionais que batem com as outras iniciais do docente
-      // Ex: "Valerio, M. E. G." vs "Mario Ernesto Giroldo Valerio"
-      const iniciaisDocenteResto = partesDocente.tokens.map((t) => t[0]).filter(Boolean)
-      const iniciaisAutorResto = partesAutor.tokens.map((t) => t[0]).filter(Boolean)
-
-      const todasIniciaisAutorNoDoc = iniciaisAutorResto.every((i) =>
-        iniciaisDocenteResto.includes(i),
-      )
-
-      if (todasIniciaisAutorNoDoc && iniciaisAutorResto.length >= 2) {
-        return {
-          match: true,
-          score: 0.88,
-          motivo: `Sobrenome (${partesAutor.ultimoSobrenome}) e múltiplas iniciais compatíveis (${iniciaisAutorResto.join('.').toUpperCase()}.)`,
-        }
-      }
-
-      return {
-        match: true,
-        score: 0.75,
-        motivo: `Sobrenome (${partesAutor.ultimoSobrenome}) + inicial compatível (${inicialAut.toUpperCase()}.)`,
-      }
-    }
-  }
-
-  return baseSim
+  return base
 }
 
 /**

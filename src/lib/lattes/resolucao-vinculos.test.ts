@@ -105,4 +105,16 @@ describe('Etapa R3: Auto-resolução de vínculos por nome', () => {
     expect(match?.docenteId).toBe(2)
     expect(match?.grauConfianca).toBe(1.0)
   })
+
+  it('H-06: sobrenome + inicial no import é só sugestão (nunca pré-aceita nem alta confiança)', () => {
+    const sugestoes = sugerirDocentesAutoresParaTexto({
+      autoresTexto: 'BARRETO, L. S.; SANTOS, C. A.; SILVA, J.',
+      docentes,
+    })
+    expect(sugestoes.length).toBeGreaterThan(0)
+    for (const sug of sugestoes) {
+      expect(sug.altaConfianca, sug.nome).toBe(false)
+      expect(sug.aceita, sug.nome).toBe(false)
+    }
+  })
 })

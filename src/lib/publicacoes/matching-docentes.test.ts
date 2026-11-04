@@ -107,24 +107,44 @@ describe('Motor de Casamento Automático Autor→Docente (Etapa D1)', () => {
       expect(classificarGrauConfianca(res.score)).toBe('alta')
     })
 
-    it('reconhece iniciais abreviadas: "Macedo, Z.S." ou "MACEDO, ZELIA S."', () => {
+    it('aceita nome próprio completo + inicial do meio: "MACEDO, ZELIA S." e "Zelia S. Macedo"', () => {
       const doc = docentesExemplo.find((d) => d.id === 8)!
-      const res1 = casarAutoresComDocente('MACEDO, ZELIA S.', doc)
-      expect(res1.match).toBe(true)
-      expect(res1.score).toBeGreaterThanOrEqual(0.7)
-
-      const res2 = casarAutoresComDocente('Macedo, Z.S.', doc)
-      expect(res2.match).toBe(true)
-      expect(res2.score).toBeGreaterThanOrEqual(0.7)
+      for (const autor of ['MACEDO, ZELIA S.', 'Zelia S. Macedo']) {
+        const res = casarAutoresComDocente(autor, doc)
+        expect(res.match, autor).toBe(true)
+        expect(res.score).toBeGreaterThanOrEqual(0.85)
+      }
     })
 
-    it('reconhece sobrenome e múltiplas iniciais: "VALERIO, M. E. G." vs "Mario Ernesto Giroldo Valerio"', () => {
-      const doc = docentesExemplo.find((d) => d.id === 14)!
-      const res = casarAutoresComDocente('VALERIO, M. E. G.', doc)
+    // H-06: sobrenome + iniciais NÃO vincula (gera vínculo errado em sobrenome comum).
+    it('H-06: NÃO casa só por sobrenome + iniciais ("Macedo, Z.S.", "VALERIO, M. E. G.", "Griza, S.")', () => {
+      const casos: Array<[number, string]> = [
+        [8, 'Macedo, Z.S.'],
+        [8, 'MACEDO, Z. S.'],
+        [14, 'VALERIO, M. E. G.'],
+        [14, 'Valerio, M.'],
+        [18, 'Griza, S.'],
+        [4, 'Barreto, L. S.'],
+      ]
+      for (const [id, autor] of casos) {
+        const doc = docentesExemplo.find((d) => d.id === id)!
+        const res = casarAutoresComDocente(autor, doc)
+        expect(res.match, `"${autor}" não deveria casar com ${doc.nome}`).toBe(false)
+        expect(res.score).toBe(0)
+      }
+    })
 
-      expect(res.match).toBe(true)
-      expect(res.score).toBeGreaterThanOrEqual(0.75)
-      expect(classificarGrauConfianca(res.score)).toBe('media')
+    it('H-06: sobrenome comum isolado ou com inicial não casa com docente de mesmo sobrenome', () => {
+      const ronaldo = docentesExemplo.find((d) => d.id === 7)! // Ronaldo Santos da Silva
+      for (const autor of ['Silva, R.', 'SILVA, J.', 'Santos, R.', 'Silva', 'SILVA, ROBERTO']) {
+        expect(casarAutoresComDocente(autor, ronaldo).match, autor).toBe(false)
+      }
+    })
+
+    it('H-06: dois sobrenomes sem o primeiro nome também não bastam ("Santos Silva")', () => {
+      const ronaldo = docentesExemplo.find((d) => d.id === 7)!
+      expect(casarAutoresComDocente('Santos Silva', ronaldo).match).toBe(false)
+      expect(casarAutoresComDocente('SILVA, SANTOS', ronaldo).match).toBe(false)
     })
 
     it('reconhece "VALERIO, Mario e G" com acentos e minúsculas', () => {
@@ -186,6 +206,23 @@ describe('Motor de Casamento Automático Autor→Docente (Etapa D1)', () => {
       expect(griza.justificativa).toContain('Sandro Griza')
       expect(griza.grauConfianca).toBe('alta')
       expect(griza.selecionadoPadrao).toBe(true)
+    })
+
+    it('H-06: publicação só com autores abreviados (sobrenome + iniciais) não gera nenhuma sugestão', () => {
+      const pub: Publicacao = {
+        id: 90,
+        titulo: 'Artigo ficticio com autores abreviados',
+        autores: 'MACEDO, Z. S.; GRIZA, S.; VALERIO, M. E. G.; SILVA, J.; SANTOS, R.',
+        periodico: 'Revista Ficticia',
+        ano: 2025,
+        doi: '',
+        justificativa: '',
+        link_comprovacao: '',
+        observacoes: '',
+      }
+      const res = sugerirCasamentosParaPublicacao({ publicacao: pub, docentes: docentesExemplo })
+      expect(res.sugestoes).toHaveLength(0)
+      expect(res.totalAltaConfianca).toBe(0)
     })
 
     it('respeita docentes já vinculados (não vem pré-selecionado para reinserção)', () => {
