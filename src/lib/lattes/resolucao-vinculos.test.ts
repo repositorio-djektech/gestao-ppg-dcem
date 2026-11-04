@@ -20,8 +20,8 @@ describe('Etapa R3: Auto-resolução de vínculos por nome', () => {
   ]
 
   const discentes = [
-    { id: 10, nome: 'Ana Paula Costa', status: 'ativo' as const },
-    { id: 11, nome: 'Lucas Ferreira Lima', status: 'ativo' as const },
+    { id: 10, nome: 'Ana Paula Costa', status: 'em_andamento' as const },
+    { id: 11, nome: 'Lucas Ferreira Lima', status: 'em_andamento' as const },
   ]
 
   const egressos = [{ id: 20, nome: 'Juliana Mendes Silva' }]

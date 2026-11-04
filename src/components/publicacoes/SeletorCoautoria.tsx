@@ -22,6 +22,7 @@ import {
 import { toast } from 'sonner'
 import type { PublicacaoCoautorPrograma, Discente, Egresso } from '@/types/database'
 import { coautoresProgramaService } from '@/services/coautores-programa'
+import { rotuloStatusDiscente, statusEfetivoDiscente } from '@/lib/discentes/status'
 import {
   sugerirCoautoresPublicacao,
   type AutorCandidatoPrograma,
@@ -350,7 +351,7 @@ export function SeletorCoautoria({
                 </div>
                 {discentes.map((d) => (
                   <SelectItem key={`d-${d.id}`} value={`discente:${d.id}`} className="text-xs">
-                    {d.nome} (Discente - {d.status})
+                    {d.nome} (Discente - {rotuloStatusDiscente(statusEfetivoDiscente(d))})
                   </SelectItem>
                 ))}
                 {egressos.length > 0 && (

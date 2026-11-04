@@ -42,6 +42,8 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { obterRelatorioLacunas } from '@/services/lacunas'
+import type { ObterRelatorioLacunasOpcoes } from '@/services/lacunas'
+import { useAuth } from '@/hooks/use-auth'
 import { toTitleCase } from '@/lib/titleCase'
 import { imprimirRelatorioLacunasViaIframe } from '@/lib/lacunas/imprimirLacunasIframe'
 import { supabase } from '@/lib/supabase/client'
@@ -244,7 +246,9 @@ const STORAGE_KEY_HISTORICO_LACUNAS = 'ppg_dcem_historico_lacunas_v1'
 
 interface LacunasProps {
   /** Injeção de loader para testes unitários */
-  carregarDadosFn?: () => ReturnType<typeof obterRelatorioLacunas>
+  carregarDadosFn?: (
+    opcoes?: ObterRelatorioLacunasOpcoes,
+  ) => ReturnType<typeof obterRelatorioLacunas>
   filtroGrupoInicial?: FiltroGrupo
   filtroSeveridadeInicial?: FiltroSeveridade
   filtroRegraInicial?: string
@@ -279,7 +283,7 @@ const camposDiscente: FieldDef[] = [
     type: 'select',
     required: true,
     options: [
-      { value: 'ativo', label: 'Ativo' },
+      { value: 'em_andamento', label: 'Em andamento' },
       { value: 'titulado', label: 'Titulado' },
       { value: 'desligado', label: 'Desligado' },
     ],
@@ -308,6 +312,8 @@ export default function Lacunas({
   historicoInicial,
 }: LacunasProps = {}) {
   const navigate = useNavigate()
+  const { role, profile, loading: carregandoAuth } = useAuth()
+  const docenteIdLogado = profile?.docente_id
   const [relatorio, setRelatorio] = useState<RelatorioLacunasResposta | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
@@ -371,11 +377,16 @@ export default function Lacunas({
   const [campoFocoDiscente, setCampoFocoDiscente] = useState<string | undefined>(undefined)
 
   const carregarRelatorio = useCallback(async () => {
+    // Só carrega quando o papel é conhecido: evita montar o relatório completo antes de saber que o
+    // usuário é docente (visão restrita, D-25).
+    if (carregandoAuth || !role) return
     setCarregando(true)
     setErro(null)
     try {
       const loader = carregarDadosFn ?? obterRelatorioLacunas
-      const res = await loader()
+      const opcoes: ObterRelatorioLacunasOpcoes =
+        role === 'docente' ? { restringirAoDocenteId: docenteIdLogado ?? null } : {}
+      const res = await loader(opcoes)
       if (res.sucesso && res.dados) {
         setRelatorio(res.dados)
         setOrigem(res.origem ?? null)
@@ -387,7 +398,7 @@ export default function Lacunas({
     } finally {
       setCarregando(false)
     }
-  }, [carregarDadosFn])
+  }, [carregarDadosFn, carregandoAuth, role, docenteIdLogado])
 
   useEffect(() => {
     carregarRelatorio()
@@ -476,7 +487,7 @@ export default function Lacunas({
           nome: discenteData.nome || '',
           cpf: discenteData.cpf || '',
           data_ingresso: discenteData.data_ingresso || '',
-          status: discenteData.status || 'ativo',
+          status: discenteData.status || 'em_andamento',
           link_lattes: discenteData.link_lattes || '',
           link_comprovacao: discenteData.link_comprovacao || '',
           observacoes: discenteData.observacoes || '',

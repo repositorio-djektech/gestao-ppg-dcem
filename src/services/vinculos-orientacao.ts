@@ -5,7 +5,6 @@ import { calcularStatusEfetivoOrientacao } from '@/lib/orientacoes/status'
 /**
  * Vínculo docente–discente (D-11):
  * - H-01: docente se define orientador de discente sem orientador.
- * - H-02: docente se inclui como coorientador (orientação não principal) de discente já orientado.
  * - H-03: só a coordenação altera o orientador principal (formulário do discente + RLS; ver
  *   `lib/discentes/orientador-form.ts` e `podeAlterarOrientadorPrincipal`).
  *
@@ -15,8 +14,6 @@ import { calcularStatusEfetivoOrientacao } from '@/lib/orientacoes/status'
 export type MotivoRecusaVinculo =
   | 'ja_possui_orientador'
   | 'sem_orientador'
-  | 'ja_e_orientador_principal'
-  | 'ja_vinculado'
   | 'discente_nao_encontrado'
   | 'erro'
 
@@ -110,60 +107,6 @@ async function garantirOrientacaoPrincipal(
     observacoes: 'Orientador principal (assumiu a orientação pelo sistema)',
   })
   return error ? error.message || 'Erro ao registrar a orientação.' : null
-}
-
-/**
- * H-02. Cria uma orientação NÃO principal (`flag_orientador_principal = false`), o mesmo formato
- * que o import Lattes grava para coorientador. Não altera `discentes`.
- */
-export async function incluirComoCoorientador(
-  params: { discenteId: number; docenteId: number },
-  client: Cliente = supabase,
-): Promise<ResultadoVinculo> {
-  const { data: discente, error: errDisc } = await (client as any)
-    .from('discentes')
-    .select('id, docente_orientador_id, tipo_curso, data_ingresso')
-    .eq('id', params.discenteId)
-    .maybeSingle()
-
-  if (errDisc) {
-    return { ok: false, motivo: 'erro', mensagem: errDisc.message || 'Erro ao ler o discente.' }
-  }
-  if (!discente) return { ok: false, motivo: 'discente_nao_encontrado' }
-  if (discenteSemOrientador(discente)) return { ok: false, motivo: 'sem_orientador' }
-  if (Number(discente.docente_orientador_id) === params.docenteId) {
-    return { ok: false, motivo: 'ja_e_orientador_principal' }
-  }
-
-  const { data: existentes, error: errExist } = await (client as any)
-    .from('orientacoes')
-    .select('id')
-    .eq('docente_id', params.docenteId)
-    .eq('discente_id', params.discenteId)
-  if (errExist) {
-    return { ok: false, motivo: 'erro', mensagem: errExist.message || 'Erro ao ler orientações.' }
-  }
-  if (existentes && existentes.length > 0) return { ok: false, motivo: 'ja_vinculado' }
-
-  const { error: errIns } = await (client as any).from('orientacoes').insert({
-    docente_id: params.docenteId,
-    discente_id: params.discenteId,
-    tipo: discente.tipo_curso || 'Mestrado',
-    inicio: discente.data_ingresso || '',
-    fim: '',
-    status: 'ativo',
-    flag_orientador_principal: false,
-    link_comprovacao: '',
-    observacoes: 'Coorientador (incluído pelo próprio docente)',
-  })
-  if (errIns) {
-    return {
-      ok: false,
-      motivo: 'erro',
-      mensagem: errIns.message || 'Erro ao registrar coorientação.',
-    }
-  }
-  return { ok: true }
 }
 
 function hojeIso(): string {

@@ -25,6 +25,11 @@ import { supabase } from '@/lib/supabase/client'
 import type { Discente, Docente, ProjetoPesquisa, Orientacao } from '@/types/database'
 import { normalizarNomePessoa } from '@/lib/normalizacao'
 import { formatarCpf } from '@/lib/utils'
+import {
+  statusEfetivoDiscente,
+  rotuloStatusDiscente,
+  conclusaoParaExibicao,
+} from '@/lib/discentes/status'
 import { DocenteNome } from '@/components/docentes/DocenteNome'
 
 export type DiscenteTabKey = 'geral' | 'orientacoes' | 'projeto'
@@ -140,7 +145,7 @@ export function VisualizarDiscenteDialog({
   const totalRegistros = orientacoes.length + projetosVinculados.length
 
   const statusColors: Record<string, string> = {
-    ativo: 'bg-emerald-50 text-emerald-700 border-emerald-300',
+    em_andamento: 'bg-emerald-50 text-emerald-700 border-emerald-300',
     titulado: 'bg-blue-50 text-blue-700 border-blue-300',
     desligado: 'bg-red-50 text-red-700 border-red-300',
   }
@@ -171,9 +176,9 @@ export function VisualizarDiscenteDialog({
               <span className="text-slate-500 font-medium block">Status no Programa:</span>
               <Badge
                 variant="outline"
-                className={`capitalize mt-0.5 w-fit ${statusColors[discente.status] ?? ''}`}
+                className={`mt-0.5 w-fit ${statusColors[statusEfetivoDiscente(discente)] ?? ''}`}
               >
-                {discente.status}
+                {rotuloStatusDiscente(statusEfetivoDiscente(discente))}
               </Badge>
             </div>
             <div className="flex flex-col gap-0.5 break-words">
@@ -186,7 +191,7 @@ export function VisualizarDiscenteDialog({
             </div>
             <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Ano de Conclusão / Defesa:</span>
-              <span className="text-slate-800 font-semibold">{discente.ano_conclusao || '—'}</span>
+              <span className="text-slate-800 font-semibold">{conclusaoParaExibicao(discente) || '—'}</span>
             </div>
           </div>
         </div>

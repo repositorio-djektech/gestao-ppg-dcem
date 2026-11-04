@@ -61,6 +61,8 @@ import {
 } from 'lucide-react'
 import { obterAvaliacaoReconducao } from '@/services/reconducao'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useAuth } from '@/hooks/use-auth'
+import { restringirRelatorioReconducaoAoDocente } from '@/lib/reconducao/escopo-docente'
 import { imprimirRelatorioReconducaoViaIframe } from '@/lib/reconducao/imprimirReconducaoIframe'
 import type {
   AvaliacaoDocenteReconducao,
@@ -87,7 +89,16 @@ const ORDEM_VEREDITO: Record<VereditoReconducao, number> = {
 
 export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
   const isMobile = useIsMobile()
-  const [relatorio, setRelatorio] = useState<RelatorioReconducaoResposta | null>(null)
+  const { role, profile } = useAuth()
+  const [relatorioBruto, setRelatorio] = useState<RelatorioReconducaoResposta | null>(null)
+  // D-25: o docente vê os cards gerais, mas só o próprio nome na lista, na tela e na impressão
+  const relatorio = useMemo(
+    () =>
+      relatorioBruto
+        ? restringirRelatorioReconducaoAoDocente(relatorioBruto, role, profile?.docente_id)
+        : null,
+    [relatorioBruto, role, profile?.docente_id],
+  )
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [origem, setOrigem] = useState<'edge_function' | 'local_fallback' | null>(null)

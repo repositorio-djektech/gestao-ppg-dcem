@@ -11,44 +11,34 @@ function renderizar(
   },
 ) {
   const onAssumir = vi.fn()
-  const onCoorientar = vi.fn()
   render(
     <AcoesVinculoOrientacao
       role="docente"
       docenteId={DOCENTE}
       onAssumir={onAssumir}
-      onCoorientar={onCoorientar}
       {...props}
     />,
   )
-  return { onAssumir, onCoorientar }
+  return { onAssumir }
 }
 
-describe('H-01/H-02 — ações de vínculo docente–discente na lista de discentes', () => {
+describe('H-01 — ação de vínculo do docente na lista de discentes (sem autovinculação como coorientador)', () => {
   it('discente sem orientador: mostra "Assumir orientação" e chama o callback', () => {
-    const { onAssumir, onCoorientar } = renderizar({
+    const { onAssumir } = renderizar({
       discente: { id: 1, docente_orientador_id: null },
     })
     fireEvent.click(screen.getByRole('button', { name: /assumir orientação/i }))
     expect(onAssumir).toHaveBeenCalledTimes(1)
-    expect(onCoorientar).not.toHaveBeenCalled()
     expect(screen.queryByRole('button', { name: /coorientador/i })).toBeNull()
   })
 
-  it('discente com outro orientador: mostra "Incluir-me como coorientador" e NÃO oferece assumir', () => {
-    const { onCoorientar } = renderizar({ discente: { id: 2, docente_orientador_id: OUTRO } })
-    fireEvent.click(screen.getByRole('button', { name: /incluir-me como coorientador/i }))
-    expect(onCoorientar).toHaveBeenCalledTimes(1)
-    expect(screen.queryByRole('button', { name: /assumir orientação/i })).toBeNull()
+  it('discente com outro orientador: nenhuma ação (o docente NÃO se inclui como coorientador; a coordenação vincula)', () => {
+    renderizar({ discente: { id: 2, docente_orientador_id: OUTRO } })
+    expect(screen.queryByRole('button')).toBeNull()
   })
 
   it('já é orientador principal: nenhuma ação de vínculo', () => {
     renderizar({ discente: { id: 3, docente_orientador_id: DOCENTE } })
-    expect(screen.queryByRole('button')).toBeNull()
-  })
-
-  it('já é coorientador (jaVinculado): não oferece incluir de novo', () => {
-    renderizar({ discente: { id: 4, docente_orientador_id: OUTRO }, jaVinculado: true })
     expect(screen.queryByRole('button')).toBeNull()
   })
 
@@ -60,7 +50,6 @@ describe('H-01/H-02 — ações de vínculo docente–discente na lista de disce
           docenteId={DOCENTE}
           discente={{ id: 5, docente_orientador_id: null }}
           onAssumir={vi.fn()}
-          onCoorientar={vi.fn()}
         />,
       )
       expect(screen.queryByRole('button')).toBeNull()

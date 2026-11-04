@@ -1,5 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@/hooks/use-auth'
+import { podeEditarRegistro, podeVerDadosPessoaisDocente } from '@/services/permissoes'
 import {
   Dialog,
   DialogContent,
@@ -123,6 +125,8 @@ export function VisualizarDocenteDialog({
   onAbrirImpressao,
 }: VisualizarDocenteDialogProps) {
   const navigate = useNavigate()
+  const { role, profile } = useAuth()
+  const docenteIdLogado = profile?.docente_id
   const [loading, setLoading] = useState(false)
   const [abaAtiva, setAbaAtiva] = useState<TabKey>(abaInicial)
   const [editandoIdentificacao, setEditandoIdentificacao] = useState(false)
@@ -564,6 +568,9 @@ export function VisualizarDocenteDialog({
   const renderAbaGeral = () => {
     const doc = dados.docente || docente
     if (!doc) return null
+    // D-25: o docente só edita a identificação e só vê CPF/SIAPE do próprio registro
+    const podeEditarIdentificacao = podeEditarRegistro(role, docenteIdLogado, 'docentes', doc)
+    const verDadosPessoais = podeVerDadosPessoaisDocente(role, docenteIdLogado, doc)
 
     return (
       <div className="space-y-4 p-4 overflow-y-auto max-h-full">
@@ -574,16 +581,18 @@ export function VisualizarDocenteDialog({
               Identificação e Índices Bibliométricos
             </h3>
             {!editandoIdentificacao ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={iniciarEdicaoIdentificacao}
-                className="h-7 px-2.5 text-xs gap-1.5 bg-white hover:bg-slate-50 text-primary border-primary/30 hover:border-primary"
-              >
-                <Pencil className="h-3.5 w-3.5 text-primary" />
-                <span>Editar Identificação</span>
-              </Button>
+              podeEditarIdentificacao && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={iniciarEdicaoIdentificacao}
+                  className="h-7 px-2.5 text-xs gap-1.5 bg-white hover:bg-slate-50 text-primary border-primary/30 hover:border-primary"
+                >
+                  <Pencil className="h-3.5 w-3.5 text-primary" />
+                  <span>Editar Identificação</span>
+                </Button>
+              )
             ) : (
               <div className="flex items-center gap-2">
                 <Button
@@ -1127,20 +1136,26 @@ export function VisualizarDocenteDialog({
                   <span className="text-slate-400">—</span>
                 )}
               </div>
-              <div className="flex flex-col gap-0.5 break-words">
-                <span className="text-slate-500 dark:text-neutral-400 font-medium block">CPF:</span>
-                <span className="text-slate-800 dark:text-neutral-200 font-mono">
-                  {textoSeguro(doc.cpf)}
-                </span>
-              </div>
-              <div className="flex flex-col gap-0.5 break-words">
-                <span className="text-slate-500 dark:text-neutral-400 font-medium block">
-                  SIAPE:
-                </span>
-                <span className="text-slate-800 dark:text-neutral-200 font-mono">
-                  {textoSeguro(doc.siape)}
-                </span>
-              </div>
+              {verDadosPessoais && (
+                <>
+                  <div className="flex flex-col gap-0.5 break-words">
+                    <span className="text-slate-500 dark:text-neutral-400 font-medium block">
+                      CPF:
+                    </span>
+                    <span className="text-slate-800 dark:text-neutral-200 font-mono">
+                      {textoSeguro(doc.cpf)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-0.5 break-words">
+                    <span className="text-slate-500 dark:text-neutral-400 font-medium block">
+                      SIAPE:
+                    </span>
+                    <span className="text-slate-800 dark:text-neutral-200 font-mono">
+                      {textoSeguro(doc.siape)}
+                    </span>
+                  </div>
+                </>
+              )}
               <div className="md:col-span-2 flex flex-col gap-0.5 break-words">
                 <span className="text-slate-500 dark:text-neutral-400 font-medium block">
                   Licença Saúde / Parental:

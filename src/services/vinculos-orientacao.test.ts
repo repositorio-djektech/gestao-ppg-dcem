@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { criarClienteFake } from '@/test/fake-supabase'
-import {
-  assumirOrientacao,
-  incluirComoCoorientador,
-  sincronizarTrocaDeOrientador,
-} from './vinculos-orientacao'
+import { assumirOrientacao, sincronizarTrocaDeOrientador } from './vinculos-orientacao'
 
 // Dados 100% fictícios.
 const DOCENTE_A = { id: 10, nome: 'Docente Alfa Teste' }
@@ -149,68 +145,6 @@ describe('P-14 — assumir a orientação também registra a orientação PRINCI
     expect(res).toEqual({ ok: false, motivo: 'erro', mensagem: 'falha simulada' })
     expect(tabelas.discentes[0].docente_orientador_id).toBeNull()
     expect(tabelas.discentes[0].orientador).toBe('Texto livre anterior')
-  })
-})
-
-describe('H-02 — incluirComoCoorientador (docente se inclui como coorientador de discente já orientado)', () => {
-  it('cria uma orientação NÃO principal do docente, sem tocar no orientador principal do discente', async () => {
-    const { client, tabelas, chamadas } = criarClienteFake({
-      discentes: [discente({ docente_orientador_id: DOCENTE_B.id, orientador: DOCENTE_B.nome })],
-      orientacoes: [],
-    })
-
-    const res = await incluirComoCoorientador({ discenteId: 1, docenteId: DOCENTE_A.id }, client)
-
-    expect(res).toEqual({ ok: true })
-    expect(tabelas.orientacoes).toHaveLength(1)
-    expect(tabelas.orientacoes[0]).toMatchObject({
-      docente_id: DOCENTE_A.id,
-      discente_id: 1,
-      flag_orientador_principal: false,
-      tipo: 'Mestrado',
-      status: 'ativo',
-    })
-    // Orientador principal intacto e nenhum UPDATE em discentes.
-    expect(tabelas.discentes[0].docente_orientador_id).toBe(DOCENTE_B.id)
-    expect(chamadas.some((c) => c.tabela === 'discentes' && c.op === 'update')).toBe(false)
-  })
-
-  it('recusa se o discente não tem orientador (nesse caso o docente deve assumir a orientação)', async () => {
-    const { client, tabelas } = criarClienteFake({ discentes: [discente()], orientacoes: [] })
-    const res = await incluirComoCoorientador({ discenteId: 1, docenteId: DOCENTE_A.id }, client)
-    expect(res).toEqual({ ok: false, motivo: 'sem_orientador' })
-    expect(tabelas.orientacoes).toHaveLength(0)
-  })
-
-  it('recusa se o docente já é o orientador principal', async () => {
-    const { client, tabelas } = criarClienteFake({
-      discentes: [discente({ docente_orientador_id: DOCENTE_A.id })],
-      orientacoes: [],
-    })
-    const res = await incluirComoCoorientador({ discenteId: 1, docenteId: DOCENTE_A.id }, client)
-    expect(res).toEqual({ ok: false, motivo: 'ja_e_orientador_principal' })
-    expect(tabelas.orientacoes).toHaveLength(0)
-  })
-
-  it('é idempotente: não duplica quando o docente já tem orientação com o discente', async () => {
-    const { client, tabelas } = criarClienteFake({
-      discentes: [discente({ docente_orientador_id: DOCENTE_B.id })],
-      orientacoes: [
-        { id: 7, docente_id: DOCENTE_A.id, discente_id: 1, flag_orientador_principal: false },
-      ],
-    })
-    const res = await incluirComoCoorientador({ discenteId: 1, docenteId: DOCENTE_A.id }, client)
-    expect(res).toEqual({ ok: false, motivo: 'ja_vinculado' })
-    expect(tabelas.orientacoes).toHaveLength(1)
-  })
-
-  it('usa a data de ingresso do discente como início, para não gerar lacuna de período à toa', async () => {
-    const { client, tabelas } = criarClienteFake({
-      discentes: [discente({ docente_orientador_id: DOCENTE_B.id })],
-      orientacoes: [],
-    })
-    await incluirComoCoorientador({ discenteId: 1, docenteId: DOCENTE_A.id }, client)
-    expect(tabelas.orientacoes[0].inicio).toBe('2025-03-01')
   })
 })
 

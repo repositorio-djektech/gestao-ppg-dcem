@@ -35,34 +35,38 @@ import { normalizarNomePessoa } from '@/lib/normalizacao'
 import { DocenteNome } from '@/components/docentes/DocenteNome'
 import { VisualizarDiscenteDialog } from '@/components/discentes/VisualizarDiscenteDialog'
 import { AcoesVinculoOrientacao } from '@/components/discentes/AcoesVinculoOrientacao'
-import {
-  assumirOrientacao,
-  incluirComoCoorientador,
-  sincronizarTrocaDeOrientador,
-} from '@/services/vinculos-orientacao'
+import { assumirOrientacao, sincronizarTrocaDeOrientador } from '@/services/vinculos-orientacao'
 import type { ResultadoVinculo } from '@/services/vinculos-orientacao'
 import { registrarLog } from '@/services/logs'
+import { discentesVisiveisAoDocente } from '@/lib/discentes/visibilidade'
 import { opcoesDeOrientador, aplicarOrientadorSelecionado } from '@/lib/discentes/orientador-form'
+import {
+  statusEfetivoDiscente,
+  rotuloStatusDiscente,
+  aplicarDataConclusaoNoForm,
+  prepararDiscenteParaGravar,
+  conclusaoParaExibicao,
+} from '@/lib/discentes/status'
 import { readLattesFiles } from '@/lib/lattes/readFiles'
 
 const emptyForm = {
   nome: '',
   cpf: '',
   data_ingresso: '',
-  status: 'ativo',
+  status: 'em_andamento',
   link_lattes: '',
   link_comprovacao: '',
   observacoes: '',
   orientador: '',
   ano_conclusao: '',
+  data_conclusao: '',
   tipo_curso: 'Mestrado',
   projeto_id: '',
   docente_orientador_id: '',
 }
 
 const statusColors: Record<string, string> = {
-  ativo: 'bg-emerald-50 text-emerald-700',
-  concluido: 'bg-indigo-50 text-indigo-700',
+  em_andamento: 'bg-emerald-50 text-emerald-700',
   titulado: 'bg-blue-50 text-blue-700',
   desligado: 'bg-red-50 text-red-700',
 }
@@ -82,10 +86,6 @@ export default function Discentes() {
   const [isDragging, setIsDragging] = useState(false)
   const [arquivoSelecionado, setArquivoSelecionado] = useState<File | null>(null)
   const [projetosDiscentesMap, setProjetosDiscentesMap] = useState<Map<number, number[]>>(new Map())
-  // H-01/H-02: discentes com os quais o docente logado já tem orientação (evita duplicar coorientação)
-  const [discentesVinculadosAoDocente, setDiscentesVinculadosAoDocente] = useState<Set<number>>(
-    new Set(),
-  )
   const [vinculandoId, setVinculandoId] = useState<number | null>(null)
   // Muda a identidade do service para o CrudPage recarregar a lista depois de um vínculo
   const [versaoLista, setVersaoLista] = useState(0)
@@ -115,27 +115,6 @@ export default function Discentes() {
     }
   }, [])
 
-  const carregarVinculosDoDocente = useCallback(async () => {
-    if (!isDocente || !docenteIdLogado) return
-    try {
-      const { data, error } = await supabase
-        .from('orientacoes')
-        .select('discente_id')
-        .eq('docente_id', docenteIdLogado)
-      if (!error && data) {
-        setDiscentesVinculadosAoDocente(
-          new Set(data.map((r) => r.discente_id).filter((id): id is number => id != null)),
-        )
-      }
-    } catch (err) {
-      console.error('Falha ao carregar orientações do docente:', err)
-    }
-  }, [isDocente, docenteIdLogado])
-
-  useEffect(() => {
-    carregarVinculosDoDocente()
-  }, [carregarVinculosDoDocente])
-
   const concluirVinculo = async (
     discente: Discente,
     resultado: ResultadoVinculo,
@@ -160,7 +139,6 @@ export default function Discentes() {
           : mensagens[resultado.motivo] || 'Não foi possível concluir o vínculo.',
       )
     }
-    await carregarVinculosDoDocente()
     setVersaoLista((v) => v + 1)
   }
 
@@ -185,24 +163,6 @@ export default function Discentes() {
           vinculo: 'assumiu_orientacao',
           docente_id: docenteIdLogado,
         },
-      })
-    } finally {
-      setVinculandoId(null)
-    }
-  }
-
-  const handleIncluirComoCoorientador = async (discente: Discente) => {
-    if (!docenteIdLogado) return
-    setVinculandoId(discente.id)
-    try {
-      const resultado = await incluirComoCoorientador({
-        discenteId: discente.id,
-        docenteId: docenteIdLogado,
-      })
-      await concluirVinculo(discente, resultado, 'Você foi incluído como coorientador.', {
-        entidade: 'orientacoes',
-        acao: 'criar',
-        detalhes: { nome: discente.nome, vinculo: 'coorientador', docente_id: docenteIdLogado },
       })
     } finally {
       setVinculandoId(null)
@@ -458,11 +418,11 @@ export default function Discentes() {
         key: 'cpf',
         label: 'CPF',
         desktopOnly: true,
-        className: 'text-center',
+        className: 'text-center whitespace-nowrap',
         headerClassName: 'text-left font-semibold text-slate-700',
         render: (d) =>
           d.cpf ? (
-            <span className="font-mono text-xs">{formatarCpf(d.cpf)}</span>
+            <span className="font-mono text-xs whitespace-nowrap">{formatarCpf(d.cpf)}</span>
           ) : (
             <span className="text-slate-400">—</span>
           ),
@@ -486,16 +446,16 @@ export default function Discentes() {
         mobileSupport: true,
         className: 'text-center',
         headerClassName: 'text-left font-semibold text-slate-700',
-        render: (d) => (
-          <div className="flex justify-start md:justify-center items-center">
-            <Badge
-              variant="secondary"
-              className={`border-0 capitalize ${statusColors[d.status] ?? ''}`}
-            >
-              {d.status}
-            </Badge>
-          </div>
-        ),
+        render: (d) => {
+          const efetivo = statusEfetivoDiscente(d)
+          return (
+            <div className="flex justify-start md:justify-center items-center">
+              <Badge variant="secondary" className={`border-0 ${statusColors[efetivo] ?? ''}`}>
+                {rotuloStatusDiscente(efetivo)}
+              </Badge>
+            </div>
+          )
+        },
       },
       {
         key: 'orientador' as any,
@@ -545,8 +505,13 @@ export default function Discentes() {
         className: 'text-center',
         headerClassName: 'text-left font-semibold text-slate-700',
         render: (d) => {
-          if (d.ano_conclusao && String(d.ano_conclusao).trim()) {
-            return <span className="font-semibold text-slate-800 text-xs">{d.ano_conclusao}</span>
+          const conclusao = conclusaoParaExibicao(d)
+          if (conclusao) {
+            return (
+              <span className="font-semibold text-slate-800 text-xs whitespace-nowrap">
+                {conclusao}
+              </span>
+            )
           }
           return <span className="text-slate-400 text-xs">—</span>
         },
@@ -602,18 +567,20 @@ export default function Discentes() {
         type: 'select',
         required: true,
         options: [
-          { value: 'ativo', label: 'Ativo' },
-          { value: 'concluido', label: 'Concluído' },
+          { value: 'em_andamento', label: 'Em andamento' },
           { value: 'titulado', label: 'Titulado' },
           { value: 'desligado', label: 'Desligado' },
         ],
+        helperText:
+          'Definido pela data de conclusão: sem data ou futura = Em andamento; passada = Titulado. Desligado é marcado manualmente.',
       },
       {
-        key: 'ano_conclusao',
-        label: 'Ano de Conclusão',
-        type: 'year',
-        placeholder: 'Selecione o ano de conclusão...',
-        helperText: 'Ano de defesa ou previsão de conclusão',
+        key: 'data_conclusao',
+        label: 'Data de Conclusão',
+        type: 'date',
+        helperText: 'Data de defesa ou prevista. Atualiza o status automaticamente.',
+        onValueChangeWithFormData: (val, currentData) =>
+          aplicarDataConclusaoNoForm(currentData, val),
       },
       {
         key: 'tipo_curso',
@@ -674,6 +641,22 @@ export default function Discentes() {
       ...discentesService,
       // Muda a identidade do service quando o vínculo muda, para o CrudPage recarregar a lista
       versaoLista,
+      // D-25: o docente só vê os discentes que orienta, coorienta ou que estão sem orientador
+      list: async () => {
+        const todos = await discentesService.list()
+        if (!isDocente) return todos
+        let idsCoorientados: number[] = []
+        if (docenteIdLogado) {
+          const { data } = await supabase
+            .from('orientacoes')
+            .select('discente_id')
+            .eq('docente_id', docenteIdLogado)
+          idsCoorientados = (data ?? [])
+            .map((r) => r.discente_id)
+            .filter((id): id is number => id != null)
+        }
+        return discentesVisiveisAoDocente(todos, docenteIdLogado, idsCoorientados)
+      },
       create: async (item: Partial<Discente>) => {
         const criado = await discentesService.create(item)
         if (criado?.id && item.projeto_id) {
@@ -745,7 +728,7 @@ export default function Discentes() {
         return atualizado
       },
     }
-  }, [carregarProjetosDiscentes, versaoLista])
+  }, [carregarProjetosDiscentes, versaoLista, isDocente, docenteIdLogado])
 
   return (
     <>
@@ -784,6 +767,7 @@ export default function Discentes() {
           )
         }}
         tableName="discentes"
+        transformSubmitData={(data) => prepararDiscenteParaGravar(data)}
         renderCustomActions={(item, { openEdit, openDelete, canEditItem, canDeleteItem }) => (
           <div className="flex items-center justify-center gap-2">
             <Button
@@ -800,10 +784,8 @@ export default function Discentes() {
               role={role}
               docenteId={docenteIdLogado}
               discente={item}
-              jaVinculado={discentesVinculadosAoDocente.has(item.id)}
               ocupado={vinculandoId === item.id}
               onAssumir={() => handleAssumirOrientacao(item)}
-              onCoorientar={() => handleIncluirComoCoorientador(item)}
             />
             {canEditItem && (
               <Button

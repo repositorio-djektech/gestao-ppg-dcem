@@ -901,7 +901,7 @@ interface DiscenteExistenteBanco {
  * Resolve ou cria um discente pelo nome no banco Supabase.
  * Matching:
  * 1. Nome normalizado (sem acentos, minúsculo, trim).
- * 2. Se não encontrar, insere na tabela discentes com status 'ativo' e data_ingresso ano corrente.
+ * 2. Se não encontrar, insere na tabela discentes com status 'em_andamento' e data_ingresso ano corrente.
  */
 export async function resolverOuCriarDiscente(
   nomeDiscente: string,
@@ -925,7 +925,7 @@ export async function resolverOuCriarDiscente(
     nome: nomeLimpo,
     cpf: '',
     data_ingresso: String(new Date().getFullYear()),
-    status: 'ativo',
+    status: 'em_andamento',
     link_lattes: '',
     link_comprovacao: '',
     orientador: '',

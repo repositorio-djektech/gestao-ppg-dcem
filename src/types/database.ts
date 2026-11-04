@@ -124,7 +124,8 @@ export type Discente = {
   nome: string
   cpf: string
   data_ingresso: string
-  status: 'ativo' | 'concluido' | 'titulado' | 'desligado'
+  status: 'em_andamento' | 'titulado' | 'desligado'
+  data_conclusao?: string | null
   link_lattes: string
   link_comprovacao: string
   observacoes: string

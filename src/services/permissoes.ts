@@ -163,28 +163,27 @@ export function podeAssumirOrientacao(
 }
 
 /**
- * H-02: o docente pode se incluir como coorientador de um discente que já tem outro orientador.
- * `jaVinculado` indica que ele já tem uma orientação com esse discente (evita duplicar).
- * Coorientador não ganha permissão de edição do discente (só o orientador principal edita).
- */
-export function podeIncluirComoCoorientador(
-  role: Role | null | undefined,
-  docenteId: number | null | undefined,
-  discente: DiscenteParaVinculo | null | undefined,
-  jaVinculado = false,
-): boolean {
-  if (role !== 'docente' || !docenteId || !discente || jaVinculado) return false
-  if (discenteSemOrientador(discente)) return false
-  return Number(discente.docente_orientador_id) !== Number(docenteId)
-}
-
-/**
  * H-03 / D-11: só a coordenação altera o orientador principal.
  * Mantém o conjunto que já edita discentes na RLS (`is_admin_staff`: suporte, coordenador, auxiliar).
  * Ver pergunta pendente sobre o auxiliar em docs/po/00-decisoes-e-pendencias.md.
  */
 export function podeAlterarOrientadorPrincipal(role: Role | null | undefined): boolean {
   return role === 'suporte' || role === 'coordenador' || role === 'auxiliar'
+}
+
+/**
+ * D-25: CPF e SIAPE de docente. O papel docente só vê os do próprio registro; suporte, coordenador,
+ * auxiliar e capes seguem vendo todos. Sem papel carregado, não mostra. É restrição de interface:
+ * a RLS ainda deixa qualquer autenticado ler a tabela (P-20).
+ */
+export function podeVerDadosPessoaisDocente(
+  role: Role | null | undefined,
+  docenteIdLogado: number | null | undefined,
+  docente: { id: number } | null | undefined,
+): boolean {
+  if (!role) return false
+  if (role !== 'docente') return true
+  return Boolean(docenteIdLogado) && Number(docente?.id) === Number(docenteIdLogado)
 }
 
 /**

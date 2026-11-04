@@ -16,6 +16,20 @@ import { User, FileText, Users2 } from 'lucide-react'
 // Mock supabase client: as consultas devolvem mockState.rows (vazio por padrão)
 const mockState = vi.hoisted(() => ({ rows: [] as Array<Record<string, unknown>> }))
 
+// Usuário logado (padrão: coordenação). Os testes de visão restrita trocam para docente.
+const authState = vi.hoisted(() => ({
+  role: 'coordenador' as string | null,
+  docenteId: null as number | null,
+}))
+
+vi.mock('@/hooks/use-auth', () => ({
+  useAuth: () => ({
+    user: { id: 'u1' },
+    role: authState.role,
+    profile: { id: 'u1', role: authState.role, docente_id: authState.docenteId },
+  }),
+}))
+
 vi.mock('@/lib/supabase/client', () => ({
   supabase: {
     from: () => ({
@@ -36,6 +50,8 @@ vi.mock('@/lib/supabase/client', () => ({
 afterEach(() => {
   cleanup()
   mockState.rows = []
+  authState.role = 'coordenador'
+  authState.docenteId = null
 })
 
 function renderHtml(el: React.ReactElement): string {
@@ -540,7 +556,13 @@ describe('VisualizarDocenteDialog', () => {
     it('renderiza a célula do botão de ação com alinhamento text-center (ícone de olho centralizado na coluna) e cabeçalho text-left', async () => {
       // A tabela só aparece quando há registros na aba
       mockState.rows = [
-        { id: 1, titulo: 'Artigo sobre Nanomateriais', ano: 2024, periodico: 'Journal', autores: 'Silva, M.' },
+        {
+          id: 1,
+          titulo: 'Artigo sobre Nanomateriais',
+          ano: 2024,
+          periodico: 'Journal',
+          autores: 'Silva, M.',
+        },
       ]
       await renderAposCarregar(
         <VisualizarDocenteDialog open={true} onOpenChange={vi.fn()} docente={docenteMock} />,
@@ -553,5 +575,66 @@ describe('VisualizarDocenteDialog', () => {
       // Cabeçalho da coluna Ações permanece alinhado à esquerda
       expect(cabecalhoAcoes[0].className).toContain('text-left')
     })
+  })
+})
+
+describe('VisualizarDocenteDialog — visão restrita do docente (D-25)', () => {
+  const alvo: Docente = {
+    id: 1,
+    nome: 'Docente Alvo Ficticio',
+    id_lattes: '1234567890123456',
+    scopus_id: '123456789',
+    openalex_id: 'A123456789',
+    indice_h: 15,
+    bolsa_cnpq: '',
+    jdp: false,
+    licenca: '',
+    cpf: '11122233344',
+    siape: '9876543',
+  } as Docente
+
+  async function abrir() {
+    return renderAposCarregar(
+      <VisualizarDocenteDialog open onOpenChange={() => {}} docente={alvo} />,
+    )
+  }
+
+  it('docente vendo OUTRO docente: sem CPF, sem SIAPE e sem o botão Editar Identificação', async () => {
+    authState.role = 'docente'
+    authState.docenteId = 2
+    await abrir()
+    const texto = document.body.textContent || ''
+    expect(texto).not.toContain('11122233344')
+    expect(texto).not.toContain('9876543')
+    expect(texto).not.toMatch(/CPF:/)
+    expect(texto).not.toMatch(/SIAPE:/)
+    expect(texto).not.toContain('Editar Identificação')
+  })
+
+  it('docente vendo o PRÓPRIO registro: CPF, SIAPE e botão Editar Identificação aparecem', async () => {
+    authState.role = 'docente'
+    authState.docenteId = 1
+    await abrir()
+    const texto = document.body.textContent || ''
+    expect(texto).toContain('11122233344')
+    expect(texto).toContain('9876543')
+    expect(texto).toContain('Editar Identificação')
+  })
+
+  it('coordenação segue vendo tudo e editando', async () => {
+    authState.role = 'coordenador'
+    await abrir()
+    const texto = document.body.textContent || ''
+    expect(texto).toContain('11122233344')
+    expect(texto).toContain('9876543')
+    expect(texto).toContain('Editar Identificação')
+  })
+
+  it('auxiliar também segue com os mesmos poderes', async () => {
+    authState.role = 'auxiliar'
+    await abrir()
+    const texto = document.body.textContent || ''
+    expect(texto).toContain('11122233344')
+    expect(texto).toContain('Editar Identificação')
   })
 })

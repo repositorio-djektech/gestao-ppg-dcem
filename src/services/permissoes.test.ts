@@ -5,9 +5,9 @@ import {
   podeExcluirRegistro,
   discenteSemOrientador,
   podeAssumirOrientacao,
-  podeIncluirComoCoorientador,
   podeAlterarOrientadorPrincipal,
   podeEditarTextoItem13,
+  podeVerDadosPessoaisDocente,
 } from './permissoes'
 
 describe('Serviço de Permissões por Linha e Tabela (permissoes.ts)', () => {
@@ -473,54 +473,8 @@ describe('Serviço de Permissões por Linha e Tabela (permissoes.ts)', () => {
     })
   })
 
-  describe('H-02 — podeIncluirComoCoorientador', () => {
-    it('docente pode se incluir como coorientador de discente que já tem outro orientador', () => {
-      expect(
-        podeIncluirComoCoorientador('docente', DOCENTE_LOGADO_ID, {
-          id: 1,
-          docente_orientador_id: OUTRO_DOCENTE_ID,
-        }),
-      ).toBe(true)
-    })
-
-    it('não pode se o discente não tem orientador (deve assumir a orientação)', () => {
-      expect(
-        podeIncluirComoCoorientador('docente', DOCENTE_LOGADO_ID, {
-          id: 1,
-          docente_orientador_id: null,
-        }),
-      ).toBe(false)
-    })
-
-    it('não pode se já é o orientador principal', () => {
-      expect(
-        podeIncluirComoCoorientador('docente', DOCENTE_LOGADO_ID, {
-          id: 1,
-          docente_orientador_id: DOCENTE_LOGADO_ID,
-        }),
-      ).toBe(false)
-    })
-
-    it('não pode se já está vinculado ao discente (idempotência na interface)', () => {
-      expect(
-        podeIncluirComoCoorientador(
-          'docente',
-          DOCENTE_LOGADO_ID,
-          { id: 1, docente_orientador_id: OUTRO_DOCENTE_ID },
-          true,
-        ),
-      ).toBe(false)
-    })
-
-    it('exige vínculo com um cadastro de docente e papel docente', () => {
-      const d = { id: 1, docente_orientador_id: OUTRO_DOCENTE_ID }
-      expect(podeIncluirComoCoorientador('docente', null, d)).toBe(false)
-      for (const role of ['suporte', 'coordenador', 'auxiliar', 'capes', null] as const) {
-        expect(podeIncluirComoCoorientador(role, DOCENTE_LOGADO_ID, d)).toBe(false)
-      }
-    })
-
-    it('ser coorientador não dá permissão de edição do discente (só orientador principal edita)', () => {
+  describe('D-24 — coorientador não edita o discente', () => {
+    it('ser coorientador (orientador principal é outro docente) não dá permissão de edição', () => {
       expect(
         podeEditarRegistro('docente', DOCENTE_LOGADO_ID, 'discentes', {
           id: 1,
@@ -554,6 +508,32 @@ describe('Serviço de Permissões por Linha e Tabela (permissoes.ts)', () => {
       for (const role of ['auxiliar', 'docente', 'capes', null, undefined] as const) {
         expect(podeEditarTextoItem13(role)).toBe(false)
       }
+    })
+  })
+
+  describe('D-25 — CPF e SIAPE de docente: o docente só vê os próprios', () => {
+    const meu = { id: DOCENTE_LOGADO_ID }
+    const alheio = { id: OUTRO_DOCENTE_ID }
+
+    it('docente vê CPF/SIAPE do próprio registro e não vê os de outros', () => {
+      expect(podeVerDadosPessoaisDocente('docente', DOCENTE_LOGADO_ID, meu)).toBe(true)
+      expect(podeVerDadosPessoaisDocente('docente', DOCENTE_LOGADO_ID, alheio)).toBe(false)
+    })
+
+    it('docente sem cadastro vinculado não vê o de ninguém', () => {
+      expect(podeVerDadosPessoaisDocente('docente', null, meu)).toBe(false)
+      expect(podeVerDadosPessoaisDocente('docente', undefined, alheio)).toBe(false)
+    })
+
+    it('suporte, coordenador, auxiliar e capes continuam vendo tudo', () => {
+      for (const role of ['suporte', 'coordenador', 'auxiliar', 'capes'] as const) {
+        expect(podeVerDadosPessoaisDocente(role, null, alheio)).toBe(true)
+      }
+    })
+
+    it('sem papel carregado, por segurança, não mostra', () => {
+      expect(podeVerDadosPessoaisDocente(null, null, meu)).toBe(false)
+      expect(podeVerDadosPessoaisDocente(undefined, null, meu)).toBe(false)
     })
   })
 })

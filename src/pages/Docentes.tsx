@@ -59,7 +59,13 @@ import { normalizarNomePessoa } from '@/lib/normalizacao'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { DocenteNome } from '@/components/docentes/DocenteNome'
-import { podeCriarNaTabela, podeEditarRegistro, podeExcluirRegistro } from '@/services/permissoes'
+import {
+  podeCriarNaTabela,
+  podeEditarRegistro,
+  podeExcluirRegistro,
+  podeVerDadosPessoaisDocente,
+} from '@/services/permissoes'
+import { DocenteContato } from '@/components/docentes/DocenteContato'
 import { registrarLog } from '@/services/logs'
 import {
   avaliarStatusJdpDocente,
@@ -162,8 +168,12 @@ export default function Docentes() {
     return docentes.filter((d) => {
       const matchNome = normalizar(d.nome).includes(termo)
       const matchEmail = normalizar(d.email).includes(termo)
-      const matchCpf = (d.cpf || '').replace(/\D/g, '').includes(termo.replace(/\D/g, ''))
-      const matchSiape = (d.siape || '').replace(/\D/g, '').includes(termo.replace(/\D/g, ''))
+      // D-25: a busca por CPF/SIAPE não pode revelar dados de outros docentes
+      const verPessoais = podeVerDadosPessoaisDocente(role, docenteIdLogado, d)
+      const matchCpf =
+        verPessoais && (d.cpf || '').replace(/\D/g, '').includes(termo.replace(/\D/g, ''))
+      const matchSiape =
+        verPessoais && (d.siape || '').replace(/\D/g, '').includes(termo.replace(/\D/g, ''))
       const matchCategoria = normalizar(d.categoria).includes(termo)
       const matchLattes = (d.id_lattes || '').includes(termo)
       const matchOrcid = (d.orc_id || '').includes(termo)
@@ -177,7 +187,7 @@ export default function Docentes() {
         matchOrcid
       )
     })
-  }, [docentes, searchTerm])
+  }, [docentes, searchTerm, role, docenteIdLogado])
   const totalPages = Math.ceil(filtered.length / PER_PAGE)
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
@@ -683,13 +693,14 @@ export default function Docentes() {
                       <TableCell className="text-left font-medium text-slate-900">
                         <div className="flex flex-col items-start gap-1">
                           <DocenteNome nome={d.nome} status={d.status} className="text-slate-900" />
-                          {(d.email || d.cpf || d.siape) && (
-                            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 font-normal">
-                              {d.email && <span className="text-slate-600">{d.email}</span>}
-                              {d.cpf && <span>• CPF: {d.cpf}</span>}
-                              {d.siape && <span>• SIAPE: {d.siape}</span>}
-                            </div>
-                          )}
+                          <DocenteContato
+                            docente={d}
+                            mostrarDadosPessoais={podeVerDadosPessoaisDocente(
+                              role,
+                              docenteIdLogado,
+                              d,
+                            )}
+                          />
                           {d.categoria === 'permanente' && (
                             <Badge
                               variant="secondary"

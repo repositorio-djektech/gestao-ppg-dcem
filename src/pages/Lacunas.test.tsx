@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import React from 'react'
 import { render, cleanup, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
@@ -10,9 +10,29 @@ import {
   imprimirRelatorioLacunasViaIframe,
 } from '@/lib/lacunas/imprimirLacunasIframe'
 
+// Usuário logado (padrão: coordenação). Os testes de visão restrita trocam para docente.
+const authState = vi.hoisted(() => ({
+  role: 'coordenador' as string | null,
+  docenteId: null as number | null,
+  loading: false,
+}))
+vi.mock('@/hooks/use-auth', () => ({
+  useAuth: () => ({
+    user: { id: 'u1' },
+    role: authState.role,
+    loading: authState.loading,
+    profile: { id: 'u1', role: authState.role, docente_id: authState.docenteId },
+  }),
+}))
+
 // A página usa useNavigate e carrega os dados em useEffect: renderiza com Router e espera o fim do
 // carregamento (o botão volta de "Atualizando..." para "Atualizar") antes de inspecionar o HTML.
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  authState.role = 'coordenador'
+  authState.docenteId = null
+  authState.loading = false
+})
 
 // O PDF titula cada seção como "rótulo — subtítulo (n)", com os mesmos grupos visuais da página
 const rotuloGrupo = (id: string) => GRUPOS_VISUAIS.find((g) => g.id === id)!.label
@@ -759,6 +779,53 @@ describe('Página Lacunas - Etapa 2', () => {
       expect(html).toContain('lacunas-ppg-dcem-2026-10-10.csv')
       expect(html).toContain('data-testid="linha-historico-hist-1"')
       expect(html).toContain('Limpar histórico')
+    })
+  })
+
+  describe('visão restrita do docente (D-25)', () => {
+    const relatorioVazio: RelatorioLacunasResposta = {
+      gerado_em: '2026-11-04T12:00:00.000Z',
+      resumo: [],
+      lacunas: [],
+    }
+
+    it('docente: o relatório é pedido restrito ao próprio cadastro', async () => {
+      authState.role = 'docente'
+      authState.docenteId = 7
+      const loader = vi.fn().mockResolvedValue({ sucesso: true, dados: relatorioVazio })
+      await renderComRouter(<Lacunas carregarDadosFn={loader} />)
+      expect(loader).toHaveBeenCalledWith({ restringirAoDocenteId: 7 })
+    })
+
+    it('docente sem cadastro vinculado: pede relatório restrito com null (vazio, nunca o completo)', async () => {
+      authState.role = 'docente'
+      authState.docenteId = null
+      const loader = vi.fn().mockResolvedValue({ sucesso: true, dados: relatorioVazio })
+      await renderComRouter(<Lacunas carregarDadosFn={loader} />)
+      expect(loader).toHaveBeenCalledWith({ restringirAoDocenteId: null })
+    })
+
+    it.each(['coordenador', 'suporte', 'auxiliar'])(
+      '%s: relatório completo, sem restrição',
+      async (papel) => {
+        authState.role = papel
+        const loader = vi.fn().mockResolvedValue({ sucesso: true, dados: relatorioVazio })
+        await renderComRouter(<Lacunas carregarDadosFn={loader} />)
+        expect(loader).toHaveBeenCalledWith({})
+      },
+    )
+
+    it('não carrega nada enquanto o papel do usuário ainda não é conhecido', async () => {
+      authState.role = null
+      authState.loading = true
+      const loader = vi.fn().mockResolvedValue({ sucesso: true, dados: relatorioVazio })
+      render(
+        <MemoryRouter>
+          <Lacunas carregarDadosFn={loader} />
+        </MemoryRouter>,
+      )
+      await new Promise((r) => setTimeout(r, 30))
+      expect(loader).not.toHaveBeenCalled()
     })
   })
 })

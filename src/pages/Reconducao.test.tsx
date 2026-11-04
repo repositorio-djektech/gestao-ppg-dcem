@@ -1,12 +1,29 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import React from 'react'
 import { render, cleanup, waitFor } from '@testing-library/react'
 import Reconducao from './Reconducao'
 import type { RelatorioReconducaoResposta } from '@/lib/reconducao/types'
 
+// Usuário logado (padrão: coordenação). Os testes de visão restrita trocam para docente.
+const authState = vi.hoisted(() => ({
+  role: 'coordenador' as string | null,
+  docenteId: null as number | null,
+}))
+vi.mock('@/hooks/use-auth', () => ({
+  useAuth: () => ({
+    user: { id: 'u1' },
+    role: authState.role,
+    profile: { id: 'u1', role: authState.role, docente_id: authState.docenteId },
+  }),
+}))
+
 // A página carrega os dados em useEffect: espera o fim do carregamento (o botão volta de
 // "Atualizando..." para "Atualizar") antes de inspecionar o HTML.
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  authState.role = 'coordenador'
+  authState.docenteId = null
+})
 
 async function renderPagina(el: React.ReactElement): Promise<string> {
   const { container } = render(el)
@@ -408,5 +425,40 @@ describe('Página Recondução (Etapa D)', () => {
     expect(html).toContain('Falha ao carregar os dados de recondução')
     expect(html).toContain('Falha simulada na leitura dos dados')
     expect(html).toContain('Tentar novamente')
+  })
+
+  describe('visão restrita do docente (D-25)', () => {
+    async function paginaComo(role: string, docenteId: number | null) {
+      authState.role = role
+      authState.docenteId = docenteId
+      return renderPagina(
+        <Reconducao carregarDadosFn={() => Promise.resolve({ sucesso: true, dados: dadosMock })} />,
+      )
+    }
+
+    it('docente vê os 5 cards gerais e só a própria linha na lista', async () => {
+      const html = await paginaComo('docente', 2)
+      expect(html).toContain('data-testid="linha-docente-2"')
+      expect(html).not.toContain('data-testid="linha-docente-1"')
+      expect(html).not.toContain('data-testid="linha-docente-3"')
+      expect(html).not.toContain('Carlos Alberto Reconduzido')
+      // os cards gerais seguem mostrando os totais do programa
+      expect(html).toContain(String(dadosMock.resumo.total_docentes))
+    })
+
+    it('docente sem cadastro vinculado não vê nenhuma linha', async () => {
+      const html = await paginaComo('docente', null)
+      expect(html).not.toContain('data-testid="linha-docente-')
+    })
+
+    it('coordenação continua vendo todos os docentes', async () => {
+      const html = await paginaComo('coordenador', null)
+      for (const id of [1, 2, 3]) expect(html).toContain(`data-testid="linha-docente-${id}"`)
+    })
+
+    it('auxiliar continua vendo todos os docentes', async () => {
+      const html = await paginaComo('auxiliar', null)
+      for (const id of [1, 2, 3]) expect(html).toContain(`data-testid="linha-docente-${id}"`)
+    })
   })
 })

@@ -74,9 +74,9 @@ describe('Matching Tolerante de Coautoria com Discentes/Egressos (Item 1)', () =
 
   describe('Sugestão de coautores em publicação real', () => {
     const discentes = [
-      { id: 4, nome: 'JANDER LOPES FONSECA', status: 'ativo' as const },
-      { id: 8, nome: 'FÉLIX RAMAN SILVA SILVEIRA', status: 'ativo' as const },
-      { id: 10, nome: 'TAcontroller test', status: 'ativo' as const },
+      { id: 4, nome: 'JANDER LOPES FONSECA', status: 'em_andamento' as const },
+      { id: 8, nome: 'FÉLIX RAMAN SILVA SILVEIRA', status: 'em_andamento' as const },
+      { id: 10, nome: 'TAcontroller test', status: 'em_andamento' as const },
     ]
 
     const egressos = [{ id: 1, nome: 'Carlos Eduardo Lima' }]

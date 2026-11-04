@@ -13,6 +13,7 @@ export type Database = {
         Row: {
           ano_conclusao: string | null
           cpf: string
+          data_conclusao: string | null
           created_at: string
           data_ingresso: string
           docente_orientador_id: number | null
@@ -28,6 +29,7 @@ export type Database = {
         }
         Insert: {
           ano_conclusao?: string | null
+          data_conclusao?: string | null
           cpf?: string
           created_at?: string
           data_ingresso?: string
@@ -44,6 +46,7 @@ export type Database = {
         }
         Update: {
           ano_conclusao?: string | null
+          data_conclusao?: string | null
           cpf?: string
           created_at?: string
           data_ingresso?: string

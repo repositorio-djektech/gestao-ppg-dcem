@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/client'
 import type { RelatorioLacunasResposta } from '@/lib/lacunas/types'
 import { consolidarRelatorioLacunas } from '@/lib/lacunas/regras'
+import { filtrarDadosLacunasParaDocente } from '@/lib/lacunas/escopo-docente'
 import type {
   Docente,
   Discente,
@@ -19,6 +20,12 @@ export interface ObterRelatorioLacunasOpcoes {
   invokeFn?: (functionName: string, options?: { body?: any }) => Promise<{ data: any; error: any }>
   /** Força execução local direta contra o Supabase (fallback/offline) */
   executarLocal?: boolean
+  /**
+   * Visão restrita do docente (D-25): consolida só os dados deste docente. `null` = docente sem
+   * cadastro vinculado (relatório vazio). `undefined` = sem restrição. A Edge Function calcula
+   * tudo e não dá para filtrar o resultado por dono, então a restrição usa o caminho local.
+   */
+  restringirAoDocenteId?: number | null
 }
 
 export interface ResultadoRelatorioLacunas {
@@ -37,9 +44,10 @@ export interface ResultadoRelatorioLacunas {
 export async function obterRelatorioLacunas(
   opcoes: ObterRelatorioLacunasOpcoes = {},
 ): Promise<ResultadoRelatorioLacunas> {
-  const { invokeFn, executarLocal } = opcoes
+  const { invokeFn, executarLocal, restringirAoDocenteId } = opcoes
+  const restringir = restringirAoDocenteId !== undefined
 
-  if (!executarLocal) {
+  if (!executarLocal && !restringir) {
     try {
       const invoker = invokeFn ?? supabase.functions.invoke.bind(supabase.functions)
       const { data, error } = await invoker('relatorio-lacunas', {
@@ -161,7 +169,7 @@ export async function obterRelatorioLacunas(
       }
     }
 
-    const relatorio = consolidarRelatorioLacunas({
+    const dadosBrutos = {
       docentes: (docentesRes.data || []) as unknown as Docente[],
       discentes: (discentesRes.data || []) as unknown as Discente[],
       publicacoes: (publicacoesRes.data || []) as unknown as Publicacao[],
@@ -176,7 +184,10 @@ export async function obterRelatorioLacunas(
       projetos_participantes: (projetosParticipantesRes.data || []) as any[],
       projetos_discentes: (projetosDiscentesRes.data || []) as any[],
       publicacoes_docentes: (publicacoesDocentesRes.data || []) as any[],
-    })
+    }
+    const relatorio = consolidarRelatorioLacunas(
+      restringir ? filtrarDadosLacunasParaDocente(dadosBrutos, restringirAoDocenteId) : dadosBrutos,
+    )
 
     return {
       sucesso: true,
