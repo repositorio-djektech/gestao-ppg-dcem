@@ -11,7 +11,9 @@
 -- Conferido em leitura no banco real antes de escrever: 39 discentes, todos 'ativo', nenhum com
 -- ano_conclusao preenchido, então nenhum titulado legado a preservar.
 --
--- ORDEM DE APLICAÇÃO: o frontend novo grava 'em_andamento' e o antigo grava 'ativo'. Aplicar esta
+-- Aplicada no projeto PPG-DCEM em 2026-11-04 (supabase db push) e conferida no banco.
+--
+-- ORDEM DE APLICAÇÃO (histórico): o frontend novo grava 'em_andamento' e o antigo grava 'ativo'. Aplicar esta
 -- migração e publicar o frontend novo no mesmo momento (janela de poucos minutos).
 -- Reversão: recriar a CHECK com os 4 valores antigos e UPDATE inverso
 --   (em_andamento -> ativo, titulado -> concluido), e DROP COLUMN data_conclusao.

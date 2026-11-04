@@ -35,7 +35,7 @@ Fluxos de aceite (D-08):
 | H-12 | Como docente, quero ver no Credenciamento os 5 cards gerais e só o meu nome na lista. | E-06 | — | 1 | **Em validação** (código e testes prontos) |
 | H-13 | Como docente, quero que o CPF e o SIAPE dos outros docentes não apareçam para mim, e só editar a minha identificação. | E-06 | — | 1 | **Em validação** (código e testes prontos) |
 | H-14 | Como docente, quero ver só os discentes que oriento, que coorienta e os sem orientador (para assumir). | E-06 | — | 1 | **Em validação** (código e testes prontos) |
-| H-15 | Como coordenador, quero registrar a data de conclusão do discente e ter o status (Em andamento, Titulado, Desligado) definido por ela. | E-06 | — | 1 | **Em validação** (código e testes prontos; migração `20261105120000` aguarda aplicação, P-21) |
+| H-15 | Como coordenador, quero registrar a data de conclusão do discente e ter o status (Em andamento, Titulado, Desligado) definido por ela. | E-06 | — | 1 | **Em validação** (código e testes prontos; migração `20261105120000` aplicada em 04/11) |
 | H-16 | Como docente, quero ver só as minhas orientações e coorientações, com o tipo em badge, a coluna Término e "—" quando não há data. | E-06 | — | 1 | **Em validação** (código e testes prontos) |
 | H-17 | Como docente, não quero a coluna Ações nas Linhas de Pesquisa. | E-06 | — | 1 | **Em validação** (código e testes prontos) |
 | H-18 | Como docente, quero ver os projetos que coordeno e aqueles em que participo, e editar só os que coordeno. | E-06 | — | 1 | **Em validação** (código e testes prontos; migração `20261105130000` aplicada em 04/11) |
@@ -95,7 +95,7 @@ Fluxos de aceite (D-08):
 
 **H-14 — Discentes do docente.** Vê os que orienta, os que coorienta (orientação dele com o discente) e os sem orientador (para poder assumir, H-01). A coluna CPF não quebra linha. O docente não tem ação de se incluir como coorientador. Testes: `discentes/visibilidade.test.ts`, `AcoesVinculoOrientacao.test.tsx`.
 
-**H-15 — Status e data de conclusão do discente.** Só três status: Em andamento, Titulado, Desligado. Sem data de conclusão ou data futura = Em andamento; data de hoje ou passada = Titulado; Desligado é marcado à mão e prevalece. O status é recalculado na leitura (uma data futura vira passada com o tempo). Dados antigos só com `ano_conclusao` e status concluído/titulado continuam titulados. Testes: `discentes/status.test.ts`. Banco: migração `20261105120000_discentes_data_conclusao_e_status.sql` (coluna `data_conclusao`, status antigos mapeados, CHECK recriada), **ainda não aplicada**.
+**H-15 — Status e data de conclusão do discente.** Só três status: Em andamento, Titulado, Desligado. Sem data de conclusão ou data futura = Em andamento; data de hoje ou passada = Titulado; Desligado é marcado à mão e prevalece. O status é recalculado na leitura (uma data futura vira passada com o tempo). Dados antigos só com `ano_conclusao` e status concluído/titulado continuam titulados. Testes: `discentes/status.test.ts`. Banco: migração `20261105120000_discentes_data_conclusao_e_status.sql` (coluna `data_conclusao`, status antigos mapeados, CHECK recriada), aplicada em 04/11.
 
 ## Critérios de aceite: visão restrita do docente em Orientações, Linhas, Projetos, Publicações, Patentes e Produção Técnica (D-27)
 
