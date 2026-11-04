@@ -58,6 +58,8 @@ interface CrudPageProps<T extends { id: number | string }> {
   tableHeaderClassName?: string
   tableHeaderRowClassName?: string
   actionsHeaderClassName?: string
+  /** Docente só consulta esta tela: não mostra a coluna Ações (D-27). */
+  ocultarAcoesParaDocente?: boolean
   renderCustomActions?: (
     item: T,
     defaultActions: {
@@ -98,6 +100,7 @@ export function CrudPage<T extends { id: number | string }>({
   tableHeaderRowClassName,
   actionsHeaderClassName,
   renderCustomActions,
+  ocultarAcoesParaDocente,
   formHeaderActions,
   getContextoItem,
   customFilterItem,
@@ -135,7 +138,10 @@ export function CrudPage<T extends { id: number | string }>({
   const isStaff = role === 'suporte' || role === 'coordenador' || role === 'auxiliar'
   const isDocente = role === 'docente'
   // Flag geral para saber se a tabela/página deve exibir coluna de ações
-  const hasActionsColumn = !isCapes && (isStaff || isDocente || Boolean(renderCustomActions))
+  const hasActionsColumn =
+    !isCapes &&
+    !(ocultarAcoesParaDocente && isDocente) &&
+    (isStaff || isDocente || Boolean(renderCustomActions))
   const canDelete = !isCapes && (role === 'suporte' || role === 'coordenador')
   const PER_PAGE = 20
 

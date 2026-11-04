@@ -4,6 +4,8 @@ import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { producaoTecnicaService } from '@/services/producao-tecnica'
 import { impactoSocialService } from '@/services/impacto-social'
 import { impactosVinculosService } from '@/services/impactos-vinculos'
+import { producaoTecnicaDocentesService } from '@/services/vinculos-docentes-registro'
+import { useAutoriaDocente } from '@/hooks/use-autoria-docente'
 import { Badge } from '@/components/ui/badge'
 import { Wrench } from 'lucide-react'
 import type { ProducaoTecnica, ImpactoSocial } from '@/types/database'
@@ -29,6 +31,7 @@ const tipoColors: Record<string, string> = {
 }
 
 export default function ProducaoTecnicaPage() {
+  const autoria = useAutoriaDocente(producaoTecnicaDocentesService, 'producao_tecnica_id')
   const [impactos, setImpactos] = useState<ImpactoSocial[]>([])
   const [vinculosPorRegistro, setVinculosPorRegistro] = useState<Record<number, number[]>>({})
 
@@ -67,14 +70,20 @@ export default function ProducaoTecnicaPage() {
   const customService = useMemo(() => {
     return {
       ...producaoTecnicaService,
+      // D-27: o docente só vê as produções técnicas vinculadas a ele
+      list: async () => autoria.filtrarLista(await producaoTecnicaService.list()),
       create: async (item: Partial<ProducaoTecnica>) => {
         const itemAny = item as any
         const impactosIds: number[] = itemAny.impactos_vinculados_ids || []
+        const docentesIds: number[] | undefined = itemAny.docentes_autores_ids
         const payload = { ...item }
         delete (payload as any).impactos_vinculados_ids
+        delete (payload as any).docentes_autores_ids
 
         const novo = await producaoTecnicaService.create(payload)
         if (novo?.id) {
+          // O vínculo vem antes dos impactos: a RLS dos impactos depende dele
+          await autoria.salvarVinculos(Number(novo.id), docentesIds, true)
           await impactosVinculosService.sincronizarVinculosRegistro(
             'producao_tecnica',
             Number(novo.id),
@@ -87,10 +96,13 @@ export default function ProducaoTecnicaPage() {
       update: async (id: number | string, item: Partial<ProducaoTecnica>) => {
         const itemAny = item as any
         const impactosIds: number[] = itemAny.impactos_vinculados_ids || []
+        const docentesIds: number[] | undefined = itemAny.docentes_autores_ids
         const payload = { ...item }
         delete (payload as any).impactos_vinculados_ids
+        delete (payload as any).docentes_autores_ids
 
         const atualizado = await producaoTecnicaService.update(id, payload)
+        await autoria.salvarVinculos(Number(id), docentesIds, false)
         await impactosVinculosService.sincronizarVinculosRegistro(
           'producao_tecnica',
           Number(id),
@@ -100,16 +112,17 @@ export default function ProducaoTecnicaPage() {
         return atualizado
       },
       remove: async (id: number | string) => {
-        await producaoTecnicaService.remove(id)
+        // Os impactos saem antes: depois de apagar o registro o vínculo some e a RLS não deixaria
         await impactosVinculosService.sincronizarVinculosRegistro(
           'producao_tecnica',
           Number(id),
           [],
         )
+        await producaoTecnicaService.remove(id)
         await carregarDadosVinculos()
       },
     }
-  }, [carregarDadosVinculos])
+  }, [carregarDadosVinculos, autoria.filtrarLista, autoria.salvarVinculos])
 
   const columns: ColumnDef<ProducaoTecnica>[] = [
     { key: 'titulo', label: 'Título', className: 'font-medium text-slate-900' },
@@ -210,6 +223,7 @@ export default function ProducaoTecnicaPage() {
         )
       },
     },
+    ...(autoria.campoDocentesAutores ? [autoria.campoDocentesAutores] : []),
     { key: 'observacoes', label: 'Observações', type: 'textarea', rows: 2 },
   ]
 
@@ -226,6 +240,9 @@ export default function ProducaoTecnicaPage() {
       entityName="Produção Técnica"
       tableName="producao_tecnica"
       printModule="producao-tecnica"
+      getContextoItem={(item) => ({
+        docentesVinculadosIds: autoria.docentesDoRegistro(Number(item.id)),
+      })}
     />
   )
 }

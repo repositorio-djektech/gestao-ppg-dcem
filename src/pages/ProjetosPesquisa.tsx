@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { CrudPage } from '@/components/crud/CrudPage'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { projetosPesquisaService } from '@/services/projetos-pesquisa'
+import { projetosVisiveisAoDocente } from '@/lib/projetos/visibilidade'
 import { docentesService } from '@/services/docentes'
 import { discentesService } from '@/services/discentes'
 import { iniciacaoCientificaService } from '@/services/iniciacao-cientifica'
@@ -217,12 +218,11 @@ const emptyForm = {
 }
 
 export default function ProjetosPesquisa() {
-  const { profile } = useAuth()
+  const { profile, role } = useAuth()
   const [docenteMap, setDocenteMap] = useState<Record<string, string>>({})
   const [docentesLista, setDocentesLista] = useState<Docente[]>([])
   const [discentesLista, setDiscentesLista] = useState<Discente[]>([])
   const [todasIniciacoes, setTodasIniciacoes] = useState<IniciacaoCientifica[]>([])
-  const [projetosParticipantesIds, setProjetosParticipantesIds] = useState<number[]>([])
   const [todosParticipantes, setTodosParticipantes] = useState<
     { projeto_id: number; docente_id: number; papel?: string | null }[]
   >([])
@@ -267,21 +267,6 @@ export default function ProjetosPesquisa() {
     carregarParticipantes()
   }, [carregarParticipantes])
 
-  useEffect(() => {
-    if (profile?.docente_id) {
-      supabase
-        .from('projetos_participantes')
-        .select('projeto_id')
-        .eq('docente_id', profile.docente_id)
-        .then(({ data, error }) => {
-          if (!error && data) {
-            setProjetosParticipantesIds(data.map((r: any) => Number(r.projeto_id)))
-          }
-        })
-    } else {
-      setProjetosParticipantesIds([])
-    }
-  }, [profile?.docente_id])
 
   const sincronizarTodosVinculosBanco = async (
     projetoId: number,
@@ -335,6 +320,22 @@ export default function ProjetosPesquisa() {
   const customService = useMemo(() => {
     return {
       ...projetosPesquisaService,
+      // D-27: o docente vê os projetos que coordena e aqueles em que participa (só visualiza)
+      list: async () => {
+        const todos = await projetosPesquisaService.list()
+        if (role !== 'docente') return todos
+        const eu = profile?.docente_id
+        if (!eu) return []
+        const { data } = await supabase
+          .from('projetos_participantes')
+          .select('projeto_id, docente_id')
+          .eq('docente_id', eu)
+        return projetosVisiveisAoDocente(
+          todos,
+          eu,
+          (data ?? []) as { projeto_id: number; docente_id: number }[],
+        )
+      },
       create: async (item: Partial<ProjetoPesquisa>) => {
         const itemAny = item as any
         const participantes: ParticipanteDocenteItem[] = itemAny.participantes_docentes || []
@@ -420,7 +421,7 @@ export default function ProjetosPesquisa() {
         return atualizado
       },
     }
-  }, [carregarParticipantes, todasIniciacoes])
+  }, [carregarParticipantes, todasIniciacoes, role, profile?.docente_id])
 
   const columns: ColumnDef<ProjetoPesquisa>[] = [
     {
@@ -1171,9 +1172,6 @@ export default function ProjetosPesquisa() {
       entityName="Projeto"
       tableName="projetos_pesquisa"
       printModule="projetos-pesquisa"
-      getContextoItem={(item) => ({
-        isParticipanteProjeto: projetosParticipantesIds.includes(Number(item.id)),
-      })}
     />
   )
 }

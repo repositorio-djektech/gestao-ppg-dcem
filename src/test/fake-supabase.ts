@@ -9,12 +9,16 @@ export interface OpcoesClienteFake {
   /** Simula uma RLS que bloqueia UPDATE (0 linhas afetadas, sem erro). */
   bloquearUpdateEm?: string[]
   /** Simula erro do banco em uma operação. */
-  erroEm?: { tabela: string; op: 'select' | 'insert' | 'update' | 'upsert'; mensagem: string }
+  erroEm?: {
+    tabela: string
+    op: 'select' | 'insert' | 'update' | 'upsert' | 'delete'
+    mensagem: string
+  }
 }
 
 export interface ChamadaFake {
   tabela: string
-  op: 'select' | 'insert' | 'update' | 'upsert'
+  op: 'select' | 'insert' | 'update' | 'upsert' | 'delete'
   payload?: any
 }
 
@@ -24,7 +28,7 @@ export function criarClienteFake(tabelas: Record<string, Linha[]>, opcoes: Opcoe
   function from(tabela: string) {
     if (!tabelas[tabela]) tabelas[tabela] = []
     const estado: {
-      op: 'select' | 'insert' | 'update' | 'upsert'
+      op: 'select' | 'insert' | 'update' | 'upsert' | 'delete'
       onConflict: string
       filtros: Array<(r: Linha) => boolean>
       payload: any
@@ -51,6 +55,10 @@ export function criarClienteFake(tabelas: Record<string, Linha[]>, opcoes: Opcoe
         return { data: novos, error: null }
       }
       const alvo = linhas.filter((r) => estado.filtros.every((f) => f(r)))
+      if (estado.op === 'delete') {
+        for (const r of alvo) linhas.splice(linhas.indexOf(r), 1)
+        return { data: alvo.map((r) => ({ ...r })), error: null }
+      }
       if (estado.op === 'update') {
         if (opcoes.bloquearUpdateEm?.includes(tabela)) return { data: [], error: null }
         alvo.forEach((r) => Object.assign(r, estado.payload))
@@ -70,6 +78,14 @@ export function criarClienteFake(tabelas: Record<string, Linha[]>, opcoes: Opcoe
         estado.op = 'upsert'
         estado.payload = p
         estado.onConflict = opts?.onConflict || 'id'
+        return builder
+      },
+      delete: () => {
+        estado.op = 'delete'
+        return builder
+      },
+      in: (coluna: string, valores: any[]) => {
+        estado.filtros.push((r) => valores.includes(r[coluna]))
         return builder
       },
       update: (p: any) => {

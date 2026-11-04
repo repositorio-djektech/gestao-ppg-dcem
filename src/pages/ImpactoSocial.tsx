@@ -8,7 +8,7 @@ import { premiacoesService } from '@/services/premiacoes'
 import { impactosVinculosService } from '@/services/impactos-vinculos'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Eye, Edit, Trash2, Layers, Sparkles, HeartHandshake } from 'lucide-react'
+import { Eye, Edit, Trash2, Layers, HeartHandshake } from 'lucide-react'
 import type {
   ImpactoSocial,
   ImpactoVinculo,
@@ -180,7 +180,6 @@ export default function ImpactoSocialPage() {
           className="text-left font-medium text-slate-900 hover:text-primary hover:underline transition-colors flex items-center gap-1.5"
           title="Clique para visualizar detalhes e registros vinculados"
         >
-          <Sparkles className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
           <span>{i.titulo}</span>
         </button>
       ),

@@ -351,10 +351,10 @@ export default function Egressos() {
         key: 'atuacao_profissional',
         label: 'Atuação Profissional',
         mobileSupport: true,
-        className: 'text-center',
+        className: 'text-left',
         headerClassName: 'text-left font-semibold text-slate-700',
         render: (e) => (
-          <span className="text-xs text-slate-600 line-clamp-1 max-w-xs mx-auto">
+          <span className="text-xs text-slate-600 line-clamp-1 max-w-xs">
             {e.atuacao_profissional ? toTitleCase(e.atuacao_profissional) : '—'}
           </span>
         ),

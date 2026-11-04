@@ -275,8 +275,8 @@ describe('Serviço de Permissões por Linha e Tabela (permissoes.ts)', () => {
       expect(podeCriarNaTabela('docente', 'projetos_pesquisa', DOCENTE_LOGADO_ID)).toBe(true)
     })
 
-    it('pode editar projeto se for coordenador OU participante', () => {
-      // Coordenador
+    it('edita projeto só como coordenador; participante só visualiza (D-27)', () => {
+      // Coordenador edita
       expect(
         podeEditarRegistro('docente', DOCENTE_LOGADO_ID, 'projetos_pesquisa', {
           id: 50,
@@ -284,26 +284,23 @@ describe('Serviço de Permissões por Linha e Tabela (permissoes.ts)', () => {
         }),
       ).toBe(true)
 
-      // Participante
+      // Participante NÃO edita (mesmo com o contexto antigo de participação)
       expect(
         podeEditarRegistro(
           'docente',
           DOCENTE_LOGADO_ID,
           'projetos_pesquisa',
           { id: 51, coordenador_id: OUTRO_DOCENTE_ID },
-          { isParticipanteProjeto: true },
+          { isParticipanteProjeto: true } as any,
         ),
-      ).toBe(true)
+      ).toBe(false)
 
-      // Não vinculado
+      // Não vinculado também não
       expect(
-        podeEditarRegistro(
-          'docente',
-          DOCENTE_LOGADO_ID,
-          'projetos_pesquisa',
-          { id: 52, coordenador_id: OUTRO_DOCENTE_ID },
-          { isParticipanteProjeto: false },
-        ),
+        podeEditarRegistro('docente', DOCENTE_LOGADO_ID, 'projetos_pesquisa', {
+          id: 52,
+          coordenador_id: OUTRO_DOCENTE_ID,
+        }),
       ).toBe(false)
     })
 
@@ -323,7 +320,7 @@ describe('Serviço de Permissões por Linha e Tabela (permissoes.ts)', () => {
           DOCENTE_LOGADO_ID,
           'projetos_pesquisa',
           { id: 51, coordenador_id: OUTRO_DOCENTE_ID },
-          { isParticipanteProjeto: true },
+          { isParticipanteProjeto: true } as any,
         ),
       ).toBe(false)
     })
@@ -385,9 +382,7 @@ describe('Serviço de Permissões por Linha e Tabela (permissoes.ts)', () => {
       'impacto_social',
       'linhas_pesquisa',
       'mobilidade_docente',
-      'patentes',
       'premiacoes',
-      'producao_tecnica',
       'ppg',
     ]
 
@@ -535,5 +530,36 @@ describe('Serviço de Permissões por Linha e Tabela (permissoes.ts)', () => {
       expect(podeVerDadosPessoaisDocente(null, null, meu)).toBe(false)
       expect(podeVerDadosPessoaisDocente(undefined, null, meu)).toBe(false)
     })
+  })
+
+  describe('D-27 — patentes e produção técnica: docente só nos registros vinculados a ele', () => {
+    for (const tabela of ['patentes', 'producao_tecnica']) {
+      it(`${tabela}: pode criar, e edita/exclui só quando vinculado`, () => {
+        expect(podeCriarNaTabela('docente', tabela, DOCENTE_LOGADO_ID)).toBe(true)
+        expect(podeCriarNaTabela('docente', tabela, null)).toBe(false)
+
+        const meu = { id: 70 }
+        const vinculado = { docentesVinculadosIds: [DOCENTE_LOGADO_ID, OUTRO_DOCENTE_ID] }
+        const alheio = { docentesVinculadosIds: [OUTRO_DOCENTE_ID] }
+
+        expect(podeEditarRegistro('docente', DOCENTE_LOGADO_ID, tabela, meu, vinculado)).toBe(true)
+        expect(podeExcluirRegistro('docente', DOCENTE_LOGADO_ID, tabela, meu, vinculado)).toBe(true)
+        expect(podeEditarRegistro('docente', DOCENTE_LOGADO_ID, tabela, meu, alheio)).toBe(false)
+        expect(podeExcluirRegistro('docente', DOCENTE_LOGADO_ID, tabela, meu, alheio)).toBe(false)
+        // sem contexto (vínculos não carregados): nega
+        expect(podeEditarRegistro('docente', DOCENTE_LOGADO_ID, tabela, meu)).toBe(false)
+        expect(podeExcluirRegistro('docente', DOCENTE_LOGADO_ID, tabela, meu)).toBe(false)
+      })
+
+      it(`${tabela}: coordenação mantém todos os poderes`, () => {
+        for (const role of ['suporte', 'coordenador'] as const) {
+          expect(podeCriarNaTabela(role, tabela, null)).toBe(true)
+          expect(podeEditarRegistro(role, null, tabela, { id: 1 })).toBe(true)
+          expect(podeExcluirRegistro(role, null, tabela, { id: 1 })).toBe(true)
+        }
+        expect(podeEditarRegistro('auxiliar', null, tabela, { id: 1 })).toBe(true)
+        expect(podeExcluirRegistro('auxiliar', null, tabela, { id: 1 })).toBe(false)
+      })
+    }
   })
 })

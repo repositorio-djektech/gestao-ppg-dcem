@@ -4,6 +4,8 @@ import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { patentesService } from '@/services/patentes'
 import { impactoSocialService } from '@/services/impacto-social'
 import { impactosVinculosService } from '@/services/impactos-vinculos'
+import { patentesDocentesService } from '@/services/vinculos-docentes-registro'
+import { useAutoriaDocente } from '@/hooks/use-autoria-docente'
 import { Badge } from '@/components/ui/badge'
 import { Lightbulb } from 'lucide-react'
 import type { Patente, ImpactoSocial } from '@/types/database'
@@ -42,6 +44,7 @@ const OPCOES_TIPO_INPI = [
 ]
 
 export default function PatentesPage() {
+  const autoria = useAutoriaDocente(patentesDocentesService, 'patente_id')
   const [impactos, setImpactos] = useState<ImpactoSocial[]>([])
   const [vinculosPorRegistro, setVinculosPorRegistro] = useState<Record<number, number[]>>({})
 
@@ -80,17 +83,23 @@ export default function PatentesPage() {
   const customService = useMemo(() => {
     return {
       ...patentesService,
+      // D-27: o docente só vê as patentes vinculadas a ele
+      list: async () => autoria.filtrarLista(await patentesService.list()),
       create: async (item: Partial<Patente>) => {
         const itemAny = item as any
         const impactosIds: number[] = itemAny.impactos_vinculados_ids || []
+        const docentesIds: number[] | undefined = itemAny.docentes_autores_ids
         const payload = { ...item }
         delete (payload as any).impactos_vinculados_ids
+        delete (payload as any).docentes_autores_ids
         if (!payload.tipo) {
           payload.tipo = null
         }
 
         const novo = await patentesService.create(payload)
         if (novo?.id) {
+          // O vínculo vem antes dos impactos: a RLS dos impactos depende dele
+          await autoria.salvarVinculos(Number(novo.id), docentesIds, true)
           await impactosVinculosService.sincronizarVinculosRegistro(
             'patentes',
             Number(novo.id),
@@ -103,13 +112,16 @@ export default function PatentesPage() {
       update: async (id: number | string, item: Partial<Patente>) => {
         const itemAny = item as any
         const impactosIds: number[] = itemAny.impactos_vinculados_ids || []
+        const docentesIds: number[] | undefined = itemAny.docentes_autores_ids
         const payload = { ...item }
         delete (payload as any).impactos_vinculados_ids
+        delete (payload as any).docentes_autores_ids
         if (!payload.tipo) {
           payload.tipo = null
         }
 
         const atualizado = await patentesService.update(id, payload)
+        await autoria.salvarVinculos(Number(id), docentesIds, false)
         await impactosVinculosService.sincronizarVinculosRegistro(
           'patentes',
           Number(id),
@@ -119,12 +131,13 @@ export default function PatentesPage() {
         return atualizado
       },
       remove: async (id: number | string) => {
-        await patentesService.remove(id)
+        // Os impactos saem antes: depois de apagar a patente o vínculo some e a RLS não deixaria
         await impactosVinculosService.sincronizarVinculosRegistro('patentes', Number(id), [])
+        await patentesService.remove(id)
         await carregarDadosVinculos()
       },
     }
-  }, [carregarDadosVinculos])
+  }, [carregarDadosVinculos, autoria.filtrarLista, autoria.salvarVinculos])
 
   const columns: ColumnDef<Patente>[] = [
     { key: 'titulo', label: 'Título', className: 'font-medium text-slate-900' },
@@ -260,6 +273,7 @@ export default function PatentesPage() {
         )
       },
     },
+    ...(autoria.campoDocentesAutores ? [autoria.campoDocentesAutores] : []),
     { key: 'observacoes', label: 'Observações', type: 'textarea' },
   ]
 
@@ -276,6 +290,9 @@ export default function PatentesPage() {
       entityName="Patente"
       tableName="patentes"
       printModule="patentes"
+      getContextoItem={(item) => ({
+        docentesVinculadosIds: autoria.docentesDoRegistro(Number(item.id)),
+      })}
     />
   )
 }

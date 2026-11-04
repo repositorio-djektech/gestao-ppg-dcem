@@ -59,6 +59,7 @@ export default function LinhasPesquisa() {
       entityName="Linha de Pesquisa"
       tableName="linhas_pesquisa"
       printModule="linhas-pesquisa"
+      ocultarAcoesParaDocente
     />
   )
 }

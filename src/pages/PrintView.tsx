@@ -2,6 +2,15 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Printer, AlertCircle, RefreshCw } from 'lucide-react'
 import { formatarCpf } from '@/lib/utils'
+import { useAuth } from '@/hooks/use-auth'
+import { supabase } from '@/lib/supabase/client'
+import { publicacoesDocentesService } from '@/services/publicacoes-docentes'
+import {
+  patentesDocentesService,
+  producaoTecnicaDocentesService,
+} from '@/services/vinculos-docentes-registro'
+import { restringirItensDeImpressaoParaDocente } from '@/lib/impressao/escopo-docente'
+import { statusEfetivoDiscente, rotuloStatusDiscente } from '@/lib/discentes/status'
 import { Button } from '@/components/ui/button'
 import { docentesService } from '@/services/docentes'
 import { discentesService } from '@/services/discentes'
@@ -27,6 +36,8 @@ interface ModuleConfig {
 export default function PrintView() {
   const { modulo } = useParams<{ modulo: string }>()
   const navigate = useNavigate()
+  const { role, profile, loading: carregandoAuth } = useAuth()
+  const docenteIdLogado = profile?.docente_id
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -75,7 +86,11 @@ export default function PrintView() {
         { key: 'nome', label: 'Nome' },
         { key: 'cpf', label: 'CPF', render: (d) => (d.cpf ? formatarCpf(d.cpf) : '—') },
         { key: 'data_ingresso', label: 'Data de Ingresso', render: (d) => d.data_ingresso || '—' },
-        { key: 'status', label: 'Status', render: (d) => String(d.status || '—').toUpperCase() },
+        {
+          key: 'status',
+          label: 'Status',
+          render: (d) => rotuloStatusDiscente(statusEfetivoDiscente(d)).toUpperCase(),
+        },
         { key: 'link_lattes', label: 'Currículo Lattes', render: (d) => d.link_lattes || '—' },
       ],
     },
@@ -238,12 +253,28 @@ export default function PrintView() {
       setLoading(false)
       return
     }
+    // Só busca depois de saber o papel: o docente imprime apenas o que vê na tela (D-25, D-27)
+    if (carregandoAuth) return
 
     setLoading(true)
     setError(null)
     currentModule.service
       .list()
-      .then((items) => {
+      .then(async (items) => {
+        if (modulo && (role === 'docente' || !role)) {
+          items = await restringirItensDeImpressaoParaDocente(modulo, items, docenteIdLogado, {
+            orientacoes: () => orientacoesService.list(),
+            participacoesProjetos: async () => {
+              const { data } = await supabase
+                .from('projetos_participantes')
+                .select('projeto_id, docente_id')
+              return (data ?? []) as { projeto_id: number; docente_id: number }[]
+            },
+            vinculosPublicacoes: () => publicacoesDocentesService.listarTodos(),
+            vinculosPatentes: () => patentesDocentesService.listarTodos() as Promise<any[]>,
+            vinculosProducao: () => producaoTecnicaDocentesService.listarTodos() as Promise<any[]>,
+          })
+        }
         setData(items)
         setLoading(false)
       })
@@ -252,7 +283,7 @@ export default function PrintView() {
         setError('Não foi possível carregar os dados para impressão.')
         setLoading(false)
       })
-  }, [modulo])
+  }, [modulo, carregandoAuth, role, docenteIdLogado])
 
   const handlePrint = () => {
     window.print()

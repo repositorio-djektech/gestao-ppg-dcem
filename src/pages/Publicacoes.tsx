@@ -7,6 +7,10 @@ import { egressosService } from '@/services/egressos'
 import { docentesService } from '@/services/docentes'
 import { coautoresProgramaService } from '@/services/coautores-programa'
 import { publicacoesDocentesService } from '@/services/publicacoes-docentes'
+import {
+  publicacoesVisiveisAoDocente,
+  docentesParaVincularAoSalvar,
+} from '@/lib/publicacoes/visibilidade'
 import { SeletorCoautoria } from '@/components/publicacoes/SeletorCoautoria'
 import { SeletorDocentesAutores } from '@/components/publicacoes/SeletorDocentesAutores'
 import { VincularAutoresDocentesDialog } from '@/components/publicacoes/VincularAutoresDocentesDialog'
@@ -171,7 +175,13 @@ export default function Publicacoes() {
   const destaqueParam = searchParams.get('destaque')
 
   const { profile } = useAuth()
-  const { data: publicacoes, loading, create, update, remove } = useCrudData(publicacoesService)
+  const {
+    data: todasPublicacoes,
+    loading,
+    create,
+    update,
+    remove,
+  } = useCrudData(publicacoesService)
   const [searchTerm, setSearchTerm] = useState('')
   const [yearFilter, setYearFilter] = useState('all')
   const [qualisFilter, setQualisFilter] = useState('all')
@@ -241,6 +251,16 @@ export default function Publicacoes() {
   const isDocente = role === 'docente'
   const hasActionsColumn = !isCapes && (isStaff || isDocente)
   const PER_PAGE = 20
+
+  // D-27: o docente só vê as publicações vinculadas a ele. As regras de limite (Nível 2 e 3) seguem
+  // olhando `todasPublicacoes`, porque conferem também os coautores.
+  const publicacoes = useMemo(
+    () =>
+      isDocente
+        ? publicacoesVisiveisAoDocente(todasPublicacoes, docenteIdLogado, todasPubsDocentes)
+        : todasPublicacoes,
+    [isDocente, todasPublicacoes, docenteIdLogado, todasPubsDocentes],
+  )
 
   const editingPub = editingId ? publicacoes.find((p) => p.id === editingId) : null
   const editingCtx = {
@@ -403,7 +423,7 @@ export default function Publicacoes() {
         // Encontra todas as publicações deste docente no quadriênio com indicacao_nivel=2
         const pubsDocenteNoQuadrienio = todasPubsDocentes
           .filter((pd) => pd.docente_id === docenteId && pd.publicacao_id !== editingId)
-          .map((pd) => publicacoes.find((p) => p.id === pd.publicacao_id))
+          .map((pd) => todasPublicacoes.find((p) => p.id === pd.publicacao_id))
           .filter(
             (p): p is Publicacao =>
               Boolean(p) && p.ano >= ANO_INICIO && p.ano <= ANO_FIM && p.indicacao_nivel === 2,
@@ -423,7 +443,7 @@ export default function Publicacoes() {
 
     // Aviso não-bloqueante para Nível 3: até 5 produções indicadas no quadriênio pelo Programa
     if (formData.indicacao_nivel === 3 && formData.ano >= ANO_INICIO && formData.ano <= ANO_FIM) {
-      const pubsNivel3Quadrienio = publicacoes.filter(
+      const pubsNivel3Quadrienio = todasPublicacoes.filter(
         (p) =>
           p.id !== editingId && p.ano >= ANO_INICIO && p.ano <= ANO_FIM && p.indicacao_nivel === 3,
       )
@@ -481,7 +501,7 @@ export default function Publicacoes() {
       if (savedPubId) {
         await publicacoesDocentesService.sincronizarDocentes(
           savedPubId,
-          docentesAutoresSelecionados,
+          docentesParaVincularAoSalvar(role, docenteIdLogado, docentesAutoresSelecionados),
         )
       }
 

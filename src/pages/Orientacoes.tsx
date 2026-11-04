@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { CrudPage } from '@/components/crud/CrudPage'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { orientacoesService } from '@/services/orientacoes'
@@ -10,6 +10,13 @@ import { Label } from '@/components/ui/label'
 import { BookUser } from 'lucide-react'
 import type { Orientacao } from '@/types/database'
 import { calcularStatusEfetivoOrientacao } from '@/lib/orientacoes/status'
+import {
+  classeBadgeTipoOrientacao,
+  formatarDataOrientacao,
+  semDatasDefinidas,
+  filtrarOrientacoesDoDocente,
+} from '@/lib/orientacoes/exibicao'
+import { useAuth } from '@/hooks/use-auth'
 
 const emptyForm = {
   docente_id: '',
@@ -36,7 +43,22 @@ const statusLabels: Record<string, string> = {
   cancelado: 'Cancelado',
 }
 
+const Traco = () => <span className="text-slate-400 text-xs">—</span>
+
 export default function Orientacoes() {
+  const { role, profile } = useAuth()
+  const docenteIdLogado = profile?.docente_id
+  // D-27: o docente só vê as próprias orientações e coorientações
+  const service = useMemo(
+    () => ({
+      ...orientacoesService,
+      list: async () => {
+        const todas = await orientacoesService.list()
+        return role === 'docente' ? filtrarOrientacoesDoDocente(todas, docenteIdLogado) : todas
+      },
+    }),
+    [role, docenteIdLogado],
+  )
   const [docenteMap, setDocenteMap] = useState<Record<string, string>>({})
   const [discenteMap, setDiscenteMap] = useState<Record<string, string>>({})
 
@@ -68,7 +90,22 @@ export default function Orientacoes() {
   }
 
   const columns: ColumnDef<Orientacao>[] = [
-    { key: 'tipo', label: 'Tipo', className: 'font-medium text-slate-900' },
+    {
+      key: 'tipo',
+      label: 'Tipo',
+      className: 'font-medium text-slate-900',
+      render: (o) =>
+        o.tipo ? (
+          <Badge
+            variant="secondary"
+            className={`border-0 font-medium whitespace-nowrap ${classeBadgeTipoOrientacao(o.tipo)}`}
+          >
+            {o.tipo}
+          </Badge>
+        ) : (
+          <Traco />
+        ),
+    },
     {
       key: 'docente_id',
       label: 'Docente',
@@ -79,11 +116,27 @@ export default function Orientacoes() {
       label: 'Discente',
       render: (o) => discenteMap[String(o.discente_id ?? '')] ?? '-',
     },
-    { key: 'inicio', label: 'Início' },
+    {
+      key: 'inicio',
+      label: 'Início',
+      render: (o) => {
+        const inicio = formatarDataOrientacao(o.inicio)
+        return inicio ? <span>{inicio}</span> : <Traco />
+      },
+    },
+    {
+      key: 'fim',
+      label: 'Término',
+      render: (o) => {
+        const fim = formatarDataOrientacao(o.fim)
+        return fim ? <span>{fim}</span> : <Traco />
+      },
+    },
     {
       key: 'status',
       label: 'Status',
       render: (o) => {
+        if (semDatasDefinidas(o) && !o.cancelado && o.status !== 'cancelado') return <Traco />
         const statusEfetivo =
           o.status_efetivo ||
           calcularStatusEfetivoOrientacao({
@@ -208,7 +261,7 @@ export default function Orientacoes() {
       title="Orientações"
       icon={<BookUser className="h-6 w-6 text-primary shrink-0" />}
       description="Gerencie as orientações de discentes pelos docentes."
-      service={orientacoesService}
+      service={service}
       columns={columns}
       fields={fields}
       emptyForm={emptyForm}

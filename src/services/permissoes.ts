@@ -23,8 +23,8 @@ export type TabelaMapeada =
 export interface ContextoPermissaoRegistro {
   /** Lista de docente_ids vinculados à publicação via publicacoes_docentes */
   publicacoesDocentesIds?: number[]
-  /** Se o docente logado é participante do projeto de pesquisa */
-  isParticipanteProjeto?: boolean
+  /** Docentes vinculados ao registro (patentes e produção técnica, via tabela de vínculo) */
+  docentesVinculadosIds?: number[]
   /** Se o docente logado orienta o discente por orientacoes */
   isOrientadorVinculado?: boolean
 }
@@ -35,9 +35,10 @@ export interface ContextoPermissaoRegistro {
  * - capes: não pode criar em nada.
  * - docente:
  *   - Não pode criar em docentes, eventos, impacto_social, linhas_pesquisa, mobilidade_docente,
- *     patentes, premiacoes, producao_tecnica, ppg, usuarios, qualis.
+ *     premiacoes, ppg, usuarios, qualis.
  *   - Pode criar em discentes, egressos, orientacoes, disciplinas, projetos_pesquisa, publicacoes,
- *     iniciacao_cientifica (a RLS exige vincular ao próprio docente).
+ *     iniciacao_cientifica, patentes e producao_tecnica (a RLS exige vincular ao próprio docente;
+ *     em patentes e produção técnica o vínculo é gravado logo depois, D-27).
  */
 export function podeCriarNaTabela(
   role: Role | null | undefined,
@@ -57,6 +58,8 @@ export function podeCriarNaTabela(
       'projetos_pesquisa',
       'publicacoes',
       'iniciacao_cientifica',
+      'patentes',
+      'producao_tecnica',
     ]
     return tabelasCriacaoDocente.includes(tabela)
   }
@@ -114,10 +117,8 @@ export function podeEditarRegistro(
         return Number(registro.docente_orientador_id) === docIdNum
 
       case 'projetos_pesquisa':
-        // Coordenador do projeto ou participante (projetos_participantes)
-        return (
-          Number(registro.coordenador_id) === docIdNum || Boolean(contexto?.isParticipanteProjeto)
-        )
+        // D-27: só o coordenador do projeto edita; participante apenas visualiza
+        return Number(registro.coordenador_id) === docIdNum
 
       case 'publicacoes':
         // Vinculado via publicacoes_docentes
@@ -126,8 +127,13 @@ export function podeEditarRegistro(
         }
         return false
 
+      case 'patentes':
+      case 'producao_tecnica':
+        // D-27: só quando está vinculado ao registro (tabelas patentes_docentes / producao_tecnica_docentes)
+        return Boolean(contexto?.docentesVinculadosIds?.some((id) => Number(id) === docIdNum))
+
       default:
-        // Tabelas institucionais sem política RLS de UPDATE para docente (eventos, patentes, etc.)
+        // Tabelas institucionais sem política RLS de UPDATE para docente (eventos, premiações, etc.)
         return false
     }
   }
@@ -253,6 +259,11 @@ export function podeExcluirRegistro(
           return contexto.publicacoesDocentesIds.includes(docIdNum)
         }
         return false
+
+      case 'patentes':
+      case 'producao_tecnica':
+        // D-27: só quando está vinculado ao registro
+        return Boolean(contexto?.docentesVinculadosIds?.some((id) => Number(id) === docIdNum))
 
       default:
         return false
