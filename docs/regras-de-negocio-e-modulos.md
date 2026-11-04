@@ -146,6 +146,8 @@ Regras comuns a todos os cálculos:
 - **Patentes:** o ano vem de `patentes.ano_deposito`; sem ele, cai no ano de cadastro (`created_at`), que é só uma aproximação. O âmbito é `ambito` ou, na falta, o prefixo do registro (BR = nacional; PCT/US/EP/WO = internacional). Status fora de Licenciamento, Concessão e Pendente/Depositada não pontua.
 - **DP4A:** projeto (coordenador ou participante) só conta nos anos em que está vigente. Disciplinas consideram `docente_id` e a N:N `disciplinas_docentes`.
 - **Casamento de autores:** o vínculo estruturado (`publicacoes_docentes`) é preferencial; o casamento textual exige ao menos 2 termos do nome.
+- **Casamento de autores a docentes nas sugestões de vínculo (H-06):** `src/lib/publicacoes/matching-docentes.ts` só casa com o **primeiro nome por extenso** + sobrenome. Sobrenome com inicial (`Silva, R.`, `Macedo, Z.S.`) e dois sobrenomes sem o primeiro nome **não** vinculam. No import, `resolucao-vinculos.ts` ainda sugere sobrenome + inicial como confiança média, sem pré-seleção (P-13).
+- **Orientação e coorientação (D-19):** coorientação é um vínculo não principal (`flag_orientador_principal = false`) de docente que não é o orientador principal do discente (`discentes.docente_orientador_id`). **Não conta** em ORI, ATD, SO, PSA e DP4A (`src/lib/orientacoes/principal.ts`). Orientação manual (flag `false` por padrão) continua contando quando o docente é o orientador do discente ou o discente não tem orientador registrado. A ficha não menciona coorientação; ORI e ATD contam dissertações e teses (cada trabalho uma vez).
 
 ### 3.3 Regra de Agregação MMA (Média das Médias Anuais)
 
@@ -155,3 +157,9 @@ Implementada em `src/lib/capes/indicadores.ts`:
 - Anos ainda não iniciados ou sem insumos permanecem como status `'indefinido'` e **não entram como zero na média**. "Ainda não iniciado" é todo ano posterior ao ano de referência (`anoReferencia`, por padrão o ano corrente): nesses anos orientações em andamento e projetos sem fim seriam apenas projetados e gerariam 0% artificial (ex.: DP4A em 2028), então o motor os descarta de todos os indicadores anuais, com o motivo "ano ainda não iniciado".
 - **Orientação em andamento** (usada em SO e DP4A) é a de status efetivo `em_andamento`: sem data de fim ou com fim futuro. Fim já passado é orientação concluída, independentemente do rótulo gravado (`ativo` ou `em_andamento`). Orientações concluídas entram em ORI, ATD e PSA pelo ano da defesa/término.
 - A **MMA** calcula a média aritmética estrita apenas dos anos com insumo calculado até o momento, sinalizando se o quadriênio está completo ($4/4$ anos) ou parcial.
+
+---
+
+## 4. Item 1.3 da ficha: políticas afirmativas (H-10, D-12)
+
+Obrigatório em 2025–2028. No MVP é **só um texto** (até 4000 caracteres), editável por suporte e coordenador na tela `/politicas-afirmativas` e gravado em `ppg_textos`. **Não há indicador nem cálculo** associado a este item.

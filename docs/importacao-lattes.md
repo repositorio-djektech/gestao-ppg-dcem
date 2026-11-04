@@ -241,3 +241,11 @@ A estabilidade da importação é assegurada por suítes abrangentes no Vitest:
    - Itens que não possuam ano informado no XML não podem ser posicionados no quadriênio CAPES 2025–2028 e são automaticamente direcionados para a contagem de ignorados.
 3. **Sobrenomes e Citações em Coautoria:**
    - O XML armazena os coautores como strings e nomes de citação. O cruzamento com outros docentes da base utiliza correspondência por `NRO-ID-CNPQ` ou normalização de texto.
+
+---
+
+## Orientador principal x coorientador na gravação (H-01/H-02)
+
+`gravar.ts` só define `discentes.docente_orientador_id` quando o discente **não tem orientador** e a orientação importada é **principal**. Orientação de coorientador (`flag_orientador_principal = false`) é gravada em `orientacoes`, mas não define o orientador do discente.
+
+Se o discente não puder ser cadastrado (ex.: RLS), a orientação **não** é gravada e o erro aparece no relatório da importação (antes ficava órfã e sem aviso, P-15).

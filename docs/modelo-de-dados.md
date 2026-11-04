@@ -136,6 +136,15 @@ Dados institucionais do programa.
 - `uf`: `text DEFAULT 'SE'` (ou default 'SP' no legado)
 - `created_at`: `timestamp with time zone DEFAULT now()`
 
+#### `ppg_textos`
+
+Textos curtos do programa por chave (H-10). Hoje só o item 1.3 da ficha (políticas afirmativas). Migração `20261104130000` aplicada em 04/11.
+
+- `chave`: `text PRIMARY KEY` (`item_1_3_politicas_afirmativas`)
+- `texto`: `text NOT NULL DEFAULT ''` (limite de 4000 caracteres validado na aplicação)
+- `updated_at`: `timestamp with time zone DEFAULT now()`
+- RLS: leitura para autenticados; INSERT e UPDATE só `suporte` e `coordenador`; sem DELETE.
+
 #### `profiles`
 
 Tabela de perfis que estende `auth.users` do Supabase.

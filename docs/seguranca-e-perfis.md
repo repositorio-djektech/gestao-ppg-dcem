@@ -42,7 +42,7 @@ A lógica de autorização no cliente é centralizada em funções puras e audit
 - **`capes`:** Não pode editar nenhum registro.
 - **`docente`:** Apenas registros nos quais há comprovação de vínculo com ele:
   - `docentes`: Apenas o seu próprio registro (`registro.id === docenteId`).
-  - `discentes` e `egressos`: Onde é o `docente_orientador_id` ou orientador formal.
+  - `discentes` e `egressos`: Onde é o `docente_orientador_id`. Para discente **sem orientador**, o docente se define orientador pela ação "Assumir orientação" (ver 2.4) e só então edita.
   - `orientacoes`: Onde é o `docente_id`.
   - `disciplinas`: Onde é o `docente_id` ou integrante da equipe docente.
   - `iniciacao_cientifica`: Onde é o `docente_orientador_id`.
@@ -58,6 +58,25 @@ A lógica de autorização no cliente é centralizada em funções puras e audit
 - **`docente`:**
   - Pode excluir apenas produções e orientações estritamente suas (`orientacoes`, `disciplinas`, `iniciacao_cientifica`, `projetos_pesquisa` onde é coordenador, `publicacoes` com vínculo).
   - **Nunca pode excluir pessoas ou entidades institucionais** (`docentes`, `discentes`, `egressos`).
+
+### 2.4 Vínculo docente–discente (D-11; H-01, H-02, H-03)
+
+| Situação do discente | Docente | Coordenação (suporte, coordenador, auxiliar) |
+| :-- | :-- | :-- |
+| Sem orientador | **Assume a orientação** (`podeAssumirOrientacao`) e passa a editar o discente. | Define o orientador pela edição do discente (F-03). |
+| Com outro orientador | **Inclui-se como coorientador** (`podeIncluirComoCoorientador`): cria orientação com `flag_orientador_principal = false`. Não edita o discente. | Altera o orientador principal pela edição do discente. |
+| Com ele como orientador | Edita o discente. Não troca o orientador principal. | Idem. |
+
+- Código: `src/services/permissoes.ts`, `src/services/vinculos-orientacao.ts`, `src/lib/discentes/orientador-form.ts`, `src/components/discentes/AcoesVinculoOrientacao.tsx`.
+- RLS (`discentes_update`, migração `20261104120000`, aplicada em 04/11): o docente atualiza linhas dele **ou sem orientador**, e após o UPDATE o orientador tem de ser ele. Assim só consegue se definir orientador; não passa o discente a outro docente nem limpa o orientador.
+- - RLS de INSERT (`discentes_insert`, migração `20261104140000`, aplicada em 04/11): o docente insere discente com orientador nulo ou ele mesmo (necessário ao import Lattes feito por docente).
+- Assumir a orientação também cria a orientação principal em `orientacoes` (D-20). O auxiliar pode alterar o orientador principal (D-21).
+- Na troca do orientador principal pela coordenação, a orientação em andamento do anterior é encerrada como cancelada e o novo ganha a principal (D-23). Coorientador não edita o discente (D-24).
+- Em aberto: P-16 (RLS de `orientacoes` aceita flag principal vinda de docente).
+
+### 2.5 Texto do item 1.3 (H-10)
+
+Tabela `ppg_textos`: leitura para todo usuário autenticado; escrita só `suporte` e `coordenador` (`podeEditarTextoItem13` e RLS na migração `20261104130000`, aplicada em 04/11).
 
 ---
 
