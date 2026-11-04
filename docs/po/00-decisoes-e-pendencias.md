@@ -1,6 +1,6 @@
 # 00 — Decisões, pendências e riscos
 
-Versão: 1.5 · Atualizado em 2026-11-04 · Fonte de verdade para decisões de produto no repositório.
+Versão: 1.6 · Atualizado em 2026-11-04 · Fonte de verdade para decisões de produto no repositório.
 Cópia de trabalho também no projeto do claude.ai (PO PPG-DCEM).
 
 Legenda de origem: **[Decisão]** = resposta da coordenação. **[Fato]** = documento ou código.
@@ -33,6 +33,8 @@ Legenda de origem: **[Decisão]** = resposta da coordenação. **[Fato]** = docu
 | D-22 | O import Lattes feito por docente cria discente **sem orientador**; a RLS de INSERT aceita orientador nulo ou o próprio docente. Se o discente não puder ser criado, a orientação **não** é gravada e o erro é reportado. | Decisão (04/11, PO: "corrija isso") | Fecha P-15. Migração `20261104140000` (aplicada em 04/11). |
 | D-23 | **Troca do orientador principal pela coordenação encerra a orientação do anterior** e cria a principal do novo. "Encerrar" = `cancelado = true` (datas preservadas), só para orientação **em andamento** do anterior com aquele discente; orientação já concluída ou defendida não é tocada. Não usa "concluída" porque uma data de fim passada viraria titulação em ORI e PSA. | Decisão (04/11, PO) | `sincronizarTrocaDeOrientador`, chamada pelo formulário de Discentes. Fecha P-19. |
 | D-24 | **Coorientador não edita o discente** (confirma D-15). | Decisão (04/11, PO) | Fecha P-11. |
+| D-25 | **Visão restrita do docente.** O docente vê só o que é dele: Lacunas (só os números dele em todos os cards), Credenciamento (5 cards gerais, só o próprio nome na lista), Docentes (CPF e SIAPE só do próprio; "Editar Identificação" só no próprio) e Discentes (os que orienta, os que coorienta e os sem orientador). Suporte, coordenador e auxiliar não mudam. **O docente não se inclui mais como coorientador:** a coordenação vincula pela tela Orientações. Supera a parte de coorientação da D-11/D-15 (sem editá-las). | Decisão (04/11, PO) | H-11 a H-14. Restrição só de interface (P-20). |
+| D-26 | **Status do discente:** Em andamento, Titulado ou Desligado. A data de conclusão define: sem data ou futura = Em andamento; hoje ou passada = Titulado. Desligado é manual e prevalece. "Concluído" deixa de existir (vira Titulado). | Decisão (04/11, PO) | H-15. Migração `20261105120000` (P-21). |
 
 ## Pendências
 
@@ -57,6 +59,10 @@ Legenda de origem: **[Decisão]** = resposta da coordenação. **[Fato]** = docu
 | P-17 | Conferir as políticas do banco real e aplicar as migrações. | **Fechada (04/11):** `discentes_update` e `discentes_insert` do banco real eram idênticas às das migrações; as 3 migrações (`20261104120000`, `20261104130000`, `20261104140000`) foram aplicadas com `supabase db push` no projeto PPG-DCEM e conferidas em `pg_policies` (RLS ativa em `ppg_textos`). Contagens de discentes e orientações inalteradas. Não existe staging (sem branches): foi aplicado direto, por ser só política e tabela nova. **Falta o teste funcional com cada papel** (ver backlog). | — |
 | P-18 | Limite do texto do item 1.3 (4000 caracteres) e quem redige (P-09). | Aberta | Coordenação |
 | P-19 | Troca do orientador principal pela coordenação e `orientacoes`. | **Fechada (D-23).** Efeito colateral: a orientação cancelada do anterior deixa de contar em ORI/SO/PSA/DP4A e no critério I da Recondução, mesmo que ele tenha orientado por um período. | — |
+| P-20 | **Restrição do docente só na interface.** A RLS de leitura continua `USING (true)`: um docente que consulte a API enxerga CPF, SIAPE, discentes e demais registros. Para proteção real é preciso restringir `SELECT` por papel nas tabelas `docentes` (colunas sensíveis, p.ex. via view) e `discentes`, e revisar o que depende de ler tudo (publicações, coautoria, Lacunas, Edge Functions). Decidido (04/11) começar só pelo front-end. | **Aberta (segurança)** | Desenvolvedor + coordenação |
+| P-21 | Migração `20261105120000_discentes_data_conclusao_e_status.sql` (H-15) **não aplicada**. Ela recria a CHECK `discentes_status_check`, que existe no banco real mas **não está nas migrações do repositório** (divergência). Aplicar junto da publicação do frontend novo (o novo grava `em_andamento`, o antigo grava `ativo`). Conferido em leitura: 39 discentes, todos `ativo`, sem `ano_conclusao`. | Aberta | Responsável pelo banco |
+| P-22 | Interpretações assumidas na D-25: "CIAP" = **SIAPE** (não existe CIAP no sistema) e "o nome do próprio discente" no Credenciamento = próprio **docente**. Confirmar. | Aberta (confirmação) | Coordenação |
+| P-23 | No relatório de Lacunas do docente, registros por nome em texto (eventos, patentes, premiações, produção técnica, mobilidade) só entram se o nome dele aparecer **por extenso** (H-06); autores abreviados ("Barreto, L. S.") não contam. Os números dele podem ficar menores que o real nessas tabelas. | Aberta (aceito) | Coordenação |
 
 ## Riscos
 
@@ -83,3 +89,4 @@ Legenda de origem: **[Decisão]** = resposta da coordenação. **[Fato]** = docu
 | 7 | `modelo-de-dados.md` lista as tabelas. | Nova tabela `ppg_textos` (migração aplicada em 04/11). | Documentação atualizada. |
 | 8 | Ficha, itens 2.1.1, 2.1.2, 2.5.1 a 2.5.3: ORI e ATD contam dissertações e teses; SO, PSA e DP4A falam em orientações/titulações do DP. Nenhum menciona coorientação. | `indicadores.ts` somava toda linha de `orientacoes`, inclusive coorientação (a dissertação podia contar duas vezes em ORI). | Corrigido pela D-19. A ficha não decide SO/PSA/DP4A; vale a decisão do PO. |
 | 9 | Banco: `orientacoes.flag_orientador_principal` é `NOT NULL DEFAULT false`; a tela de Orientações não grava a flag. | Orientação manual fica com `false`, indistinguível de coorientação só pela flag. | A D-19 usa também o orientador do discente. Ver P-12 e P-19. |
+| 10 | Banco real tem a CHECK `discentes_status_check` (ativo, concluido, titulado, desligado). | Nenhuma migração do repositório a cria. | Será recriada pela `20261105120000` (P-21). |

@@ -64,7 +64,7 @@ A lógica de autorização no cliente é centralizada em funções puras e audit
 | Situação do discente | Docente | Coordenação (suporte, coordenador, auxiliar) |
 | :-- | :-- | :-- |
 | Sem orientador | **Assume a orientação** (`podeAssumirOrientacao`) e passa a editar o discente. | Define o orientador pela edição do discente (F-03). |
-| Com outro orientador | **Inclui-se como coorientador** (`podeIncluirComoCoorientador`): cria orientação com `flag_orientador_principal = false`. Não edita o discente. | Altera o orientador principal pela edição do discente. |
+| Com outro orientador | Nada: o docente **não** se inclui como coorientador (D-25). Se for coorientador, vê o discente mas não o edita (D-24). | Altera o orientador principal pela edição do discente e registra coorientadores pela tela Orientações. |
 | Com ele como orientador | Edita o discente. Não troca o orientador principal. | Idem. |
 
 - Código: `src/services/permissoes.ts`, `src/services/vinculos-orientacao.ts`, `src/lib/discentes/orientador-form.ts`, `src/components/discentes/AcoesVinculoOrientacao.tsx`.
@@ -74,7 +74,20 @@ A lógica de autorização no cliente é centralizada em funções puras e audit
 - Na troca do orientador principal pela coordenação, a orientação em andamento do anterior é encerrada como cancelada e o novo ganha a principal (D-23). Coorientador não edita o discente (D-24).
 - Em aberto: P-16 (RLS de `orientacoes` aceita flag principal vinda de docente).
 
-### 2.5 Texto do item 1.3 (H-10)
+### 2.5 Visão restrita do docente (D-25; H-11 a H-14)
+
+Suporte, coordenador e auxiliar não mudam. O papel **docente** vê:
+
+| Tela | O que o docente vê |
+| :-- | :-- |
+| Lacunas | Só os números dele em todos os cards (`lib/lacunas/escopo-docente.ts`; relatório calculado no navegador). |
+| Credenciamento | Os 5 cards gerais e só a própria linha (`lib/reconducao/escopo-docente.ts`), inclusive na impressão. |
+| Docentes | CPF e SIAPE só do próprio registro, na tabela, no modal e na busca (`podeVerDadosPessoaisDocente`). "Editar Identificação" só no próprio (`podeEditarRegistro`). |
+| Discentes | Os que orienta, os que coorienta e os sem orientador (`lib/discentes/visibilidade.ts`). |
+
+> **Limite importante (P-20):** é restrição de interface. A RLS de leitura segue `USING (true)`; quem consultar a API ainda lê esses dados. Proteção real exige restringir `SELECT` no banco.
+
+### 2.6 Texto do item 1.3 (H-10)
 
 Tabela `ppg_textos`: leitura para todo usuário autenticado; escrita só `suporte` e `coordenador` (`podeEditarTextoItem13` e RLS na migração `20261104130000`, aplicada em 04/11).
 

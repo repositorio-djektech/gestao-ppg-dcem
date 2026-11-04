@@ -163,3 +163,11 @@ Implementada em `src/lib/capes/indicadores.ts`:
 ## 4. Item 1.3 da ficha: políticas afirmativas (H-10, D-12)
 
 Obrigatório em 2025–2028. No MVP é **só um texto** (até 4000 caracteres), editável por suporte e coordenador na tela `/politicas-afirmativas` e gravado em `ppg_textos`. **Não há indicador nem cálculo** associado a este item.
+
+---
+
+## 5. Visão restrita do docente e status do discente (D-25, D-26)
+
+- **Docente:** vê só o que é dele em Lacunas, Credenciamento (cards gerais + própria linha), Docentes (CPF e SIAPE próprios) e Discentes (orientados, coorientados e sem orientador). O docente não se inclui como coorientador. Restrição de interface (P-20).
+- **Status do discente:** Em andamento, Titulado ou Desligado, definido pela data de conclusão (`src/lib/discentes/status.ts`). Sem data ou futura = Em andamento; hoje ou passada = Titulado; Desligado é manual.
+
