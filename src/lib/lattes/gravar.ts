@@ -939,7 +939,8 @@ export async function resolverOuCriarDiscente(
     .single()
 
   if (error || !data) {
-    return null
+    // P-15: antes devolvia null e a falha sumia (ex.: RLS barrando o INSERT feito por docente).
+    throw new Error(error?.message || 'Não foi possível criar o discente.')
   }
 
   const rec: DiscenteExistenteBanco = { id: data.id, nome: data.nome }
@@ -1060,14 +1061,22 @@ export async function gravarOrientacoes(
       try {
         const resDisc = await resolverOuCriarDiscente(ori.discente_nome, cacheDiscentes, client)
         if (resDisc) discenteId = resDisc.id
-      } catch {
-        // Ignora falha silenciosa para não quebrar fluxo todo
+      } catch (e) {
+        // P-15: sem o discente não há orientação válida (ficaria órfã, sem nem o nome). Reporta e segue.
+        erros.push({
+          tabela: 'orientacoes',
+          item: `${ori.discente_nome} (${ori.tipo || 'Mestrado'})`,
+          mensagem: `Não foi possível cadastrar o discente: ${e instanceof Error ? e.message : 'erro desconhecido'}`,
+        })
+        contagem.ignorados++
+        continue
       }
     }
 
     // Etapa R3: se temos docenteId e discenteId, atualizar discentes.docente_orientador_id
-    // preservando texto livre de discentes.orientador e preservando orientação já confirmada
-    if (docenteId && discenteId) {
+    // preservando texto livre de discentes.orientador e preservando orientação já confirmada.
+    // D-11/H-02: coorientação (flag_orientador_principal = false) nunca define o orientador principal.
+    if (docenteId && discenteId && ori.flag_orientador_principal !== false) {
       try {
         // Busca discente atual para não sobrescrever caso já possua orientador confirmado
         const { data: discAtual } = await (client as any)

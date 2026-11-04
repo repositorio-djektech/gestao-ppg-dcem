@@ -135,6 +135,67 @@ export function podeEditarRegistro(
   return false
 }
 
+// -----------------------------------------------------------------------------
+// Vínculo docente–discente (D-11, H-01, H-02, H-03)
+// -----------------------------------------------------------------------------
+
+/** Parte do discente que importa para as regras de vínculo. */
+export type DiscenteParaVinculo = { id?: number; docente_orientador_id?: number | null }
+
+/** Discente sem orientador principal: null, undefined, 0 ou negativo (mesmo critério da regra de Lacunas). */
+export function discenteSemOrientador(discente: DiscenteParaVinculo | null | undefined): boolean {
+  const id = Number(discente?.docente_orientador_id)
+  return !Number.isFinite(id) || id <= 0
+}
+
+/**
+ * H-01: o docente pode se definir orientador de um discente que ainda não tem orientador.
+ * Depois disso ele é o orientador e `podeEditarRegistro` libera a edição.
+ * Só vale para o papel docente: a coordenação define o orientador pela própria edição.
+ */
+export function podeAssumirOrientacao(
+  role: Role | null | undefined,
+  docenteId: number | null | undefined,
+  discente: DiscenteParaVinculo | null | undefined,
+): boolean {
+  if (role !== 'docente' || !docenteId || !discente) return false
+  return discenteSemOrientador(discente)
+}
+
+/**
+ * H-02: o docente pode se incluir como coorientador de um discente que já tem outro orientador.
+ * `jaVinculado` indica que ele já tem uma orientação com esse discente (evita duplicar).
+ * Coorientador não ganha permissão de edição do discente (só o orientador principal edita).
+ */
+export function podeIncluirComoCoorientador(
+  role: Role | null | undefined,
+  docenteId: number | null | undefined,
+  discente: DiscenteParaVinculo | null | undefined,
+  jaVinculado = false,
+): boolean {
+  if (role !== 'docente' || !docenteId || !discente || jaVinculado) return false
+  if (discenteSemOrientador(discente)) return false
+  return Number(discente.docente_orientador_id) !== Number(docenteId)
+}
+
+/**
+ * H-03 / D-11: só a coordenação altera o orientador principal.
+ * Mantém o conjunto que já edita discentes na RLS (`is_admin_staff`: suporte, coordenador, auxiliar).
+ * Ver pergunta pendente sobre o auxiliar em docs/po/00-decisoes-e-pendencias.md.
+ */
+export function podeAlterarOrientadorPrincipal(role: Role | null | undefined): boolean {
+  return role === 'suporte' || role === 'coordenador' || role === 'auxiliar'
+}
+
+/**
+ * H-10 / D-12: o texto do item 1.3 (políticas afirmativas) é editável pela coordenação.
+ * Leitura é de todos os usuários autenticados. O auxiliar fica de fora por ser recurso novo e a
+ * D-04 tratar "coordenação" e "auxiliares" como grupos distintos; ampliar é uma linha aqui e na RLS.
+ */
+export function podeEditarTextoItem13(role: Role | null | undefined): boolean {
+  return role === 'suporte' || role === 'coordenador'
+}
+
 /**
  * Determina se o usuário pode excluir um registro específico na tabela indicada.
  * - suporte, coordenador: pode excluir qualquer registro.

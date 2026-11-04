@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { gravarDadosLattes } from './gravar'
+import { criarClienteFake } from '@/test/fake-supabase'
 
 describe('Etapa R3: Idempotência de vínculos e preservação manual', () => {
   it('grava vínculos de publicacoes_docentes e publicacoes_coautores sem duplicar em nova execução', async () => {
@@ -192,6 +193,134 @@ describe('Etapa R3: Idempotência de vínculos e preservação manual', () => {
     // O orientador confirmado anteriormente (docente 99) NÃO deve ser sobrescrito!
     expect(discentesDb[0].docente_orientador_id).toBe(99)
     expect(discentesDb[0].orientador).toBe('Prof. Orientador Já Existente')
+  })
+
+  describe('H-01/H-02 — o import só define orientador principal a partir de orientação principal', () => {
+    function criarMock(discentesDb: any[]) {
+      return {
+        from: vi.fn().mockImplementation((table: string) => ({
+          select: vi.fn().mockImplementation(() => ({
+            eq: vi.fn().mockImplementation((field: string, val: any) => {
+              if (table === 'discentes') {
+                const item = discentesDb.find((r) => r[field] === val)
+                return {
+                  maybeSingle: vi.fn().mockResolvedValue({ data: item || null, error: null }),
+                }
+              }
+              return Promise.resolve({ data: [], error: null })
+            }),
+          })),
+          update: vi.fn().mockImplementation((patch: any) => ({
+            eq: vi.fn().mockImplementation((field: string, val: any) => {
+              if (table === 'discentes') {
+                const item = discentesDb.find((r) => r[field] === val)
+                if (item) Object.assign(item, patch)
+              }
+              return Promise.resolve({ data: null, error: null })
+            }),
+          })),
+          insert: vi.fn().mockResolvedValue({ data: [], error: null }),
+        })),
+      }
+    }
+
+    it('coorientação (flag_orientador_principal=false) NÃO define o docente como orientador principal', async () => {
+      const discentesDb = [
+        { id: 301, nome: 'Discente Ficticio Tres', orientador: '', docente_orientador_id: null },
+      ]
+      await gravarDadosLattes(
+        {
+          orientacoes: [
+            {
+              docente_id: 1,
+              discente_id: 301,
+              discente_nome: 'Discente Ficticio Tres',
+              ano: 2026,
+              tipo: 'MESTRADO',
+              status: 'em_andamento',
+              flag_orientador_principal: false,
+            },
+          ],
+        } as any,
+        criarMock(discentesDb) as any,
+      )
+      expect(discentesDb[0].docente_orientador_id).toBeNull()
+      expect(discentesDb[0].orientador).toBe('')
+    })
+
+    it('orientação principal continua definindo o orientador quando o discente não tem um', async () => {
+      const discentesDb = [
+        { id: 302, nome: 'Discente Ficticio Quatro', orientador: '', docente_orientador_id: null },
+      ]
+      await gravarDadosLattes(
+        {
+          orientacoes: [
+            {
+              docente_id: 1,
+              discente_id: 302,
+              discente_nome: 'Discente Ficticio Quatro',
+              ano: 2026,
+              tipo: 'MESTRADO',
+              status: 'em_andamento',
+              flag_orientador_principal: true,
+            },
+          ],
+        } as any,
+        criarMock(discentesDb) as any,
+      )
+      expect(discentesDb[0].docente_orientador_id).toBe(1)
+    })
+  })
+
+  describe('P-15 — falha ao criar o discente no import não pode gerar orientação órfã em silêncio', () => {
+    const dados = {
+      orientacoes: [
+        {
+          docente_id: 1,
+          discente_nome: 'Discente Ficticio Cinco',
+          ano: 2026,
+          tipo: 'MESTRADO',
+          status: 'em_andamento',
+          flag_orientador_principal: true,
+        },
+      ],
+    }
+
+    it('quando o INSERT do discente é barrado (ex.: RLS), a orientação NÃO é gravada sem discente e o erro é reportado', async () => {
+      const { client, tabelas } = criarClienteFake(
+        { discentes: [], orientacoes: [], docentes: [{ id: 1, nome: 'Docente Alfa Teste', id_lattes: '' }] },
+        {
+          erroEm: {
+            tabela: 'discentes',
+            op: 'insert',
+            mensagem: 'new row violates row-level security policy',
+          },
+        },
+      )
+      const rel = await gravarDadosLattes(dados as any, client)
+
+      expect(tabelas.orientacoes).toHaveLength(0)
+      expect(rel.orientacoes.ignorados).toBe(1)
+      const erro = rel.erros.find((e) => e.tabela === 'orientacoes')
+      expect(erro).toBeDefined()
+      expect(erro!.mensagem).toMatch(/discente/i)
+      expect(erro!.mensagem).toMatch(/row-level security/i)
+      expect(erro!.item).toContain('Discente Ficticio Cinco')
+    })
+
+    it('quando o discente é criado normalmente (sem orientador), a orientação é gravada com o discente', async () => {
+      const { client, tabelas } = criarClienteFake({
+        discentes: [],
+        orientacoes: [],
+        docentes: [{ id: 1, nome: 'Docente Alfa Teste', id_lattes: '' }],
+      })
+      const rel = await gravarDadosLattes(dados as any, client)
+
+      expect(tabelas.discentes).toHaveLength(1)
+      expect(tabelas.orientacoes).toHaveLength(1)
+      expect(tabelas.orientacoes[0].discente_id).toBe(tabelas.discentes[0].id)
+      expect(rel.erros.filter((e) => e.tabela === 'orientacoes')).toHaveLength(0)
+    })
   })
 
   it('pipeline Lattes não grava em disciplinas nem em disciplinas_docentes, preservando preenchimento manual', async () => {

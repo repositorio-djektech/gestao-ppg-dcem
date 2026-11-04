@@ -34,6 +34,15 @@ import { formatarCpf } from '@/lib/utils'
 import { normalizarNomePessoa } from '@/lib/normalizacao'
 import { DocenteNome } from '@/components/docentes/DocenteNome'
 import { VisualizarDiscenteDialog } from '@/components/discentes/VisualizarDiscenteDialog'
+import { AcoesVinculoOrientacao } from '@/components/discentes/AcoesVinculoOrientacao'
+import {
+  assumirOrientacao,
+  incluirComoCoorientador,
+  sincronizarTrocaDeOrientador,
+} from '@/services/vinculos-orientacao'
+import type { ResultadoVinculo } from '@/services/vinculos-orientacao'
+import { registrarLog } from '@/services/logs'
+import { opcoesDeOrientador, aplicarOrientadorSelecionado } from '@/lib/discentes/orientador-form'
 import { readLattesFiles } from '@/lib/lattes/readFiles'
 
 const emptyForm = {
@@ -73,6 +82,13 @@ export default function Discentes() {
   const [isDragging, setIsDragging] = useState(false)
   const [arquivoSelecionado, setArquivoSelecionado] = useState<File | null>(null)
   const [projetosDiscentesMap, setProjetosDiscentesMap] = useState<Map<number, number[]>>(new Map())
+  // H-01/H-02: discentes com os quais o docente logado já tem orientação (evita duplicar coorientação)
+  const [discentesVinculadosAoDocente, setDiscentesVinculadosAoDocente] = useState<Set<number>>(
+    new Set(),
+  )
+  const [vinculandoId, setVinculandoId] = useState<number | null>(null)
+  // Muda a identidade do service para o CrudPage recarregar a lista depois de um vínculo
+  const [versaoLista, setVersaoLista] = useState(0)
   const modalFileInputRef = useRef<HTMLInputElement>(null)
   const formStateRef = useRef<{
     isEditing: boolean
@@ -98,6 +114,100 @@ export default function Discentes() {
       console.error('Falha ao carregar vínculos projetos_discentes:', err)
     }
   }, [])
+
+  const carregarVinculosDoDocente = useCallback(async () => {
+    if (!isDocente || !docenteIdLogado) return
+    try {
+      const { data, error } = await supabase
+        .from('orientacoes')
+        .select('discente_id')
+        .eq('docente_id', docenteIdLogado)
+      if (!error && data) {
+        setDiscentesVinculadosAoDocente(
+          new Set(data.map((r) => r.discente_id).filter((id): id is number => id != null)),
+        )
+      }
+    } catch (err) {
+      console.error('Falha ao carregar orientações do docente:', err)
+    }
+  }, [isDocente, docenteIdLogado])
+
+  useEffect(() => {
+    carregarVinculosDoDocente()
+  }, [carregarVinculosDoDocente])
+
+  const concluirVinculo = async (
+    discente: Discente,
+    resultado: ResultadoVinculo,
+    sucesso: string,
+    log: { entidade: string; acao: 'criar' | 'editar'; detalhes: Record<string, unknown> },
+  ) => {
+    if (!('motivo' in resultado)) {
+      toast.success(sucesso)
+      void registrarLog({ ...log, entidade_id: discente.id })
+    } else {
+      const mensagens: Record<string, string> = {
+        ja_possui_orientador:
+          'Este discente já tem orientador. Você pode se incluir como coorientador.',
+        sem_orientador: 'Este discente ainda não tem orientador. Assuma a orientação.',
+        ja_e_orientador_principal: 'Você já é o orientador principal deste discente.',
+        ja_vinculado: 'Você já está vinculado a este discente.',
+        discente_nao_encontrado: 'Discente não encontrado.',
+      }
+      toast.error(
+        resultado.motivo === 'erro'
+          ? (resultado as { mensagem: string }).mensagem
+          : mensagens[resultado.motivo] || 'Não foi possível concluir o vínculo.',
+      )
+    }
+    await carregarVinculosDoDocente()
+    setVersaoLista((v) => v + 1)
+  }
+
+  const handleAssumirOrientacao = async (discente: Discente) => {
+    const docente = docenteIdLogado ? docenteObjMap.get(docenteIdLogado) : undefined
+    if (!docenteIdLogado || !docente) {
+      toast.error('Seu cadastro de docente não foi encontrado.')
+      return
+    }
+    setVinculandoId(discente.id)
+    try {
+      const resultado = await assumirOrientacao({
+        discenteId: discente.id,
+        docenteId: docenteIdLogado,
+        docenteNome: docente.nome,
+      })
+      await concluirVinculo(discente, resultado, 'Você agora é o orientador deste discente.', {
+        entidade: 'discentes',
+        acao: 'editar',
+        detalhes: {
+          nome: discente.nome,
+          vinculo: 'assumiu_orientacao',
+          docente_id: docenteIdLogado,
+        },
+      })
+    } finally {
+      setVinculandoId(null)
+    }
+  }
+
+  const handleIncluirComoCoorientador = async (discente: Discente) => {
+    if (!docenteIdLogado) return
+    setVinculandoId(discente.id)
+    try {
+      const resultado = await incluirComoCoorientador({
+        discenteId: discente.id,
+        docenteId: docenteIdLogado,
+      })
+      await concluirVinculo(discente, resultado, 'Você foi incluído como coorientador.', {
+        entidade: 'orientacoes',
+        acao: 'criar',
+        detalhes: { nome: discente.nome, vinculo: 'coorientador', docente_id: docenteIdLogado },
+      })
+    } finally {
+      setVinculandoId(null)
+    }
+  }
 
   useEffect(() => {
     Promise.all([docentesService.list(), projetosPesquisaService.list()])
@@ -445,20 +555,10 @@ export default function Discentes() {
     [docenteObjMap, projetoMap, projetosDiscentesMap],
   )
 
-  const docentesOpcoes = useMemo(() => {
-    if (isDocente && docenteIdLogado) {
-      return docentes
-        .filter((d) => d.id === docenteIdLogado)
-        .map((d) => ({
-          value: String(d.id),
-          label: `${d.nome} (Você)`,
-        }))
-    }
-    return docentes.map((d) => ({
-      value: String(d.id),
-      label: d.nome,
-    }))
-  }, [docentes, isDocente, docenteIdLogado])
+  const docentesOpcoes = useMemo(
+    () => opcoesDeOrientador(role, docenteIdLogado, docentes),
+    [role, docenteIdLogado, docentes],
+  )
 
   const initialEmptyForm = useMemo(() => {
     if (isDocente && docenteIdLogado) {
@@ -536,16 +636,14 @@ export default function Discentes() {
         helperText: isDocente
           ? 'Como docente, você só pode vincular orientações a si mesmo.'
           : 'Docente vinculado que orienta o discente',
-        onValueChangeWithFormData: (val, currentData) => {
-          const finalVal = isDocente && docenteIdLogado ? String(docenteIdLogado) : val
-          const dId = finalVal ? Number(finalVal) : null
-          const docente = dId ? docentes.find((d) => d.id === dId) : null
-          return {
-            ...currentData,
-            docente_orientador_id: finalVal,
-            orientador: docente ? docente.nome : currentData.orientador || '',
-          }
-        },
+        onValueChangeWithFormData: (val, currentData) =>
+          aplicarOrientadorSelecionado({
+            role,
+            docenteIdLogado,
+            valorSelecionado: val,
+            docentes,
+            formAtual: currentData,
+          }),
       },
       {
         key: 'projeto_id',
@@ -568,12 +666,14 @@ export default function Discentes() {
       },
       { key: 'observacoes', label: 'Observações', type: 'textarea', rows: 2 },
     ],
-    [docentes, projetos, isDocente, docenteIdLogado, docentesOpcoes],
+    [docentes, projetos, isDocente, role, docenteIdLogado, docentesOpcoes],
   )
 
   const customDiscentesService = useMemo(() => {
     return {
       ...discentesService,
+      // Muda a identidade do service quando o vínculo muda, para o CrudPage recarregar a lista
+      versaoLista,
       create: async (item: Partial<Discente>) => {
         const criado = await discentesService.create(item)
         if (criado?.id && item.projeto_id) {
@@ -594,7 +694,33 @@ export default function Discentes() {
         return criado
       },
       update: async (id: number | string, item: Partial<Discente>) => {
+        // P-19: guarda o orientador anterior para sincronizar `orientacoes` se a coordenação trocar
+        const trocaDeOrientador = item.docente_orientador_id !== undefined
+        let anteriorId: number | null = null
+        if (trocaDeOrientador) {
+          const { data: atual } = await supabase
+            .from('discentes')
+            .select('docente_orientador_id')
+            .eq('id', Number(id))
+            .maybeSingle()
+          anteriorId = atual?.docente_orientador_id ?? null
+        }
         const atualizado = await discentesService.update(id, item)
+        if (trocaDeOrientador) {
+          const novoId = item.docente_orientador_id ? Number(item.docente_orientador_id) : null
+          if (novoId !== anteriorId) {
+            const res = await sincronizarTrocaDeOrientador({
+              discenteId: Number(id),
+              anteriorDocenteId: anteriorId,
+              novoDocenteId: novoId,
+            })
+            if ('motivo' in res) {
+              toast.error(
+                'Orientador alterado, mas não foi possível atualizar as orientações. Ajuste na tela Orientações.',
+              )
+            }
+          }
+        }
         if (item.projeto_id !== undefined) {
           const numId = Number(id)
           try {
@@ -619,7 +745,7 @@ export default function Discentes() {
         return atualizado
       },
     }
-  }, [carregarProjetosDiscentes])
+  }, [carregarProjetosDiscentes, versaoLista])
 
   return (
     <>
@@ -670,6 +796,15 @@ export default function Discentes() {
             >
               <Eye className="h-4 w-4" />
             </Button>
+            <AcoesVinculoOrientacao
+              role={role}
+              docenteId={docenteIdLogado}
+              discente={item}
+              jaVinculado={discentesVinculadosAoDocente.has(item.id)}
+              ocupado={vinculandoId === item.id}
+              onAssumir={() => handleAssumirOrientacao(item)}
+              onCoorientar={() => handleIncluirComoCoorientador(item)}
+            />
             {canEditItem && (
               <Button
                 variant="ghost"

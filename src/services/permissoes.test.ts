@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { podeCriarNaTabela, podeEditarRegistro, podeExcluirRegistro } from './permissoes'
+import {
+  podeCriarNaTabela,
+  podeEditarRegistro,
+  podeExcluirRegistro,
+  discenteSemOrientador,
+  podeAssumirOrientacao,
+  podeIncluirComoCoorientador,
+  podeAlterarOrientadorPrincipal,
+  podeEditarTextoItem13,
+} from './permissoes'
 
 describe('Serviço de Permissões por Linha e Tabela (permissoes.ts)', () => {
   const DOCENTE_LOGADO_ID = 42
@@ -389,5 +398,162 @@ describe('Serviço de Permissões por Linha e Tabela (permissoes.ts)', () => {
         expect(podeExcluirRegistro('docente', DOCENTE_LOGADO_ID, tabela, { id: 70 })).toBe(false)
       })
     }
+  })
+
+  // ---------------------------------------------------------------------------
+  // D-11 / P-06: vínculo docente–discente. Dados fictícios.
+  // ---------------------------------------------------------------------------
+  describe('P-06 — causa do bug: docente não edita discente sem orientador (confirmação)', () => {
+    it('podeEditarRegistro nega edição de discente sem orientador, por isso o docente nunca consegue se vincular pela edição', () => {
+      for (const semOrientador of [null, undefined]) {
+        expect(
+          podeEditarRegistro('docente', DOCENTE_LOGADO_ID, 'discentes', {
+            id: 5,
+            docente_orientador_id: semOrientador,
+          }),
+        ).toBe(false)
+      }
+    })
+  })
+
+  describe('H-01 — podeAssumirOrientacao (docente se define orientador)', () => {
+    it('discenteSemOrientador: null, undefined, 0 e negativo contam como sem orientador', () => {
+      expect(discenteSemOrientador({ docente_orientador_id: null })).toBe(true)
+      expect(discenteSemOrientador({ docente_orientador_id: undefined })).toBe(true)
+      expect(discenteSemOrientador({ docente_orientador_id: 0 })).toBe(true)
+      expect(discenteSemOrientador({ docente_orientador_id: -1 })).toBe(true)
+      expect(discenteSemOrientador({ docente_orientador_id: 7 })).toBe(false)
+      expect(discenteSemOrientador(null)).toBe(true)
+    })
+
+    it('docente vinculado pode assumir a orientação de discente sem orientador', () => {
+      expect(
+        podeAssumirOrientacao('docente', DOCENTE_LOGADO_ID, { id: 1, docente_orientador_id: null }),
+      ).toBe(true)
+    })
+
+    it('depois de assumir, o docente passa a poder editar o discente (fluxo completo da H-01)', () => {
+      const antes = { id: 1, docente_orientador_id: null as number | null }
+      expect(podeEditarRegistro('docente', DOCENTE_LOGADO_ID, 'discentes', antes)).toBe(false)
+      expect(podeAssumirOrientacao('docente', DOCENTE_LOGADO_ID, antes)).toBe(true)
+      const depois = { ...antes, docente_orientador_id: DOCENTE_LOGADO_ID }
+      expect(podeEditarRegistro('docente', DOCENTE_LOGADO_ID, 'discentes', depois)).toBe(true)
+    })
+
+    it('não pode assumir se o discente já tem orientador (outro docente ou ele mesmo)', () => {
+      expect(
+        podeAssumirOrientacao('docente', DOCENTE_LOGADO_ID, {
+          id: 1,
+          docente_orientador_id: OUTRO_DOCENTE_ID,
+        }),
+      ).toBe(false)
+      expect(
+        podeAssumirOrientacao('docente', DOCENTE_LOGADO_ID, {
+          id: 1,
+          docente_orientador_id: DOCENTE_LOGADO_ID,
+        }),
+      ).toBe(false)
+    })
+
+    it('docente sem vínculo com um cadastro de docente não pode assumir', () => {
+      expect(podeAssumirOrientacao('docente', null, { id: 1, docente_orientador_id: null })).toBe(
+        false,
+      )
+      expect(
+        podeAssumirOrientacao('docente', undefined, { id: 1, docente_orientador_id: null }),
+      ).toBe(false)
+    })
+
+    it('outros papéis não usam esta ação (a coordenação define o orientador pela edição; capes é leitura)', () => {
+      for (const role of ['suporte', 'coordenador', 'auxiliar', 'capes', null] as const) {
+        expect(
+          podeAssumirOrientacao(role, DOCENTE_LOGADO_ID, { id: 1, docente_orientador_id: null }),
+        ).toBe(false)
+      }
+    })
+  })
+
+  describe('H-02 — podeIncluirComoCoorientador', () => {
+    it('docente pode se incluir como coorientador de discente que já tem outro orientador', () => {
+      expect(
+        podeIncluirComoCoorientador('docente', DOCENTE_LOGADO_ID, {
+          id: 1,
+          docente_orientador_id: OUTRO_DOCENTE_ID,
+        }),
+      ).toBe(true)
+    })
+
+    it('não pode se o discente não tem orientador (deve assumir a orientação)', () => {
+      expect(
+        podeIncluirComoCoorientador('docente', DOCENTE_LOGADO_ID, {
+          id: 1,
+          docente_orientador_id: null,
+        }),
+      ).toBe(false)
+    })
+
+    it('não pode se já é o orientador principal', () => {
+      expect(
+        podeIncluirComoCoorientador('docente', DOCENTE_LOGADO_ID, {
+          id: 1,
+          docente_orientador_id: DOCENTE_LOGADO_ID,
+        }),
+      ).toBe(false)
+    })
+
+    it('não pode se já está vinculado ao discente (idempotência na interface)', () => {
+      expect(
+        podeIncluirComoCoorientador(
+          'docente',
+          DOCENTE_LOGADO_ID,
+          { id: 1, docente_orientador_id: OUTRO_DOCENTE_ID },
+          true,
+        ),
+      ).toBe(false)
+    })
+
+    it('exige vínculo com um cadastro de docente e papel docente', () => {
+      const d = { id: 1, docente_orientador_id: OUTRO_DOCENTE_ID }
+      expect(podeIncluirComoCoorientador('docente', null, d)).toBe(false)
+      for (const role of ['suporte', 'coordenador', 'auxiliar', 'capes', null] as const) {
+        expect(podeIncluirComoCoorientador(role, DOCENTE_LOGADO_ID, d)).toBe(false)
+      }
+    })
+
+    it('ser coorientador não dá permissão de edição do discente (só orientador principal edita)', () => {
+      expect(
+        podeEditarRegistro('docente', DOCENTE_LOGADO_ID, 'discentes', {
+          id: 1,
+          docente_orientador_id: OUTRO_DOCENTE_ID,
+        }),
+      ).toBe(false)
+    })
+  })
+
+  describe('H-03 — podeAlterarOrientadorPrincipal', () => {
+    it('coordenação (suporte, coordenador e auxiliar, que já editam discentes) pode alterar', () => {
+      for (const role of ['suporte', 'coordenador', 'auxiliar'] as const) {
+        expect(podeAlterarOrientadorPrincipal(role)).toBe(true)
+      }
+    })
+
+    it('docente nunca altera o orientador principal; capes e sem papel também não', () => {
+      for (const role of ['docente', 'capes', null, undefined] as const) {
+        expect(podeAlterarOrientadorPrincipal(role)).toBe(false)
+      }
+    })
+  })
+
+  describe('H-10 — podeEditarTextoItem13 (texto do item 1.3, editável pela coordenação)', () => {
+    it('suporte e coordenador editam', () => {
+      expect(podeEditarTextoItem13('suporte')).toBe(true)
+      expect(podeEditarTextoItem13('coordenador')).toBe(true)
+    })
+
+    it('auxiliar, docente, capes e sem papel não editam (só leem)', () => {
+      for (const role of ['auxiliar', 'docente', 'capes', null, undefined] as const) {
+        expect(podeEditarTextoItem13(role)).toBe(false)
+      }
+    })
   })
 })
