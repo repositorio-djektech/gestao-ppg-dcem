@@ -1,6 +1,6 @@
 # 00 — Decisões, pendências e riscos
 
-Versão: 2.1 · Atualizado em 2026-11-19 · Fonte de verdade para decisões de produto no repositório.
+Versão: 2.2 · Atualizado em 2026-11-19 · Fonte de verdade para decisões de produto no repositório.
 Cópia de trabalho também no projeto do claude.ai (PO PPG-DCEM).
 
 Legenda de origem: **[Decisão]** = resposta da coordenação. **[Fato]** = documento ou código.
@@ -71,6 +71,7 @@ Legenda de origem: **[Decisão]** = resposta da coordenação. **[Fato]** = docu
 | P-26 | O docente só vincula **a si mesmo** em patentes e produção técnica (a RLS segue o molde de `publicacoes_docentes`); a coordenação vincula os demais coautores. | Aberta (confirmar) | Coordenação |
 | P-27 | Ano corrente na regra de status (D-28). | **Fechada (19/11):** superada pela D-29. Com mês e ano, o status vira no próprio mês do término; não depende mais do fim do ano. | — |
 | P-28 | Registros antigos com data completa ou mês/ano. | **Fechada (19/11):** convertidos no banco para só o ano, com autorização do PO: 3 discentes (ingresso), 5 orientações (início e término), 2 projetos (início e término) e 1 evento (`local_data`). Conferido: nenhuma linha fora do padrão e contagens inalteradas. O trigger de orientações regravou o status `ativo` das linhas 1, 2 e 3 como `em_andamento` (mesmo rótulo na tela). Os 6 términos "Atual" de projetos (vindos do Lattes, sem ano) foram mantidos. | — |
+| P-29 | **Iniciação científica em duas tabelas.** O import do Lattes grava IC em `orientacoes` (tipo "Iniciação Científica"), mas a página Iniciações (`iniciacao_cientifica`) é manual e é a única fonte do indicador **NICT**. Em 19/11, a pedido do PO, as 14 orientações de IC foram **copiadas** para Iniciações (ids 1 a 14: discente e orientador vinculados, ano 2025, título e fomento tirados das observações; sem bolsa nem projeto) e **mantidas** em Orientações. Efeito: o NICT de 2025 deixa de ser "indefinido" e passa a ser calculado (14 IC / DP). A cópia **não se mantém sincronizada**: IC novo do Lattes ou editado em Orientações não aparece em Iniciações. Decidir se o import passa a gravar também em Iniciações, ou se Orientações deixa de aceitar o tipo IC. O ano 2025 vem de início/término que eram só o ano. | Aberta | Coordenação + desenvolvedor |
 
 ## Riscos
 
