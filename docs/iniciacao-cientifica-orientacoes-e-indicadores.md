@@ -81,9 +81,9 @@ IC, IT e IE passam a existir **nas duas telas ao mesmo tempo**. O que se cria, a
 | Item | Situação |
 |---|---|
 | 14 IC copiadas de Orientações para Iniciações | Feito no banco |
-| Ajustes de SO, DP4A e NICT (seção 4) | Pronto no código, testado, **aguardando publicação** |
-| Os três tipos de iniciação no cadastro de Orientações | Pronto no código, **aguardando publicação** |
-| Sincronização automática (seção 5) | Escrita e **testada** num banco local descartável (16 verificações nos dois sentidos, reaplicação e importação em lote). **Ainda não aplicada ao banco real**, aguarda a publicação do código |
+| Ajustes de SO, DP4A e NICT (seção 4) | **Publicado** em 19/11 |
+| Os três tipos de iniciação no cadastro de Orientações | **Publicado** em 19/11 |
+| Sincronização automática (seção 5) | Escrita e **testada** num banco local descartável (16 verificações nos dois sentidos, reaplicação e importação em lote). **Aplicada ao banco real em 19/11**, depois da publicação do código. Conferido: as 14 IC ligadas às suas orientações, sem duplicatas |
 | Decisões da seção 6 | **Pendentes** com a coordenação |
 
 ## 8. Referências técnicas
