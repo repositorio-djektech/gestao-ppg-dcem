@@ -2,6 +2,12 @@ import { describe, it, expect, vi } from 'vitest'
 import { gravarDadosLattes } from './gravar'
 import { criarClienteFake } from '@/test/fake-supabase'
 
+/** UPDATE do Supabase com `.select()`: devolve a linha afetada (a gravação confirma que algo mudou). */
+const resultadoUpdate = (linhas: any[] = [{ id: 1 }]) =>
+  Object.assign(Promise.resolve({ data: null, error: null }), {
+    select: () => Promise.resolve({ data: linhas, error: null }),
+  })
+
 describe('Etapa R3: Idempotência de vínculos e preservação manual', () => {
   it('grava vínculos de publicacoes_docentes e publicacoes_coautores sem duplicar em nova execução', async () => {
     // Simula banco em memória
@@ -77,7 +83,7 @@ describe('Etapa R3: Idempotência de vínculos e preservação manual', () => {
                   const disc = discentesDb.find((d) => d[field] === val)
                   if (disc) Object.assign(disc, patch)
                 }
-                return Promise.resolve({ data: null, error: null })
+                return resultadoUpdate()
               }),
             }
           }),
@@ -165,7 +171,7 @@ describe('Etapa R3: Idempotência de vínculos e preservação manual', () => {
                   const item = discentesDb.find((r) => r[field] === val)
                   if (item) Object.assign(item, patch)
                 }
-                return Promise.resolve({ data: null, error: null })
+                return resultadoUpdate()
               }),
             }
           }),
@@ -216,7 +222,7 @@ describe('Etapa R3: Idempotência de vínculos e preservação manual', () => {
                 const item = discentesDb.find((r) => r[field] === val)
                 if (item) Object.assign(item, patch)
               }
-              return Promise.resolve({ data: null, error: null })
+              return resultadoUpdate()
             }),
           })),
           insert: vi.fn().mockResolvedValue({ data: [], error: null }),
@@ -288,7 +294,11 @@ describe('Etapa R3: Idempotência de vínculos e preservação manual', () => {
 
     it('quando o INSERT do discente é barrado (ex.: RLS), a orientação NÃO é gravada sem discente e o erro é reportado', async () => {
       const { client, tabelas } = criarClienteFake(
-        { discentes: [], orientacoes: [], docentes: [{ id: 1, nome: 'Docente Alfa Teste', id_lattes: '' }] },
+        {
+          discentes: [],
+          orientacoes: [],
+          docentes: [{ id: 1, nome: 'Docente Alfa Teste', id_lattes: '' }],
+        },
         {
           erroEm: {
             tabela: 'discentes',

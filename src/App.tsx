@@ -3,6 +3,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/hooks/use-auth'
+import { PeriodoProvider } from '@/hooks/use-periodo'
 import { KeepAlive } from '@/components/KeepAlive'
 
 import { Layout } from '@/components/Layout'
@@ -29,6 +30,7 @@ import Reconducao from '@/pages/Reconducao'
 import Indicadores from '@/pages/Indicadores'
 import PoliticasAfirmativas from '@/pages/PoliticasAfirmativas'
 import Usuarios from '@/pages/Usuarios'
+import Configuracoes from '@/pages/Configuracoes'
 import PrintView from '@/pages/PrintView'
 import NotFound from '@/pages/NotFound'
 import { useAuth } from '@/hooks/use-auth'
@@ -56,44 +58,66 @@ function UsuariosRouteGuard() {
   return <Usuarios />
 }
 
+/** Configurações (períodos e janela do Lattes): apenas 'suporte' e 'coordenador' (D-32). */
+function ConfiguracoesRouteGuard() {
+  const { isSuporte, isCoordenador, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-8 text-slate-500">
+        Carregando permissões...
+      </div>
+    )
+  }
+
+  if (!isSuporte && !isCoordenador) {
+    return <Navigate to="/" replace />
+  }
+
+  return <Configuracoes />
+}
+
 const App = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <TooltipProvider>
-          <KeepAlive />
-          <Toaster />
-          <Sonner position="top-right" />
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route element={<Layout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/usuarios" element={<UsuariosRouteGuard />} />
-              <Route path="/lacunas" element={<Lacunas />} />
-              <Route path="/reconducao" element={<Reconducao />} />
-              <Route path="/indicadores" element={<Indicadores />} />
-              <Route path="/politicas-afirmativas" element={<PoliticasAfirmativas />} />
-              <Route path="/docentes" element={<Docentes />} />
-              <Route path="/discentes" element={<Discentes />} />
-              <Route path="/egressos" element={<Egressos />} />
-              <Route path="/orientacoes" element={<Orientacoes />} />
-              <Route path="/disciplinas" element={<Disciplinas />} />
-              <Route path="/iniciacao-cientifica" element={<IniciacaoCientificaPage />} />
-              <Route path="/linhas-pesquisa" element={<LinhasPesquisa />} />
-              <Route path="/projetos-pesquisa" element={<ProjetosPesquisa />} />
-              <Route path="/publicacoes" element={<Publicacoes />} />
-              <Route path="/producao-tecnica" element={<ProducaoTecnica />} />
-              <Route path="/patentes" element={<Patentes />} />
-              <Route path="/qualis" element={<Qualis />} />
-              <Route path="/eventos" element={<Eventos />} />
-              <Route path="/mobilidade" element={<Mobilidade />} />
-              <Route path="/impacto-social" element={<ImpactoSocial />} />
-              <Route path="/premiacoes" element={<Premiacoes />} />
-              <Route path="/imprimir/:modulo" element={<PrintView />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </TooltipProvider>
+        <PeriodoProvider>
+          <TooltipProvider>
+            <KeepAlive />
+            <Toaster />
+            <Sonner position="top-right" />
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route element={<Layout />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/usuarios" element={<UsuariosRouteGuard />} />
+                <Route path="/configuracoes" element={<ConfiguracoesRouteGuard />} />
+                <Route path="/lacunas" element={<Lacunas />} />
+                <Route path="/reconducao" element={<Reconducao />} />
+                <Route path="/indicadores" element={<Indicadores />} />
+                <Route path="/politicas-afirmativas" element={<PoliticasAfirmativas />} />
+                <Route path="/docentes" element={<Docentes />} />
+                <Route path="/discentes" element={<Discentes />} />
+                <Route path="/egressos" element={<Egressos />} />
+                <Route path="/orientacoes" element={<Orientacoes />} />
+                <Route path="/disciplinas" element={<Disciplinas />} />
+                <Route path="/iniciacao-cientifica" element={<IniciacaoCientificaPage />} />
+                <Route path="/linhas-pesquisa" element={<LinhasPesquisa />} />
+                <Route path="/projetos-pesquisa" element={<ProjetosPesquisa />} />
+                <Route path="/publicacoes" element={<Publicacoes />} />
+                <Route path="/producao-tecnica" element={<ProducaoTecnica />} />
+                <Route path="/patentes" element={<Patentes />} />
+                <Route path="/qualis" element={<Qualis />} />
+                <Route path="/eventos" element={<Eventos />} />
+                <Route path="/mobilidade" element={<Mobilidade />} />
+                <Route path="/impacto-social" element={<ImpactoSocial />} />
+                <Route path="/premiacoes" element={<Premiacoes />} />
+                <Route path="/imprimir/:modulo" element={<PrintView />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </TooltipProvider>
+        </PeriodoProvider>
       </AuthProvider>
     </BrowserRouter>
   )

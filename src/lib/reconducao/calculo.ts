@@ -22,7 +22,7 @@ export const NOTA_SIMPLIFICACAO_NP =
   'O NP estrito considera apenas publicações com fator de impacto JCR >= 1.0 com coautoria confirmada com orientandos ou egressos do P²CEM. Publicações ainda não confirmadas são apresentadas como potenciais no NP TETO para revisão pelo colegiado.'
 
 export const NOTA_DISCIPLINAS_TEMPORAIS =
-  'Quando a disciplina vinculada ao docente possui campo de ano/período (ano_semestre), valida-se a pertinência ao período (2025–2028). Caso o campo não contenha ano identificável, a disciplina vinculada é aceita como evidência de docência no programa e informada no detalhe.'
+  'Quando a disciplina vinculada ao docente possui campo de ano/período (ano_semestre), valida-se a pertinência ao período de avaliação em curso. Caso o campo não contenha ano identificável, a disciplina vinculada é aceita como evidência de docência no programa e informada no detalhe.'
 
 /**
  * Extrai ano de uma string de data (ex: '2025-11-20' -> 2025) ou de ano/período ('2025/1' -> 2025).

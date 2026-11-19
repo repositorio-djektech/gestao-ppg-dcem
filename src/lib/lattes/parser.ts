@@ -472,13 +472,6 @@ export function parseLattesXml(
 
   function processarOrientacao(el: Element, situacao: 'CONCLUIDA' | 'EM_ANDAMENTO') {
     const tagName = el.tagName.toUpperCase()
-    let tipo: LattesOrientacao['tipo'] = 'OUTRA'
-    if (tagName.includes('MESTRADO')) tipo = 'MESTRADO'
-    else if (tagName.includes('DOUTORADO')) tipo = 'DOUTORADO'
-    else if (tagName.includes('POS-DOUTORADO')) tipo = 'POS-DOUTORADO'
-    else if (tagName.includes('INICIACAO-CIENTIFICA')) tipo = 'INICIACAO_CIENTIFICA'
-    else if (tagName.includes('GRADUACAO') || tagName.includes('APERFEICOAMENTO'))
-      tipo = 'GRADUACAO'
 
     const dadosBasicos =
       el.querySelector(
@@ -489,30 +482,61 @@ export function parseLattesXml(
         'DETALHAMENTO-DE-ORIENTACOES-CONCLUIDAS-PARA-MESTRADO, DETALHAMENTO-DE-ORIENTACOES-CONCLUIDAS-PARA-DOUTORADO, DETALHAMENTO-DE-ORIENTACOES-CONCLUIDAS-PARA-POS-DOUTORADO, DETALHAMENTO-DE-ORIENTACOES-CONCLUIDAS-PARA-INICIACAO-CIENTIFICA, DETALHAMENTO-DE-ORIENTACOES-CONCLUIDAS-PARA-GRADUACAO, DETALHAMENTO-DE-OUTRAS-ORIENTACOES-CONCLUIDAS, DETALHAMENTO-DA-ORIENTACAO-EM-ANDAMENTO-DE-MESTRADO, DETALHAMENTO-DA-ORIENTACAO-EM-ANDAMENTO-DE-DOUTORADO, DETALHAMENTO-DA-ORIENTACAO-EM-ANDAMENTO-DE-POS-DOUTORADO, DETALHAMENTO-DA-ORIENTACAO-EM-ANDAMENTO-DE-INICIACAO-CIENTIFICA, DETALHAMENTO-DA-ORIENTACAO-EM-ANDAMENTO-DE-GRADUACAO, DETALHAMENTO-DE-OUTRAS-ORIENTACOES-EM-ANDAMENTO, DETALHAMENTO-DA-ORIENTACAO-EM-ANDAMENTO',
       ) || el.children[1]
 
+    // Tipo pela tag; nas "outras orientações" (onde o Lattes guarda a IC concluída) vale a NATUREZA
+    let tipo: LattesOrientacao['tipo'] = 'OUTRA'
+    if (tagName.includes('MESTRADO')) tipo = 'MESTRADO'
+    else if (tagName.includes('POS-DOUTORADO')) tipo = 'POS-DOUTORADO'
+    else if (tagName.includes('DOUTORADO')) tipo = 'DOUTORADO'
+    else if (tagName.includes('INICIACAO-CIENTIFICA')) tipo = 'INICIACAO_CIENTIFICA'
+    else if (tagName.includes('GRADUACAO') || tagName.includes('APERFEICOAMENTO'))
+      tipo = 'GRADUACAO'
+    else if (
+      tagName.startsWith('OUTRAS-ORIENTACOES') &&
+      /INICIACAO[_-]CIENTIFICA/i.test(dadosBasicos?.getAttribute('NATUREZA') || '')
+    )
+      tipo = 'INICIACAO_CIENTIFICA'
+
     const titulo = limparTexto(
       dadosBasicos?.getAttribute('TITULO') ||
         dadosBasicos?.getAttribute('TITULO-DO-TRABALHO') ||
         el.getAttribute('TITULO'),
     )
+    // Nas orientações CONCLUÍDAS o Lattes grava o nome em NOME-DO-ORIENTADO (nas em andamento é
+    // NOME-DO-ORIENTANDO). Só os tipos que o sistema importa são lidos por esse atributo; TCC,
+    // monografia e "outra natureza" concluídos continuam fora da importação (D-31).
+    const TIPOS_COM_ORIENTADO: Array<LattesOrientacao['tipo']> = [
+      'MESTRADO',
+      'DOUTORADO',
+      'POS-DOUTORADO',
+      'INICIACAO_CIENTIFICA',
+    ]
     const orientando = limparTexto(
-      detalhamento?.getAttribute('NOME-DO-ORIENTANDO') || el.getAttribute('NOME-DO-ORIENTANDO'),
+      detalhamento?.getAttribute('NOME-DO-ORIENTANDO') ||
+        el.getAttribute('NOME-DO-ORIENTANDO') ||
+        (TIPOS_COM_ORIENTADO.includes(tipo)
+          ? detalhamento?.getAttribute('NOME-DO-ORIENTADO')
+          : null),
     )
-    const anoConclusao =
+    // Concluída: ANO é o ano de conclusão. Em andamento: ANO é o ano de INÍCIO e não há término
+    // (antes ele era gravado como conclusão, e a tese em andamento virava "concluída").
+    const anoAtributo =
+      parseInt(dadosBasicos?.getAttribute('ANO') || el.getAttribute('ANO') || '', 10) || null
+    const anoConclusaoExplicito =
       parseInt(
-        dadosBasicos?.getAttribute('ANO-DE-CONCLUSAO') ||
-          dadosBasicos?.getAttribute('ANO') ||
-          el.getAttribute('ANO-DE-CONCLUSAO') ||
-          el.getAttribute('ANO') ||
-          '',
+        dadosBasicos?.getAttribute('ANO-DE-CONCLUSAO') || el.getAttribute('ANO-DE-CONCLUSAO') || '',
         10,
       ) || null
-    const anoInicioOri =
+    const anoInicioExplicito =
       parseInt(
         dadosBasicos?.getAttribute('ANO-DE-INICIO') || el.getAttribute('ANO-DE-INICIO') || '',
         10,
       ) || null
-    const anoVerificacao =
-      situacao === 'CONCLUIDA' ? anoConclusao || anoInicioOri : anoInicioOri || anoConclusao
+    const anoConclusao =
+      situacao === 'CONCLUIDA' ? anoConclusaoExplicito || anoAtributo : anoConclusaoExplicito
+    const anoInicioOri =
+      situacao === 'CONCLUIDA' ? anoInicioExplicito : anoInicioExplicito || anoAtributo
+    // Em andamento nunca é descartada pelo ano: o aluno ainda está no programa (D-31)
+    const anoVerificacao = situacao === 'CONCLUIDA' ? anoConclusao || anoInicioOri : null
 
     const inst = limparTexto(
       detalhamento?.getAttribute('NOME-DA-INSTITUICAO') || el.getAttribute('NOME-DA-INSTITUICAO'),
@@ -521,7 +545,9 @@ export function parseLattesXml(
       detalhamento?.getAttribute('NOME-DO-CURSO') || el.getAttribute('NOME-DO-CURSO'),
     )
     const tipoOriRaw =
-      detalhamento?.getAttribute('TIPO-DE-ORIENTACAO') || el.getAttribute('TIPO-DE-ORIENTACAO')
+      detalhamento?.getAttribute('TIPO-DE-ORIENTACAO') ||
+      detalhamento?.getAttribute('TIPO-DE-ORIENTACAO-CONCLUIDA') ||
+      el.getAttribute('TIPO-DE-ORIENTACAO')
     const flagOrientadorPrincipal =
       tipoOriRaw && tipoOriRaw.toUpperCase().includes('CO') ? false : true
     const tipoOri: LattesOrientacao['tipo_orientacao'] = flagOrientadorPrincipal
@@ -542,6 +568,15 @@ export function parseLattesXml(
 
     if (!orientando) {
       oriIgnorados++
+      // Concluída de tipo que o sistema não importa (TCC, monografia, outra natureza) x currículo sem nome
+      const tipoNaoImportado = !TIPOS_COM_ORIENTADO.includes(tipo)
+      itensIgnorados.push({
+        tabela: 'orientacoes',
+        identificador:
+          titulo || `Orientação ${tipo} ${anoVerificacao || anoInicioOri || ''}`.trim(),
+        motivo: tipoNaoImportado ? 'TIPO_NAO_IMPORTADO' : 'SEM_NOME_ORIENTANDO',
+        ano: anoVerificacao || anoInicioOri,
+      })
       return
     }
 
@@ -556,7 +591,7 @@ export function parseLattesXml(
       return
     }
 
-    const chave = `${normalizarChave(orientando)}|${normalizarChave(titulo || '')}|${anoVerificacao || 0}`
+    const chave = `${normalizarChave(orientando)}|${normalizarChave(titulo || '')}|${anoVerificacao || anoInicioOri || 0}`
     if (chavesOrientacoes.has(chave)) {
       oriIgnorados++
       itensIgnorados.push({

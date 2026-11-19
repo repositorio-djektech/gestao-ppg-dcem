@@ -202,6 +202,14 @@ export function podeEditarTextoItem13(role: Role | null | undefined): boolean {
 }
 
 /**
+ * D-32: o período de avaliação e a janela do Lattes são configurados pela coordenação (suporte e
+ * coordenador, como o texto do item 1.3). Leitura é de todo usuário autenticado; o auxiliar não edita.
+ */
+export function podeEditarConfiguracoes(role: Role | null | undefined): boolean {
+  return role === 'suporte' || role === 'coordenador'
+}
+
+/**
  * Determina se o usuário pode excluir um registro específico na tabela indicada.
  * - suporte, coordenador: pode excluir qualquer registro.
  * - auxiliar: não pode excluir (política global do sistema).

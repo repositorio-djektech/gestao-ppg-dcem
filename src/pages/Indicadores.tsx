@@ -34,6 +34,8 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { obterIndicadoresCapes } from '@/services/indicadores-capes'
+import { usePeriodo } from '@/hooks/use-periodo'
+import { anoReferenciaDoPeriodo, anosDoPeriodo, rotuloPeriodo } from '@/lib/periodos/periodo'
 import {
   imprimirRelatorioIndicadoresViaIframe,
   exportarIndicadoresCsv,
@@ -43,7 +45,9 @@ import type { RelatorioIndicadoresCapes, ResultadoIndicador, QuesitoFicha } from
 export type FiltroQuesito = 'TODOS' | QuesitoFicha
 
 export interface IndicadoresProps {
-  carregarDadosFn?: () => ReturnType<typeof obterIndicadoresCapes>
+  carregarDadosFn?: (
+    opcoes?: Parameters<typeof obterIndicadoresCapes>[0],
+  ) => ReturnType<typeof obterIndicadoresCapes>
 }
 
 export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) {
@@ -55,7 +59,16 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
   const [busca, setBusca] = useState('')
   const [filtroQuesito, setFiltroQuesito] = useState<FiltroQuesito>('TODOS')
   const [filtroStatus, setFiltroStatus] = useState<'TODOS' | 'calculado' | 'indefinido'>('TODOS')
-  const [filtroAno, setFiltroAno] = useState<'TODOS' | '2025' | '2026' | '2027' | '2028'>('TODOS')
+  // 'TODOS' = período inteiro (MMA); senão o ano escolhido, em texto
+  const [filtroAno, setFiltroAno] = useState<string>('TODOS')
+
+  // Período de avaliação (D-32): o ativo, ou outro escolhido para consulta
+  const { periodo: periodoAtivo, periodos } = usePeriodo()
+  const [periodoEscolhidoId, setPeriodoEscolhidoId] = useState<number | null>(null)
+  const periodoSel = periodos.find((p) => p.id === periodoEscolhidoId) ?? periodoAtivo
+  const anoInicioSel = periodoSel.anoInicio
+  const anoFimSel = periodoSel.anoFim
+  const anoRefSel = anoReferenciaDoPeriodo(periodoSel)
 
   // Modais de detalhe e nota metodológica
   const [indicadorModal, setIndicadorModal] = useState<ResultadoIndicador | null>(null)
@@ -67,7 +80,11 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
     setErro(null)
     try {
       const loader = carregarDadosFn ?? obterIndicadoresCapes
-      const res = await loader()
+      const res = await loader({
+        anoReferencia: anoRefSel,
+        anoInicio: anoInicioSel,
+        anoFim: anoFimSel,
+      })
       if (res.sucesso && res.dados) {
         setRelatorio(res.dados)
       } else {
@@ -78,11 +95,22 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
     } finally {
       setCarregando(false)
     }
-  }, [carregarDadosFn])
+  }, [carregarDadosFn, anoRefSel, anoInicioSel, anoFimSel])
 
   useEffect(() => {
     carregar()
   }, [carregar])
+
+  // Anos exibidos: os do período calculado no relatório (3 ou 4 anos)
+  const anosPeriodo = useMemo(
+    () =>
+      anosDoPeriodo(
+        relatorio
+          ? { anoInicio: relatorio.quadrienio.inicio, anoFim: relatorio.quadrienio.fim }
+          : { anoInicio: anoInicioSel, anoFim: anoFimSel },
+      ),
+    [relatorio, anoInicioSel, anoFimSel],
+  )
 
   const handleExportarPdf = async () => {
     if (!relatorio) return
@@ -275,6 +303,32 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Período de avaliação (D-32): o ativo ou um anterior, para consulta */}
+          {periodos.length > 1 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-medium text-slate-600 shrink-0">Período:</span>
+              <Select
+                value={String(periodoSel.id ?? 'padrao')}
+                onValueChange={(val) => {
+                  setPeriodoEscolhidoId(Number(val))
+                  setFiltroAno('TODOS')
+                }}
+              >
+                <SelectTrigger className="w-[210px] bg-white h-9 text-xs">
+                  <SelectValue placeholder="Período de avaliação" />
+                </SelectTrigger>
+                <SelectContent>
+                  {periodos.map((p) => (
+                    <SelectItem key={p.id ?? 'padrao'} value={String(p.id ?? 'padrao')}>
+                      {rotuloPeriodo(p)}
+                      {p.ativo ? ' (ativo)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Filtro por Quesito */}
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-medium text-slate-600 shrink-0">Quesito:</span>
@@ -318,11 +372,12 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
                 <SelectValue placeholder="Ano de análise" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="TODOS">Quadriênio (MMA)</SelectItem>
-                <SelectItem value="2025">Ano 2025</SelectItem>
-                <SelectItem value="2026">Ano 2026</SelectItem>
-                <SelectItem value="2027">Ano 2027</SelectItem>
-                <SelectItem value="2028">Ano 2028</SelectItem>
+                <SelectItem value="TODOS">Período inteiro (MMA)</SelectItem>
+                {anosPeriodo.map((ano) => (
+                  <SelectItem key={ano} value={String(ano)}>
+                    Ano {ano}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -502,23 +557,24 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
                             )
                           })()}
 
-                          {/* Decomposição Anual tipo "2025: X · 2026: Y · 2027: Z · 2028: W → MMA: M" */}
+                          {/* Decomposição anual do período: "ano: valor · ano: valor → MMA" */}
                           {ind.anos && (
                             <div className="p-2 bg-slate-50 border border-slate-200 rounded text-[11px] leading-relaxed text-slate-700">
                               <div className="font-semibold text-slate-600 text-[10px] uppercase mb-1 flex items-center justify-between">
                                 <span>Série Anual &amp; MMA:</span>
                                 {ind.mma?.completo ? (
                                   <span className="text-emerald-700 font-bold text-[9px] bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">
-                                    4/4 Anos
+                                    {anosPeriodo.length}/{anosPeriodo.length} Anos
                                   </span>
                                 ) : (
                                   <span className="text-amber-800 font-bold text-[9px] bg-amber-50 px-1 py-0.2 rounded border border-amber-200">
-                                    {ind.mma?.anosConsiderados.length || 0}/4 Anos
+                                    {ind.mma?.anosConsiderados.length || 0}/{anosPeriodo.length}{' '}
+                                    Anos
                                   </span>
                                 )}
                               </div>
                               <div className="font-mono text-[11px] text-slate-800">
-                                {[2025, 2026, 2027, 2028].map((ano, idx) => {
+                                {anosPeriodo.map((ano, idx) => {
                                   const d = ind.anos?.[ano]
                                   const temValor =
                                     d?.status === 'calculado' && d.valorCalculado !== null
@@ -739,7 +795,7 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {[2025, 2026, 2027, 2028].map((ano) => {
+                          {anosPeriodo.map((ano) => {
                             const dadoAno = indicadorModal.anos?.[ano]
                             const isCalc =
                               dadoAno?.status === 'calculado' && dadoAno.valorCalculado !== null
@@ -778,8 +834,8 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
                             <td className="p-2 text-primary">MMA Final</td>
                             <td className="p-2 text-slate-700">
                               {indicadorModal.mma?.completo
-                                ? '4/4 anos completos'
-                                : `${indicadorModal.mma?.anosConsiderados.length || 0}/4 anos`}
+                                ? `${anosPeriodo.length}/${anosPeriodo.length} anos completos`
+                                : `${indicadorModal.mma?.anosConsiderados.length || 0}/${anosPeriodo.length} anos`}
                             </td>
                             <td className="p-2 text-right text-primary text-sm">
                               {indicadorModal.valorCalculado !== null
@@ -864,7 +920,7 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
                   <strong>
                     Indicadores &quot;no ano&quot; (SO, PSA, DP4A, ATI, NICT, NDISC, DPD):
                   </strong>{' '}
-                  calculados ano a ano (2025, 2026, 2027, 2028) e agregados pela média das médias
+                  calculados ano a ano ({anosPeriodo.join(', ')}) e agregados pela média das médias
                   anuais (MMA) diretamente conforme estipulado pela ficha CAPES.
                 </li>
                 <li>
@@ -885,8 +941,8 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
                   <strong>Regra Anti-Zero Fictício para anos sem insumo:</strong> um ano sem insumos
                   cadastrados permanece como &quot;aguardando insumo&quot; e{' '}
                   <strong>não entra como zero na média</strong>. A MMA apenas considera anos com
-                  registros preenchidos e sinaliza se o quadriênio está completo (4/4 anos) ou
-                  parcial.
+                  registros preenchidos e sinaliza se o período está completo (todos os{' '}
+                  {anosPeriodo.length} anos) ou parcial.
                 </li>
               </ul>
             </div>

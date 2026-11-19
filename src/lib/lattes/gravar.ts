@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase/client'
 import { normalizarTitulo } from './dedupe'
 import { anoDeMesAno, normalizarMesAno } from '@/lib/datas/mes-ano'
+import { prepararDiscenteParaGravar } from '@/lib/discentes/status'
+import { normalizarNomePessoa, normalizarTituloAcademico } from '@/lib/normalizacao'
 
 /** O Lattes só traz o ano: vira fevereiro daquele ano (`AAAA-02`, D-29). Texto sem formato fica como está. */
 function mesAnoDoLattes(valor: unknown): string {
@@ -11,7 +13,6 @@ function mesAnoDoLattes(valor: unknown): string {
 function anoParaChave(valor: unknown): string {
   return String(anoDeMesAno(valor) ?? valor ?? '')
 }
-import { normalizarNomePessoa, normalizarTituloAcademico } from '@/lib/normalizacao'
 import type {
   LattesDocente,
   LattesPublicacao,
@@ -40,16 +41,22 @@ export interface RelatorioGravacaoLattes {
   patentes: RelatorioContagemTabela
   eventos: RelatorioContagemTabela
   disciplinas?: RelatorioContagemTabela
+  /** Egressos criados a partir de orientações concluídas de mestrado e doutorado (D-31). */
+  egressos?: RelatorioContagemTabela
   vinculos?: {
     publicacoes_docentes: number
     publicacoes_coautores: number
     orientadores_discentes: number
     disciplinas_docentes?: number
+    /** Linhas gravadas em projetos_participantes (D-33). */
+    projetos_participantes?: number
   }
   erros: Array<{
     tabela:
       | TabelaAlvoId
       | 'discentes'
+      | 'egressos'
+      | 'projetos_participantes'
       | 'publicacoes_docentes'
       | 'publicacoes_coautores_programa'
       | 'disciplinas'
@@ -96,6 +103,8 @@ export interface PublicacaoParaGravar {
 export interface OrientacaoParaGravar {
   docente_id?: number | null
   docente_identificador?: string | null // id_lattes ou nome para resolução
+  /** Nome do dono do currículo: segunda chance de resolver o docente quando o ID Lattes não está no banco. */
+  docente_nome?: string | null
   discente_id?: number | null
   discente_nome: string
   tipo: string
@@ -121,6 +130,18 @@ export interface ProjetoPesquisaParaGravar {
   orgao_fomento?: string | null
   link_comprovacao?: string | null
   observacoes?: string | null
+  /** Equipe do projeto no Lattes, para registrar os docentes cadastrados como participantes (D-33). */
+  equipe?: Array<{ id_cnpq?: string | null; nome: string; responsavel?: boolean }>
+  /** Dono do currículo: sempre vira participante (ou coordenador, se for o responsável). */
+  importador_identificador?: string | null
+  importador_nome?: string | null
+  importador_responsavel?: boolean
+}
+
+/** Contexto de quem está importando; limita o que a RLS deixaria gravar (docente só grava o próprio). */
+export interface OpcoesGravacao {
+  papelUsuario?: string | null
+  docenteIdUsuario?: number | null
 }
 
 export interface PremiacaoParaGravar {
@@ -261,6 +282,7 @@ export function converterLattesOrientacao(
 
   return {
     docente_identificador: docenteContexto?.id_lattes || docenteContexto?.nome || null,
+    docente_nome: docenteContexto?.nome || null,
     discente_nome: o.orientando ? o.orientando.trim() : '',
     tipo: tipoDb,
     inicio: inicioStr,
@@ -283,8 +305,12 @@ export function converterLattesProjeto(
   docenteContexto?: { id_lattes?: string | null; nome?: string | null },
 ): ProjetoPesquisaParaGravar {
   const coordenador = p.equipe?.find((e) => e.responsavel)
-  const coordenadorIdCnpq = coordenador?.id_cnpq || null
-  const coordenadorNome = coordenador?.nome || (p.responsavel ? docenteContexto?.nome : null)
+  // Coordenador só quando o Lattes aponta um responsável (ou o dono do CV é o responsável). Antes,
+  // sem responsável na equipe, o docente que importava virava coordenador de projeto alheio (D-33).
+  const coordenadorIdentificador =
+    coordenador?.id_cnpq ||
+    coordenador?.nome ||
+    (p.responsavel ? docenteContexto?.id_lattes || docenteContexto?.nome || null : null)
 
   const orgaoFomento =
     p.financiadores && p.financiadores.length > 0 ? p.financiadores.join(', ') : ''
@@ -309,16 +335,19 @@ export function converterLattesProjeto(
     descricao: p.descricao ? p.descricao.trim() : '',
     inicio: inicioStr,
     fim: fimStr,
-    coordenador_identificador:
-      coordenadorIdCnpq ||
-      coordenadorNome ||
-      docenteContexto?.id_lattes ||
-      docenteContexto?.nome ||
-      null,
+    coordenador_identificador: coordenadorIdentificador,
     financiamento,
     orgao_fomento: orgaoFomento,
     link_comprovacao: '',
     observacoes: obsPartes.join(' | '),
+    equipe: (p.equipe || []).map((e) => ({
+      id_cnpq: e.id_cnpq || null,
+      nome: e.nome,
+      responsavel: Boolean(e.responsavel),
+    })),
+    importador_identificador: docenteContexto?.id_lattes || docenteContexto?.nome || null,
+    importador_nome: docenteContexto?.nome || null,
+    importador_responsavel: Boolean(p.responsavel),
   }
 }
 
@@ -914,13 +943,83 @@ interface DiscenteExistenteBanco {
   id: number
   nome: string
   link_lattes?: string | null
+  docente_orientador_id?: number | null
+  ano_conclusao?: string | null
+  tipo_curso?: string | null
+  status?: string | null
 }
 
 /**
+ * Atualiza uma linha e CONFIRMA que algo mudou. O PostgREST não devolve erro quando a RLS filtra
+ * todas as linhas do UPDATE; sem o `.select()`, essa falha era contada como sucesso.
+ */
+async function atualizarLinha(
+  client: SupabaseClientLike,
+  tabela: string,
+  id: number,
+  payload: Record<string, unknown>,
+): Promise<{ ok: boolean; semPermissao?: boolean; mensagem?: string }> {
+  const { data, error } = await (client as any)
+    .from(tabela)
+    .update(payload)
+    .eq('id', id)
+    .select('id')
+  if (error) return { ok: false, mensagem: error.message || 'Erro ao atualizar o registro.' }
+  if (!data || data.length === 0) {
+    return {
+      ok: false,
+      semPermissao: true,
+      mensagem: 'Sem permissão para alterar este registro (nenhuma linha foi atualizada).',
+    }
+  }
+  return { ok: true }
+}
+
+type MapasDocentes = {
+  porIdLattes: Map<string, DocenteExistenteBanco>
+  porNomeNormalizado: Map<string, DocenteExistenteBanco>
+}
+
+/** Resolve um docente por ID Lattes e, depois, por nome, olhando todos os identificadores informados. */
+function resolverDocente(
+  identificadores: Array<string | null | undefined>,
+  mapas: MapasDocentes,
+): DocenteExistenteBanco | null {
+  const lista = identificadores.map((i) => (i || '').trim()).filter(Boolean)
+  for (const ident of lista) {
+    const achado = mapas.porIdLattes.get(ident)
+    if (achado) return achado
+  }
+  for (const ident of lista) {
+    const achado = mapas.porNomeNormalizado.get(normalizarTitulo(ident))
+    if (achado) return achado
+  }
+  return null
+}
+
+/** Dados para criar (ou completar) o discente de uma orientação importada (D-31). */
+export interface ExtrasDiscenteImportado {
+  /** Orientação concluída: o discente nasce Titulado, com o mês de conclusão. */
+  concluida?: boolean
+  /** Conclusão em `AAAA-MM` (só o ano vale como fevereiro, D-29). */
+  anoConclusaoMesAno?: string | null
+  tipoCurso?: string | null
+  /** Ingresso em `AAAA-MM`; só quando o Lattes informa o início (orientação em andamento). */
+  dataIngresso?: string | null
+  docenteOrientadorId?: number | null
+  orientadorNome?: string | null
+}
+
+const TIPOS_CURSO_DISCENTE = ['Mestrado', 'Doutorado', 'Pós-Doutorado']
+
+/**
  * Resolve ou cria um discente pelo nome no banco Supabase.
- * Matching:
- * 1. Nome normalizado (sem acentos, minúsculo, trim).
- * 2. Se não encontrar, insere na tabela discentes com status 'em_andamento' e data_ingresso ano corrente.
+ * Matching: nome normalizado (sem acentos, minúsculo, trim).
+ * Se não encontrar, insere o discente:
+ * - orientação em andamento: status em andamento, com o ingresso quando o Lattes informa o início;
+ * - orientação concluída: status Titulado, com o mês de conclusão (D-26/D-29), sem inventar ingresso;
+ * - orientador principal: já grava o docente que importa como orientador (a RLS de INSERT permite).
+ * Se o discente já existe e ainda não tem conclusão, tenta completá-lo (sem erro se a RLS barrar).
  */
 export async function resolverOuCriarDiscente(
   nomeDiscente: string,
@@ -929,6 +1028,7 @@ export async function resolverOuCriarDiscente(
     lista: DiscenteExistenteBanco[]
   },
   client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
+  extras: ExtrasDiscenteImportado = {},
 ): Promise<{ id: number; criado: boolean } | null> {
   const nomeLimpo = nomeDiscente.trim()
   if (!nomeLimpo) return null
@@ -936,18 +1036,44 @@ export async function resolverOuCriarDiscente(
   const chave = normalizarTitulo(nomeLimpo)
   const existente = cacheDiscentes.porNomeNormalizado.get(chave)
   if (existente) {
+    // Completa o que o Lattes sabe e o cadastro ainda não: conclusão e nível. Melhor esforço.
+    const completar: Record<string, unknown> = {}
+    if (extras.concluida && extras.anoConclusaoMesAno && !(existente.ano_conclusao || '').trim()) {
+      const prep = prepararDiscenteParaGravar({
+        status: existente.status || 'em_andamento',
+        ano_conclusao: extras.anoConclusaoMesAno,
+      })
+      completar.ano_conclusao = prep.ano_conclusao
+      completar.status = prep.status
+    }
+    if (extras.tipoCurso && !(existente.tipo_curso || '').trim())
+      completar.tipo_curso = extras.tipoCurso
+    if (Object.keys(completar).length > 0) {
+      const res = await atualizarLinha(client, 'discentes', existente.id, completar)
+      if (res.ok) Object.assign(existente, completar)
+    }
     return { id: existente.id, criado: false }
   }
 
-  // Tenta inserir novo discente
+  const prep =
+    extras.concluida && extras.anoConclusaoMesAno
+      ? prepararDiscenteParaGravar({
+          status: 'em_andamento',
+          ano_conclusao: extras.anoConclusaoMesAno,
+        })
+      : null
+
   const novoPayload = {
     nome: nomeLimpo,
     cpf: '',
-    data_ingresso: mesAnoDoLattes(new Date().getFullYear()),
-    status: 'em_andamento',
+    data_ingresso: extras.dataIngresso ? mesAnoDoLattes(extras.dataIngresso) : '',
+    status: prep?.status ?? 'em_andamento',
+    ano_conclusao: prep?.ano_conclusao ?? '',
+    tipo_curso: extras.tipoCurso || '',
     link_lattes: '',
     link_comprovacao: '',
-    orientador: '',
+    orientador: extras.orientadorNome || '',
+    docente_orientador_id: extras.docenteOrientadorId ?? null,
     observacoes: 'Cadastrado automaticamente via importação Lattes',
   }
 
@@ -962,33 +1088,58 @@ export async function resolverOuCriarDiscente(
     throw new Error(error?.message || 'Não foi possível criar o discente.')
   }
 
-  const rec: DiscenteExistenteBanco = { id: data.id, nome: data.nome }
+  const rec: DiscenteExistenteBanco = {
+    id: data.id,
+    nome: data.nome,
+    docente_orientador_id: novoPayload.docente_orientador_id,
+    ano_conclusao: novoPayload.ano_conclusao,
+    tipo_curso: novoPayload.tipo_curso,
+    status: novoPayload.status,
+  }
   cacheDiscentes.lista.push(rec)
   cacheDiscentes.porNomeNormalizado.set(chave, rec)
   return { id: rec.id, criado: true }
 }
 
 /**
+ * Mês de conclusão (`AAAA-MM`) de uma orientação concluída. O parser preenche `data_defesa` com
+ * 31/12 quando o Lattes só traz o ano; essa data inventada não vale: nesse caso usa o término
+ * (só ano = fevereiro, D-29).
+ */
+function mesConclusaoDaOrientacao(ori: OrientacaoParaGravar): string | null {
+  const defesaReal = ori.data_defesa && !/-12-31$/.test(ori.data_defesa) ? ori.data_defesa : null
+  return (
+    normalizarMesAno(defesaReal) ||
+    normalizarMesAno(ori.fim) ||
+    normalizarMesAno(ori.ano_referencia) ||
+    null
+  )
+}
+
+/**
  * Grava orientações no Supabase:
- * - Resolve docente_id via id_lattes ou nome;
- * - Resolve/cria discente_id via nome;
+ * - Resolve docente_id via id_lattes ou nome (do orientador e do dono do currículo);
+ * - Resolve/cria discente_id via nome (concluída = Titulado; em andamento = ingresso conhecido);
+ * - Concluída de mestrado/doutorado como orientador principal também cria o Egresso (D-31);
  * - Dedupe: mesmo docente_id + mesmo discente_id + mesmo ano de início/referência + tipo
  *   (ou discente_id + ano_referencia quando docente não vinculado);
- *   se existir -> UPDATE, senão INSERT.
+ *   se existir -> UPDATE (confirmado: RLS que barra o UPDATE aparece como erro), senão INSERT.
  */
 export async function gravarOrientacoes(
   orientacoes: OrientacaoParaGravar[],
   client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
-  mapaDocentesPrecarregado?: {
-    porIdLattes: Map<string, DocenteExistenteBanco>
-    porNomeNormalizado: Map<string, DocenteExistenteBanco>
-  },
-): Promise<{ contagem: RelatorioContagemTabela; erros: RelatorioGravacaoLattes['erros'] }> {
+  mapaDocentesPrecarregado?: MapasDocentes,
+): Promise<{
+  contagem: RelatorioContagemTabela
+  erros: RelatorioGravacaoLattes['erros']
+  egressos: RelatorioContagemTabela
+}> {
   const contagem: RelatorioContagemTabela = { inseridos: 0, atualizados: 0, ignorados: 0 }
+  const egressos: RelatorioContagemTabela = { inseridos: 0, atualizados: 0, ignorados: 0 }
   const erros: RelatorioGravacaoLattes['erros'] = []
 
   if (!orientacoes || orientacoes.length === 0) {
-    return { contagem, erros }
+    return { contagem, erros, egressos }
   }
 
   // 1. Carrega orientações existentes
@@ -1003,13 +1154,13 @@ export async function gravarOrientacoes(
       mensagem: errOri.message || 'Erro ao consultar orientações existentes.',
     })
     contagem.ignorados += orientacoes.length
-    return { contagem, erros }
+    return { contagem, erros, egressos }
   }
 
   // 2. Carrega discentes para cache em memória
   const { data: existentesDisc, error: errDisc } = await (client as any)
     .from('discentes')
-    .select('id, nome, link_lattes')
+    .select('id, nome, link_lattes, docente_orientador_id, ano_conclusao, tipo_curso, status')
 
   if (errDisc) {
     erros.push({
@@ -1018,7 +1169,7 @@ export async function gravarOrientacoes(
       mensagem: errDisc.message || 'Erro ao carregar discentes para vinculo de orientação.',
     })
     contagem.ignorados += orientacoes.length
-    return { contagem, erros }
+    return { contagem, erros, egressos }
   }
 
   const cacheDiscentes = {
@@ -1029,7 +1180,24 @@ export async function gravarOrientacoes(
     if (d.nome) cacheDiscentes.porNomeNormalizado.set(normalizarTitulo(d.nome), d)
   }
 
-  // 3. Carrega docentes se não fornecido
+  // 3. Egressos já cadastrados (para não duplicar)
+  const egressosPorNome = new Set<string>()
+  const { data: existentesEgr, error: errEgr } = await (client as any)
+    .from('egressos')
+    .select('id, nome')
+  const egressosDisponiveis = !errEgr
+  if (errEgr) {
+    erros.push({
+      tabela: 'egressos',
+      item: 'listagem_inicial',
+      mensagem: errEgr.message || 'Erro ao consultar egressos; nenhum egresso será criado.',
+    })
+  }
+  for (const e of existentesEgr || []) {
+    if (e.nome) egressosPorNome.add(normalizarTitulo(e.nome))
+  }
+
+  // 4. Carrega docentes se não fornecido
   let docMapas = mapaDocentesPrecarregado
   if (!docMapas) {
     const { data: existentesDoc } = await (client as any)
@@ -1042,6 +1210,10 @@ export async function gravarOrientacoes(
       if (d.nome) porNome.set(normalizarTitulo(d.nome), d)
     }
     docMapas = { porIdLattes, porNomeNormalizado: porNome }
+  }
+  const docentePorId = new Map<number, DocenteExistenteBanco>()
+  for (const d of [...docMapas.porIdLattes.values(), ...docMapas.porNomeNormalizado.values()]) {
+    docentePorId.set(d.id, d)
   }
 
   // Mapa de orientações existentes para dedupe: `docenteId_discenteId_tipo_inicio`
@@ -1060,31 +1232,38 @@ export async function gravarOrientacoes(
   }
 
   for (const ori of orientacoes) {
-    // Resolver docente_id
-    let docenteId: number | null = ori.docente_id ?? null
-    if (!docenteId && ori.docente_identificador) {
-      const matchLattes = docMapas.porIdLattes.get(ori.docente_identificador.trim())
-      if (matchLattes) {
-        docenteId = matchLattes.id
-      } else {
-        const matchNome = docMapas.porNomeNormalizado.get(
-          normalizarTitulo(ori.docente_identificador),
-        )
-        if (matchNome) docenteId = matchNome.id
-      }
-    }
+    // Resolver docente_id: ID Lattes ou nome, do orientador e do dono do currículo
+    const docenteId: number | null =
+      ori.docente_id ??
+      resolverDocente([ori.docente_identificador, ori.docente_nome], docMapas)?.id ??
+      null
+    const nomeDocente =
+      (docenteId ? docentePorId.get(docenteId)?.nome : null) || ori.docente_nome || ''
+
+    const tipoFinal = ori.tipo || 'Mestrado'
+    const concluida = ori.status === 'concluido'
+    const principal = ori.flag_orientador_principal !== false
+    const mesConclusao = concluida ? mesConclusaoDaOrientacao(ori) : null
+    const tipoCurso = TIPOS_CURSO_DISCENTE.includes(tipoFinal) ? tipoFinal : ''
 
     // Resolver discente_id
     let discenteId: number | null = ori.discente_id ?? null
     if (!discenteId && ori.discente_nome) {
       try {
-        const resDisc = await resolverOuCriarDiscente(ori.discente_nome, cacheDiscentes, client)
+        const resDisc = await resolverOuCriarDiscente(ori.discente_nome, cacheDiscentes, client, {
+          concluida,
+          anoConclusaoMesAno: mesConclusao,
+          tipoCurso,
+          dataIngresso: concluida ? null : ori.inicio || null,
+          docenteOrientadorId: principal && docenteId ? docenteId : null,
+          orientadorNome: principal ? nomeDocente : '',
+        })
         if (resDisc) discenteId = resDisc.id
       } catch (e) {
         // P-15: sem o discente não há orientação válida (ficaria órfã, sem nem o nome). Reporta e segue.
         erros.push({
           tabela: 'orientacoes',
-          item: `${ori.discente_nome} (${ori.tipo || 'Mestrado'})`,
+          item: `${ori.discente_nome} (${tipoFinal})`,
           mensagem: `Não foi possível cadastrar o discente: ${e instanceof Error ? e.message : 'erro desconhecido'}`,
         })
         contagem.ignorados++
@@ -1092,37 +1271,42 @@ export async function gravarOrientacoes(
       }
     }
 
-    // Etapa R3: se temos docenteId e discenteId, atualizar discentes.docente_orientador_id
-    // preservando texto livre de discentes.orientador e preservando orientação já confirmada.
-    // D-11/H-02: coorientação (flag_orientador_principal = false) nunca define o orientador principal.
-    if (docenteId && discenteId && ori.flag_orientador_principal !== false) {
-      try {
-        // Busca discente atual para não sobrescrever caso já possua orientador confirmado
-        const { data: discAtual } = await (client as any)
+    // Etapa R3: discente já cadastrado sem orientador passa a ter o docente como orientador,
+    // preservando orientação já confirmada. D-11/H-02: coorientação nunca define o principal.
+    if (docenteId && discenteId && principal) {
+      let discAtual: DiscenteExistenteBanco | undefined = cacheDiscentes.lista.find(
+        (d) => d.id === discenteId,
+      )
+      if (!discAtual) {
+        // discente informado por id e fora do cache: consulta direta
+        const { data } = await (client as any)
           .from('discentes')
-          .select('id, orientador, docente_orientador_id')
+          .select('id, nome, orientador, docente_orientador_id')
           .eq('id', discenteId)
           .maybeSingle()
-
-        if (discAtual && !discAtual.docente_orientador_id) {
-          const nomeDocente =
-            ori.docente_identificador ||
-            docMapas.porIdLattes.get(ori.docente_identificador || '')?.nome ||
-            ''
-          await (client as any)
-            .from('discentes')
-            .update({
-              docente_orientador_id: docenteId,
-              orientador: discAtual.orientador || nomeDocente || '',
-            })
-            .eq('id', discenteId)
+        if (data) {
+          discAtual = data as DiscenteExistenteBanco
+          cacheDiscentes.lista.push(discAtual)
         }
-      } catch {
-        // Ignora erro pontual para prosseguir
+      }
+      if (discAtual && !discAtual.docente_orientador_id) {
+        const res = await atualizarLinha(client, 'discentes', discenteId, {
+          docente_orientador_id: docenteId,
+          orientador: nomeDocente,
+        })
+        if (res.ok) {
+          discAtual.docente_orientador_id = docenteId
+        } else if (!res.semPermissao) {
+          // Sem permissão é esperado (o aluno é de outro orientador); erro de verdade é mostrado.
+          erros.push({
+            tabela: 'discentes',
+            item: ori.discente_nome,
+            mensagem: res.mensagem || 'Não foi possível definir o orientador do discente.',
+          })
+        }
       }
     }
 
-    const tipoFinal = ori.tipo || 'Mestrado'
     const inicioFinal = ori.inicio
       ? mesAnoDoLattes(ori.inicio)
       : ori.ano_referencia
@@ -1144,22 +1328,20 @@ export async function gravarOrientacoes(
       flag_orientador_principal: ori.flag_orientador_principal ?? false,
     }
 
+    let gravada = false
     if (existente) {
-      // UPDATE
-      const { error: updErr } = await (client as any)
-        .from('orientacoes')
-        .update(payload)
-        .eq('id', existente.id)
-
-      if (updErr) {
+      // UPDATE (confirmado)
+      const res = await atualizarLinha(client, 'orientacoes', existente.id, payload)
+      if (!res.ok) {
         erros.push({
           tabela: 'orientacoes',
           item: `${ori.discente_nome || 'Orientação'} (${tipoFinal})`,
-          mensagem: updErr.message || 'Erro no update de orientação.',
+          mensagem: res.mensagem || 'Erro no update de orientação.',
         })
         contagem.ignorados++
       } else {
         contagem.atualizados++
+        gravada = true
       }
     } else {
       // INSERT
@@ -1178,14 +1360,54 @@ export async function gravarOrientacoes(
         contagem.ignorados++
       } else {
         contagem.inseridos++
+        gravada = true
         if (insData) {
           mapaOriExistentes.set(chaveDedupe, insData as OriExistente)
         }
       }
     }
+
+    // D-31: formado (mestrado ou doutorado concluído, como orientador principal) também é Egresso
+    if (
+      gravada &&
+      egressosDisponiveis &&
+      concluida &&
+      principal &&
+      discenteId &&
+      ['Mestrado', 'Doutorado'].includes(tipoFinal)
+    ) {
+      const chaveEgr = normalizarTitulo(ori.discente_nome)
+      if (chaveEgr && !egressosPorNome.has(chaveEgr)) {
+        const { error: egrErr } = await (client as any)
+          .from('egressos')
+          .insert([
+            {
+              nome: ori.discente_nome.trim(),
+              tipo_curso: tipoFinal,
+              ano_titulacao: anoDeMesAno(mesConclusao),
+              docente_orientador_id: docenteId,
+              orientador: nomeDocente,
+              observacoes: 'Cadastrado automaticamente via importação Lattes',
+            },
+          ])
+          .select('id')
+          .single()
+        if (egrErr) {
+          erros.push({
+            tabela: 'egressos',
+            item: `${ori.discente_nome} (${tipoFinal})`,
+            mensagem: egrErr.message || 'Erro ao cadastrar o egresso.',
+          })
+          egressos.ignorados++
+        } else {
+          egressos.inseridos++
+          egressosPorNome.add(chaveEgr)
+        }
+      }
+    }
   }
 
-  return { contagem, erros }
+  return { contagem, erros, egressos }
 }
 
 /**
@@ -1209,23 +1431,29 @@ export async function gravarDisciplinas(
 
 /**
  * Grava projetos de pesquisa no Supabase:
- * - Coordenador resolvido por NRO-ID-CNPQ / id_lattes ou nome;
+ * - Coordenador resolvido por NRO-ID-CNPQ / id_lattes ou nome; sem responsável, fica vazio (D-33);
  * - Financiadores mapeados para orgao_fomento;
- * - Dedupe: por título normalizado + início.
+ * - Dedupe: por título normalizado + início. UPDATE só muda o coordenador quando o Lattes aponta um;
+ * - Participantes (D-33): o dono do currículo e os demais docentes da equipe viram linhas de
+ *   projetos_participantes, o que faz o projeto aparecer na tela do docente. Docente só grava a
+ *   própria linha (a RLS não deixa gravar a de outro).
  */
 export async function gravarProjetosPesquisa(
   projetos: ProjetoPesquisaParaGravar[],
   client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
-  mapaDocentesPrecarregado?: {
-    porIdLattes: Map<string, DocenteExistenteBanco>
-    porNomeNormalizado: Map<string, DocenteExistenteBanco>
-  },
-): Promise<{ contagem: RelatorioContagemTabela; erros: RelatorioGravacaoLattes['erros'] }> {
+  mapaDocentesPrecarregado?: MapasDocentes,
+  opcoes: OpcoesGravacao = {},
+): Promise<{
+  contagem: RelatorioContagemTabela
+  erros: RelatorioGravacaoLattes['erros']
+  participantes: number
+}> {
   const contagem: RelatorioContagemTabela = { inseridos: 0, atualizados: 0, ignorados: 0 }
   const erros: RelatorioGravacaoLattes['erros'] = []
+  let participantes = 0
 
   if (!projetos || projetos.length === 0) {
-    return { contagem, erros }
+    return { contagem, erros, participantes }
   }
 
   // 1. Carrega projetos existentes
@@ -1240,10 +1468,10 @@ export async function gravarProjetosPesquisa(
       mensagem: errBusca.message || 'Erro ao consultar projetos existentes.',
     })
     contagem.ignorados += projetos.length
-    return { contagem, erros }
+    return { contagem, erros, participantes }
   }
 
-  // 2. Carrega mapa de docentes para resolução de coordenador
+  // 2. Carrega mapa de docentes para resolução de coordenador e participantes
   let docMapas = mapaDocentesPrecarregado
   if (!docMapas) {
     const { data: existentesDoc } = await (client as any)
@@ -1256,6 +1484,15 @@ export async function gravarProjetosPesquisa(
       if (d.nome) porNome.set(normalizarTitulo(d.nome), d)
     }
     docMapas = { porIdLattes, porNomeNormalizado: porNome }
+  }
+
+  // 3. Participações já gravadas (chave projeto_docente)
+  const participacoesExistentes = new Set<string>()
+  const { data: partsBanco } = await (client as any)
+    .from('projetos_participantes')
+    .select('projeto_id, docente_id')
+  for (const pp of partsBanco || []) {
+    participacoesExistentes.add(`${pp.projeto_id}_${pp.docente_id}`)
   }
 
   interface ProjetoExistente {
@@ -1279,18 +1516,14 @@ export async function gravarProjetosPesquisa(
     }
 
     // Resolver coordenador_id
-    let coordId = proj.coordenador_id ?? null
-    if (!coordId && proj.coordenador_identificador) {
-      const matchLattes = docMapas.porIdLattes.get(proj.coordenador_identificador.trim())
-      if (matchLattes) {
-        coordId = matchLattes.id
-      } else {
-        const matchNome = docMapas.porNomeNormalizado.get(
-          normalizarTitulo(proj.coordenador_identificador),
-        )
-        if (matchNome) coordId = matchNome.id
-      }
-    }
+    // Quando o coordenador é o dono do currículo, o nome dele também vale se o ID Lattes não está cadastrado
+    const coordIdentificadores =
+      proj.coordenador_identificador &&
+      proj.coordenador_identificador === proj.importador_identificador
+        ? [proj.coordenador_identificador, proj.importador_nome]
+        : [proj.coordenador_identificador]
+    const coordId: number | null =
+      proj.coordenador_id ?? resolverDocente(coordIdentificadores, docMapas)?.id ?? null
 
     const chave = `${normalizarTitulo(tituloLimpo)}_${anoParaChave(proj.inicio)}`
     const existente = mapaPorChave.get(chave)
@@ -1300,33 +1533,36 @@ export async function gravarProjetosPesquisa(
       descricao: proj.descricao || '',
       inicio: proj.inicio ? mesAnoDoLattes(proj.inicio) : '',
       fim: proj.fim ? mesAnoDoLattes(proj.fim) : '',
-      coordenador_id: coordId,
       financiamento: Boolean(proj.financiamento),
       orgao_fomento: proj.orgao_fomento || '',
       link_comprovacao: proj.link_comprovacao || '',
       observacoes: proj.observacoes || '',
     }
+    // Só grava o coordenador quando há um: reimportar não pode apagar o coordenador já cadastrado
+    if (coordId) payload.coordenador_id = coordId
+
+    let projetoId: number | null = existente?.id ?? null
 
     if (existente) {
-      const { error: updErr } = await (client as any)
-        .from('projetos_pesquisa')
-        .update(payload)
-        .eq('id', existente.id)
-
-      if (updErr) {
+      const res = await atualizarLinha(client, 'projetos_pesquisa', existente.id, payload)
+      if (res.ok) {
+        contagem.atualizados++
+      } else if (res.semPermissao) {
+        // Esperado: o projeto é de outro coordenador e o docente só participa. Não é erro; o
+        // projeto segue como está e a participação abaixo é registrada.
+        contagem.ignorados++
+      } else {
         erros.push({
           tabela: 'projetos_pesquisa',
           item: tituloLimpo,
-          mensagem: updErr.message || 'Erro no update de projeto de pesquisa.',
+          mensagem: res.mensagem || 'Erro no update de projeto de pesquisa.',
         })
         contagem.ignorados++
-      } else {
-        contagem.atualizados++
       }
     } else {
       const { data: insData, error: insErr } = await (client as any)
         .from('projetos_pesquisa')
-        .insert([payload])
+        .insert([{ ...payload, coordenador_id: coordId }])
         .select('id, titulo, inicio')
         .single()
 
@@ -1341,12 +1577,45 @@ export async function gravarProjetosPesquisa(
         contagem.inseridos++
         if (insData) {
           mapaPorChave.set(chave, insData as ProjetoExistente)
+          projetoId = (insData as ProjetoExistente).id
         }
+      }
+    }
+
+    // Participantes: dono do currículo + docentes da equipe cadastrados no sistema
+    if (!projetoId) continue
+    const candidatos = new Map<number, 'coordenador' | 'participante'>()
+    for (const m of proj.equipe || []) {
+      const d = resolverDocente([m.id_cnpq, m.nome], docMapas)
+      if (d) candidatos.set(d.id, m.responsavel ? 'coordenador' : 'participante')
+    }
+    const dono = resolverDocente([proj.importador_identificador, proj.importador_nome], docMapas)
+    if (dono && !candidatos.has(dono.id)) {
+      candidatos.set(dono.id, proj.importador_responsavel ? 'coordenador' : 'participante')
+    }
+
+    for (const [docenteId, papel] of candidatos) {
+      if (docenteId === coordId) continue // o coordenador já enxerga o projeto por coordenador_id
+      if (opcoes.papelUsuario === 'docente' && docenteId !== opcoes.docenteIdUsuario) continue
+      const chavePart = `${projetoId}_${docenteId}`
+      if (participacoesExistentes.has(chavePart)) continue
+      const { error: partErr } = await (client as any)
+        .from('projetos_participantes')
+        .insert([{ projeto_id: projetoId, docente_id: docenteId, papel }])
+      if (partErr) {
+        erros.push({
+          tabela: 'projetos_participantes',
+          item: tituloLimpo,
+          mensagem: partErr.message || 'Erro ao registrar o participante do projeto.',
+        })
+      } else {
+        participacoesExistentes.add(chavePart)
+        participantes++
       }
     }
   }
 
-  return { contagem, erros }
+  return { contagem, erros, participantes }
 }
 
 /**
@@ -1801,6 +2070,7 @@ export async function gravarDadosLattes(
     disciplinas?: DisciplinaParaGravar[]
   },
   client: SupabaseClientLike = (globalThis as any).__SUPABASE_CLIENT__ || supabase,
+  opcoes: OpcoesGravacao = {},
 ): Promise<RelatorioGravacaoLattes> {
   const relatorio: RelatorioGravacaoLattes = {
     docentes: { inseridos: 0, atualizados: 0, ignorados: 0 },
@@ -1831,7 +2101,25 @@ export async function gravarDadosLattes(
     }
   }
 
-  // 2. Publicações
+  // 2. Orientações (resolve/cria discentes e egressos). Antes das publicações: os alunos precisam
+  // existir quando os artigos forem casados com orientandos e egressos (D-31).
+  if (dados.orientacoes && dados.orientacoes.length > 0) {
+    try {
+      const resOri = await gravarOrientacoes(dados.orientacoes, client)
+      relatorio.orientacoes = resOri.contagem
+      relatorio.egressos = resOri.egressos
+      relatorio.erros.push(...resOri.erros)
+    } catch (err: any) {
+      relatorio.erros.push({
+        tabela: 'orientacoes',
+        item: 'lote_orientacoes',
+        mensagem: err?.message || 'Falha crítica ao gravar orientações.',
+      })
+      relatorio.orientacoes.ignorados += dados.orientacoes.length
+    }
+  }
+
+  // 3. Publicações
   if (dados.publicacoes && dados.publicacoes.length > 0) {
     try {
       const resPub = await gravarPublicacoes(dados.publicacoes, client)
@@ -1847,27 +2135,23 @@ export async function gravarDadosLattes(
     }
   }
 
-  // 3. Orientações (resolve discentes e docentes)
-  if (dados.orientacoes && dados.orientacoes.length > 0) {
-    try {
-      const resOri = await gravarOrientacoes(dados.orientacoes, client)
-      relatorio.orientacoes = resOri.contagem
-      relatorio.erros.push(...resOri.erros)
-    } catch (err: any) {
-      relatorio.erros.push({
-        tabela: 'orientacoes',
-        item: 'lote_orientacoes',
-        mensagem: err?.message || 'Falha crítica ao gravar orientações.',
-      })
-      relatorio.orientacoes.ignorados += dados.orientacoes.length
-    }
-  }
-
-  // 5. Projetos de pesquisa
+  // 4. Projetos de pesquisa
   if (dados.projetos_pesquisa && dados.projetos_pesquisa.length > 0) {
     try {
-      const resProj = await gravarProjetosPesquisa(dados.projetos_pesquisa, client)
+      const resProj = await gravarProjetosPesquisa(
+        dados.projetos_pesquisa,
+        client,
+        undefined,
+        opcoes,
+      )
       relatorio.projetos_pesquisa = resProj.contagem
+      relatorio.vinculos = {
+        publicacoes_docentes: relatorio.vinculos?.publicacoes_docentes ?? 0,
+        publicacoes_coautores: relatorio.vinculos?.publicacoes_coautores ?? 0,
+        orientadores_discentes: relatorio.vinculos?.orientadores_discentes ?? 0,
+        ...relatorio.vinculos,
+        projetos_participantes: resProj.participantes,
+      }
       relatorio.erros.push(...resProj.erros)
     } catch (err: any) {
       relatorio.erros.push({

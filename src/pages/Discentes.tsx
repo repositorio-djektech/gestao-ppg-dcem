@@ -2,6 +2,13 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { exibirMesAno, normalizarMesAno } from '@/lib/datas/mes-ano'
 import { useAuth } from '@/hooks/use-auth'
 import { CrudPage } from '@/components/crud/CrudPage'
+import {
+  PeriodoFiltro,
+  PERIODO_FILTRO_VAZIO,
+  filtroDoValor,
+  type ValorPeriodoFiltro,
+} from '@/components/PeriodoFiltro'
+import { discenteNoPeriodo } from '@/lib/periodos/filtro'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { discentesService } from '@/services/discentes'
 import { docentesService } from '@/services/docentes'
@@ -73,6 +80,9 @@ const statusColors: Record<string, string> = {
 }
 
 export default function Discentes() {
+  const [periodoFiltro, setPeriodoFiltro] = useState<ValorPeriodoFiltro>(PERIODO_FILTRO_VAZIO)
+  const filtroPeriodo = useMemo(() => filtroDoValor(periodoFiltro), [periodoFiltro])
+  const filtroExtra = useCallback((d: any) => discenteNoPeriodo(d, filtroPeriodo), [filtroPeriodo])
   const { role, profile } = useAuth()
   const isCapes = role === 'capes'
   const podeExcluir = !isCapes && (role === 'suporte' || role === 'coordenador')
@@ -744,6 +754,17 @@ export default function Discentes() {
         searchKey="nome"
         entityName="Discente"
         printModule="discentes"
+        printQuery={
+          filtroPeriodo ? `de=${periodoFiltro.inicio}&ate=${periodoFiltro.fim}` : undefined
+        }
+        filtroExtra={filtroPeriodo ? filtroExtra : undefined}
+        toolbarExtra={
+          <PeriodoFiltro
+            valor={periodoFiltro}
+            onChange={setPeriodoFiltro}
+            rotulo="Vínculo no período"
+          />
+        }
         tableHeaderClassName="bg-[#e9effc] sticky top-0 z-10"
         tableHeaderRowClassName="bg-[#e9effc] hover:bg-[#e9effc]"
         actionsHeaderClassName="text-left font-semibold text-slate-700"

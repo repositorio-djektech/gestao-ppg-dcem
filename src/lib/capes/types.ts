@@ -63,7 +63,7 @@ export interface ResultadoIndicador {
     valor: number | null
     anosConsiderados: number[]
     anosAguardando: number[]
-    completo: boolean // true se todos os 4 anos (2025-2028) têm insumo
+    completo: boolean // true se todos os anos do período de avaliação têm insumo
     regra: string
   }
 }

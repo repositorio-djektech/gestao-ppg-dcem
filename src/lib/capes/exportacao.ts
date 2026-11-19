@@ -1,4 +1,13 @@
 import type { RelatorioIndicadoresCapes, ResultadoIndicador } from './types'
+import { anosDoPeriodo } from '@/lib/periodos/periodo'
+
+/** Anos do período calculado no relatório (3 ou 4 anos, D-32). */
+function anosDoRelatorio(relatorio: RelatorioIndicadoresCapes): number[] {
+  return anosDoPeriodo({
+    anoInicio: relatorio.quadrienio.inicio,
+    anoFim: relatorio.quadrienio.fim,
+  })
+}
 
 function escaparHtml(str: unknown): string {
   if (str === null || str === undefined) return ''
@@ -22,6 +31,7 @@ export function gerarHtmlRelatorioIndicadores(
     timeStyle: 'medium',
   })
 
+  const anosPeriodo = anosDoRelatorio(relatorio)
   const quesitosFiltrados =
     filtroQuesito === 'TODOS'
       ? relatorio.quesitos
@@ -43,7 +53,7 @@ export function gerarHtmlRelatorioIndicadores(
 
           let seriesAnualHtml = ''
           if (ind.anos) {
-            const linhasAnos = [2025, 2026, 2027, 2028]
+            const linhasAnos = anosPeriodo
               .map((ano) => {
                 const dadoAno = ind.anos?.[ano]
                 const valStr =
@@ -67,10 +77,7 @@ export function gerarHtmlRelatorioIndicadores(
               <table style="width: 100%; border-collapse: collapse; font-size: 9pt;">
                 <thead>
                   <tr style="background-color: #f1f5f9; color: #475569;">
-                    <th style="padding: 4px; border: 1px solid #cbd5e1;">2025</th>
-                    <th style="padding: 4px; border: 1px solid #cbd5e1;">2026</th>
-                    <th style="padding: 4px; border: 1px solid #cbd5e1;">2027</th>
-                    <th style="padding: 4px; border: 1px solid #cbd5e1;">2028</th>
+                    ${anosPeriodo.map((ano) => `<th style="padding: 4px; border: 1px solid #cbd5e1;">${ano}</th>`).join('')}
                     <th style="padding: 4px; border: 1px solid #cbd5e1; background-color: #e0f2fe; color: #0369a1;">MMA Final</th>
                   </tr>
                 </thead>
@@ -342,9 +349,10 @@ export function imprimirRelatorioIndicadoresViaIframe(
 }
 
 /**
- * Gera e dispara download de arquivo CSV estruturado com todos os indicadores
+ * Monta o texto do CSV de indicadores. As colunas de ano seguem o período do relatório (3 ou 4 anos).
  */
-export function exportarIndicadoresCsv(relatorio: RelatorioIndicadoresCapes): void {
+export function gerarCsvIndicadores(relatorio: RelatorioIndicadoresCapes): string {
+  const anosPeriodo = anosDoRelatorio(relatorio)
   const cabecalhos = [
     'Quesito',
     'Item Ficha',
@@ -355,11 +363,8 @@ export function exportarIndicadoresCsv(relatorio: RelatorioIndicadoresCapes): vo
     'Fórmula',
     'Status',
     'Valor Consolidado (MMA / Estoque)',
-    '2025',
-    '2026',
-    '2027',
-    '2028',
-    'MMA Completo (4 anos)',
+    ...anosPeriodo.map(String),
+    `MMA Completo (${anosPeriodo.length} anos)`,
     'Regra MMA',
     'Unidade',
     'Motivo Indefinido',
@@ -391,10 +396,7 @@ export function exportarIndicadoresCsv(relatorio: RelatorioIndicadoresCapes): vo
         ind.formulaTexto,
         ind.status === 'calculado' ? 'CALCULADO' : 'AGUARDANDO INSUMO',
         ind.valorCalculado !== null ? String(ind.valorCalculado) : '',
-        formatarValorAnoCsv(ind, 2025),
-        formatarValorAnoCsv(ind, 2026),
-        formatarValorAnoCsv(ind, 2027),
-        formatarValorAnoCsv(ind, 2028),
+        ...anosPeriodo.map((ano) => formatarValorAnoCsv(ind, ano)),
         ind.mma ? (ind.mma.completo ? 'SIM' : 'NÃO') : 'N/A',
         ind.mma?.regra || '',
         ind.unidade || '',
@@ -409,6 +411,19 @@ export function exportarIndicadoresCsv(relatorio: RelatorioIndicadoresCapes): vo
       linha.map((celula) => `"${String(celula || '').replace(/"/g, '""')}"`).join(';'),
     )
     .join('\r\n')
+
+  return linhas
+    .map((linha) =>
+      linha.map((celula) => `"${String(celula || '').replace(/"/g, '""')}"`).join(';'),
+    )
+    .join('\r\n')
+}
+
+/**
+ * Gera e dispara download de arquivo CSV estruturado com todos os indicadores
+ */
+export function exportarIndicadoresCsv(relatorio: RelatorioIndicadoresCapes): void {
+  const csvContent = gerarCsvIndicadores(relatorio)
 
   // Adiciona BOM UTF-8 para correta abertura no Excel
   const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })

@@ -124,6 +124,35 @@ describe('NICT: soma só IC e IT (D-30)', () => {
     expect(nict?.valorCalculado).toBe(0.667)
   })
 
+  it('o mesmo aluno em duas iniciações no ano conta uma vez (orientador e coorientador)', () => {
+    const rel = calcularTodosIndicadores(
+      dados({
+        iniciacoesCientificas: [
+          { ...ic(1, 'iniciacao_cientifica', 2025), discente_id: 10 },
+          { ...ic(2, 'iniciacao_cientifica', 2025), docente_orientador_id: 2, discente_id: 10 },
+          { ...ic(3, 'iniciacao_cientifica', 2025), discente_id: 11 },
+        ],
+      }),
+    )
+    // 2 alunos (10 e 11) / 3 DP
+    expect(ind(rel, 'NICT').anos?.[2025].valorCalculado).toBe(0.667)
+  })
+
+  it('registros sem aluno identificado contam cada um; mesmo nome sem cadastro conta uma vez', () => {
+    const rel = calcularTodosIndicadores(
+      dados({
+        iniciacoesCientificas: [
+          ic(1, 'iniciacao_cientifica', 2025),
+          ic(2, 'iniciacao_cientifica', 2025),
+          { ...ic(3, 'iniciacao_cientifica', 2025), discente_nome: 'Aluno Sem Cadastro' },
+          { ...ic(4, 'iniciacao_tecnologica', 2025), discente_nome: 'ALUNO sem cadastro' },
+        ],
+      }),
+    )
+    // 2 sem aluno identificado + 1 nome repetido = 3 alunos / 3 DP
+    expect(ind(rel, 'NICT').anos?.[2025].valorCalculado).toBe(1)
+  })
+
   it('ano só com extensão continua indefinido (e não vira 0)', () => {
     const rel = calcularTodosIndicadores(
       dados({ iniciacoesCientificas: [ic(1, 'iniciacao_extensao', 2025)] }),

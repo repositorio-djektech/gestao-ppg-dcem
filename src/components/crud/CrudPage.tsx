@@ -57,6 +57,8 @@ interface CrudPageProps<T extends { id: number | string }> {
   entityName: string
   tableName?: TabelaMapeada
   printModule?: string
+  /** Parâmetros extras da impressão (ex.: `de=2021&ate=2023`), para ela herdar o filtro de período. */
+  printQuery?: string
   tableHeaderClassName?: string
   tableHeaderRowClassName?: string
   actionsHeaderClassName?: string
@@ -80,6 +82,10 @@ interface CrudPageProps<T extends { id: number | string }> {
       }) => ReactNode)
   getContextoItem?: (item: T) => ContextoPermissaoRegistro | undefined
   customFilterItem?: (item: T, termo: string, normalizar: (val: any) => string) => boolean
+  /** Filtro extra (ex.: por período), aplicado antes da busca textual. Precisa ter identidade estável. */
+  filtroExtra?: (item: T) => boolean
+  /** Controles extras (ex.: filtro de período) mostrados acima da tabela. */
+  toolbarExtra?: ReactNode
   transformSubmitData?: (
     formData: Record<string, any>,
     editingId: number | string | null,
@@ -100,6 +106,7 @@ export function CrudPage<T extends { id: number | string }>({
   entityName,
   tableName,
   printModule,
+  printQuery,
   tableHeaderClassName,
   tableHeaderRowClassName,
   actionsHeaderClassName,
@@ -108,6 +115,8 @@ export function CrudPage<T extends { id: number | string }>({
   formHeaderActions,
   getContextoItem,
   customFilterItem,
+  filtroExtra,
+  toolbarExtra,
   transformSubmitData,
   prepararFormularioEdicao,
 }: CrudPageProps<T>) {
@@ -167,7 +176,9 @@ export function CrudPage<T extends { id: number | string }>({
       .toLowerCase()
       .trim()
 
-    if (!termo) return data
+    const base = filtroExtra ? data.filter(filtroExtra) : data
+
+    if (!termo) return base
 
     const normalizar = (val: any): string => {
       if (val === null || val === undefined) return ''
@@ -179,7 +190,7 @@ export function CrudPage<T extends { id: number | string }>({
 
     const termoDigitos = termo.replace(/\D/g, '')
 
-    return data.filter((item) => {
+    return base.filter((item) => {
       // 1. Filtro customizado opcional
       if (customFilterItem && customFilterItem(item, termo, normalizar)) {
         return true
@@ -263,7 +274,11 @@ export function CrudPage<T extends { id: number | string }>({
 
       return false
     })
-  }, [data, searchTerm, searchKey, columns, customFilterItem])
+  }, [data, searchTerm, searchKey, columns, customFilterItem, filtroExtra])
+  // Mudou o filtro extra: volta à primeira página para não ficar numa página que não existe mais
+  useEffect(() => {
+    setPage(1)
+  }, [filtroExtra])
   const totalPages = Math.ceil(filtered.length / PER_PAGE)
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
   const colCount = columns.length + (hasActionsColumn ? 1 : 0)
@@ -463,7 +478,9 @@ export function CrudPage<T extends { id: number | string }>({
           {printModule && (
             <Button
               variant="outline"
-              onClick={() => navigate(`/imprimir/${printModule}`)}
+              onClick={() =>
+                navigate(`/imprimir/${printModule}${printQuery ? `?${printQuery}` : ''}`)
+              }
               className="gap-2 shrink-0 bg-white h-9 px-3.5"
               title="Versão para Impressão / Exportar PDF"
             >
@@ -479,6 +496,8 @@ export function CrudPage<T extends { id: number | string }>({
           )}
         </div>
       </div>
+
+      {toolbarExtra && <div className="shrink-0">{toolbarExtra}</div>}
 
       {/* Moldura estilo Supabase: contêiner flex-1 min-h-0 com tabela rolável e paginação colada na base */}
       <div className="flex flex-col flex-1 min-h-0 rounded-lg border border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm overflow-hidden">

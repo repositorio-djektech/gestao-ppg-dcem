@@ -5,7 +5,7 @@ Contexto para o Claude Code neste repositório.
 ## Produto
 - Sistema de coleta, gestão e cálculo de indicadores da avaliação quadrienal CAPES do PPG de Ciência e Engenharia de Materiais (UFS).
 - Modalidade: **acadêmica** (D-01). Não usar pesos ou exigências da modalidade profissional.
-- Referência normativa: **Ficha de Avaliação 2025, Engenharias II** (D-02). Quadriênio 2025–2028.
+- Referência normativa: **Ficha de Avaliação 2025, Engenharias II** (D-02). Período de avaliação **configurável** (D-32), hoje o quadriênio 2025–2028; o período ativo vem da tabela `periodos_avaliacao` e da tela Configurações, não de constante.
 - Estágio: **MVP em validação com dados reais**. Nada enviado à CAPES ainda. Os dados de produção são reais, inclusive CPFs de discentes.
 - Usuários operacionais: coordenação, docentes e auxiliares. O perfil `capes` é só demonstração (D-04).
 
@@ -25,6 +25,7 @@ Contexto para o Claude Code neste repositório.
 - Cada história tem critério de aceite. Implemente com teste automatizado sempre que possível.
 - **Estrato de periódico:** manter o atual (Qualis, A1–A4 e B1) até a CAPES confirmar a nova classificação (D-03, P-02). Não migrar para A1–A8 sem nova decisão.
 - Coeficiente do A4 = 0,675 e saturação em B1 ≤ DP, conforme a ficha 2025 (D-02). Não usar o 0,625 de planilhas antigas.
+- **Período e janela do Lattes:** não fixar anos no código. Use `usePeriodo()` (período ativo e janela do Lattes); `ANO_INICIO`/`ANO_FIM` em `lib/lattes/quadrienio.ts` são só valor de reserva. O import lê o Lattes desde 2020 e orientação/projeto em andamento sempre entra (D-31).
 - Permissões: docente altera só o que é referente a ele; coautores docentes e coordenação editam registros compartilhados (D-05, D-06).
 
 ## Segurança e dados

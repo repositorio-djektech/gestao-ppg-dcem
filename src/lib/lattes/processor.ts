@@ -1,6 +1,13 @@
 import { readLattesFiles, type LattesArquivoLido } from './readFiles'
 import { parseLattesXml } from './parser'
-import { ANO_INICIO, ANO_FIM, filtrarPorQuadrienio } from './quadrienio'
+import {
+  ANO_INICIO,
+  ANO_FIM,
+  filtrarPorQuadrienio,
+  intervaloCruzaJanela,
+  janelaImportacaoPadrao,
+  type JanelaAnos,
+} from './quadrienio'
 import { deduplicarItens } from './dedupe'
 import type { LattesArquivoResultado } from './types'
 
@@ -33,17 +40,31 @@ export interface ResultadoProcessamentoLattes {
   }
 }
 
+export interface OpcoesImportacaoLattes {
+  /** Ano inicial da janela de importação (padrão: 2020, D-31). */
+  anoInicio?: number
+  /** Ano final da janela de importação (padrão: o maior entre o fim do período e o ano atual). */
+  anoFim?: number
+}
+
 /**
  * Executa o fluxo de importação completo da Subetapa 1B:
  * 1. readLattesFiles: lê arquivos .xml e .zip descompactando e decodificando ISO-8859-1
  * 2. parseLattesXml: analisa o XML gerando itens brutos e metadados
- * 3. filtrarPorQuadrienio: reforça o recorte temporal (2025–2028)
+ * 3. filtrarPorQuadrienio: reforça o recorte temporal pela janela de importação (D-31). Orientações
+ *    e projetos EM ANDAMENTO nunca são cortados por ano.
  * 4. deduplicarItens: remove duplicatas por chave normalizada (título + ano)
  * 5. Agrega estatísticas e resumo para revisão posterior (subetapa 1C), sem persistência no banco.
  */
 export async function processarArquivosLattes(
   arquivos: File[] | FileList,
+  opcoes: OpcoesImportacaoLattes = {},
 ): Promise<ResultadoProcessamentoLattes> {
+  const padrao = janelaImportacaoPadrao()
+  const janela: JanelaAnos = {
+    anoInicio: opcoes.anoInicio ?? padrao.anoInicio,
+    anoFim: opcoes.anoFim ?? padrao.anoFim,
+  }
   const arquivosLidos: LattesArquivoLido[] = await readLattesFiles(arquivos)
 
   const erros: ItemErroImportacao[] = []
@@ -120,7 +141,7 @@ export async function processarArquivosLattes(
         continue
       }
 
-      const parsed = parseLattesXml(arq.xml, arq.nomeArquivo)
+      const parsed = parseLattesXml(arq.xml, arq.nomeArquivo, janela.anoInicio, janela.anoFim)
 
       if (!parsed.sucesso || parsed.erro) {
         erros.push({
@@ -134,33 +155,46 @@ export async function processarArquivosLattes(
 
       // Aplica filtrarPorQuadrienio e deduplicarItens explicitamente
       // Publicações
-      const pubQuad = filtrarPorQuadrienio(parsed.publicacoes, (p) => p.ano, ANO_INICIO, ANO_FIM)
+      const pubQuad = filtrarPorQuadrienio(
+        parsed.publicacoes,
+        (p) => p.ano,
+        janela.anoInicio,
+        janela.anoFim,
+      )
       const pubDedupe = deduplicarItens(
         pubQuad.dentro,
         (p) => p.titulo,
         (p) => p.ano,
       )
 
-      // Orientações
-      const oriQuad = filtrarPorQuadrienio(
-        parsed.orientacoes,
+      // Orientações: as EM ANDAMENTO sempre entram (o aluno ainda está no programa); as concluídas
+      // seguem a janela de importação
+      const oriAndamento = parsed.orientacoes.filter((o) => o.situacao === 'EM_ANDAMENTO')
+      const oriConcluidasQuad = filtrarPorQuadrienio(
+        parsed.orientacoes.filter((o) => o.situacao !== 'EM_ANDAMENTO'),
         (o) => o.ano_conclusao || o.ano_inicio || null,
-        ANO_INICIO,
-        ANO_FIM,
+        janela.anoInicio,
+        janela.anoFim,
       )
+      const oriQuad = {
+        dentro: [...oriAndamento, ...oriConcluidasQuad.dentro],
+        totalIgnorados: oriConcluidasQuad.totalIgnorados,
+      }
       const oriDedupe = deduplicarItens(
         oriQuad.dentro,
         (o) => `${o.orientando} ${o.titulo_trabalho || ''}`,
         (o) => o.ano_conclusao || o.ano_inicio || null,
       )
 
-      // Projetos
-      const projQuad = filtrarPorQuadrienio(
-        parsed.projetos,
-        (p) => p.ano_fim || p.ano_inicio || null,
-        ANO_INICIO,
-        ANO_FIM,
+      // Projetos: em andamento sempre entra; os demais precisam cruzar a janela de importação
+      const projDentro = parsed.projetos.filter(
+        (p) =>
+          p.situacao === 'EM_ANDAMENTO' || intervaloCruzaJanela(p.ano_inicio, p.ano_fim, janela),
       )
+      const projQuad = {
+        dentro: projDentro,
+        totalIgnorados: parsed.projetos.length - projDentro.length,
+      }
       const projDedupe = deduplicarItens(
         projQuad.dentro,
         (p) => p.nome,
@@ -171,8 +205,8 @@ export async function processarArquivosLattes(
       const prodQuad = filtrarPorQuadrienio(
         parsed.producoes_tecnicas,
         (pt) => pt.ano,
-        ANO_INICIO,
-        ANO_FIM,
+        janela.anoInicio,
+        janela.anoFim,
       )
       const prodDedupe = deduplicarItens(
         prodQuad.dentro,
@@ -184,8 +218,8 @@ export async function processarArquivosLattes(
       const patQuad = filtrarPorQuadrienio(
         parsed.patentes,
         (p) => p.ano_concessao || p.ano_deposito || p.ano_desenvolvimento || null,
-        ANO_INICIO,
-        ANO_FIM,
+        janela.anoInicio,
+        janela.anoFim,
       )
       const patDedupe = deduplicarItens(
         patQuad.dentro,
@@ -194,7 +228,12 @@ export async function processarArquivosLattes(
       )
 
       // Eventos
-      const eveQuad = filtrarPorQuadrienio(parsed.eventos, (e) => e.ano, ANO_INICIO, ANO_FIM)
+      const eveQuad = filtrarPorQuadrienio(
+        parsed.eventos,
+        (e) => e.ano,
+        janela.anoInicio,
+        janela.anoFim,
+      )
       const eveDedupe = deduplicarItens(
         eveQuad.dentro,
         (e) => `${e.nome} ${e.titulo_trabalho || ''}`,
@@ -202,7 +241,12 @@ export async function processarArquivosLattes(
       )
 
       // Premiações
-      const premQuad = filtrarPorQuadrienio(parsed.premiacoes, (p) => p.ano, ANO_INICIO, ANO_FIM)
+      const premQuad = filtrarPorQuadrienio(
+        parsed.premiacoes,
+        (p) => p.ano,
+        janela.anoInicio,
+        janela.anoFim,
+      )
       const premDedupe = deduplicarItens(
         premQuad.dentro,
         (p) => p.nome,

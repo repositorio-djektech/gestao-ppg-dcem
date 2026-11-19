@@ -3,6 +3,8 @@ import { Search, PanelLeftClose, PanelLeftOpen, Calendar } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { usePeriodo } from '@/hooks/use-periodo'
+import { rotuloPeriodo } from '@/lib/periodos/periodo'
 
 interface AppHeaderProps {
   onToggleSidebar?: () => void
@@ -10,6 +12,7 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ onToggleSidebar, sidebarOpen }: AppHeaderProps = {}) {
+  const { periodo } = usePeriodo()
   return (
     <header className="flex h-16 shrink-0 items-center justify-between bg-white dark:bg-neutral-900 px-3 sm:px-4 md:px-6 z-10 border-b border-neutral-200 dark:border-neutral-800 shadow-sm">
       <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 mr-2">
@@ -46,15 +49,15 @@ export function AppHeader({ onToggleSidebar, sidebarOpen }: AppHeaderProps = {})
         </div>
       </div>
 
-      {/* Extremidade DIREITA do header: Badge "2025 - 2028" com cantos totalmente arredondados (rounded-full), sem efeito hover */}
+      {/* Extremidade DIREITA do header: Badge do período de avaliação ativo (D-32), cantos totalmente arredondados, sem hover */}
       <div className="flex items-center shrink-0">
         <Badge
           variant="outline"
           className="font-mono text-xs sm:text-sm px-2.5 sm:px-3 py-1 bg-primary/10 hover:bg-primary/10 text-primary border border-primary/25 rounded-full flex items-center gap-1.5 shadow-xs select-none font-medium cursor-default pointer-events-none transition-none"
-          title="Quadriênio de Avaliação CAPES"
+          title={`Período de avaliação CAPES: ${periodo.nome}`}
         >
           <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />
-          <span>2025 - 2028</span>
+          <span>{rotuloPeriodo(periodo).replace('–', ' - ')}</span>
         </Badge>
       </div>
     </header>

@@ -2,8 +2,8 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import {
-  ANO_INICIO,
-  ANO_FIM,
+  ANO_INICIO as ANO_INICIO_PADRAO,
+  ANO_FIM as ANO_FIM_PADRAO,
   NOTA_SIMPLIFICACAO_NP,
   NOTA_DISCIPLINAS_TEMPORAIS,
   avaliarDocenteLogica,
@@ -40,6 +40,33 @@ Deno.serve(async (req: Request) => {
         headers: authHeader ? { Authorization: authHeader } : undefined,
       },
     })
+
+    // Período de avaliação (D-32): o enviado na requisição; senão o ativo no banco; senão o padrão
+    const anoValido = (v: unknown): number | null =>
+      typeof v === 'number' && Number.isInteger(v) && v >= 1990 && v <= 2100 ? v : null
+    let corpo: any = null
+    try {
+      corpo = await req.json()
+    } catch {
+      corpo = null
+    }
+    let ANO_INICIO = anoValido(corpo?.anoInicio)
+    let ANO_FIM = anoValido(corpo?.anoFim)
+    if (ANO_INICIO === null || ANO_FIM === null || ANO_INICIO > ANO_FIM) {
+      ANO_INICIO = null
+      ANO_FIM = null
+      const { data: ativo } = await supabase
+        .from('periodos_avaliacao')
+        .select('ano_inicio, ano_fim')
+        .eq('ativo', true)
+        .maybeSingle()
+      ANO_INICIO = anoValido(ativo?.ano_inicio)
+      ANO_FIM = anoValido(ativo?.ano_fim)
+    }
+    if (ANO_INICIO === null || ANO_FIM === null || ANO_INICIO > ANO_FIM) {
+      ANO_INICIO = ANO_INICIO_PADRAO
+      ANO_FIM = ANO_FIM_PADRAO
+    }
 
     // Leitura das tabelas relevantes (read-only)
     const [

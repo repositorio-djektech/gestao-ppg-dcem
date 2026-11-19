@@ -2,6 +2,12 @@ import { describe, it, expect, vi } from 'vitest'
 import type { ResultadoProcessamentoLattes } from './processor'
 import { gravarDadosLattes, converterLattesDocente, converterLattesPublicacao } from './gravar'
 
+/** UPDATE do Supabase com `.select()`: devolve a linha afetada (a gravação confirma que algo mudou). */
+const resultadoUpdate = (linhas: any[] = [{ id: 1 }]) =>
+  Object.assign(Promise.resolve({ data: null, error: null }), {
+    select: () => Promise.resolve({ data: linhas, error: null }),
+  })
+
 describe('Subetapa 2B - Integração UI de Gravação (Lógica Offline)', () => {
   const resultadoMock: ResultadoProcessamentoLattes = {
     arquivosLidosCount: 1,
@@ -136,7 +142,7 @@ describe('Subetapa 2B - Integração UI de Gravação (Lógica Offline)', () => 
               }
             }),
             update: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({ error: null }),
+              eq: vi.fn().mockReturnValue(resultadoUpdate()),
             }),
           }
         }
@@ -155,7 +161,7 @@ describe('Subetapa 2B - Integração UI de Gravação (Lógica Offline)', () => 
               }
             }),
             update: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({ error: null }),
+              eq: vi.fn().mockReturnValue(resultadoUpdate()),
             }),
           }
         }
@@ -221,7 +227,7 @@ describe('Subetapa 2B - Integração UI de Gravação (Lógica Offline)', () => 
             }
           }),
           update: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ error: null }),
+            eq: vi.fn().mockReturnValue(resultadoUpdate()),
           }),
         }
       }),

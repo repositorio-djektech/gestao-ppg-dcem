@@ -127,7 +127,7 @@ function descartarAnosFuturos(
  * - Anos sem insumo ficam 'indefinido' e NÃO entram como 0 na média.
  * - A MMA calcula a média aritmética dos anos válidos (com insumo calculado).
  * - Se nenhum ano tiver insumo, MMA é nula e o indicador fica indefinido.
- * - completo: true somente se todos os 4 anos (2025..2028) estiverem calculados.
+ * - completo: true somente se todos os anos do período (3 ou 4, D-32) estiverem calculados.
  */
 function agregarAnosComMMA(
   anosResultados: Record<number, ResultadoAnoIndicador>,
@@ -142,6 +142,9 @@ function agregarAnosComMMA(
   const anosAguardando = anosQuadrienio.filter((a) => anosResultados[a]?.status !== 'calculado')
 
   const completo = anosCalculados.length === anosQuadrienio.length
+  const nAnos = anosQuadrienio.length
+  const primeiroAno = anosQuadrienio[0]
+  const ultimoAno = anosQuadrienio[nAnos - 1]
 
   let valorMMA: number | null = null
   if (anosCalculados.length > 0) {
@@ -153,7 +156,7 @@ function agregarAnosComMMA(
     anosCalculados.length === 0
       ? 'Aguardando insumo em todos os anos do quadriênio'
       : completo
-        ? `Média das 4 médias anuais (MMA 2025–2028: ${anosCalculados.join(', ')})`
+        ? `Média das ${nAnos} médias anuais (MMA ${primeiroAno}–${ultimoAno}: ${anosCalculados.join(', ')})`
         : `Média parcial dos anos com insumo (${anosCalculados.join(', ')}); aguardando: ${anosAguardando.join(', ')}`
 
   // Decomposição agregada trazendo a MMA e resumo dos anos
@@ -162,7 +165,7 @@ function agregarAnosComMMA(
     {
       termo: 'MMA',
       descricao: completo
-        ? 'Média das 4 médias anuais (2025-2028)'
+        ? `Média das ${nAnos} médias anuais (${primeiroAno}-${ultimoAno})`
         : `Média parcial dos anos com insumo (${anosCalculados.length}/${anosQuadrienio.length} anos)`,
       valor: valorMMA !== null ? valorMMA : '—',
     },
@@ -1072,7 +1075,18 @@ export function calcularTodosIndicadores(
     } else {
       const icCont = icsAno.filter((i) => i.tipo === 'iniciacao_cientifica').length
       const itCont = icsAno.filter((i) => i.tipo === 'iniciacao_tecnologica').length
-      const val = Number((icsAno.length / DP).toFixed(3))
+      // O NICT conta ALUNOS: o mesmo aluno em duas iniciações no ano (ex.: orientador e coorientador
+      // importaram o mesmo aluno do Lattes) vale uma vez. Sem aluno identificado, cada registro conta.
+      const alunos = new Set(
+        icsAno.map((i) =>
+          i.discente_id
+            ? `d${i.discente_id}`
+            : (i.discente_nome || '').trim()
+              ? `n${normStr(i.discente_nome || '')}`
+              : `i${i.id}`,
+        ),
+      )
+      const val = Number((alunos.size / DP).toFixed(3))
 
       nictAnos[ano] = {
         ano,
@@ -1081,7 +1095,7 @@ export function calcularTodosIndicadores(
         decomposicao: [
           { termo: 'IC', descricao: `Iniciação Científica em ${ano}`, valor: icCont },
           { termo: 'IT', descricao: `Iniciação Tecnológica em ${ano}`, valor: itCont },
-          { termo: 'IC + IT', descricao: `Total de IC/IT em ${ano}`, valor: icsAno.length },
+          { termo: 'IC + IT', descricao: `Alunos de IC/IT em ${ano}`, valor: alunos.size },
           { termo: 'DP', descricao: 'Docentes Permanentes', valor: DP },
         ],
       }

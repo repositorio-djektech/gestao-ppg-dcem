@@ -22,6 +22,9 @@ import {
 import { toast } from 'sonner'
 import type { PublicacaoCoautorPrograma, Discente, Egresso } from '@/types/database'
 import { coautoresProgramaService } from '@/services/coautores-programa'
+import { cadastrarAlunoRapido, type DadosAlunoRapido } from '@/services/aluno-rapido'
+import { normalizarTitulo } from '@/lib/lattes/dedupe'
+import { CadastroRapidoAluno } from './CadastroRapidoAluno'
 import { rotuloStatusDiscente, statusEfetivoDiscente } from '@/lib/discentes/status'
 import {
   sugerirCoautoresPublicacao,
@@ -37,6 +40,11 @@ interface SeletorCoautoriaProps {
   usuarioNome?: string
   canEdit?: boolean
   onCoautoriaAtualizada?: () => void
+  /** Papel e docente logado: o aluno cadastrado na hora nasce vinculado ao docente (D-31). */
+  papelUsuario?: string | null
+  docenteIdUsuario?: number | null
+  /** Recarrega as listas de discentes e egressos depois de um cadastro rápido. */
+  onAlunoCadastrado?: () => void | Promise<void>
 }
 
 export function SeletorCoautoria({
@@ -48,11 +56,15 @@ export function SeletorCoautoria({
   usuarioNome = 'Colegiado',
   canEdit = true,
   onCoautoriaAtualizada,
+  papelUsuario,
+  docenteIdUsuario,
+  onAlunoCadastrado,
 }: SeletorCoautoriaProps) {
   const [coautoresConfirmados, setCoautoresConfirmados] = useState<PublicacaoCoautorPrograma[]>([])
   const [loading, setLoading] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [selecionadoManual, setSelecionadoManual] = useState<string>('')
+  const [mostrarCadastro, setMostrarCadastro] = useState(false)
 
   const numericId = typeof publicacaoId === 'number' ? publicacaoId : Number(publicacaoId)
   const isJcrElegivel =
@@ -126,7 +138,11 @@ export function SeletorCoautoria({
   }
 
   const handleConfirmarManual = async () => {
-    if (!numericId || isNaN(numericId) || !selecionadoManual) return
+    if (!numericId || isNaN(numericId)) {
+      toast.info('Salve a publicação primeiro para vincular a coautoria.')
+      return
+    }
+    if (!selecionadoManual) return
     const [tipo, idStr] = selecionadoManual.split(':')
     const id = Number(idStr)
     const pessoa =
@@ -151,6 +167,51 @@ export function SeletorCoautoria({
       onCoautoriaAtualizada?.()
     } catch {
       toast.error('Erro ao vincular coautoria manual.')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  // Cadastra o aluno/egresso que não veio do Lattes e já o vincula como coautor
+  const handleCadastrarEVincular = async (
+    dados: Pick<DadosAlunoRapido, 'tipo' | 'nome' | 'tipoCurso' | 'anoTitulacao'>,
+  ) => {
+    if (!numericId || isNaN(numericId)) {
+      toast.info('Salve a publicação primeiro para vincular a coautoria.')
+      return
+    }
+    const chave = normalizarTitulo(dados.nome)
+    const jaExiste =
+      discentes.find((d) => normalizarTitulo(d.nome) === chave) ||
+      egressos.find((e) => normalizarTitulo(e.nome) === chave)
+    if (jaExiste) {
+      toast.info(`"${jaExiste.nome}" já está cadastrado: escolha-o na lista acima.`)
+      return
+    }
+    setSalvando(true)
+    try {
+      const doDocente = papelUsuario === 'docente'
+      const novo = await cadastrarAlunoRapido({
+        ...dados,
+        docenteId: doDocente ? (docenteIdUsuario ?? null) : null,
+        docenteNome: doDocente ? usuarioNome : null,
+      })
+      await coautoresProgramaService.confirmarCoautor({
+        publicacaoId: numericId,
+        discenteId: novo.tipo === 'discente' ? novo.id : null,
+        egressoId: novo.tipo === 'egresso' ? novo.id : null,
+        tipo: novo.tipo === 'discente' ? 'orientando' : 'egresso',
+        nomeCitado: novo.nome,
+        grauConfianca: 1.0,
+        confirmadoPor: usuarioNome,
+      })
+      toast.success(`${novo.nome} cadastrado(a) e vinculado(a) como coautor.`)
+      setMostrarCadastro(false)
+      await onAlunoCadastrado?.()
+      await carregarConfirmados()
+      onCoautoriaAtualizada?.()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível cadastrar e vincular.')
     } finally {
       setSalvando(false)
     }
@@ -380,6 +441,27 @@ export function SeletorCoautoria({
               Adicionar
             </Button>
           </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] text-slate-500">
+              Não encontrou o aluno ou egresso? Ele pode não ter vindo do Lattes.
+            </p>
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-7 px-1 text-xs"
+              onClick={() => setMostrarCadastro((v) => !v)}
+            >
+              {mostrarCadastro ? 'Fechar cadastro' : 'Cadastrar novo aluno ou egresso'}
+            </Button>
+          </div>
+          {mostrarCadastro && (
+            <CadastroRapidoAluno
+              salvando={salvando}
+              onSalvar={handleCadastrarEVincular}
+              onCancelar={() => setMostrarCadastro(false)}
+            />
+          )}
 
           <div className="flex items-center justify-end gap-2 pt-1">
             {statusAtual !== 'sem_coautoria' ? (

@@ -359,6 +359,8 @@ Bolsistas e voluntários de IC, IT e Iniciação em Extensão.
 
 - **`logs`:** Histórico de auditoria de alterações do sistema (`id`, `user_id FK`, `user_email`, `user_nome`, `acao`, `entidade`, `entidade_id`, `detalhes jsonb`, `created_at`).
 - **`scopus_val_log`:** Log técnico das validações de chamadas Scopus (`id`, `stage`, `data jsonb`, `created_at`).
+- **`periodos_avaliacao`:** Períodos de avaliação CAPES cadastrados pela coordenação (D-32): `id`, `nome`, `ano_inicio`, `ano_fim` (de 1 a 10 anos), `ativo` (índice único parcial: **um só ativo**), `ano_referencia` (opcional), `created_at`, `updated_at`. Leitura para todos; escrita só `suporte` e `coordenador`; apagar só período inativo. A função `ativar_periodo_avaliacao(bigint)` troca o ativo de forma atômica. Semente: "Quadriênio 2025–2028", ativo.
+- **`ppg_configuracoes`:** Configuração geral do PPG, linha única (`id = 1`): `lattes_ano_inicio` (padrão 2020) e `lattes_ano_fim` (opcional; vazio = fim do período ativo ou ano atual).
 - **`sugestoes_vinculos_rejeitadas`:** Guarda histórico de sugestões automáticas rejeitadas manualmente pelo usuário para não re-sugerir o mesmo casamento (`id`, `tipo_vinculo`, `origem_identificador`, `alvo_identificador`, `motivo`, `rejeitado_por`, `created_at`).
 
 ---

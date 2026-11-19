@@ -26,6 +26,7 @@ import {
   BarChart3,
   Users,
   UserCog,
+  Settings,
   GraduationCap,
   UserCheck,
   ClipboardList,
@@ -55,6 +56,7 @@ export const PAGE_ICONS: Record<string, React.ComponentType<{ className?: string
   '/discentes': Users,
   '/egressos': UserCheck,
   '/usuarios': UserCog,
+  '/configuracoes': Settings,
   '/orientacoes': BookUser,
   '/iniciacao-cientifica': FlaskConical,
   '/disciplinas': Library,
@@ -273,6 +275,19 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
             label: 'Usuários',
             href: '/usuarios',
             icon: <UserCog className="h-5 w-5 shrink-0" />,
+          },
+        ],
+      }
+    }
+    if (section.title === 'Geral' && podeAcessarUsuarios) {
+      return {
+        ...section,
+        items: [
+          ...section.items,
+          {
+            label: 'Configurações',
+            href: '/configuracoes',
+            icon: <Settings className="h-5 w-5 shrink-0" />,
           },
         ],
       }

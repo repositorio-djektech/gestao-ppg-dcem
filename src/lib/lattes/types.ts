@@ -136,7 +136,12 @@ export interface LattesArquivoResultado {
   itens_ignorados: Array<{
     tabela: string
     identificador: string
-    motivo: 'FORA_QUADRIENIO' | 'DUPLICADO' | 'DADOS_INSUFICIENTES'
+    motivo:
+      | 'FORA_QUADRIENIO'
+      | 'DUPLICADO'
+      | 'DADOS_INSUFICIENTES'
+      | 'TIPO_NAO_IMPORTADO'
+      | 'SEM_NOME_ORIENTANDO'
     ano?: number | null
   }>
 }

@@ -6,6 +6,8 @@
 type Linha = Record<string, any>
 
 export interface OpcoesClienteFake {
+  /** Funções RPC simuladas: recebe os argumentos e devolve `{ error }` opcional. */
+  rpc?: Record<string, (args: any) => { error?: { message: string } | null } | void>
   /** Simula uma RLS que bloqueia UPDATE (0 linhas afetadas, sem erro). */
   bloquearUpdateEm?: string[]
   /** Simula erro do banco em uma operação. */
@@ -69,6 +71,7 @@ export function criarClienteFake(tabelas: Record<string, Linha[]>, opcoes: Opcoe
 
     const builder: any = {
       select: () => builder,
+      order: () => builder,
       insert: (p: any) => {
         estado.op = 'insert'
         estado.payload = p
@@ -114,5 +117,11 @@ export function criarClienteFake(tabelas: Record<string, Linha[]>, opcoes: Opcoe
     return builder
   }
 
-  return { client: { from } as any, chamadas, tabelas }
+  const rpc = async (nome: string, args: any) => {
+    chamadas.push({ tabela: `rpc:${nome}`, op: 'select', payload: args })
+    const res = opcoes.rpc?.[nome]?.(args)
+    return { data: null, error: (res && res.error) || null }
+  }
+
+  return { client: { from, rpc } as any, chamadas, tabelas }
 }

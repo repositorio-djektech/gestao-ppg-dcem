@@ -666,7 +666,7 @@ export function gerarHtmlRelatorioLacunas(
           Relatório de Lacunas de Dados — PPG-DCEM
         </h1>
         <p class="print-header-sub">
-          Diagnóstico de pendências cadastrais e campos faltantes para avaliação CAPES (Quadriênio 2025–2028)
+          Diagnóstico de pendências cadastrais e campos faltantes para avaliação CAPES
         </p>
       </div>
       <div class="print-header-meta">

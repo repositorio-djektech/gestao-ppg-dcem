@@ -29,7 +29,8 @@ import type {
   Qualis,
 } from '@/types/database'
 import { qualisService } from '@/services/qualis'
-import { ANO_INICIO, ANO_FIM } from '@/lib/lattes/quadrienio'
+import { usePeriodo } from '@/hooks/use-periodo'
+import { anoReferenciaDoPeriodo, rotuloPeriodo } from '@/lib/periodos/periodo'
 import { useAuth } from '@/hooks/use-auth'
 import { podeCriarNaTabela, podeEditarRegistro, podeExcluirRegistro } from '@/services/permissoes'
 import { normalizarTituloAcademico } from '@/lib/normalizacao'
@@ -175,6 +176,18 @@ export default function Publicacoes() {
   const destaqueParam = searchParams.get('destaque')
 
   const { profile } = useAuth()
+  const { periodo, janelaLattes } = usePeriodo()
+  const ANO_INICIO = periodo.anoInicio
+  const ANO_FIM = periodo.anoFim
+  const rotuloQuadrienio = rotuloPeriodo(periodo)
+  // Filtro de ano: do início da janela do Lattes (dados importados) ao fim do período ativo
+  const anosFiltro = useMemo(() => {
+    const inicio = Math.min(janelaLattes.anoInicio, ANO_INICIO)
+    const fim = Math.max(janelaLattes.anoFim, ANO_FIM)
+    const anos: number[] = []
+    for (let a = fim; a >= inicio; a--) anos.push(a)
+    return anos
+  }, [janelaLattes.anoInicio, janelaLattes.anoFim, ANO_INICIO, ANO_FIM])
   const {
     data: todasPublicacoes,
     loading,
@@ -379,7 +392,7 @@ export default function Publicacoes() {
 
   const handleOpen = async (pub?: Publicacao) => {
     setEditingId(pub?.id ?? null)
-    setFormData(pub ?? emptyForm)
+    setFormData(pub ?? { ...emptyForm, ano: anoReferenciaDoPeriodo(periodo) })
     if (pub?.id) {
       const vinculados = todasPubsDocentes
         .filter((pd) => pd.publicacao_id === pub.id)
@@ -415,7 +428,7 @@ export default function Publicacoes() {
     }
 
     // Regra da Ficha CAPES:
-    // Máximo de 4 publicações com indicacao_nivel=2 por docente no quadriênio (2025-2028).
+    // Máximo de 4 publicações com indicacao_nivel=2 por docente no período de avaliação ativo.
     // Considera publicacoes_docentes (docentesAutoresSelecionados na edição atual).
     if (formData.indicacao_nivel === 2 && formData.ano >= ANO_INICIO && formData.ano <= ANO_FIM) {
       // Para cada docente vinculado a esta publicação, checar quantas já indicou nível 2 no quadriênio
@@ -433,7 +446,7 @@ export default function Publicacoes() {
           const doc = docentesLista.find((d) => d.id === docenteId)
           const nomeDoc = doc?.nome || `Docente ID ${docenteId}`
           toast.error(
-            `Limite excedido: o docente "${nomeDoc}" já possui 4 publicações indicadas no Nível 2 para o quadriênio ${ANO_INICIO}-${ANO_FIM}. O sistema bloqueia a 5ª indicação.`,
+            `Limite excedido: o docente "${nomeDoc}" já possui 4 publicações indicadas no Nível 2 para o período ${rotuloQuadrienio}. O sistema bloqueia a 5ª indicação.`,
           )
           setSubmitting(false)
           return
@@ -449,7 +462,7 @@ export default function Publicacoes() {
       )
       if (pubsNivel3Quadrienio.length >= 5) {
         toast.warning(
-          `Aviso: O programa já possui ${pubsNivel3Quadrienio.length} publicações indicadas no Nível 3 no quadriênio ${ANO_INICIO}-${ANO_FIM} (recomendação CAPES: até 5).`,
+          `Aviso: O programa já possui ${pubsNivel3Quadrienio.length} publicações indicadas no Nível 3 no período ${rotuloQuadrienio} (recomendação CAPES: até 5).`,
         )
       }
     }
@@ -884,6 +897,9 @@ export default function Publicacoes() {
                         usuarioNome={profile?.name || profile?.email || 'Colegiado'}
                         canEdit={canEditCurrent}
                         onCoautoriaAtualizada={carregarRelacionados}
+                        papelUsuario={role}
+                        docenteIdUsuario={profile?.docente_id ?? null}
+                        onAlunoCadastrado={carregarRelacionados}
                       />
                     </div>
                   </div>
@@ -920,10 +936,11 @@ export default function Publicacoes() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos Anos</SelectItem>
-              <SelectItem value="2025">2025</SelectItem>
-              <SelectItem value="2026">2026</SelectItem>
-              <SelectItem value="2027">2027</SelectItem>
-              <SelectItem value="2028">2028</SelectItem>
+              {anosFiltro.map((a) => (
+                <SelectItem key={a} value={String(a)}>
+                  {a}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Select

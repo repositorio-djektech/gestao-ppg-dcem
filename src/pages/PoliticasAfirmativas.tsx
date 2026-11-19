@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Accessibility } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/use-auth'
+import { usePeriodo } from '@/hooks/use-periodo'
+import { rotuloPeriodo } from '@/lib/periodos/periodo'
 import { PoliticasAfirmativasEditor } from '@/components/ppg/PoliticasAfirmativasEditor'
 import { podeEditarTextoItem13 } from '@/services/permissoes'
 import {
@@ -14,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 /** Item 1.3 da ficha: texto das políticas afirmativas (D-12 / H-10). Sem cálculo. */
 export default function PoliticasAfirmativas() {
   const { role } = useAuth()
+  const { periodo } = usePeriodo()
   const [texto, setTexto] = useState('')
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -63,7 +66,8 @@ export default function PoliticasAfirmativas() {
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
           Políticas de inclusão, permanência e acessibilidade do programa. Item obrigatório na
-          avaliação 2025–2028; neste momento é apenas um texto, sem indicador calculado.
+          avaliação {rotuloPeriodo(periodo)}; neste momento é apenas um texto, sem indicador
+          calculado.
         </p>
       </div>
 

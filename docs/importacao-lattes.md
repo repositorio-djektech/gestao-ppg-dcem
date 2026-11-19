@@ -11,13 +11,13 @@
 
 ## 1. Visão Geral
 
-A funcionalidade de **Importação Lattes** foi concebida para acelerar o preenchimento dos módulos de avaliação CAPES para o recorte quadrienal **2025–2028** e cadastros institucionais a partir dos currículos Lattes dos docentes vinculados ao PPG-DCEM.
+A funcionalidade de **Importação Lattes** foi concebida para acelerar o preenchimento dos módulos de avaliação CAPES para o período de avaliação (hoje **2025–2028**, configurável) e cadastros institucionais a partir dos currículos Lattes dos docentes vinculados ao PPG-DCEM.
 
 Devido às restrições oficiais do CNPq (apenas o docente autenticado consegue exportar o XML completo do seu próprio currículo, enquanto a busca pública disponibiliza unicamente relatórios em PDF), o fluxo foi desenhado para aceitar arquivos **XML** individuais ou pacotes **ZIP** (formato padrão de exportação direta do Lattes) fornecidos pelos docentes.
 
 ### Princípio fundamental e divisão de etapas
 
-- **Etapa 1 (Processamento em Memória):** Todo o fluxo de descompactação, decodificação ISO-8859-1, análise sintática (DOMParser), recorte temporal quadrienal (2025–2028), deduplicação (título normalizado + ano) e inspeção tabular opera no cliente (browser) em memória, sem gerar efeitos colaterais no banco antes da validação humana.
+- **Etapa 1 (Processamento em Memória):** Todo o fluxo de descompactação, decodificação ISO-8859-1, análise sintática (DOMParser), recorte temporal pela **janela de importação** (padrão 2020 em diante, D-31), deduplicação (título normalizado + ano) e inspeção tabular opera no cliente (browser) em memória, sem gerar efeitos colaterais no banco antes da validação humana.
 - **Etapa 2 (Persistência Idempotente nas 9 Tabelas):** Permite ao usuário revisar por tabela com checkboxes granulares e disparar a gravação nas 9 tabelas do Supabase (`docentes`, `publicacoes`, `orientacoes`, `bancas`, `projetos_pesquisa`, `premiacoes`, `producao_tecnica`, `patentes` e `eventos`), criando automaticamente novos discentes quando necessário, atualizando docentes pelo `id_lattes` estável (com fallback por nome) e preservando integralmente todos os registros inseridos manualmente no sistema.
 
 ---
@@ -32,16 +32,16 @@ Devido às restrições oficiais do CNPq (apenas o docente autenticado consegue 
    - É possível remover itens individualmente pelo ícone de lixeira ou usar a ação "Limpar todos".
    - O botão **"Processar arquivos"** permanece desabilitado até que ao menos um arquivo válido esteja selecionado.
 3. **Processamento em Memória:**
-   - Ao clicar em **"Processar arquivos"**, o sistema executa em segundo plano o pipeline de decodificação ISO-8859-1, parse XML, recorte temporal do quadriênio **2025–2028** e deduplicação.
+   - Ao clicar em **"Processar arquivos"**, o sistema executa em segundo plano o pipeline de decodificação ISO-8859-1, parse XML, recorte temporal pela janela de importação (campos "Importar a partir de" e "Até" na tela) e deduplicação.
    - Um spinner de carregamento indica o andamento da operação.
    - Se algum arquivo apresentar inconformidade (ex.: XML vazio ou sem a tag `<CURRICULO-VITAE>`), o erro é isolado e detalhado em um card de alerta sem travar o processamento dos demais currículos.
 4. **Resumo Pós-Processamento:**
-   - É exibido o total de currículos lidos, o nome e ID Lattes de cada docente reconhecido, além de uma grade com o quantitativo de itens válidos no quadriênio (**2025–2028**) por seção e a quantidade de itens ignorados (duplicados ou fora do período).
+   - É exibido o total de currículos lidos, o nome e ID Lattes de cada docente reconhecido, além de uma grade com o quantitativo de itens válidos na janela escolhida por seção e a quantidade de itens ignorados (duplicados ou fora do período).
 5. **Abertura da Tela de Revisão:**
    - Clique em **"Revisar registros por tabela"** ou **"Revisar dados"** para abrir o modal em tela cheia de conferência detalhada.
 6. **Inspeção e Seleção na Tela de Revisão:**
    - Navegue pelas 8 abas de tabelas: **Docentes**, **Publicações**, **Orientações**, **Projetos**, **Premiações**, **Produção Técnica**, **Patentes** e **Eventos**.
-   - Cada aba conta com um badge dinâmico indicando o número de registros novos para aquela categoria no quadriênio 2025–2028.
+   - Cada aba conta com um badge dinâmico indicando o número de registros novos para aquela categoria na janela de importação.
    - Controle quais tabelas devem ser gravadas através dos checkboxes individuais de cada aba ou usando os atalhos rápidos **"Marcar todas"** e **"Desmarcar todas"**.
    - Inspecione a tabela de amostra paginada. Para visualizar mais dados, clique em **"Carregar mais 10 registros"** no rodapé.
 7. **Confirmação e Gravação no Banco (Etapa 2 Ativa):**
@@ -63,7 +63,7 @@ src/
     ├── types.ts                     # Interfaces TypeScript de dados Lattes e tabelas
     ├── readFiles.ts                 # Leitura e descompactação JSZip + decodificação ISO-8859-1
     ├── parser.ts                    # Análise do DOM XML (DOMParser) e extração de nós
-    ├── quadrienio.ts                # Regras de recorte temporal CAPES centralizado (2025–2028)
+    ├── quadrienio.ts                # Recorte temporal: janela de importação e período padrão (D-31, D-32)
     ├── dedupe.ts                    # Normalização de texto e deduplicação de registros
     ├── processor.ts                 # Orquestrador do pipeline unificado
     ├── revisao.ts                   # Mapeamento e agrupamento para visão da tela de revisão
@@ -89,6 +89,7 @@ src/
   - `FORMACAO-ACADEMICA-TITULACAO`: Graduação, Mestrado, Doutorado e Pós-Doutorado com curso, instituição, orientador e período;
   - `PRODUCAO-BIBLIOGRAFICA`: Artigos publicados em periódicos (título, ano, DOI, periódico, ISSN, volume, fascículo, páginas, autores), Livros publicados/organizados e Capítulos de livros;
   - `ORIENTACOES-CONCLUIDAS` e `ORIENTACOES-EM-ANDAMENTO`: Mestrado, Doutorado, Pós-Doutorado, Iniciação Científica e TCC com identificação de tipo (orientador principal vs. co-orientador), aluno, instituição e agência de fomento;
+  - **Iniciação científica (D-30):** a IC concluída vem dentro de `OUTRAS-ORIENTACOES-CONCLUIDAS` com `NATUREZA="INICIACAO_CIENTIFICA"` e o nome do aluno em `NOME-DO-ORIENTADO` (a IC em andamento tem tag própria). O parser reconhece as duas. TCC, monografia e "orientação de outra natureza" concluídos seguem fora da importação. O Lattes **não distingue** iniciação tecnológica nem em extensão: tudo entra como **Iniciação Científica**, e o tipo pode ser ajustado depois na tela (a mudança se propaga). A IC gravada em Orientações é espelhada em Iniciações pelo banco; o import não grava em Iniciações diretamente.
   - `DADOS-BASICOS-DE-PARTICIPACAO-EM-BANCA-*`: Mestrado, Doutorado, Exame de Qualificação, Graduação e Comissões Julgadoras com candidato, título, ano e banca;
   - `PROJETO-DE-PESQUISA`: Nome, período, situação, descrição, financiadores, equipe e identificação se o docente é coordenador responsável;
   - `PREMIO-TITULO`: Premiações e títulos honoríficos com entidade promotora e ano;
@@ -97,11 +98,14 @@ src/
   - `EVENTOS`: Trabalhos apresentados em eventos e participação em congressos/encontros.
 - **Filtro Temporal Parametrizável:** Suporta parâmetros opcionais `anoInicioFiltro` e `anoFimFiltro` para delimitar o escopo da extração diretamente na fase do parse ou permitir extração irrestrita quando desejado.
 
-### 3.3 `quadrienio.ts` — Recorte Temporal CAPES (2025–2028)
+### 3.3 `quadrienio.ts` — Janela de importação e período padrão (D-31, D-32)
 
-- Define as constantes do quadriênio de avaliação centralizadas: `ANO_INICIO = 2025` e `ANO_FIM = 2028`.
-- A função `estaNoQuadrienio(ano)` valida números e strings numéricas contra o intervalo.
-- Itens com ano fora da janela **2025–2028** (ou sem indicação temporal válida) são descartados da importação corrente e contabilizados no contador de `ignorados` / `totalForaQuadrienio`.
+- **Janela de importação:** `ANO_INICIO_IMPORTACAO = 2020`. A janela padrão vai de 2020 ao fim do período de avaliação (ou ao ano atual, o que for maior). Vale para **todas as seções** do currículo. A coordenação a configura em **Configurações** e cada importação pode ajustá-la na tela. Os indicadores continuam calculando só o período de avaliação ativo.
+- **Período padrão:** `ANO_INICIO = 2025` e `ANO_FIM = 2028` ficam como valor de reserva; o período ativo vem da tabela `periodos_avaliacao` (D-32).
+- `janelaImportacaoPadrao()` e `intervaloCruzaJanela(inicio, fim, janela)` (intervalo sem fim = em aberto).
+- **Em andamento sempre entra:** orientação e projeto em andamento não são cortados por ano. Concluídos e demais itens fora da janela (ou sem ano) são descartados e contados em `ignorados` / `totalForaQuadrienio`.
+- **Alunos concluídos (mestrado e doutorado):** o nome do orientado vem de `NOME-DO-ORIENTADO` (em andamento: `NOME-DO-ORIENTANDO`). O aluno é gravado como **Discente Titulado** (conclusão em `AAAA-MM`) e como **Egresso** (ano de titulação), com o docente que importa como orientador, sem duplicar quem já existe.
+- **Projetos:** o docente importa os próprios projetos (coordenador vazio ou ele mesmo) e é gravado como participante em `projetos_participantes` (D-33). O resultado da gravação destaca o que **não** foi gravado e o motivo.
 
 ### 3.4 `dedupe.ts` — Deduplicação Idempotente
 
@@ -131,8 +135,8 @@ src/
 3. **Detecção de Responsabilidade em Projetos:**
    - Compara o `NRO-ID-CNPQ` do integrante da equipe ou o nome completo normalizado com o docente do currículo para definir se é o coordenador responsável (`coordenador_id`).
 4. **Resolução de Anos em Entidades Compostas:**
-   - Para **Orientações**: Prioriza o `ano_conclusao`; caso ausente (orientação em andamento), utiliza o `ano_inicio`.
-   - Para **Projetos**: Considera ativo no quadriênio se o projeto tiver interseção com o intervalo 2025–2028 (`ano_inicio <= 2028` e `ano_fim >= 2025`) ou se o atributo `SITUACAO` for `"EM_ANDAMENTO"`.
+   - Para **Orientações**: concluída usa o `ano_conclusao`; em andamento usa o `ano_inicio` (o `ANO` do Lattes) e **não tem término** (D-31).
+   - Para **Projetos**: Considera ativo se o projeto tiver interseção com a janela de importação ou se o atributo `SITUACAO` for `"EM_ANDAMENTO"` (em andamento sempre entra).
    - Para **Patentes**: Considera como ano de referência o `ano_deposito`, `ano_desenvolvimento` ou `ano_concessao`.
 
 ---
@@ -225,11 +229,11 @@ A estabilidade da importação é assegurada por suítes abrangentes no Vitest:
 
 | Etapa                   | Escopo                                                                                                                                                                                        |         Status          |
 | :---------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------: |
-| **Etapa 1**             | Leitura ZIP/XML, decodificação ISO-8859-1, parser DOM, recorte quadrienal 2025–2028, dedupe e tela de conferência em memória                                                                  | **CONCLUÍDA** (v0.0.42) |
+| **Etapa 1**             | Leitura ZIP/XML, decodificação ISO-8859-1, parser DOM, recorte temporal, dedupe e tela de conferência em memória                                                                  | **CONCLUÍDA** (v0.0.42) |
 | **Etapa 2A**            | Coluna `id_lattes` em `docentes`, motor de gravação `gravar.ts` para docentes e publicações com dedupe                                                                                        | **CONCLUÍDA** (v0.0.45) |
 | **Etapa 2B**            | Habilitação do botão "Confirmar e gravar" na UI, modal de progresso e relatório final                                                                                                         | **CONCLUÍDA** (v0.0.46) |
 | **Etapa 2C**            | Persistência nas 9 tabelas (`orientacoes`, `bancas`, `projetos_pesquisa`, `premiacoes`, `producao_tecnica`, `patentes`, `eventos`), criação automática de discentes e conformidade de schemas | **CONCLUÍDA** (v0.0.47) |
-| **Etapa 2 Homologação** | Fechamento oficial da Etapa 2: validação real no banco com docente Ledjane Silva Barreto, idempotência e recorte quadrienal 2025–2028                                                         | **CONCLUÍDA** (v0.0.53) |
+| **Etapa 2 Homologação** | Fechamento oficial da Etapa 2: validação real no banco com docente Ledjane Silva Barreto, idempotência e recorte temporal                                                         | **CONCLUÍDA** (v0.0.53) |
 
 ---
 

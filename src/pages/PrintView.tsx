@@ -1,7 +1,7 @@
 import { exibirLocalAno } from '@/lib/eventos/local-ano'
 import { exibirMesAno } from '@/lib/datas/mes-ano'
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Printer, AlertCircle, RefreshCw } from 'lucide-react'
 import { formatarCpf } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
@@ -27,6 +27,13 @@ import { eventosService } from '@/services/eventos'
 import { mobilidadeService } from '@/services/mobilidade'
 import { impactoSocialService } from '@/services/impacto-social'
 import { premiacoesService } from '@/services/premiacoes'
+import { carregarDadosAtividadeDocentes } from '@/services/atividade-docentes'
+import {
+  discenteNoPeriodo,
+  docentesComAtividadeNoPeriodo,
+  egressoNoPeriodo,
+  lerFiltroPeriodo,
+} from '@/lib/periodos/filtro'
 
 interface ModuleConfig {
   title: string
@@ -37,6 +44,10 @@ interface ModuleConfig {
 
 export default function PrintView() {
   const { modulo } = useParams<{ modulo: string }>()
+  const [searchParams] = useSearchParams()
+  // Período vindo da tela (Docentes, Discentes e Egressos): `?de=2021&ate=2023` (H-28)
+  const de = searchParams.get('de') ?? ''
+  const ate = searchParams.get('ate') ?? ''
   const navigate = useNavigate()
   const { role, profile, loading: carregandoAuth } = useAuth()
   const docenteIdLogado = profile?.docente_id
@@ -285,6 +296,18 @@ export default function PrintView() {
             vinculosProducao: () => producaoTecnicaDocentesService.listarTodos() as Promise<any[]>,
           })
         }
+        const { filtro } = lerFiltroPeriodo(de, ate)
+        if (filtro && modulo === 'discentes')
+          items = items.filter((d) => discenteNoPeriodo(d, filtro))
+        if (filtro && modulo === 'egressos')
+          items = items.filter((e) => egressoNoPeriodo(e, filtro))
+        if (filtro && modulo === 'docentes') {
+          const ativos = docentesComAtividadeNoPeriodo(
+            await carregarDadosAtividadeDocentes(),
+            filtro,
+          )
+          if (ativos) items = items.filter((d) => ativos.has(Number(d.id)))
+        }
         setData(items)
         setLoading(false)
       })
@@ -293,7 +316,7 @@ export default function PrintView() {
         setError('Não foi possível carregar os dados para impressão.')
         setLoading(false)
       })
-  }, [modulo, carregandoAuth, role, docenteIdLogado])
+  }, [modulo, carregandoAuth, role, docenteIdLogado, de, ate])
 
   const handlePrint = () => {
     window.print()

@@ -58,7 +58,8 @@ import {
   type ItemAmostraPatente,
   type ItemAmostraEvento,
 } from '@/lib/lattes/revisao'
-import { ANO_INICIO, ANO_FIM } from '@/lib/lattes/quadrienio'
+import { janelaImportacaoPadrao } from '@/lib/lattes/quadrienio'
+import { useAuth } from '@/hooks/use-auth'
 
 import {
   gravarDadosLattes,
@@ -93,6 +94,8 @@ export interface RevisaoImportacaoDialogProps {
   onVoltarParaUpload?: () => void
   onGravacaoSucesso?: (relatorio: RelatorioGravacaoLattes) => void
   supabaseClient?: SupabaseClientLike
+  /** Janela usada na importação (D-31). Sem ela, vale a janela padrão. */
+  janela?: { anoInicio: number; anoFim: number }
 }
 
 const TABELAS_ORDEM: Array<{
@@ -119,7 +122,10 @@ export function RevisaoImportacaoDialog({
   onVoltarParaUpload,
   onGravacaoSucesso,
   supabaseClient,
+  janela,
 }: RevisaoImportacaoDialogProps) {
+  const { role, profile } = useAuth()
+  const { anoInicio: ANO_INICIO, anoFim: ANO_FIM } = janela ?? janelaImportacaoPadrao()
   // Estado de tabelas selecionadas (todos marcados por padrão)
   const [tabelasSelecionadas, setTabelasSelecionadas] = useState<Record<TabelaAlvoId, boolean>>({
     docentes: true,
@@ -592,7 +598,12 @@ export function RevisaoImportacaoDialog({
     setRelatorioGravacao(null)
 
     try {
-      const relatorio = await gravarDadosLattes(itensParaGravar, supabaseClient)
+      // O papel e o docente de quem importa limitam o que a RLS deixa gravar (ex.: docente só
+      // registra a própria participação em projetos)
+      const relatorio = await gravarDadosLattes(itensParaGravar, supabaseClient, {
+        papelUsuario: role,
+        docenteIdUsuario: profile?.docente_id ?? null,
+      })
 
       setRelatorioGravacao(relatorio)
 
@@ -678,7 +689,7 @@ export function RevisaoImportacaoDialog({
                 <Badge
                   variant="outline"
                   className="bg-emerald-50 text-emerald-800 border-emerald-200 text-xs px-2.5 py-1"
-                  title={`Itens únicos no quadriênio (${ANO_INICIO}-${ANO_FIM}) mapeados para inclusão`}
+                  title={`Itens únicos no período (${ANO_INICIO}-${ANO_FIM}) mapeados para inclusão`}
                 >
                   <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-600" />
                   <strong>{totaisGlobais.inseridos}</strong> novos a inserir
@@ -694,7 +705,7 @@ export function RevisaoImportacaoDialog({
                 <Badge
                   variant="outline"
                   className="bg-amber-50 text-amber-800 border-amber-200 text-xs px-2.5 py-1"
-                  title="Descartados pelo filtro do quadriênio ou deduplicação interna de título + ano"
+                  title="Descartados pelo filtro do período, por tipo não importado (TCC, monografia) ou por deduplicação"
                 >
                   <AlertTriangle className="h-3.5 w-3.5 mr-1 text-amber-600" />
                   <strong>{totaisGlobais.ignorados}</strong> ignorados / duplicados
@@ -855,8 +866,8 @@ export function RevisaoImportacaoDialog({
                               Nenhum registro encontrado nesta seção.
                             </p>
                             <p className="text-xs text-slate-400 mt-1 max-w-sm">
-                              Não foram detectados itens para esta categoria no recorte do
-                              quadriênio ({ANO_INICIO}–{ANO_FIM}) nos currículos processados.
+                              Não foram detectados itens para esta categoria no recorte do período (
+                              {ANO_INICIO}–{ANO_FIM}) nos currículos processados.
                             </p>
                           </div>
                         ) : (
@@ -918,15 +929,23 @@ export function RevisaoImportacaoDialog({
               <div className="mt-3 p-3.5 rounded-md border bg-slate-50 text-xs space-y-2 shrink-0 animate-fade-in">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 font-semibold text-slate-900">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    <span>Resultado da gravação:</span>
+                    {relatorioGravacao.erros.length > 0 ? (
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    )}
+                    <span>
+                      {relatorioGravacao.erros.length > 0
+                        ? 'Gravação concluída com ocorrências:'
+                        : 'Resultado da gravação:'}
+                    </span>
                   </div>
                   {relatorioGravacao.erros.length > 0 && (
                     <Badge
                       variant="outline"
                       className="bg-amber-50 text-amber-800 border-amber-300"
                     >
-                      {relatorioGravacao.erros.length} aviso(s)/erro(s) isolado(s)
+                      {relatorioGravacao.erros.length} ocorrência(s): itens que NÃO foram gravados
                     </Badge>
                   )}
                 </div>
@@ -979,10 +998,35 @@ export function RevisaoImportacaoDialog({
                   })}
                 </div>
 
+                {/* Alunos e vínculos criados a partir das orientações e projetos (D-31, D-33) */}
+                {((relatorioGravacao.egressos?.inseridos ?? 0) > 0 ||
+                  (relatorioGravacao.vinculos?.projetos_participantes ?? 0) > 0) && (
+                  <p className="text-[11px] text-slate-600">
+                    {(relatorioGravacao.egressos?.inseridos ?? 0) > 0 && (
+                      <span className="mr-3">
+                        <strong className="text-emerald-700">
+                          {relatorioGravacao.egressos?.inseridos} egresso(s)
+                        </strong>{' '}
+                        criado(s) a partir de orientações concluídas.
+                      </span>
+                    )}
+                    {(relatorioGravacao.vinculos?.projetos_participantes ?? 0) > 0 && (
+                      <span>
+                        <strong className="text-emerald-700">
+                          {relatorioGravacao.vinculos?.projetos_participantes} participação(ões)
+                        </strong>{' '}
+                        registrada(s) em projetos.
+                      </span>
+                    )}
+                  </p>
+                )}
+
                 {/* Erros detalhados se houver */}
                 {relatorioGravacao.erros.length > 0 && (
-                  <div className="bg-amber-50/70 border border-amber-200 rounded p-2 text-[11px] text-amber-900 max-h-24 overflow-y-auto">
-                    <p className="font-semibold mb-1">Ocorrências durante a gravação:</p>
+                  <div className="bg-amber-50/70 border border-amber-200 rounded p-2 text-[11px] text-amber-900 max-h-48 overflow-y-auto">
+                    <p className="font-semibold mb-1">
+                      Itens não gravados e o motivo (confira antes de importar de novo):
+                    </p>
                     <ul className="list-disc list-inside space-y-0.5">
                       {relatorioGravacao.erros.map((e, idx) => (
                         <li key={idx}>

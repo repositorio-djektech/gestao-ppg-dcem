@@ -152,7 +152,11 @@ function createMockSupabaseClient(initialState?: {
               if (target) {
                 Object.assign(target, payload)
               }
-              return Promise.resolve({ error: null })
+              // Como o Supabase: a linha afetada vem no `.select()` (vazia = a RLS barrou)
+              return Object.assign(Promise.resolve({ error: null }), {
+                select: () =>
+                  Promise.resolve({ data: target ? [{ id: target.id }] : [], error: null }),
+              })
             }),
           }
         }),

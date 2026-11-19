@@ -14,6 +14,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
+import {
+  PeriodoFiltro,
+  PERIODO_FILTRO_VAZIO,
+  filtroDoValor,
+  type ValorPeriodoFiltro,
+} from '@/components/PeriodoFiltro'
+import { docentesComAtividadeNoPeriodo, type DadosAtividadeDocente } from '@/lib/periodos/filtro'
+import { carregarDadosAtividadeDocentes } from '@/services/atividade-docentes'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -150,6 +158,32 @@ export default function Docentes() {
   const canDeleteGlobal = !isCapes && (role === 'suporte' || role === 'coordenador')
   const PER_PAGE = 20
 
+  // Filtro por período (H-28): docentes com atividade (publicação, orientação ou projeto) no intervalo
+  const [periodoFiltro, setPeriodoFiltro] = useState<ValorPeriodoFiltro>(PERIODO_FILTRO_VAZIO)
+  const filtroPeriodo = useMemo(() => filtroDoValor(periodoFiltro), [periodoFiltro])
+  const [dadosAtividade, setDadosAtividade] = useState<DadosAtividadeDocente | null>(null)
+  const [carregandoAtividade, setCarregandoAtividade] = useState(false)
+  useEffect(() => {
+    if (!filtroPeriodo || dadosAtividade) return
+    let ativo = true
+    setCarregandoAtividade(true)
+    carregarDadosAtividadeDocentes()
+      .then((d) => ativo && setDadosAtividade(d))
+      .catch((err) => {
+        console.error('Erro ao carregar atividade dos docentes:', err)
+        if (ativo) toast.error('Não foi possível carregar a atividade dos docentes para o filtro.')
+      })
+      .finally(() => ativo && setCarregandoAtividade(false))
+    return () => {
+      ativo = false
+    }
+  }, [filtroPeriodo, dadosAtividade])
+  const docentesDoPeriodo = useMemo(() => {
+    if (!filtroPeriodo || !dadosAtividade) return docentes
+    const ativos = docentesComAtividadeNoPeriodo(dadosAtividade, filtroPeriodo)
+    return ativos ? docentes.filter((d) => ativos.has(Number(d.id))) : docentes
+  }, [docentes, filtroPeriodo, dadosAtividade])
+
   const filtered = useMemo(() => {
     const termo = searchTerm
       .normalize('NFD')
@@ -157,7 +191,7 @@ export default function Docentes() {
       .toLowerCase()
       .trim()
 
-    if (!termo) return docentes
+    if (!termo) return docentesDoPeriodo
 
     const normalizar = (txt?: string | null) =>
       (txt || '')
@@ -165,7 +199,7 @@ export default function Docentes() {
         .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase()
 
-    return docentes.filter((d) => {
+    return docentesDoPeriodo.filter((d) => {
       const matchNome = normalizar(d.nome).includes(termo)
       const matchEmail = normalizar(d.email).includes(termo)
       // D-25: a busca por CPF/SIAPE não pode revelar dados de outros docentes
@@ -187,7 +221,10 @@ export default function Docentes() {
         matchOrcid
       )
     })
-  }, [docentes, searchTerm, role, docenteIdLogado])
+  }, [docentesDoPeriodo, searchTerm, role, docenteIdLogado])
+  useEffect(() => {
+    setPage(1)
+  }, [filtroPeriodo])
   const totalPages = Math.ceil(filtered.length / PER_PAGE)
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
@@ -611,7 +648,13 @@ export default function Docentes() {
           </div>
           <Button
             variant="outline"
-            onClick={() => navigate('/imprimir/docentes')}
+            onClick={() =>
+              navigate(
+                filtroPeriodo
+                  ? `/imprimir/docentes?de=${periodoFiltro.inicio}&ate=${periodoFiltro.fim}`
+                  : '/imprimir/docentes',
+              )
+            }
             className="inline-flex items-center justify-center gap-2 border-blue-300 bg-white hover:bg-blue-50 text-blue-700 h-9 px-3.5 text-sm font-medium shrink-0 cursor-pointer"
             title="Versão para Impressão"
           >
@@ -625,6 +668,17 @@ export default function Docentes() {
             </Button>
           )}
         </div>
+      </div>
+
+      <div className="shrink-0 flex flex-wrap items-center gap-3">
+        <PeriodoFiltro
+          valor={periodoFiltro}
+          onChange={setPeriodoFiltro}
+          rotulo="Atividade no período"
+        />
+        {filtroPeriodo && carregandoAtividade && (
+          <span className="text-sm text-slate-500">Carregando atividade…</span>
+        )}
       </div>
 
       {/* Moldura estilo Supabase: contêiner flex-1 min-h-0 com tabela rolável e paginação colada na base */}
@@ -1106,7 +1160,10 @@ export default function Docentes() {
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          programas_permanente: Math.max(1, Math.floor(Number(e.target.value)) || 1),
+                          programas_permanente: Math.max(
+                            1,
+                            Math.floor(Number(e.target.value)) || 1,
+                          ),
                         })
                       }
                       className="bg-white"

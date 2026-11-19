@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,8 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Upload,
   FileCode,
@@ -20,12 +22,8 @@ import {
   Info,
   TableProperties,
 } from 'lucide-react'
-import {
-  processarArquivosLattes,
-  ANO_INICIO,
-  ANO_FIM,
-  type ResultadoProcessamentoLattes,
-} from '@/lib/lattes/processor'
+import { processarArquivosLattes, type ResultadoProcessamentoLattes } from '@/lib/lattes/processor'
+import { usePeriodo } from '@/hooks/use-periodo'
 import { RevisaoImportacaoDialog } from './RevisaoImportacaoDialog'
 
 import type { RelatorioGravacaoLattes } from '@/lib/lattes/gravar'
@@ -57,6 +55,21 @@ export function ImportarLattesDialog({
   const [processando, setProcessando] = useState(false)
   const [resultado, setResultado] = useState<ResultadoProcessamentoLattes | null>(null)
   const [revisaoOpen, setRevisaoOpen] = useState(false)
+  // Janela da importação (D-31): padrão desde 2020, ajustável a cada importação
+  // Janela padrão vinda da configuração (D-32); cada importação ainda pode ajustá-la
+  const { janelaLattes: janelaPadrao } = usePeriodo()
+  const [anoInicio, setAnoInicio] = useState<number>(janelaPadrao.anoInicio)
+  const [anoFim, setAnoFim] = useState<number>(janelaPadrao.anoFim)
+  useEffect(() => {
+    setAnoInicio(janelaPadrao.anoInicio)
+    setAnoFim(janelaPadrao.anoFim)
+  }, [janelaPadrao.anoInicio, janelaPadrao.anoFim])
+  const janelaValida =
+    Number.isInteger(anoInicio) &&
+    Number.isInteger(anoFim) &&
+    anoInicio >= 1990 &&
+    anoFim <= 2100 &&
+    anoInicio <= anoFim
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFecharComLimpeza = () => {
@@ -136,11 +149,11 @@ export function ImportarLattesDialog({
   }
 
   const executarProcessamento = async () => {
-    if (arquivos.length === 0 || processando) return
+    if (arquivos.length === 0 || processando || !janelaValida) return
 
     setProcessando(true)
     try {
-      const res = await processarArquivosLattes(arquivos)
+      const res = await processarArquivosLattes(arquivos, { anoInicio, anoFim })
       setResultado(res)
       if (onProcessado) {
         onProcessado(res)
@@ -162,12 +175,61 @@ export function ImportarLattesDialog({
           </DialogTitle>{' '}
           <DialogDescription className="text-slate-600">
             Selecione arquivos XML ou ZIP exportados da Plataforma Lattes (CNPq). O sistema extrairá
-            as produções e orientações referentes ao recorte do quadriênio CAPES (
-            {ANO_INICIO}–{ANO_FIM}).
+            as produções e orientações do período escolhido abaixo ({anoInicio}–{anoFim}).
+            Orientações e projetos em andamento sempre entram, qualquer que seja o ano de início.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Período da importação */}
+          <div className="flex flex-wrap items-end gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+            <div className="space-y-1">
+              <Label htmlFor="lattes-ano-inicio" className="text-xs text-slate-700">
+                Importar a partir de
+              </Label>
+              <Input
+                id="lattes-ano-inicio"
+                type="number"
+                min={1990}
+                max={2100}
+                value={Number.isNaN(anoInicio) ? '' : anoInicio}
+                disabled={processando}
+                onChange={(e) => {
+                  setAnoInicio(e.target.value === '' ? NaN : Number(e.target.value))
+                  setResultado(null)
+                }}
+                className="h-9 w-28 bg-white text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="lattes-ano-fim" className="text-xs text-slate-700">
+                Até
+              </Label>
+              <Input
+                id="lattes-ano-fim"
+                type="number"
+                min={1990}
+                max={2100}
+                value={Number.isNaN(anoFim) ? '' : anoFim}
+                disabled={processando}
+                onChange={(e) => {
+                  setAnoFim(e.target.value === '' ? NaN : Number(e.target.value))
+                  setResultado(null)
+                }}
+                className="h-9 w-28 bg-white text-sm"
+              />
+            </div>
+            <p className="text-[11px] text-slate-500 flex-1 min-w-[12rem]">
+              O período de avaliação da CAPES não muda: os indicadores continuam calculando só o
+              período de avaliação. Os anos anteriores ficam disponíveis para consulta e filtros.
+            </p>
+            {!janelaValida && (
+              <p className="w-full text-[11px] text-rose-700">
+                Informe anos válidos (de 1990 a 2100), com o inicial menor ou igual ao final.
+              </p>
+            )}
+          </div>
+
           {/* Área Drag and Drop */}
           <div
             onDragOver={handleDragOver}
@@ -328,10 +390,10 @@ export function ImportarLattesDialog({
                 </div>
               )}
 
-              {/* Grade de Itens Válidos por Seção (Quadriênio 2025-2028) */}
+              {/* Grade de Itens Válidos por Seção (janela de importação) */}
               <div className="space-y-1.5">
                 <div className="text-xs font-semibold text-slate-700">
-                  Itens únicos no quadriênio ({ANO_INICIO}–{ANO_FIM}) pós-deduplicação:
+                  Itens únicos no período ({anoInicio}–{anoFim}) pós-deduplicação:
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                   {Object.values(resultado.resumoGeral.secoes).map((sec) => (
@@ -405,7 +467,7 @@ export function ImportarLattesDialog({
             <Button
               type="button"
               onClick={executarProcessamento}
-              disabled={arquivos.length === 0 || processando}
+              disabled={arquivos.length === 0 || processando || !janelaValida}
               className="gap-2"
             >
               {processando ? (
@@ -426,6 +488,7 @@ export function ImportarLattesDialog({
         open={revisaoOpen}
         onOpenChange={setRevisaoOpen}
         resultado={resultado}
+        janela={{ anoInicio, anoFim }}
         onVoltarParaUpload={() => setRevisaoOpen(false)}
         onGravacaoSucesso={(relatorio) => {
           if (onGravacaoSucesso) {

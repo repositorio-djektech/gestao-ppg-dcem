@@ -45,7 +45,7 @@ O texto das regras do sistema diz apenas "orientou alunos no P²CEM". **Não há
 Para que a IC possa ficar nas duas telas sem distorcer indicadores, três ajustes foram feitos (D-30):
 
 1. **SO e DP4A passam a ignorar IC, IT e IE.** Antes, uma IC em andamento cadastrada em Orientações contaria como "orientação ativa" do docente. A ficha fala de orientações do programa. Nas 14 IC atuais, isso não muda valor algum.
-2. **NICT passa a somar só IC e IT.** Antes somava também iniciação em extensão, contra o texto da ficha.
+2. **NICT passa a somar só IC e IT.** Antes somava também iniciação em extensão, contra o texto da ficha. Também passa a contar **alunos**: o mesmo aluno em duas iniciações no ano (por exemplo, orientador e coorientador importando o mesmo aluno) vale uma vez.
 3. **NICT agora é calculado para 2025**, porque as 14 IC foram copiadas para a tela Iniciações em 19/11. Antes ele aparecia como "indefinido".
 
 Observação: os tipos "TCC / Graduação" e "OUTRA" em Orientações também não são separados em SO e DP4A. Hoje existe 1 registro "OUTRA" e nenhum TCC. Vale a coordenação conferir se esse registro "OUTRA" deve contar como orientação do programa.
@@ -65,6 +65,7 @@ IC, IT e IE passam a existir **nas duas telas ao mesmo tempo**. O que se cria, a
 - **IC criada em Iniciações:** gera uma orientação com início em fevereiro e término em dezembro do ano informado (o ano é a vigência do plano), **como orientador não principal**, para não dar crédito automático ao Critério I.
 - **IC criada em Orientações** (inclusive pelo import do Lattes): gera o registro em Iniciações com o ano do início.
 - **Mudar o tipo** de uma orientação para mestrado ou doutorado remove o espelho em Iniciações. Mudar de volta recria.
+- **Importação do Lattes:** a IC do currículo é gravada em Orientações e, por isso, aparece também em Iniciações, sem gravação duplicada. O sistema passou a ler a **IC concluída** do currículo, que antes era descartada. O Lattes **não distingue** iniciação tecnológica nem em extensão: tudo entra como Iniciação Científica, e o tipo pode ser corrigido depois na tela.
 - **Apagar de um lado apaga o espelho do outro.** Quem apagar uma IC em Iniciações apaga também a orientação correspondente, e isso pode mudar o Critério I.
 
 ## 6. O que a coordenação precisa decidir

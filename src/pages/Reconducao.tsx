@@ -63,6 +63,8 @@ import {
 import { obterAvaliacaoReconducao } from '@/services/reconducao'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAuth } from '@/hooks/use-auth'
+import { usePeriodo } from '@/hooks/use-periodo'
+import { rotuloPeriodo } from '@/lib/periodos/periodo'
 import { restringirRelatorioReconducaoAoDocente } from '@/lib/reconducao/escopo-docente'
 import { imprimirRelatorioReconducaoViaIframe } from '@/lib/reconducao/imprimirReconducaoIframe'
 import type {
@@ -76,7 +78,9 @@ export type FiltroVeredito = 'TODOS' | VereditoReconducao
 
 export interface ReconducaoProps {
   /** Injeção de loader para testes unitários */
-  carregarDadosFn?: () => ReturnType<typeof obterAvaliacaoReconducao>
+  carregarDadosFn?: (
+    opcoes?: Parameters<typeof obterAvaliacaoReconducao>[0],
+  ) => ReturnType<typeof obterAvaliacaoReconducao>
 }
 
 // Ordem de prioridade definida na especificação:
@@ -91,6 +95,12 @@ const ORDEM_VEREDITO: Record<VereditoReconducao, number> = {
 export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
   const isMobile = useIsMobile()
   const { role, profile } = useAuth()
+  // Período de avaliação (D-32): o ativo, ou outro escolhido para consulta
+  const { periodo: periodoAtivo, periodos } = usePeriodo()
+  const [periodoEscolhidoId, setPeriodoEscolhidoId] = useState<number | null>(null)
+  const periodoSel = periodos.find((p) => p.id === periodoEscolhidoId) ?? periodoAtivo
+  const anoInicioSel = periodoSel.anoInicio
+  const anoFimSel = periodoSel.anoFim
   const [relatorioBruto, setRelatorio] = useState<RelatorioReconducaoResposta | null>(null)
   // D-25: o docente vê os cards gerais, mas só o próprio nome na lista, na tela e na impressão
   const relatorio = useMemo(
@@ -124,7 +134,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
     setErro(null)
     try {
       const loader = carregarDadosFn ?? obterAvaliacaoReconducao
-      const res = await loader()
+      const res = await loader({ anoInicio: anoInicioSel, anoFim: anoFimSel })
       if (res.sucesso && res.dados) {
         setRelatorio(res.dados)
         setOrigem(res.origem ?? null)
@@ -136,7 +146,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
     } finally {
       setCarregando(false)
     }
-  }, [carregarDadosFn])
+  }, [carregarDadosFn, anoInicioSel, anoFimSel])
 
   useEffect(() => {
     carregarRelatorio()
@@ -370,7 +380,8 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
             <div>
               <span className="font-semibold text-slate-700">Quadriênio: </span>
               <span>
-                {relatorio?.quadrienio.ano_inicio ?? 2025}–{relatorio?.quadrienio.ano_fim ?? 2028}
+                {relatorio?.quadrienio.ano_inicio ?? anoInicioSel}–
+                {relatorio?.quadrienio.ano_fim ?? anoFimSel}
               </span>
             </div>
           </div>
@@ -862,6 +873,34 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
             data-testid="input-busca-docente-reconducao"
           />
         </div>
+
+        {periodos.length > 1 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-600 shrink-0">Período:</span>
+            <Select
+              value={String(periodoSel.id ?? 'padrao')}
+              onValueChange={(val) => {
+                setPeriodoEscolhidoId(Number(val))
+                setPage(1)
+              }}
+            >
+              <SelectTrigger
+                className="w-[190px] bg-slate-50/50 border-slate-200 text-xs"
+                data-testid="select-periodo-reconducao"
+              >
+                <SelectValue placeholder="Período de avaliação" />
+              </SelectTrigger>
+              <SelectContent>
+                {periodos.map((p) => (
+                  <SelectItem key={p.id ?? 'padrao'} value={String(p.id ?? 'padrao')}>
+                    {rotuloPeriodo(p)}
+                    {p.ativo ? ' (ativo)' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-slate-600 shrink-0">Filtrar por Veredito:</span>

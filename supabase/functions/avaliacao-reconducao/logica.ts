@@ -1,4 +1,5 @@
-// Constantes do quadriênio centralizado (2025-2028)
+// Período padrão (2025-2028). A Edge Function usa o período ativo do banco ou o enviado na requisição;
+// estas constantes só valem como reserva (D-32).
 export const ANO_INICIO = 2025
 export const ANO_FIM = 2028
 
@@ -6,7 +7,7 @@ export const NOTA_SIMPLIFICACAO_NP =
   'O NP estrito considera apenas publicações com fator de impacto JCR >= 1.0 com coautoria confirmada com orientandos ou egressos do P²CEM. Publicações ainda não confirmadas são apresentadas como potenciais no NP TETO para revisão pelo colegiado.'
 
 export const NOTA_DISCIPLINAS_TEMPORAIS =
-  'Quando a disciplina vinculada ao docente possui campo de ano/período (ano_semestre), valida-se a pertinência ao período (2025–2028). Caso o campo não contenha ano identificável, a disciplina vinculada é aceita como evidência de docência no programa e informada no detalhe.'
+  'Quando a disciplina vinculada ao docente possui campo de ano/período (ano_semestre), valida-se a pertinência ao período de avaliação em curso. Caso o campo não contenha ano identificável, a disciplina vinculada é aceita como evidência de docência no programa e informada no detalhe.'
 
 export function extrairAnoDeData(valor: unknown): number | null {
   if (valor === null || valor === undefined || valor === '') return null

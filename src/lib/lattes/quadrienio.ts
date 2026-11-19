@@ -1,8 +1,40 @@
 /**
- * Recorte temporal de itens Lattes para o quadriênio CAPES mais recente.
+ * Recorte temporal de itens Lattes.
+ *
+ * - `ANO_INICIO`/`ANO_FIM`: período de avaliação CAPES padrão (hoje 2025–2028). Passa a ser
+ *   configurável (D-32); estas constantes ficam como valor padrão e como reserva.
+ * - `ANO_INICIO_IMPORTACAO`: o import do Lattes traz dados desde 2020, em todas as seções (D-31),
+ *   porque há índices do departamento que usam anos anteriores ao período de avaliação. Os
+ *   indicadores continuam calculando só o período de avaliação.
  */
 export const ANO_INICIO = 2025
 export const ANO_FIM = 2028
+export const ANO_INICIO_IMPORTACAO = 2020
+
+export interface JanelaAnos {
+  anoInicio: number
+  anoFim: number
+}
+
+/** Janela padrão do import: de `ANO_INICIO_IMPORTACAO` até o fim do período ou o ano atual (o que for maior). */
+export function janelaImportacaoPadrao(hoje: Date = new Date()): JanelaAnos {
+  return { anoInicio: ANO_INICIO_IMPORTACAO, anoFim: Math.max(ANO_FIM, hoje.getFullYear()) }
+}
+
+/**
+ * Um intervalo [inicio, fim] cruza a janela? Fim ausente = em aberto (vale até hoje); início
+ * ausente usa o fim. Sem nenhum dos dois, não cruza.
+ */
+export function intervaloCruzaJanela(
+  inicio: number | null | undefined,
+  fim: number | null | undefined,
+  janela: JanelaAnos,
+): boolean {
+  const ini = inicio ?? fim ?? null
+  if (ini === null) return false
+  const f = fim ?? Number.POSITIVE_INFINITY
+  return ini <= janela.anoFim && f >= janela.anoInicio
+}
 
 export interface ItemComAno {
   ano?: number | string | null
@@ -31,7 +63,7 @@ export function extrairAnoNumerico(anoValor: unknown): number | null {
 }
 
 /**
- * Verifica se um ano numérico está dentro do quadriênio especificado (padrão 2022–2025).
+ * Verifica se um ano numérico está dentro do quadriênio especificado (padrão: período de avaliação).
  * Ano ausente ou inválido retorna false.
  */
 export function estaNoQuadrienio(
@@ -46,7 +78,7 @@ export function estaNoQuadrienio(
 
 /**
  * Função pura de recorte temporal: dado uma lista de itens com ano,
- * filtra somente anos dentro do quadriênio CAPES (padrão 2022–2025).
+ * filtra somente anos dentro do quadriênio CAPES (padrão: período de avaliação).
  * Ano ausente/inválido = excluído do recorte (contabilizado como ignorado).
  *
  * @param itens Lista de itens a filtrar

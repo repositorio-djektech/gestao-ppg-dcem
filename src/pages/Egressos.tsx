@@ -1,6 +1,13 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { CrudPage } from '@/components/crud/CrudPage'
+import {
+  PeriodoFiltro,
+  PERIODO_FILTRO_VAZIO,
+  filtroDoValor,
+  type ValorPeriodoFiltro,
+} from '@/components/PeriodoFiltro'
+import { egressoNoPeriodo } from '@/lib/periodos/filtro'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { egressosService } from '@/services/egressos'
 import { docentesService } from '@/services/docentes'
@@ -55,6 +62,9 @@ const emptyForm = {
 }
 
 export default function Egressos() {
+  const [periodoFiltro, setPeriodoFiltro] = useState<ValorPeriodoFiltro>(PERIODO_FILTRO_VAZIO)
+  const filtroPeriodo = useMemo(() => filtroDoValor(periodoFiltro), [periodoFiltro])
+  const filtroExtra = useCallback((e: any) => egressoNoPeriodo(e, filtroPeriodo), [filtroPeriodo])
   const { role, profile } = useAuth()
   const isCapes = role === 'capes'
   const podeExcluir = !isCapes && (role === 'suporte' || role === 'coordenador')
@@ -529,6 +539,17 @@ export default function Egressos() {
         searchKey="nome"
         entityName="Egresso"
         printModule="egressos"
+        printQuery={
+          filtroPeriodo ? `de=${periodoFiltro.inicio}&ate=${periodoFiltro.fim}` : undefined
+        }
+        filtroExtra={filtroPeriodo ? filtroExtra : undefined}
+        toolbarExtra={
+          <PeriodoFiltro
+            valor={periodoFiltro}
+            onChange={setPeriodoFiltro}
+            rotulo="Titulação no período"
+          />
+        }
         tableHeaderClassName="bg-[#e9effc] sticky top-0 z-10"
         tableHeaderRowClassName="bg-[#e9effc] hover:bg-[#e9effc]"
         actionsHeaderClassName="text-left font-semibold text-slate-700"
