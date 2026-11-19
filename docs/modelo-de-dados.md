@@ -92,10 +92,10 @@ Registra os discentes de mestrado e doutorado do programa.
 - `id`: `bigint PRIMARY KEY`
 - `nome`: `text NOT NULL`
 - `cpf`: `text DEFAULT ''`
-- `data_ingresso`: `text DEFAULT ''`
-- `ano_conclusao`: `text DEFAULT ''` — **ano de conclusão (fonte única, D-28)**; só o ano
+- `data_ingresso`: `text DEFAULT ''` — mês e ano de ingresso, gravado `AAAA-MM` (D-29)
+- `ano_conclusao`: `text DEFAULT ''` — **conclusão em mês e ano (fonte única, D-29)**, gravada `AAAA-MM`
 - `data_conclusao`: `date` (opcional) — **sem uso desde a D-28** (zerada ao salvar; lida só como legado). Migração `20261105120000`, aplicada em 04/11
-- `status`: `text DEFAULT 'em_andamento'` — `'em_andamento'`, `'titulado'`, `'desligado'` (D-26, ajustada pela D-28). Em andamento/titulado vêm do **ano** de conclusão (sem ano, atual ou futuro = em andamento; anterior ao atual = titulado); desligado é manual. Valores antigos `ativo` e `concluido` são mapeados pela migração.
+- `status`: `text DEFAULT 'em_andamento'` — `'em_andamento'`, `'titulado'`, `'desligado'` (D-26, ajustada pela D-28). Em andamento/titulado vêm da conclusão em **mês e ano** (sem conclusão ou mês futuro = em andamento; a partir do mês = titulado); desligado é manual. Valores antigos `ativo` e `concluido` são mapeados pela migração.
 - `tipo_curso`: `text DEFAULT ''` — `'Mestrado'` ou `'Doutorado'`
 - `link_lattes`: `text DEFAULT ''`
 - `orientador`: `text DEFAULT ''` — Nome textual legado
@@ -178,8 +178,8 @@ Orientações de mestrado, doutorado, pós-doutorado, IC e TCC.
 - `docente_id`: `bigint REFERENCES docentes(id)`
 - `discente_id`: `bigint REFERENCES discentes(id)`
 - `tipo`: `text DEFAULT ''` — Nível (`'Mestrado'`, `'Doutorado'`, etc.)
-- `inicio`: `text DEFAULT ''`
-- `fim`: `text DEFAULT ''`
+- `inicio`: `text DEFAULT ''` — mês e ano, gravado `AAAA-MM` (D-29)
+- `fim`: `text DEFAULT ''` — mês e ano de término, `AAAA-MM`; vazio = em andamento (D-29)
 - `status`: `text DEFAULT 'ativo'` — `'ativo'`, `'concluido'`, `'cancelado'`, `'em_andamento'`
 - `data_defesa`: `date` — Data exata da defesa
 - `flag_orientador_principal`: `boolean DEFAULT false` — Diferencia orientador principal de coorientador
@@ -285,8 +285,8 @@ Projetos de pesquisa coordenados ou executados pelo corpo do programa.
 - `id`: `bigint PRIMARY KEY`
 - `titulo`: `text NOT NULL`
 - `descricao`: `text DEFAULT ''`
-- `inicio`: `text DEFAULT ''`
-- `fim`: `text DEFAULT ''`
+- `inicio`: `text DEFAULT ''` — mês e ano, gravado `AAAA-MM` (D-29)
+- `fim`: `text DEFAULT ''` — mês e ano, `AAAA-MM` (texto "Atual" do Lattes é mantido)
 - `coordenador_id`: `bigint REFERENCES docentes(id)`
 - `financiamento`: `boolean DEFAULT false`
 - `orgao_fomento`: `text DEFAULT ''`

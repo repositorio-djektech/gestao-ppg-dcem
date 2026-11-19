@@ -62,7 +62,7 @@ export default function Orientacoes() {
   )
   const [docenteMap, setDocenteMap] = useState<Record<string, string>>({})
   const [discenteMap, setDiscenteMap] = useState<Record<string, string>>({})
-  // Ano de ingresso de cada discente: vira o início da orientação ao escolher o discente (D-28)
+  // Mês e ano de ingresso de cada discente: vira o início da orientação ao escolher o discente (D-28)
   const [discenteIngressoMap, setDiscenteIngressoMap] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -189,24 +189,24 @@ export default function Orientacoes() {
       required: true,
       optionsLoader: discenteOptionsLoader,
       helperText: 'Selecione o discente orientando',
-      // O início da orientação vem do ano de ingresso do discente (pode ser alterado depois)
+      // O início da orientação vem do mês e ano de ingresso do discente (pode ser alterado depois)
       onValueChangeWithFormData: (valor, formAtual) =>
         aplicarDiscenteNoForm(formAtual, valor, discenteIngressoMap),
     },
     {
       key: 'inicio',
-      label: 'Ano de Início',
-      type: 'year',
+      label: 'Início (mês/ano)',
+      type: 'month',
       required: true,
-      placeholder: 'Selecione o ano de início...',
-      helperText: 'Vem do ano de ingresso do discente escolhido; pode ser alterado',
+      placeholder: 'Selecione mês e ano de início...',
+      helperText: 'Vem do mês e ano de ingresso do discente escolhido; pode ser alterado',
     },
     {
       key: 'fim',
-      label: 'Ano de Término Previsto / Efetivo',
-      type: 'year',
-      placeholder: 'Selecione o ano de término...',
-      helperText: 'Deixe em branco se em andamento. Ano futuro ou atual = em andamento',
+      label: 'Término Previsto / Efetivo (mês/ano)',
+      type: 'month',
+      placeholder: 'Selecione mês e ano de término...',
+      helperText: 'Deixe em branco se em andamento. Concluída a partir do mês do término',
     },
     {
       key: 'cancelado',

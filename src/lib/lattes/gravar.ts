@@ -1,5 +1,16 @@
 import { supabase } from '@/lib/supabase/client'
 import { normalizarTitulo } from './dedupe'
+import { anoDeMesAno, normalizarMesAno } from '@/lib/datas/mes-ano'
+
+/** O Lattes só traz o ano: vira fevereiro daquele ano (`AAAA-02`, D-29). Texto sem formato fica como está. */
+function mesAnoDoLattes(valor: unknown): string {
+  return normalizarMesAno(valor) ?? String(valor ?? '')
+}
+
+/** Chave de dedupe pelo ANO: o mês pode variar entre o que está no banco e o que o Lattes traz. */
+function anoParaChave(valor: unknown): string {
+  return String(anoDeMesAno(valor) ?? valor ?? '')
+}
 import { normalizarNomePessoa, normalizarTituloAcademico } from '@/lib/normalizacao'
 import type {
   LattesDocente,
@@ -232,8 +243,12 @@ export function converterLattesOrientacao(
       : o.tipo_orientacao !== 'CO_ORIENTADOR'
 
   const anoRef = o.ano_conclusao || o.ano_inicio || null
-  const inicioStr = o.ano_inicio ? String(o.ano_inicio) : anoRef ? String(anoRef) : ''
-  const fimStr = o.ano_conclusao ? String(o.ano_conclusao) : ''
+  const inicioStr = o.ano_inicio
+    ? mesAnoDoLattes(o.ano_inicio)
+    : anoRef
+      ? mesAnoDoLattes(anoRef)
+      : ''
+  const fimStr = o.ano_conclusao ? mesAnoDoLattes(o.ano_conclusao) : ''
 
   const obsPartes: string[] = []
   if (o.titulo_trabalho) obsPartes.push(`Título: ${o.titulo_trabalho.trim()}`)
@@ -275,8 +290,12 @@ export function converterLattesProjeto(
     p.financiadores && p.financiadores.length > 0 ? p.financiadores.join(', ') : ''
   const financiamento = Boolean(p.financiadores && p.financiadores.length > 0)
 
-  const inicioStr = p.ano_inicio ? String(p.ano_inicio) : ''
-  const fimStr = p.ano_fim ? String(p.ano_fim) : p.situacao === 'EM_ANDAMENTO' ? 'Atual' : ''
+  const inicioStr = p.ano_inicio ? mesAnoDoLattes(p.ano_inicio) : ''
+  const fimStr = p.ano_fim
+    ? mesAnoDoLattes(p.ano_fim)
+    : p.situacao === 'EM_ANDAMENTO'
+      ? 'Atual'
+      : ''
 
   const obsPartes: string[] = []
   if (p.situacao) obsPartes.push(`Situação: ${p.situacao}`)
@@ -924,7 +943,7 @@ export async function resolverOuCriarDiscente(
   const novoPayload = {
     nome: nomeLimpo,
     cpf: '',
-    data_ingresso: String(new Date().getFullYear()),
+    data_ingresso: mesAnoDoLattes(new Date().getFullYear()),
     status: 'em_andamento',
     link_lattes: '',
     link_comprovacao: '',
@@ -1036,7 +1055,7 @@ export async function gravarOrientacoes(
   const listaExistentesOri: OriExistente[] = existentesOri || []
   const mapaOriExistentes = new Map<string, OriExistente>()
   for (const o of listaExistentesOri) {
-    const chave = `${o.docente_id || 0}_${o.discente_id || 0}_${normalizarTitulo(o.tipo || '')}_${o.inicio || ''}`
+    const chave = `${o.docente_id || 0}_${o.discente_id || 0}_${normalizarTitulo(o.tipo || '')}_${anoParaChave(o.inicio)}`
     mapaOriExistentes.set(chave, o)
   }
 
@@ -1104,14 +1123,18 @@ export async function gravarOrientacoes(
     }
 
     const tipoFinal = ori.tipo || 'Mestrado'
-    const inicioFinal = ori.inicio || (ori.ano_referencia ? String(ori.ano_referencia) : '')
-    const chaveDedupe = `${docenteId || 0}_${discenteId || 0}_${normalizarTitulo(tipoFinal)}_${inicioFinal}`
+    const inicioFinal = ori.inicio
+      ? mesAnoDoLattes(ori.inicio)
+      : ori.ano_referencia
+        ? mesAnoDoLattes(ori.ano_referencia)
+        : ''
+    const chaveDedupe = `${docenteId || 0}_${discenteId || 0}_${normalizarTitulo(tipoFinal)}_${anoParaChave(inicioFinal)}`
     const existente = mapaOriExistentes.get(chaveDedupe)
 
     const payload: Record<string, unknown> = {
       tipo: tipoFinal,
       inicio: inicioFinal,
-      fim: ori.fim || '',
+      fim: ori.fim ? mesAnoDoLattes(ori.fim) : '',
       status: ori.status || 'ativo',
       docente_id: docenteId,
       discente_id: discenteId,
@@ -1244,7 +1267,7 @@ export async function gravarProjetosPesquisa(
   const mapaPorChave = new Map<string, ProjetoExistente>()
 
   for (const p of listaExistentes) {
-    const chave = `${normalizarTitulo(p.titulo)}_${p.inicio || ''}`
+    const chave = `${normalizarTitulo(p.titulo)}_${anoParaChave(p.inicio)}`
     mapaPorChave.set(chave, p)
   }
 
@@ -1269,14 +1292,14 @@ export async function gravarProjetosPesquisa(
       }
     }
 
-    const chave = `${normalizarTitulo(tituloLimpo)}_${proj.inicio || ''}`
+    const chave = `${normalizarTitulo(tituloLimpo)}_${anoParaChave(proj.inicio)}`
     const existente = mapaPorChave.get(chave)
 
     const payload: Record<string, unknown> = {
       titulo: tituloLimpo,
       descricao: proj.descricao || '',
-      inicio: proj.inicio || '',
-      fim: proj.fim || '',
+      inicio: proj.inicio ? mesAnoDoLattes(proj.inicio) : '',
+      fim: proj.fim ? mesAnoDoLattes(proj.fim) : '',
       coordenador_id: coordId,
       financiamento: Boolean(proj.financiamento),
       orgao_fomento: proj.orgao_fomento || '',

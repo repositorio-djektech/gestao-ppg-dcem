@@ -28,7 +28,17 @@ export const CrudPageTypes = {} as {
 export interface FieldDef {
   key: string
   label: string
-  type: 'text' | 'number' | 'textarea' | 'select' | 'switch' | 'date' | 'url' | 'email' | 'year'
+  type:
+    | 'text'
+    | 'number'
+    | 'textarea'
+    | 'select'
+    | 'switch'
+    | 'date'
+    | 'url'
+    | 'email'
+    | 'year'
+    | 'month'
   options?: { value: string; label: string }[]
   optionsLoader?: () => Promise<{ value: string; label: string }[]>
   required?: boolean

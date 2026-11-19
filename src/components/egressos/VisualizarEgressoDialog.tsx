@@ -1,4 +1,4 @@
-import { exibirPeriodoAnos } from '@/lib/datas/ano'
+import { exibirPeriodoMesAno } from '@/lib/datas/mes-ano'
 import { useState, useEffect, useMemo } from 'react'
 import {
   Dialog,
@@ -418,7 +418,7 @@ export function VisualizarEgressoDialog({
                     )}
                     <span>
                       <strong className="text-slate-700">Período:</strong>{' '}
-                      {exibirPeriodoAnos(ori.inicio, ori.fim) || '—'}
+                      {exibirPeriodoMesAno(ori.inicio, ori.fim) || '—'}
                     </span>
                     {ori.data_defesa && (
                       <span>

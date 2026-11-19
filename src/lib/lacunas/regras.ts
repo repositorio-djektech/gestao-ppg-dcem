@@ -10,7 +10,7 @@ import type {
   Premicao as Premiacao,
   ProducaoTecnica,
 } from '@/types/database'
-import { exibirAno } from '@/lib/datas/ano'
+import { exibirMesAno } from '@/lib/datas/mes-ano'
 import type {
   RegraLacuna,
   ResumoRegraLacuna,
@@ -690,7 +690,7 @@ export function extrairNomeRegistro(registro: any): string {
   if (registro.titulo) return String(registro.titulo)
   if (registro.titulo_trabalho) return String(registro.titulo_trabalho)
   if (registro.evento) return String(registro.evento)
-  if (registro.tipo && registro.inicio) return `${registro.tipo} (${exibirAno(registro.inicio)})`
+  if (registro.tipo && registro.inicio) return `${registro.tipo} (${exibirMesAno(registro.inicio)})`
   return `ID ${registro.id}`
 }
 

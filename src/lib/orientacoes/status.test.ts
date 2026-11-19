@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  parseDataFimOrientacao,
-  calcularStatusEfetivoOrientacao,
-  aplicarStatusEfetivo,
-} from './status'
+import { calcularStatusEfetivoOrientacao, aplicarStatusEfetivo } from './status'
 import { isMestradoConcluido, isDoutoradoConcluido } from '../reconducao/calculo'
 import type { Orientacao } from '@/types/database'
 
@@ -47,7 +43,7 @@ describe('Regras de Derivação de Status de Orientações (PPG-DCEM)', () => {
     ).toBe('em_andamento')
   })
 
-  it('3. Ano do término anterior ao ano atual -> concluido (D-28)', () => {
+  it('3. Mês do término anterior ao mês atual -> concluido (D-29)', () => {
     // Data passada
     expect(
       calcularStatusEfetivoOrientacao({ fim: '2024-12-31', cancelado: false }, dataReferenciaFixa),
@@ -69,20 +65,25 @@ describe('Regras de Derivação de Status de Orientações (PPG-DCEM)', () => {
     ).toBe('concluido')
   })
 
-  it('3b. Término no ano atual segue em andamento: o ano só passa em 31/12 (D-28, P-27)', () => {
+  it('3b. Término no mês atual ou em ano só com fevereiro já passado -> concluido (D-29)', () => {
+    // mês atual (maio/2025): vale a partir do dia 1º
+    expect(
+      calcularStatusEfetivoOrientacao({ fim: '2025-05', cancelado: false }, dataReferenciaFixa),
+    ).toBe('concluido')
+    expect(
+      calcularStatusEfetivoOrientacao({ fim: '05/2025', cancelado: false }, dataReferenciaFixa),
+    ).toBe('concluido')
+    // só o ano (dado antigo) vale como fevereiro: fev/2025 já passou
     expect(
       calcularStatusEfetivoOrientacao({ fim: '2025', cancelado: false }, dataReferenciaFixa),
-    ).toBe('em_andamento')
-    // mesmo uma data completa já passada dentro do ano atual vale pelo ano
+    ).toBe('concluido')
+    // mês seguinte ainda não chegou
     expect(
-      calcularStatusEfetivoOrientacao({ fim: '2025-01-10', cancelado: false }, dataReferenciaFixa),
+      calcularStatusEfetivoOrientacao({ fim: '2025-06', cancelado: false }, dataReferenciaFixa),
     ).toBe('em_andamento')
+    // virou o mês: junho/2025 chegou
     expect(
-      calcularStatusEfetivoOrientacao({ fim: '04/2025', cancelado: false }, dataReferenciaFixa),
-    ).toBe('em_andamento')
-    // virou o ano: 2025 passou
-    expect(
-      calcularStatusEfetivoOrientacao({ fim: '2025', cancelado: false }, new Date(2026, 0, 1)),
+      calcularStatusEfetivoOrientacao({ fim: '2025-06', cancelado: false }, new Date(2025, 5, 1)),
     ).toBe('concluido')
   })
 
@@ -121,33 +122,7 @@ describe('Regras de Derivação de Status de Orientações (PPG-DCEM)', () => {
     ).toBe('em_andamento')
   })
 
-  it('6. parseDataFimOrientacao lida com formatos válidos e inválidos', () => {
-    expect(parseDataFimOrientacao(null)).toBeNull()
-    expect(parseDataFimOrientacao('')).toBeNull()
-    expect(parseDataFimOrientacao('invalid')).toBeNull()
-
-    // ISO
-    const dIso = parseDataFimOrientacao('2024-05-10')
-    expect(dIso).not.toBeNull()
-    expect(dIso?.getFullYear()).toBe(2024)
-    expect(dIso?.getMonth()).toBe(4) // Maio
-    expect(dIso?.getDate()).toBe(10)
-
-    // BR
-    const dBr = parseDataFimOrientacao('10/05/2024')
-    expect(dBr).not.toBeNull()
-    expect(dBr?.getFullYear()).toBe(2024)
-    expect(dBr?.getMonth()).toBe(4)
-
-    // Ano puro
-    const dAno = parseDataFimOrientacao('2024')
-    expect(dAno).not.toBeNull()
-    expect(dAno?.getFullYear()).toBe(2024)
-    expect(dAno?.getMonth()).toBe(11) // 31 de Dezembro
-    expect(dAno?.getDate()).toBe(31)
-  })
-
-  it('7. Preserva status antigo concluido sem data de término', () => {
+  it('6. Preserva status antigo concluido sem data de término', () => {
     expect(
       calcularStatusEfetivoOrientacao({ status: 'concluido', fim: null }, dataReferenciaFixa),
     ).toBe('concluido')

@@ -189,8 +189,9 @@ describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => 
       expect(oriConv.tipo).toBe('Mestrado')
       expect(oriConv.status).toBe('concluido')
       expect(oriConv.discente_nome).toBe('Fulano de Tal')
-      expect(oriConv.inicio).toBe('2022')
-      expect(oriConv.fim).toBe('2024')
+      // O Lattes só traz o ano: vira fevereiro daquele ano (D-29)
+      expect(oriConv.inicio).toBe('2022-02')
+      expect(oriConv.fim).toBe('2024-02')
       expect(oriConv.docente_identificador).toBe('123')
 
       // 3. Projeto
@@ -204,6 +205,8 @@ describe('Serviço de Gravação Lattes - Subetapa 2A (Offline / Mocks)', () => 
       }
       const projConv = converterLattesProjeto(proj, { id_lattes: '123', nome: 'Prof' })
       expect(projConv.titulo).toBe('Desenvolvimento de Sensores')
+      expect(projConv.inicio).toBe('2022-02')
+      expect(projConv.fim).toBe('2025-02')
       expect(projConv.financiamento).toBe(true)
       expect(projConv.orgao_fomento).toBe('CNPq, FAPITEC')
 

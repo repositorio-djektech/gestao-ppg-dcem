@@ -128,16 +128,16 @@ describe('Orientações: tabela', () => {
     expect(doutorado.className).toContain('bg-')
   })
 
-  it('mostra início e término só com o ano; sem data, o traço em Início, Término e Status', async () => {
+  it('mostra início e término em mês/ano; sem data, o traço em Início, Término e Status', async () => {
     const c = await montar()
     const celulas = (nome: string) =>
       Array.from(linha(c, nome).querySelectorAll('td')).map((td) => td.textContent)
 
-    // Discente Dois: início "2024" e término 31/12/2026 -> só o ano (D-28)
-    expect(celulas('Discente Dois')).toEqual(expect.arrayContaining(['2024', '2026']))
-    // Discente Um: início 01/03/2025 -> "2025" e término sem ano -> traço
+    // Discente Dois: início "2024" (só ano = fevereiro) e término 31/12/2026 -> MM/AAAA (D-29)
+    expect(celulas('Discente Dois')).toEqual(expect.arrayContaining(['02/2024', '12/2026']))
+    // Discente Um: início 01/03/2025 -> "03/2025" e término vazio -> traço
     const um = celulas('Discente Um')
-    expect(um).toEqual(expect.arrayContaining(['2025', '—']))
+    expect(um).toEqual(expect.arrayContaining(['03/2025', '—']))
     // Discente Quatro: sem início e sem término -> Início, Término e Status viram traço
     const quatro = celulas('Discente Quatro')
     expect(quatro.filter((t) => t === '—').length).toBe(3)

@@ -31,6 +31,7 @@ import {
 import { cn, formatarCpf } from '@/lib/utils'
 import { toTitleCase } from '@/lib/titleCase'
 import { normalizarCamposAno } from '@/lib/datas/ano'
+import { normalizarCamposMesAno } from '@/lib/datas/mes-ano'
 import { CrudFormDialog } from './CrudFormDialog'
 import type { ColumnDef, FieldDef } from './types'
 export type { ColumnDef, FieldDef } from './types'
@@ -360,6 +361,11 @@ export function CrudPage<T extends { id: number | string }>({
     submitData = normalizarCamposAno(
       submitData,
       fields.filter((f) => f.type === 'year').map((f) => f.key),
+    )
+    // D-29: campos de mês/ano guardam AAAA-MM (só ano vira fevereiro; dia é descartado)
+    submitData = normalizarCamposMesAno(
+      submitData,
+      fields.filter((f) => f.type === 'month').map((f) => f.key),
     )
     // Converter campos com ID vazio em null para respeitar foreign keys no Supabase
     for (const key of Object.keys(submitData)) {

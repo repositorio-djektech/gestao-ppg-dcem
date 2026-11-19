@@ -1,9 +1,8 @@
 /**
- * Datas só com o ano (D-28).
- *
- * Os campos de data do sistema (ingresso, conclusão, início e término de orientações e projetos,
- * ano do evento) guardam apenas o ANO. Os registros antigos podem ter AAAA-MM-DD, DD/MM/AAAA,
- * MM/AAAA ou texto livre; estas funções leem o ano de qualquer um deles sem alterar o dado.
+ * Campos que guardam só o ANO (D-28): ano de ingresso e de titulação de egressos e o ano do evento.
+ * (Ingresso/conclusão de discentes e início/término de orientações e projetos passaram a mês e ano
+ * na D-29: ver `mes-ano.ts`.) Os registros antigos podem ter AAAA-MM-DD, DD/MM/AAAA, MM/AAAA ou
+ * texto livre; `anoDoValor` lê o ano de qualquer um deles sem alterar o dado.
  */
 
 const REGEX_ANO = /\b(19\d{2}|20\d{2})\b/
@@ -19,40 +18,6 @@ export function anoDoValor(valor: unknown): string | null {
   // AAAA-MM-DD / AAAA-MM: o ano vem colado ao hífen, que \b trata como limite de palavra
   const m = texto.match(REGEX_ANO)
   return m ? m[1] : null
-}
-
-/** Ano como número, para comparações. */
-export function anoNumero(valor: unknown): number | null {
-  const ano = anoDoValor(valor)
-  return ano ? Number(ano) : null
-}
-
-/**
- * Texto para tabelas, diálogos e impressões: só o ano. Se o valor não tem ano (ex.: "Atual"
- * vindo do Lattes), mostra o texto como está. Vazio devolve `null` (a tela mostra o traço).
- */
-export function exibirAno(valor: unknown): string | null {
-  const ano = anoDoValor(valor)
-  if (ano) return ano
-  const texto = String(valor ?? '').trim()
-  return texto || null
-}
-
-/** Período "AAAA – AAAA" (ou só o início). Vazio devolve `null`. */
-export function exibirPeriodoAnos(inicio: unknown, fim: unknown): string | null {
-  const i = exibirAno(inicio)
-  const f = exibirAno(fim)
-  if (i && f) return `${i} – ${f}`
-  return i ?? f ?? null
-}
-
-/**
- * O ano já terminou? O ano só "passa" em 31/12: o ano atual ainda está em curso (P-27).
- * Para tratar o ano atual como já concluído, troque `<` por `<=`.
- */
-export function anoJaPassou(ano: number | null | undefined, hoje: Date = new Date()): boolean {
-  if (ano === null || ano === undefined || !Number.isFinite(ano)) return false
-  return ano < hoje.getFullYear()
 }
 
 /**

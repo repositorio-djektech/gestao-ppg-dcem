@@ -1,7 +1,7 @@
 /**
  * Exibição da tabela de Orientações e visão restrita do docente (D-27).
  */
-import { exibirAno } from '@/lib/datas/ano'
+import { exibirMesAno } from '@/lib/datas/mes-ano'
 
 function normalizar(texto: string | null | undefined): string {
   return String(texto ?? '')
@@ -27,9 +27,9 @@ export function classeBadgeTipoOrientacao(tipo: string | null | undefined): stri
   }
 }
 
-/** Início/término para a tabela (D-28): só o ano, de qualquer formato antigo; vazio vira null (traço). */
+/** Início/término para a tabela (D-29): MM/AAAA, de qualquer formato antigo; vazio vira null (traço). */
 export function formatarDataOrientacao(valor: string | null | undefined): string | null {
-  return exibirAno(valor)
+  return exibirMesAno(valor)
 }
 
 /** Sem início e sem término: Início, Término e Status mostram o traço. */

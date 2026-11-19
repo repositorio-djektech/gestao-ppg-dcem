@@ -1,5 +1,5 @@
 import { exibirLocalAno } from '@/lib/eventos/local-ano'
-import { exibirAno } from '@/lib/datas/ano'
+import { exibirMesAno } from '@/lib/datas/mes-ano'
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Printer, AlertCircle, RefreshCw } from 'lucide-react'
@@ -89,8 +89,8 @@ export default function PrintView() {
         { key: 'cpf', label: 'CPF', render: (d) => (d.cpf ? formatarCpf(d.cpf) : '—') },
         {
           key: 'data_ingresso',
-          label: 'Ano de Ingresso',
-          render: (d) => exibirAno(d.data_ingresso) || '—',
+          label: 'Ingresso (mês/ano)',
+          render: (d) => exibirMesAno(d.data_ingresso) || '—',
         },
         {
           key: 'status',
@@ -131,8 +131,8 @@ export default function PrintView() {
           label: 'Discente Orientando',
           render: (o) => (o.discente && o.discente.nome) || discentesMap[o.discente_id] || '—',
         },
-        { key: 'inicio', label: 'Início', render: (o) => exibirAno(o.inicio) || '—' },
-        { key: 'fim', label: 'Término', render: (o) => exibirAno(o.fim) || '—' },
+        { key: 'inicio', label: 'Início', render: (o) => exibirMesAno(o.inicio) || '—' },
+        { key: 'fim', label: 'Término', render: (o) => exibirMesAno(o.fim) || '—' },
         { key: 'status', label: 'Status', render: (o) => String(o.status || '—').toUpperCase() },
       ],
     },
@@ -159,8 +159,8 @@ export default function PrintView() {
           render: (p) =>
             (p.coordenador && p.coordenador.nome) || docentesMap[p.coordenador_id] || '—',
         },
-        { key: 'inicio', label: 'Início', render: (p) => exibirAno(p.inicio) || '—' },
-        { key: 'fim', label: 'Término', render: (p) => exibirAno(p.fim) || '—' },
+        { key: 'inicio', label: 'Início', render: (p) => exibirMesAno(p.inicio) || '—' },
+        { key: 'fim', label: 'Término', render: (p) => exibirMesAno(p.fim) || '—' },
         {
           key: 'financiamento',
           label: 'Financiamento',

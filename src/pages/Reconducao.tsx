@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { exibirAno } from '@/lib/datas/ano'
+import { exibirMesAno } from '@/lib/datas/mes-ano'
 import { TablePaginationFooter } from '@/components/crud/TablePaginationFooter'
 import { FrameHorizontalScrollbar } from '@/components/crud/FrameHorizontalScrollbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -416,8 +416,8 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
                   <div className="font-semibold text-slate-700">Orientações consideradas:</div>
                   {doc.criterio_i.itens.map((item: any, i: number) => (
                     <div key={i} className="truncate">
-                      • {item.tipo || 'Orientação'} ({exibirAno(item.inicio) || '?'}
-                      {item.fim ? `–${exibirAno(item.fim)}` : ''})
+                      • {item.tipo || 'Orientação'} ({exibirMesAno(item.inicio) || '?'}
+                      {item.fim ? `–${exibirMesAno(item.fim)}` : ''})
                       {item.status ? ` - ${item.status}` : ''}
                     </div>
                   ))}

@@ -15,6 +15,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { formatarCpf } from '@/lib/utils'
+import { MesAnoPicker } from './MesAnoPicker'
 import type { FieldDef } from './types'
 
 interface CrudFormDialogProps {
@@ -178,6 +179,20 @@ export function CrudFormDialog({
                           onCheckedChange={(c) => setFormData({ ...formData, [field.key]: c })}
                         />
                       </div>
+                    ) : field.type === 'month' ? (
+                      <MesAnoPicker
+                        id={field.key}
+                        value={formData[field.key]}
+                        placeholder={field.placeholder}
+                        required={field.required}
+                        onChange={(valor) => {
+                          if (field.onValueChangeWithFormData) {
+                            setFormData(field.onValueChangeWithFormData(valor, formData))
+                          } else {
+                            setFormData({ ...formData, [field.key]: valor })
+                          }
+                        }}
+                      />
                     ) : field.type === 'year' ? (
                       (() => {
                         const valorAno = extrairAno(formData[field.key])

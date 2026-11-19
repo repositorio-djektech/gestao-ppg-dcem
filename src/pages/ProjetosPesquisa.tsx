@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { exibirAno } from '@/lib/datas/ano'
+import { exibirMesAno } from '@/lib/datas/mes-ano'
 import { CrudPage } from '@/components/crud/CrudPage'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { projetosPesquisaService } from '@/services/projetos-pesquisa'
@@ -530,12 +530,12 @@ export default function ProjetosPesquisa() {
     {
       key: 'inicio',
       label: 'Início',
-      render: (p) => exibirAno(p.inicio) || <span className="text-slate-400">—</span>,
+      render: (p) => exibirMesAno(p.inicio) || <span className="text-slate-400">—</span>,
     },
     {
       key: 'fim',
       label: 'Término',
-      render: (p) => exibirAno(p.fim) || <span className="text-slate-400">—</span>,
+      render: (p) => exibirMesAno(p.fim) || <span className="text-slate-400">—</span>,
     },
     {
       key: 'financiamento',
@@ -818,18 +818,18 @@ export default function ProjetosPesquisa() {
     },
     {
       key: 'inicio',
-      label: 'Ano de Início',
-      type: 'year',
+      label: 'Início (mês/ano)',
+      type: 'month',
       required: true,
-      placeholder: 'Selecione o ano de início...',
-      helperText: 'Ano de início da vigência do projeto',
+      placeholder: 'Selecione mês e ano de início...',
+      helperText: 'Mês e ano de início da vigência do projeto',
     },
     {
       key: 'fim',
-      label: 'Ano de Término',
-      type: 'year',
-      placeholder: 'Selecione o ano de término...',
-      helperText: 'Ano de término previsto ou efetivo da vigência',
+      label: 'Término (mês/ano)',
+      type: 'month',
+      placeholder: 'Selecione mês e ano de término...',
+      helperText: 'Mês e ano de término previsto ou efetivo da vigência',
     },
     {
       key: 'financiamento',

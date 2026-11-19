@@ -1,5 +1,5 @@
 import { exibirLocalAno } from '@/lib/eventos/local-ano'
-import { exibirPeriodoAnos } from '@/lib/datas/ano'
+import { exibirPeriodoMesAno } from '@/lib/datas/mes-ano'
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
@@ -1322,7 +1322,7 @@ export function VisualizarDocenteDialog({
                     {ori.discente_nome || '—'}
                   </TableCell>
                   <TableCell className="font-mono text-xs text-slate-600 dark:text-neutral-400">
-                    {exibirPeriodoAnos(ori.inicio, ori.fim) || '—'}
+                    {exibirPeriodoMesAno(ori.inicio, ori.fim) || '—'}
                   </TableCell>
                   <TableCell>
                     <Badge
@@ -1382,7 +1382,7 @@ export function VisualizarDocenteDialog({
                     {proj.titulo}
                   </TableCell>
                   <TableCell className="font-mono text-xs text-slate-600 dark:text-neutral-400">
-                    {exibirPeriodoAnos(proj.inicio, proj.fim) || '—'}
+                    {exibirPeriodoMesAno(proj.inicio, proj.fim) || '—'}
                   </TableCell>
                   <TableCell>
                     {proj.financiamento ? (

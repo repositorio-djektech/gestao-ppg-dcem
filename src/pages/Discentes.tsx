@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { exibirAno } from '@/lib/datas/ano'
+import { exibirMesAno, normalizarMesAno } from '@/lib/datas/mes-ano'
 import { useAuth } from '@/hooks/use-auth'
 import { CrudPage } from '@/components/crud/CrudPage'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
@@ -44,7 +44,7 @@ import { opcoesDeOrientador, aplicarOrientadorSelecionado } from '@/lib/discente
 import {
   statusEfetivoDiscente,
   rotuloStatusDiscente,
-  aplicarAnoConclusaoNoForm,
+  aplicarConclusaoNoForm,
   prepararDiscenteParaGravar,
   conclusaoParaExibicao,
 } from '@/lib/discentes/status'
@@ -310,9 +310,10 @@ export default function Discentes() {
           atualizado.tipo_curso = tipoCursoExtraido
         }
         if (anoConclusaoExtraido) {
-          // Extrai apenas os 4 dígitos do ano para alimentar o picker de ano
+          // O Lattes só traz o ano: vira fevereiro daquele ano (D-29), para alimentar o seletor de mês/ano
           const matchAno = anoConclusaoExtraido.match(/\b(19\d{2}|20\d{2})\b/)
-          atualizado.ano_conclusao = matchAno ? matchAno[1] : anoConclusaoExtraido
+          atualizado.ano_conclusao =
+            (matchAno && normalizarMesAno(matchAno[1])) || anoConclusaoExtraido
         }
         if (nacionalidade && 'nacionalidade' in atualizado) {
           atualizado.nacionalidade = nacionalidade
@@ -435,8 +436,8 @@ export default function Discentes() {
         className: 'text-center',
         headerClassName: 'text-left font-semibold text-slate-700',
         render: (d) =>
-          exibirAno(d.data_ingresso) ? (
-            <span className="font-mono text-xs">{exibirAno(d.data_ingresso)}</span>
+          exibirMesAno(d.data_ingresso) ? (
+            <span className="font-mono text-xs">{exibirMesAno(d.data_ingresso)}</span>
           ) : (
             <span className="text-slate-400">—</span>
           ),
@@ -556,11 +557,11 @@ export default function Discentes() {
       },
       {
         key: 'data_ingresso',
-        label: 'Ano de Ingresso',
-        type: 'year',
+        label: 'Ingresso (mês/ano)',
+        type: 'month',
         required: true,
-        placeholder: 'Selecione o ano de ingresso...',
-        helperText: 'Ano de matrícula inicial no programa',
+        placeholder: 'Selecione mês e ano de ingresso...',
+        helperText: 'Mês e ano de matrícula inicial no programa',
       },
       {
         key: 'status',
@@ -573,16 +574,15 @@ export default function Discentes() {
           { value: 'desligado', label: 'Desligado' },
         ],
         helperText:
-          'Definido pelo ano de conclusão: sem ano, ano atual ou futuro = Em andamento; ano passado = Titulado. Desligado é marcado manualmente.',
+          'Definido pela conclusão (mês/ano): sem conclusão ou mês futuro = Em andamento; a partir do mês da conclusão = Titulado. Desligado é marcado manualmente.',
       },
       {
         key: 'ano_conclusao',
-        label: 'Ano de Conclusão',
-        type: 'year',
-        placeholder: 'Selecione o ano de conclusão...',
-        helperText: 'Ano da defesa ou previsto. Atualiza o status automaticamente.',
-        onValueChangeWithFormData: (val, currentData) =>
-          aplicarAnoConclusaoNoForm(currentData, val),
+        label: 'Conclusão (mês/ano)',
+        type: 'month',
+        placeholder: 'Selecione mês e ano de conclusão...',
+        helperText: 'Mês e ano da defesa ou previsto. Atualiza o status automaticamente.',
+        onValueChangeWithFormData: (val, currentData) => aplicarConclusaoNoForm(currentData, val),
       },
       {
         key: 'tipo_curso',

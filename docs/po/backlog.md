@@ -15,7 +15,7 @@ Fluxos de aceite (D-08):
 - **E-03 Import Lattes em duas etapas**: H-04.
 - **E-04 Cálculo confiável**: H-07, H-08.
 - **E-05 Conformidade CAPES no MVP**: H-09, H-10.
-- **E-06 Visão restrita do docente e status do discente**: H-11 a H-23.
+- **E-06 Visão restrita do docente e status do discente**: H-11 a H-24.
 
 ## Histórias
 
@@ -44,6 +44,7 @@ Fluxos de aceite (D-08):
 | H-21 | Como docente, quero ver e fazer CRUD só nas minhas patentes. | E-06 | — | 1 | **Em validação** (código e testes prontos; migração `20261105130000` aplicada em 04/11) |
 | H-22 | Ajustes visuais: Atuação Profissional de Egressos à esquerda e sem o ícone de estrelinhas no Impacto Social. | E-06 | — | 2 | **Em validação** (código e testes prontos) |
 | H-23 | Como coordenação e docentes, quero que todos os campos de data mostrem e aceitem só o ano, e que o início da orientação venha do ingresso do discente. | E-06 | — | 1 | **Em validação** (código e testes prontos; sem migração) |
+| H-24 | Como coordenação e docentes, quero início/término e ingresso/conclusão em mês e ano, com o status mudando no próprio mês do término. | E-06 | — | 1 | **Em validação** (código e testes prontos; migração `20261119120000` e conversão dos dados a aplicar após o deploy) |
 
 ## Critérios de aceite das histórias de prioridade 1
 
@@ -115,6 +116,8 @@ Fluxos de aceite (D-08):
 **H-22 — Visuais.** Atuação Profissional (Egressos) alinhada à esquerda; sem o ícone Sparkles no título dos registros de Impacto Social. Teste: `pages/AjustesVisuaisTabelas.test.tsx`.
 
 **H-23 — Datas só com o ano (D-28).** Seletor de ano em: Discentes (ingresso, conclusão), Egressos (ingresso, titulação), Orientações (início, término), Projetos de Pesquisa (início, término) e Eventos (campos Local e Ano, gravados em `local_data` como "Local - AAAA"). Tabelas, diálogos e impressões mostram só o ano; sem ano aparece o traço. Ao escolher o discente na orientação, o início vem do ano de ingresso dele (editável). Status: sem ano de conclusão/término, ano atual ou futuro = em andamento; ano anterior ao atual = titulado (discente) ou concluída (orientação). Registros antigos (dia/mês/ano) continuam no banco e são lidos pelo ano; ao salvar, gravam só o ano. Testes: `lib/datas/ano.test.ts`, `lib/discentes/status.test.ts`, `lib/orientacoes/status.test.ts`, `lib/orientacoes/inicio.test.ts`, `lib/eventos/local-ano.test.ts`.
+
+**H-24 — Mês e ano (D-29).** Seletor de mês/ano em Orientações (início, término), Projetos (início, término) e Discentes (ingresso, conclusão); gravado `AAAA-MM`, exibido `MM/AAAA`. Só o ano (dado antigo e Lattes) vale como fevereiro. Status: concluída/titulado a partir do próprio mês do término/conclusão; mês futuro ou sem término = em andamento; sem início e sem término, o status mostra o traço. Início da orientação vem do ingresso do discente (com o mês). Egressos e Eventos seguem só com o ano (D-28). Banco: a função `parse_data_fim_orientacao` devolve o dia 1º do mês (migração `20261119120000`). Testes: `lib/datas/mes-ano.test.ts`, `lib/discentes/status.test.ts`, `lib/orientacoes/status.test.ts`, `lib/orientacoes/inicio.test.ts`, `components/crud/MesAnoPicker.test.tsx`.
 
 **Impressão.** `/imprimir/<módulo>` aplica a mesma visão restrita (discentes, orientações, projetos, publicações, patentes, produção técnica). Testes: `impressao/escopo-docente.test.ts`, `pages/PrintViewDocente.test.tsx`.
 

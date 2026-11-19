@@ -1,102 +1,19 @@
 /**
- * Funções seguras de parse e derivação de status efetivo para orientações (PPG-DCEM).
+ * Funções de derivação de status efetivo para orientações (PPG-DCEM).
  *
- * REGRAS DE DERIVAÇÃO (D-28: o término vale pelo ANO):
+ * REGRAS DE DERIVAÇÃO (D-29: início e término em mês e ano):
  * - Se cancelado = true (ou status gravado 'cancelado') -> 'cancelado' (datas preservadas).
- * - Se fim ficar em branco -> 'em_andamento'.
- * - Se o ano do fim é o ano atual ou posterior -> 'em_andamento' (o ano só passa em 31/12).
- * - Se o ano do fim é anterior ao ano atual -> 'concluido'.
- * - Data inválida/irreconhecível NÃO deve ser tratada como concluído -> 'em_andamento'.
- * - Registros antigos com status 'ativo' sem fim ou fim futuro -> 'em_andamento' na leitura.
+ * - Se o término ficar em branco -> 'em_andamento'.
+ * - Se o mês do término é posterior ao mês atual -> 'em_andamento'.
+ * - Se o mês do término é o mês atual ou anterior -> 'concluido' (vale a partir do dia 1º do mês).
+ * - Término só com ano (dado antigo) vale como fevereiro daquele ano.
+ * - Valor inválido/irreconhecível NÃO é tratado como concluído -> 'em_andamento'.
+ * - Registros antigos com status 'ativo' sem término ou com término futuro -> 'em_andamento'.
  * - Registros antigos 'concluido' sem data de término mantêm 'concluido'.
  */
+import { mesAnoAtingido, parseMesAno } from '@/lib/datas/mes-ano'
 
 export type StatusOrientacao = 'ativo' | 'em_andamento' | 'concluido' | 'cancelado'
-
-import { anoJaPassou } from '@/lib/datas/ano'
-
-/**
- * Converte de forma segura strings de data vindas do Lattes ou da UI em objeto Date válido.
- * Aceita:
- * - YYYY-MM-DD
- * - DD/MM/YYYY
- * - MM/YYYY ou MM-YYYY (considera o último dia do mês)
- * - YYYY-MM (considera o último dia do mês)
- * - YYYY (considera 31 de dezembro daquele ano)
- * Retorna null se a string for vazia, inválida ou não reconhecida.
- */
-export function parseDataFimOrientacao(fim: unknown): Date | null {
-  if (fim === null || fim === undefined) return null
-  const str = String(fim).trim()
-  if (!str) return null
-
-  // 1. YYYY-MM-DD
-  const mIso = str.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (mIso) {
-    const year = parseInt(mIso[1], 10)
-    const month = parseInt(mIso[2], 10)
-    const day = parseInt(mIso[3], 10)
-    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-      const d = new Date(year, month - 1, day, 12, 0, 0)
-      if (d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day) {
-        return d
-      }
-    }
-    return null
-  }
-
-  // 2. DD/MM/YYYY
-  const mBr = str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
-  if (mBr) {
-    const day = parseInt(mBr[1], 10)
-    const month = parseInt(mBr[2], 10)
-    const year = parseInt(mBr[3], 10)
-    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-      const d = new Date(year, month - 1, day, 12, 0, 0)
-      if (d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day) {
-        return d
-      }
-    }
-    return null
-  }
-
-  // 3. MM/YYYY ou MM-YYYY -> último dia do mês
-  const mMmYyyy = str.match(/^(\d{2})[/-](\d{4})$/)
-  if (mMmYyyy) {
-    const month = parseInt(mMmYyyy[1], 10)
-    const year = parseInt(mMmYyyy[2], 10)
-    if (month >= 1 && month <= 12) {
-      // Dia 0 do mês seguinte é o último dia do mês desejado
-      const d = new Date(year, month, 0, 12, 0, 0)
-      return d
-    }
-    return null
-  }
-
-  // 4. YYYY-MM -> último dia do mês
-  const mYyyyMm = str.match(/^(\d{4})-(\d{2})$/)
-  if (mYyyyMm) {
-    const year = parseInt(mYyyyMm[1], 10)
-    const month = parseInt(mYyyyMm[2], 10)
-    if (month >= 1 && month <= 12) {
-      const d = new Date(year, month, 0, 12, 0, 0)
-      return d
-    }
-    return null
-  }
-
-  // 5. YYYY -> 31 de dezembro daquele ano
-  const mYyyy = str.match(/^(\d{4})$/)
-  if (mYyyy) {
-    const year = parseInt(mYyyy[1], 10)
-    if (year >= 1900 && year <= 2100) {
-      return new Date(year, 11, 31, 12, 0, 0)
-    }
-    return null
-  }
-
-  return null
-}
 
 export interface EntradaStatusOrientacao {
   status?: string | null
@@ -118,11 +35,9 @@ export function calcularStatusEfetivoOrientacao(
     return 'cancelado'
   }
 
-  // 2. Término analisado de forma segura (valor inválido não conta) e comparado pelo ANO (D-28)
-  const dataFim = parseDataFimOrientacao(orientacao.fim)
-
-  if (dataFim !== null) {
-    return anoJaPassou(dataFim.getFullYear(), dataReferencia) ? 'concluido' : 'em_andamento'
+  // 2. Término analisado de forma segura (valor inválido não conta) e comparado pelo MÊS (D-29)
+  if (parseMesAno(orientacao.fim) !== null) {
+    return mesAnoAtingido(orientacao.fim, dataReferencia) ? 'concluido' : 'em_andamento'
   }
 
   // 3. Se não tem data de término válida:
