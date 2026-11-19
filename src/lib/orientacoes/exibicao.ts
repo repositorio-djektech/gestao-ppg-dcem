@@ -22,6 +22,10 @@ export function classeBadgeTipoOrientacao(tipo: string | null | undefined): stri
       return 'bg-indigo-50 text-indigo-700'
     case 'iniciacao cientifica':
       return 'bg-amber-50 text-amber-700'
+    case 'iniciacao tecnologica':
+      return 'bg-orange-50 text-orange-700'
+    case 'iniciacao em extensao':
+      return 'bg-emerald-50 text-emerald-700'
     default:
       return 'bg-slate-100 text-slate-700'
   }

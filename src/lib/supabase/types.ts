@@ -442,6 +442,7 @@ export type Database = {
           docente_orientador_id: number | null
           id: number
           observacoes: string
+          orientacao_id: number | null
           projeto_id: number | null
           tipo: string
           titulo: string
@@ -456,6 +457,7 @@ export type Database = {
           docente_orientador_id?: number | null
           id?: number
           observacoes?: string
+          orientacao_id?: number | null
           projeto_id?: number | null
           tipo: string
           titulo?: string
@@ -470,6 +472,7 @@ export type Database = {
           docente_orientador_id?: number | null
           id?: number
           observacoes?: string
+          orientacao_id?: number | null
           projeto_id?: number | null
           tipo?: string
           titulo?: string

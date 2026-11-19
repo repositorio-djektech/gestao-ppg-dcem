@@ -245,6 +245,8 @@ export type IniciacaoCientifica = {
   titulo: string
   observacoes?: string | null
   bolsa_cnpq?: string | null
+  /** Orientação espelhada (sincronizada pelo banco, D-30). */
+  orientacao_id?: number | null
   created_at?: string
   updated_at?: string
 }

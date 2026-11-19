@@ -18,6 +18,7 @@ import {
 } from '@/lib/orientacoes/exibicao'
 import { useAuth } from '@/hooks/use-auth'
 import { mapaIngressoPorDiscente, aplicarDiscenteNoForm } from '@/lib/orientacoes/inicio'
+import { OPCOES_TIPO_ORIENTACAO } from '@/lib/orientacoes/tipos'
 
 const emptyForm = {
   docente_id: '',
@@ -166,13 +167,7 @@ export default function Orientacoes() {
       label: 'Tipo de Orientação / Nível',
       type: 'select',
       required: true,
-      options: [
-        { value: 'Mestrado', label: 'Mestrado' },
-        { value: 'Doutorado', label: 'Doutorado' },
-        { value: 'Pós-Doutorado', label: 'Pós-Doutorado' },
-        { value: 'Iniciação Científica', label: 'Iniciação Científica' },
-        { value: 'TCC / Graduação', label: 'TCC / Graduação' },
-      ],
+      options: OPCOES_TIPO_ORIENTACAO,
     },
     {
       key: 'docente_id',

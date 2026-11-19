@@ -10,6 +10,7 @@ import {
 } from '../reconducao/calculo'
 import { calcularStatusEfetivoOrientacao } from '../orientacoes/status'
 import { filtrarOrientacoesPrincipais } from '../orientacoes/principal'
+import { ehTipoIniciacao } from '../orientacoes/tipos'
 import { calcularResumoJdpPrograma } from './jdp'
 import { idsDocentesDaDisciplina } from '../disciplinas/docentes'
 import type { Docente, Orientacao, Disciplina, Publicacao, Patente } from '@/types/database'
@@ -340,7 +341,9 @@ export function calcularTodosIndicadores(
     if (normStr(c.tipo) !== 'egresso') continue
     const anoTit = c.egresso_id != null ? (anoTitulacaoPorEgresso.get(c.egresso_id) ?? null) : null
     if (anoTit === null) {
-      egressosCoautoresSemAno.add(c.egresso_id != null ? `id:${c.egresso_id}` : `nome:${c.nome_citado ?? c.publicacao_id}`)
+      egressosCoautoresSemAno.add(
+        c.egresso_id != null ? `id:${c.egresso_id}` : `nome:${c.nome_citado ?? c.publicacao_id}`,
+      )
     }
   }
 
@@ -367,6 +370,10 @@ export function calcularTodosIndicadores(
 
   // Coorientação não conta em ORI, ATD, SO, PSA e DP4A (P-12): todos usam só orientações principais.
   const orientacoesPrincipais = filtrarOrientacoesPrincipais(dados.orientacoes, dados.discentes)
+
+  // IC, IT e IE (D-30) são de graduação: não contam em SO nem em DP4A, que falam de orientações do programa.
+  // A iniciação entra no NICT, pela tabela Iniciações. A cópia espelhada em Orientações é só de consulta.
+  const orientacoesDoPrograma = orientacoesPrincipais.filter((o) => !ehTipoIniciacao(o.tipo))
 
   // Orientações concluídas no quadriênio com orientador permanente (usa status efetivo derivado)
   const oriConcluidasNoQuadrienio = orientacoesPrincipais.filter((o) => {
@@ -662,7 +669,7 @@ export function calcularTodosIndicadores(
     }
 
     // Orientações ativas no ano (seja por status efetivo 'em_andamento'/ativo ou vigência temporal)
-    const ativasAno = orientacoesPrincipais.filter((ori) => {
+    const ativasAno = orientacoesDoPrograma.filter((ori) => {
       const statusEfetivo =
         ori.status_efetivo ||
         calcularStatusEfetivoOrientacao({
@@ -797,7 +804,11 @@ export function calcularTodosIndicadores(
             descricao: `Permanentes regulares sem titulação em ${ano}`,
             valor: docsSemDefesa,
           },
-          { termo: 'DP regulares', descricao: 'Permanentes excluindo JDP', valor: regularesDoAno(ano).length },
+          {
+            termo: 'DP regulares',
+            descricao: 'Permanentes excluindo JDP',
+            valor: regularesDoAno(ano).length,
+          },
         ],
       }
     }
@@ -844,7 +855,7 @@ export function calcularTodosIndicadores(
 
     // 1. Orientações ativas no ano
     const docsOri = new Set<number>()
-    for (const o of orientacoesPrincipais) {
+    for (const o of orientacoesDoPrograma) {
       const stEfetivo =
         o.status_efetivo ||
         calcularStatusEfetivoOrientacao({
@@ -975,7 +986,9 @@ export function calcularTodosIndicadores(
     const disciplinasPosAno = dados.disciplinas.filter((d) => {
       const niv = normStr(d.nivel)
       const idsDocentes = idsDocentesDaDisciplina(d)
-      const vinculado = idsDocentes.length ? idsDocentes.some((id) => idsPermanentesSet.has(id)) : true
+      const vinculado = idsDocentes.length
+        ? idsDocentes.some((id) => idsPermanentesSet.has(id))
+        : true
       return (niv === 'pos_graduacao' || niv === '') && vinculado && discNoAno(d, ano)
     })
 
@@ -1041,7 +1054,12 @@ export function calcularTodosIndicadores(
       continue
     }
 
-    const icsAno = (dados.iniciacoesCientificas || []).filter((ic) => icNoAno(ic, ano))
+    // A ficha (2.5.5) soma só IC e IT; iniciação em extensão não entra no NICT (D-30)
+    const icsAno = (dados.iniciacoesCientificas || []).filter(
+      (ic) =>
+        icNoAno(ic, ano) &&
+        (ic.tipo === 'iniciacao_cientifica' || ic.tipo === 'iniciacao_tecnologica'),
+    )
 
     if (icsAno.length === 0) {
       nictAnos[ano] = {
@@ -2155,7 +2173,8 @@ export function calcularTodosIndicadores(
     codigo: 'EGR-BR',
     nome: 'Egressos em Atuação no Brasil (últimos 10 anos)',
     itemFicha: '2.3.2',
-    formulaTexto: 'EGR-BR = egressos M+D atuando no Brasil na área / M+D titulados nos últimos 10 anos',
+    formulaTexto:
+      'EGR-BR = egressos M+D atuando no Brasil na área / M+D titulados nos últimos 10 anos',
     numerador: egressosNaArea.filter((e) => normStr(e.atuacao_pais) === 'brasil').length,
   })
   const egrExteriorIndicador = montarIndicadorEgressos({
@@ -2163,7 +2182,8 @@ export function calcularTodosIndicadores(
     codigo: 'EGR-EXT',
     nome: 'Egressos em Atuação no Exterior (últimos 10 anos)',
     itemFicha: '2.3.3',
-    formulaTexto: 'EGR-EXT = egressos M+D atuando no exterior na área / M+D titulados nos últimos 10 anos',
+    formulaTexto:
+      'EGR-EXT = egressos M+D atuando no exterior na área / M+D titulados nos últimos 10 anos',
     numerador: egressosNaArea.filter((e) => normStr(e.atuacao_pais) === 'exterior').length,
   })
 
@@ -2184,7 +2204,8 @@ export function calcularTodosIndicadores(
       itemFicha: '2.3.4',
       pesoPercentual: 2.5,
       pesoQuesitoGeral: '10%',
-      formulaTexto: 'EGR-DEST = destaques com justificativa, no máximo 5 por faixa (3 faixas, máx. 15)',
+      formulaTexto:
+        'EGR-DEST = destaques com justificativa, no máximo 5 por faixa (3 faixas, máx. 15)',
       unidade: '',
       metodologia: 'estoque' as const,
     }
@@ -2418,7 +2439,11 @@ export function calcularTodosIndicadores(
       status: 'calculado',
       valorCalculado: valor,
       decomposicao: [
-        { termo: 'DP só neste programa', descricao: 'Permanentes com 1 programa', valor: exclusivos },
+        {
+          termo: 'DP só neste programa',
+          descricao: 'Permanentes com 1 programa',
+          valor: exclusivos,
+        },
         {
           termo: 'DP em mais de um programa',
           descricao: 'Permanentes também em outro programa',

@@ -326,6 +326,7 @@ Bolsistas e voluntários de IC, IT e Iniciação em Extensão.
 - `discente_id`: `bigint REFERENCES discentes(id)`
 - `discente_nome`: `text`
 - `tipo`: `text` — `'iniciacao_cientifica'`, `'iniciacao_tecnologica'`, `'iniciacao_extensao'`
+- `orientacao_id`: `bigint REFERENCES orientacoes(id) ON DELETE SET NULL`, único — orientação espelhada (sincronização por gatilhos, D-30; migração `20261119130000`)
 - `ano`: `integer`
 - `docente_orientador_id`: `bigint REFERENCES docentes(id)`
 - `projeto_id`: `bigint REFERENCES projetos_pesquisa(id)`
