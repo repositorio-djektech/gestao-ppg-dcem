@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { cn, formatarCpf } from '@/lib/utils'
 import { toTitleCase } from '@/lib/titleCase'
+import { normalizarCamposAno } from '@/lib/datas/ano'
 import { CrudFormDialog } from './CrudFormDialog'
 import type { ColumnDef, FieldDef } from './types'
 export type { ColumnDef, FieldDef } from './types'
@@ -82,6 +83,8 @@ interface CrudPageProps<T extends { id: number | string }> {
     formData: Record<string, any>,
     editingId: number | string | null,
   ) => Record<string, any>
+  /** Prepara o formulário ao editar (ex.: separar um campo composto em dois campos de tela). */
+  prepararFormularioEdicao?: (item: T) => Record<string, any>
 }
 
 export function CrudPage<T extends { id: number | string }>({
@@ -105,6 +108,7 @@ export function CrudPage<T extends { id: number | string }>({
   getContextoItem,
   customFilterItem,
   transformSubmitData,
+  prepararFormularioEdicao,
 }: CrudPageProps<T>) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -329,7 +333,9 @@ export function CrudPage<T extends { id: number | string }>({
 
   const handleOpen = (item?: T) => {
     setEditingId(item?.id ?? null)
-    setFormData(item ? { ...item } : emptyForm)
+    setFormData(
+      item ? (prepararFormularioEdicao ? prepararFormularioEdicao(item) : { ...item }) : emptyForm,
+    )
     setIsDialogOpen(true)
   }
 
@@ -350,6 +356,11 @@ export function CrudPage<T extends { id: number | string }>({
     if (transformSubmitData) {
       submitData = transformSubmitData(submitData, editingId)
     }
+    // D-28: campos de ano guardam só o ano (valor antigo com dia/mês é convertido ao salvar)
+    submitData = normalizarCamposAno(
+      submitData,
+      fields.filter((f) => f.type === 'year').map((f) => f.key),
+    )
     // Converter campos com ID vazio em null para respeitar foreign keys no Supabase
     for (const key of Object.keys(submitData)) {
       if (

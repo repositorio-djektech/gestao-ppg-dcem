@@ -15,7 +15,7 @@ Fluxos de aceite (D-08):
 - **E-03 Import Lattes em duas etapas**: H-04.
 - **E-04 Cálculo confiável**: H-07, H-08.
 - **E-05 Conformidade CAPES no MVP**: H-09, H-10.
-- **E-06 Visão restrita do docente e status do discente**: H-11 a H-22.
+- **E-06 Visão restrita do docente e status do discente**: H-11 a H-23.
 
 ## Histórias
 
@@ -43,6 +43,7 @@ Fluxos de aceite (D-08):
 | H-20 | Como docente, quero ver e fazer CRUD só nas minhas produções técnicas. | E-06 | — | 1 | **Em validação** (código e testes prontos; migração `20261105130000` aplicada em 04/11) |
 | H-21 | Como docente, quero ver e fazer CRUD só nas minhas patentes. | E-06 | — | 1 | **Em validação** (código e testes prontos; migração `20261105130000` aplicada em 04/11) |
 | H-22 | Ajustes visuais: Atuação Profissional de Egressos à esquerda e sem o ícone de estrelinhas no Impacto Social. | E-06 | — | 2 | **Em validação** (código e testes prontos) |
+| H-23 | Como coordenação e docentes, quero que todos os campos de data mostrem e aceitem só o ano, e que o início da orientação venha do ingresso do discente. | E-06 | — | 1 | **Em validação** (código e testes prontos; sem migração) |
 
 ## Critérios de aceite das histórias de prioridade 1
 
@@ -112,6 +113,8 @@ Fluxos de aceite (D-08):
 **H-20 e H-21 — Produção Técnica e Patentes.** Tabelas de vínculo `producao_tecnica_docentes` e `patentes_docentes`. Docente vê só os vinculados a ele; cria (o vínculo dele é gravado antes dos impactos sociais) e edita/apaga só os vinculados. A coordenação escolhe os docentes autores no formulário (sugestão pelo nome em `autores`). Os registros existentes ficam sem vínculo até a coordenação vincular (P-25). Testes: `registros/visibilidade.test.ts`, `services/vinculos-docentes-registro.test.ts`, `pages/AutoriaDocente.test.tsx`, `permissoes.test.ts`.
 
 **H-22 — Visuais.** Atuação Profissional (Egressos) alinhada à esquerda; sem o ícone Sparkles no título dos registros de Impacto Social. Teste: `pages/AjustesVisuaisTabelas.test.tsx`.
+
+**H-23 — Datas só com o ano (D-28).** Seletor de ano em: Discentes (ingresso, conclusão), Egressos (ingresso, titulação), Orientações (início, término), Projetos de Pesquisa (início, término) e Eventos (campos Local e Ano, gravados em `local_data` como "Local - AAAA"). Tabelas, diálogos e impressões mostram só o ano; sem ano aparece o traço. Ao escolher o discente na orientação, o início vem do ano de ingresso dele (editável). Status: sem ano de conclusão/término, ano atual ou futuro = em andamento; ano anterior ao atual = titulado (discente) ou concluída (orientação). Registros antigos (dia/mês/ano) continuam no banco e são lidos pelo ano; ao salvar, gravam só o ano. Testes: `lib/datas/ano.test.ts`, `lib/discentes/status.test.ts`, `lib/orientacoes/status.test.ts`, `lib/orientacoes/inicio.test.ts`, `lib/eventos/local-ano.test.ts`.
 
 **Impressão.** `/imprimir/<módulo>` aplica a mesma visão restrita (discentes, orientações, projetos, publicações, patentes, produção técnica). Testes: `impressao/escopo-docente.test.ts`, `pages/PrintViewDocente.test.tsx`.
 

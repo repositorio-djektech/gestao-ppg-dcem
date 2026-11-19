@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { exibirAno } from '@/lib/datas/ano'
 import { useAuth } from '@/hooks/use-auth'
 import { CrudPage } from '@/components/crud/CrudPage'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
@@ -43,7 +44,7 @@ import { opcoesDeOrientador, aplicarOrientadorSelecionado } from '@/lib/discente
 import {
   statusEfetivoDiscente,
   rotuloStatusDiscente,
-  aplicarDataConclusaoNoForm,
+  aplicarAnoConclusaoNoForm,
   prepararDiscenteParaGravar,
   conclusaoParaExibicao,
 } from '@/lib/discentes/status'
@@ -434,8 +435,8 @@ export default function Discentes() {
         className: 'text-center',
         headerClassName: 'text-left font-semibold text-slate-700',
         render: (d) =>
-          d.data_ingresso ? (
-            <span className="font-mono text-xs">{d.data_ingresso}</span>
+          exibirAno(d.data_ingresso) ? (
+            <span className="font-mono text-xs">{exibirAno(d.data_ingresso)}</span>
           ) : (
             <span className="text-slate-400">—</span>
           ),
@@ -572,15 +573,16 @@ export default function Discentes() {
           { value: 'desligado', label: 'Desligado' },
         ],
         helperText:
-          'Definido pela data de conclusão: sem data ou futura = Em andamento; passada = Titulado. Desligado é marcado manualmente.',
+          'Definido pelo ano de conclusão: sem ano, ano atual ou futuro = Em andamento; ano passado = Titulado. Desligado é marcado manualmente.',
       },
       {
-        key: 'data_conclusao',
-        label: 'Data de Conclusão',
-        type: 'date',
-        helperText: 'Data de defesa ou prevista. Atualiza o status automaticamente.',
+        key: 'ano_conclusao',
+        label: 'Ano de Conclusão',
+        type: 'year',
+        placeholder: 'Selecione o ano de conclusão...',
+        helperText: 'Ano da defesa ou previsto. Atualiza o status automaticamente.',
         onValueChangeWithFormData: (val, currentData) =>
-          aplicarDataConclusaoNoForm(currentData, val),
+          aplicarAnoConclusaoNoForm(currentData, val),
       },
       {
         key: 'tipo_curso',

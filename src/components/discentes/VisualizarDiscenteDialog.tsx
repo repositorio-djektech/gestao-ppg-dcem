@@ -1,3 +1,4 @@
+import { exibirAno, exibirPeriodoAnos } from '@/lib/datas/ano'
 import { useState, useEffect, useMemo } from 'react'
 import {
   Dialog,
@@ -186,12 +187,16 @@ export function VisualizarDiscenteDialog({
               <span className="text-slate-800 font-medium">{discente.tipo_curso || '—'}</span>
             </div>
             <div className="flex flex-col gap-0.5 break-words">
-              <span className="text-slate-500 font-medium block">Data de Ingresso:</span>
-              <span className="text-slate-800 font-mono">{discente.data_ingresso || '—'}</span>
+              <span className="text-slate-500 font-medium block">Ano de Ingresso:</span>
+              <span className="text-slate-800 font-mono">
+                {exibirAno(discente.data_ingresso) || '—'}
+              </span>
             </div>
             <div className="flex flex-col gap-0.5 break-words">
               <span className="text-slate-500 font-medium block">Ano de Conclusão / Defesa:</span>
-              <span className="text-slate-800 font-semibold">{conclusaoParaExibicao(discente) || '—'}</span>
+              <span className="text-slate-800 font-semibold">
+                {conclusaoParaExibicao(discente) || '—'}
+              </span>
             </div>
           </div>
         </div>
@@ -294,9 +299,7 @@ export function VisualizarDiscenteDialog({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-slate-600">
                     <div>
                       <span className="font-medium text-slate-700">Período: </span>
-                      <span>
-                        {proj.inicio || '—'} {proj.fim ? `– ${proj.fim}` : ''}
-                      </span>
+                      <span>{exibirPeriodoAnos(proj.inicio, proj.fim) || '—'}</span>
                     </div>
                     <div>
                       <span className="font-medium text-slate-700">Financiamento: </span>
@@ -405,8 +408,8 @@ export function VisualizarDiscenteDialog({
                       </span>
                     )}
                     <span>
-                      <strong className="text-slate-700">Período:</strong> {ori.inicio || '—'}{' '}
-                      {ori.fim ? `– ${ori.fim}` : ''}
+                      <strong className="text-slate-700">Período:</strong>{' '}
+                      {exibirPeriodoAnos(ori.inicio, ori.fim) || '—'}
                     </span>
                     {ori.data_defesa && (
                       <span>
@@ -465,7 +468,7 @@ export function VisualizarDiscenteDialog({
               <div>
                 <span className="text-slate-500 font-medium block">Período de Execução:</span>
                 <span className="font-semibold text-slate-800">
-                  {proj.inicio || '—'} {proj.fim ? `– ${proj.fim}` : ''}
+                  {exibirPeriodoAnos(proj.inicio, proj.fim) || '—'}
                 </span>
               </div>
               <div>

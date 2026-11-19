@@ -1,3 +1,5 @@
+import { exibirLocalAno } from '@/lib/eventos/local-ano'
+import { exibirAno } from '@/lib/datas/ano'
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Printer, AlertCircle, RefreshCw } from 'lucide-react'
@@ -85,7 +87,11 @@ export default function PrintView() {
       columns: [
         { key: 'nome', label: 'Nome' },
         { key: 'cpf', label: 'CPF', render: (d) => (d.cpf ? formatarCpf(d.cpf) : '—') },
-        { key: 'data_ingresso', label: 'Data de Ingresso', render: (d) => d.data_ingresso || '—' },
+        {
+          key: 'data_ingresso',
+          label: 'Ano de Ingresso',
+          render: (d) => exibirAno(d.data_ingresso) || '—',
+        },
         {
           key: 'status',
           label: 'Status',
@@ -125,8 +131,8 @@ export default function PrintView() {
           label: 'Discente Orientando',
           render: (o) => (o.discente && o.discente.nome) || discentesMap[o.discente_id] || '—',
         },
-        { key: 'inicio', label: 'Início', render: (o) => o.inicio || '—' },
-        { key: 'fim', label: 'Término', render: (o) => o.fim || '—' },
+        { key: 'inicio', label: 'Início', render: (o) => exibirAno(o.inicio) || '—' },
+        { key: 'fim', label: 'Término', render: (o) => exibirAno(o.fim) || '—' },
         { key: 'status', label: 'Status', render: (o) => String(o.status || '—').toUpperCase() },
       ],
     },
@@ -153,8 +159,8 @@ export default function PrintView() {
           render: (p) =>
             (p.coordenador && p.coordenador.nome) || docentesMap[p.coordenador_id] || '—',
         },
-        { key: 'inicio', label: 'Início', render: (p) => p.inicio || '—' },
-        { key: 'fim', label: 'Término', render: (p) => p.fim || '—' },
+        { key: 'inicio', label: 'Início', render: (p) => exibirAno(p.inicio) || '—' },
+        { key: 'fim', label: 'Término', render: (p) => exibirAno(p.fim) || '—' },
         {
           key: 'financiamento',
           label: 'Financiamento',
@@ -204,7 +210,11 @@ export default function PrintView() {
         { key: 'evento', label: 'Evento' },
         { key: 'docente', label: 'Docente Participante' },
         { key: 'papel', label: 'Papel Desempenhado' },
-        { key: 'local_data', label: 'Local e Data' },
+        {
+          key: 'local_data',
+          label: 'Local / Ano',
+          render: (e) => exibirLocalAno(e.local_data) || '—',
+        },
       ],
     },
     mobilidade: {

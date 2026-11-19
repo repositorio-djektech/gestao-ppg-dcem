@@ -272,10 +272,11 @@ const camposDiscente: FieldDef[] = [
   },
   {
     key: 'data_ingresso',
-    label: 'Data de Ingresso',
-    type: 'date',
+    label: 'Ano de Ingresso',
+    type: 'year',
     required: true,
-    helperText: 'Data de matrícula inicial no programa',
+    placeholder: 'Selecione o ano de ingresso...',
+    helperText: 'Ano de matrícula inicial no programa',
   },
   {
     key: 'status',

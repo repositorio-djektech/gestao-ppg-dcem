@@ -6,13 +6,16 @@ import { Calendar } from 'lucide-react'
 import type { Evento, EventoTipo, EventoNacionalidade } from '@/types/database'
 import { normalizarTituloAcademico } from '@/lib/normalizacao'
 import { toTitleCase } from '@/lib/titleCase'
+import { comporLocalAno, separarLocalAno, exibirLocalAno } from '@/lib/eventos/local-ano'
 
 const emptyForm = {
   docente: '',
   evento: '',
   tipo: '',
   nacionalidade: '',
-  local_data: '',
+  // Campos de tela; gravados juntos em local_data ("Local - AAAA", D-28)
+  evento_local: '',
+  evento_ano: '',
   papel: '',
   link_comprovacao: '',
   observacoes: '',
@@ -69,7 +72,11 @@ const columns: ColumnDef<Evento>[] = [
     },
   },
   { key: 'docente', label: 'Docente' },
-  { key: 'local_data', label: 'Local/Data' },
+  {
+    key: 'local_data',
+    label: 'Local / Ano',
+    render: (e) => exibirLocalAno(e.local_data) || <span className="text-slate-400">—</span>,
+  },
   {
     key: 'papel',
     label: 'Papel',
@@ -115,12 +122,20 @@ const fields: FieldDef[] = [
     helperText: 'Âmbito do evento (Nacional ou Internacional)',
   },
   {
-    key: 'local_data',
-    label: 'Local e Data',
+    key: 'evento_local',
+    label: 'Local',
     type: 'text',
     required: true,
-    placeholder: 'Ex: São Paulo, SP — 10 a 14/11/2025',
-    helperText: 'Cidade, Estado/País e período de realização',
+    placeholder: 'Ex: São Paulo, SP',
+    helperText: 'Cidade e Estado/País de realização',
+  },
+  {
+    key: 'evento_ano',
+    label: 'Ano',
+    type: 'year',
+    required: true,
+    placeholder: 'Selecione o ano do evento...',
+    helperText: 'Ano de realização do evento',
   },
   {
     key: 'papel',
@@ -145,6 +160,12 @@ const fields: FieldDef[] = [
   { key: 'observacoes', label: 'Observações', type: 'textarea', rows: 2 },
 ]
 
+/** Valor gravado em local_data -> campos de tela (Local e Ano). */
+function separarEvento(localData: unknown) {
+  const { local, ano } = separarLocalAno(localData)
+  return { evento_local: local, evento_ano: ano }
+}
+
 export default function Eventos() {
   return (
     <CrudPage
@@ -159,8 +180,10 @@ export default function Eventos() {
       entityName="Evento"
       tableName="eventos"
       printModule="eventos"
+      prepararFormularioEdicao={(item) => ({ ...item, ...separarEvento(item.local_data) })}
       transformSubmitData={(formData) => {
-        const payload = { ...formData }
+        const { evento_local, evento_ano, ...payload } = formData
+        payload.local_data = comporLocalAno(evento_local, evento_ano)
         if (!payload.tipo) payload.tipo = null
         if (!payload.nacionalidade) payload.nacionalidade = null
         return payload

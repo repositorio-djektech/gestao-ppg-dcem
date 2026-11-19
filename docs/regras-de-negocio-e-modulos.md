@@ -26,7 +26,7 @@ Implementadas em `src/lib/lacunas/regras.ts` (16 críticas e 18 de atenção; o 
 |  | `docente_jdp_expirado` | Docente marcado como JDP com condição expirada (4 anos como JDP ou doutorado há mais de 10 anos) | Atenção | Identificação Cadastral |
 |  | `docente_jdp_sem_categoria_permanente` | Docente marcado como JDP sem categoria Permanente | Crítica | Identificação Cadastral |
 | **`discentes`** | `discente_sem_cpf` | Discente sem CPF | Crítica | Identificação Cadastral |
-|  | `discente_sem_data_ingresso` | Discente sem data de ingresso | Atenção | Identificação Cadastral |
+|  | `discente_sem_data_ingresso` | Discente sem ano de ingresso | Atenção | Identificação Cadastral |
 |  | `discente_sem_link_lattes` | Discente sem link Lattes | Atenção | Identificação Cadastral |
 |  | `discente_sem_status` | Discente sem status | Crítica | Situação Acadêmica |
 |  | `discente_sem_docente_orientador` | Discente sem orientador vinculado | Crítica | Acadêmico |
@@ -169,7 +169,8 @@ Obrigatório em 2025–2028. No MVP é **só um texto** (até 4000 caracteres), 
 ## 5. Visão restrita do docente e status do discente (D-25, D-26)
 
 - **Docente:** vê só o que é dele em Lacunas, Credenciamento (cards gerais + própria linha), Docentes (CPF e SIAPE próprios) e Discentes (orientados, coorientados e sem orientador). O docente não se inclui como coorientador. Restrição de interface (P-20).
-- **Status do discente:** Em andamento, Titulado ou Desligado, definido pela data de conclusão (`src/lib/discentes/status.ts`). Sem data ou futura = Em andamento; hoje ou passada = Titulado; Desligado é manual.
+- **Status do discente:** Em andamento, Titulado ou Desligado, definido pelo **ano de conclusão** (`src/lib/discentes/status.ts`, D-28). Sem ano, ano atual ou futuro = Em andamento (o ano só passa em 31/12); ano anterior ao atual = Titulado. Desligado é manual e prevalece. A coluna `data_conclusao` não é mais usada e é zerada ao salvar.
+- **Datas só com o ano (D-28):** ingresso, conclusão, início e término de orientações e projetos, ano de eventos, ano de ingresso e de titulação de egressos. Helpers em `src/lib/datas/ano.ts`; o `CrudPage` normaliza campos `year` ao salvar. Início da orientação vem do ingresso do discente (`lib/orientacoes/inicio.ts`). Eventos: campos Local e Ano gravados em `local_data` como "Local - AAAA" (`lib/eventos/local-ano.ts`).
 
 ### 5.1 Autoria por docente (D-27)
 

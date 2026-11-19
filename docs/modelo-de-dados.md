@@ -93,9 +93,9 @@ Registra os discentes de mestrado e doutorado do programa.
 - `nome`: `text NOT NULL`
 - `cpf`: `text DEFAULT ''`
 - `data_ingresso`: `text DEFAULT ''`
-- `ano_conclusao`: `text DEFAULT ''` — legado; a data de conclusão passa a ser `data_conclusao`
-- `data_conclusao`: `date` (opcional) — migração `20261105120000`, aplicada em 04/11
-- `status`: `text DEFAULT 'em_andamento'` — `'em_andamento'`, `'titulado'`, `'desligado'` (D-26). Em andamento/titulado vêm da data de conclusão (sem data ou futura = em andamento; passada = titulado); desligado é manual. Valores antigos `ativo` e `concluido` são mapeados pela migração.
+- `ano_conclusao`: `text DEFAULT ''` — **ano de conclusão (fonte única, D-28)**; só o ano
+- `data_conclusao`: `date` (opcional) — **sem uso desde a D-28** (zerada ao salvar; lida só como legado). Migração `20261105120000`, aplicada em 04/11
+- `status`: `text DEFAULT 'em_andamento'` — `'em_andamento'`, `'titulado'`, `'desligado'` (D-26, ajustada pela D-28). Em andamento/titulado vêm do **ano** de conclusão (sem ano, atual ou futuro = em andamento; anterior ao atual = titulado); desligado é manual. Valores antigos `ativo` e `concluido` são mapeados pela migração.
 - `tipo_curso`: `text DEFAULT ''` — `'Mestrado'` ou `'Doutorado'`
 - `link_lattes`: `text DEFAULT ''`
 - `orientador`: `text DEFAULT ''` — Nome textual legado

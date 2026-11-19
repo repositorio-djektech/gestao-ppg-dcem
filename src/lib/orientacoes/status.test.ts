@@ -47,20 +47,15 @@ describe('Regras de Derivação de Status de Orientações (PPG-DCEM)', () => {
     ).toBe('em_andamento')
   })
 
-  it('3. Término igual ou passado -> concluido', () => {
-    // Mesma data de referência (15/05/2025)
-    expect(
-      calcularStatusEfetivoOrientacao({ fim: '2025-05-15', cancelado: false }, dataReferenciaFixa),
-    ).toBe('concluido')
-
+  it('3. Ano do término anterior ao ano atual -> concluido (D-28)', () => {
     // Data passada
     expect(
       calcularStatusEfetivoOrientacao({ fim: '2024-12-31', cancelado: false }, dataReferenciaFixa),
     ).toBe('concluido')
 
-    // Data DD/MM/YYYY passada
+    // Data DD/MM/YYYY de ano passado
     expect(
-      calcularStatusEfetivoOrientacao({ fim: '10/01/2025', cancelado: false }, dataReferenciaFixa),
+      calcularStatusEfetivoOrientacao({ fim: '10/01/2024', cancelado: false }, dataReferenciaFixa),
     ).toBe('concluido')
 
     // Ano passado
@@ -68,9 +63,26 @@ describe('Regras de Derivação de Status de Orientações (PPG-DCEM)', () => {
       calcularStatusEfetivoOrientacao({ fim: '2024', cancelado: false }, dataReferenciaFixa),
     ).toBe('concluido')
 
-    // MM/YYYY passado
+    // MM/YYYY de ano passado
+    expect(
+      calcularStatusEfetivoOrientacao({ fim: '04/2024', cancelado: false }, dataReferenciaFixa),
+    ).toBe('concluido')
+  })
+
+  it('3b. Término no ano atual segue em andamento: o ano só passa em 31/12 (D-28, P-27)', () => {
+    expect(
+      calcularStatusEfetivoOrientacao({ fim: '2025', cancelado: false }, dataReferenciaFixa),
+    ).toBe('em_andamento')
+    // mesmo uma data completa já passada dentro do ano atual vale pelo ano
+    expect(
+      calcularStatusEfetivoOrientacao({ fim: '2025-01-10', cancelado: false }, dataReferenciaFixa),
+    ).toBe('em_andamento')
     expect(
       calcularStatusEfetivoOrientacao({ fim: '04/2025', cancelado: false }, dataReferenciaFixa),
+    ).toBe('em_andamento')
+    // virou o ano: 2025 passou
+    expect(
+      calcularStatusEfetivoOrientacao({ fim: '2025', cancelado: false }, new Date(2026, 0, 1)),
     ).toBe('concluido')
   })
 

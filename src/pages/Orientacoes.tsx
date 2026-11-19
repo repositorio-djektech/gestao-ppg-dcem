@@ -17,6 +17,7 @@ import {
   filtrarOrientacoesDoDocente,
 } from '@/lib/orientacoes/exibicao'
 import { useAuth } from '@/hooks/use-auth'
+import { mapaIngressoPorDiscente, aplicarDiscenteNoForm } from '@/lib/orientacoes/inicio'
 
 const emptyForm = {
   docente_id: '',
@@ -61,6 +62,8 @@ export default function Orientacoes() {
   )
   const [docenteMap, setDocenteMap] = useState<Record<string, string>>({})
   const [discenteMap, setDiscenteMap] = useState<Record<string, string>>({})
+  // Ano de ingresso de cada discente: vira o início da orientação ao escolher o discente (D-28)
+  const [discenteIngressoMap, setDiscenteIngressoMap] = useState<Record<string, string>>({})
 
   useEffect(() => {
     docentesService.list().then((items: any[]) => {
@@ -76,6 +79,7 @@ export default function Orientacoes() {
         m[d.id] = d.nome
       })
       setDiscenteMap(m)
+      setDiscenteIngressoMap(mapaIngressoPorDiscente(items))
     })
   }, [])
 
@@ -185,19 +189,24 @@ export default function Orientacoes() {
       required: true,
       optionsLoader: discenteOptionsLoader,
       helperText: 'Selecione o discente orientando',
+      // O início da orientação vem do ano de ingresso do discente (pode ser alterado depois)
+      onValueChangeWithFormData: (valor, formAtual) =>
+        aplicarDiscenteNoForm(formAtual, valor, discenteIngressoMap),
     },
     {
       key: 'inicio',
-      label: 'Data de Início',
-      type: 'date',
+      label: 'Ano de Início',
+      type: 'year',
       required: true,
-      helperText: 'Início do período de orientação',
+      placeholder: 'Selecione o ano de início...',
+      helperText: 'Vem do ano de ingresso do discente escolhido; pode ser alterado',
     },
     {
       key: 'fim',
-      label: 'Data de Término Prevista / Efetiva',
-      type: 'date',
-      helperText: 'Deixe em branco se em andamento',
+      label: 'Ano de Término Previsto / Efetivo',
+      type: 'year',
+      placeholder: 'Selecione o ano de término...',
+      helperText: 'Deixe em branco se em andamento. Ano futuro ou atual = em andamento',
     },
     {
       key: 'cancelado',

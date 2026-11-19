@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { exibirAno } from '@/lib/datas/ano'
 import { CrudPage } from '@/components/crud/CrudPage'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { projetosPesquisaService } from '@/services/projetos-pesquisa'
@@ -267,7 +268,6 @@ export default function ProjetosPesquisa() {
     carregarParticipantes()
   }, [carregarParticipantes])
 
-
   const sincronizarTodosVinculosBanco = async (
     projetoId: number,
     participantes: ParticipanteDocenteItem[],
@@ -527,11 +527,15 @@ export default function ProjetosPesquisa() {
         return <span className="text-slate-400">—</span>
       },
     },
-    { key: 'inicio', label: 'Início' },
+    {
+      key: 'inicio',
+      label: 'Início',
+      render: (p) => exibirAno(p.inicio) || <span className="text-slate-400">—</span>,
+    },
     {
       key: 'fim',
       label: 'Término',
-      render: (p) => p.fim || <span className="text-slate-400">—</span>,
+      render: (p) => exibirAno(p.fim) || <span className="text-slate-400">—</span>,
     },
     {
       key: 'financiamento',
@@ -814,16 +818,18 @@ export default function ProjetosPesquisa() {
     },
     {
       key: 'inicio',
-      label: 'Data de Início',
-      type: 'date',
+      label: 'Ano de Início',
+      type: 'year',
       required: true,
-      helperText: 'Início da vigência do projeto',
+      placeholder: 'Selecione o ano de início...',
+      helperText: 'Ano de início da vigência do projeto',
     },
     {
       key: 'fim',
-      label: 'Data de Término',
-      type: 'date',
-      helperText: 'Término previsto ou efetivo da vigência',
+      label: 'Ano de Término',
+      type: 'year',
+      placeholder: 'Selecione o ano de término...',
+      helperText: 'Ano de término previsto ou efetivo da vigência',
     },
     {
       key: 'financiamento',

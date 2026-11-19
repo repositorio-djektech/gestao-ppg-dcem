@@ -1,3 +1,5 @@
+import { exibirLocalAno } from '@/lib/eventos/local-ano'
+import { exibirPeriodoAnos } from '@/lib/datas/ano'
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
@@ -1320,7 +1322,7 @@ export function VisualizarDocenteDialog({
                     {ori.discente_nome || '—'}
                   </TableCell>
                   <TableCell className="font-mono text-xs text-slate-600 dark:text-neutral-400">
-                    {ori.inicio || '—'} {ori.fim ? `– ${ori.fim}` : ''}
+                    {exibirPeriodoAnos(ori.inicio, ori.fim) || '—'}
                   </TableCell>
                   <TableCell>
                     <Badge
@@ -1380,7 +1382,7 @@ export function VisualizarDocenteDialog({
                     {proj.titulo}
                   </TableCell>
                   <TableCell className="font-mono text-xs text-slate-600 dark:text-neutral-400">
-                    {proj.inicio || '—'} {proj.fim ? `– ${proj.fim}` : ''}
+                    {exibirPeriodoAnos(proj.inicio, proj.fim) || '—'}
                   </TableCell>
                   <TableCell>
                     {proj.financiamento ? (
@@ -1581,7 +1583,7 @@ export function VisualizarDocenteDialog({
               <TableRow className="bg-[#e9effc] dark:bg-neutral-800 hover:bg-[#e9effc]">
                 <TableHead className="w-[30%]">Nome do Evento</TableHead>
                 <TableHead className="w-[18%]">Papel / Participação</TableHead>
-                <TableHead className="w-[18%]">Local e Data</TableHead>
+                <TableHead className="w-[18%]">Local / Ano</TableHead>
                 <TableHead className="w-[24%]">Observações / Detalhes</TableHead>
                 <TableHead className="w-[10%] text-left">Ações</TableHead>
               </TableRow>
@@ -1598,7 +1600,7 @@ export function VisualizarDocenteDialog({
                     </Badge>
                   </TableCell>
                   <TableCell className="text-xs text-slate-600 dark:text-neutral-400">
-                    {eve.local_data || '—'}
+                    {exibirLocalAno(eve.local_data) || '—'}
                   </TableCell>
                   <TableCell className="text-xs text-slate-500 dark:text-neutral-400">
                     {eve.observacoes || '—'}

@@ -1,3 +1,4 @@
+import { anoDoValor } from '@/lib/datas/ano'
 import { supabase } from '@/lib/supabase/client'
 import { discenteSemOrientador } from '@/services/permissoes'
 import { calcularStatusEfetivoOrientacao } from '@/lib/orientacoes/status'
@@ -99,7 +100,7 @@ async function garantirOrientacaoPrincipal(
     docente_id: params.docenteId,
     discente_id: params.discenteId,
     tipo: params.discente.tipo_curso || 'Mestrado',
-    inicio: params.discente.data_ingresso || '',
+    inicio: anoDoValor(params.discente.data_ingresso) ?? '',
     fim: '',
     status: 'ativo',
     flag_orientador_principal: true,

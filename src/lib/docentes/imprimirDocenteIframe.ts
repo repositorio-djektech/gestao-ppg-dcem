@@ -1,3 +1,5 @@
+import { exibirLocalAno } from '@/lib/eventos/local-ano'
+import { exibirPeriodoAnos } from '@/lib/datas/ano'
 import type { Docente } from '@/types/database'
 import type { DadosDocenteCompleto, TabKey } from '@/components/docentes/DocentePrintDocument'
 
@@ -159,7 +161,7 @@ export function gerarHtmlDocenteRelatorio(
             <tbody>
               ${dados.orientacoes
                 .map((ori) => {
-                  const periodo = `${escaparHtml(ori.inicio)} ${ori.fim ? `– ${escaparHtml(ori.fim)}` : ''}`
+                  const periodo = `${escaparHtml(exibirPeriodoAnos(ori.inicio, ori.fim) ?? '')}`
                   return `
                     <tr>
                       <td class="font-semibold">${escaparHtml(ori.tipo)}</td>
@@ -201,7 +203,7 @@ export function gerarHtmlDocenteRelatorio(
             <tbody>
               ${dados.projetos
                 .map((proj) => {
-                  const periodo = `${escaparHtml(proj.inicio)} ${proj.fim ? `– ${escaparHtml(proj.fim)}` : ''}`
+                  const periodo = `${escaparHtml(exibirPeriodoAnos(proj.inicio, proj.fim) ?? '')}`
                   const financ = proj.financiamento
                     ? `Sim (${escaparHtml(proj.orgao_fomento || 'Fomento')})`
                     : 'Não'
@@ -367,7 +369,7 @@ export function gerarHtmlDocenteRelatorio(
                 <tr>
                   <td class="font-medium">${escaparHtml(eve.evento)}</td>
                   <td>${escaparHtml(eve.papel)}</td>
-                  <td>${escaparHtml(eve.local_data)}</td>
+                  <td>${escaparHtml(exibirLocalAno(eve.local_data) ?? '')}</td>
                   <td class="texto-secundario">${escaparHtml(eve.observacoes)}</td>
                 </tr>
               `,

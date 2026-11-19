@@ -101,7 +101,7 @@ describe('P-14 — assumir a orientação também registra a orientação PRINCI
       discente_id: 1,
       flag_orientador_principal: true,
       tipo: 'Mestrado',
-      inicio: '2025-03-01',
+      inicio: '2025',
       status: 'ativo',
     })
   })

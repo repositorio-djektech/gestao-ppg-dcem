@@ -1,12 +1,15 @@
 /**
- * Status do discente (D-26): só Em andamento, Titulado e Desligado.
+ * Status do discente (D-26, ajustado pela D-28): só Em andamento, Titulado e Desligado.
  * - Desligado é marcado à mão e prevalece.
- * - Os outros dois vêm da data de conclusão: sem data ou futura = em andamento; hoje ou passada = titulado.
- * - Calculado na leitura, porque uma data futura vira passada com o tempo (mesmo padrão de
+ * - Os outros dois vêm do ANO de conclusão: sem ano = em andamento; ano posterior ou igual ao atual
+ *   = em andamento (o ano só passa em 31/12); ano anterior ao atual = titulado.
+ * - Calculado na leitura, porque um ano futuro vira passado com o tempo (mesmo padrão de
  *   `lib/orientacoes/status.ts`).
- * - Dados antigos (só o ano de conclusão, status gravado concluído/titulado) continuam titulados
- *   quando o ano já ocorreu, para não "des-titular" registros reais por falta de data.
+ * - Registros antigos que só têm `data_conclusao` (coluna date, sem uso desde a D-28) valem pelo
+ *   ano dela quando não há `ano_conclusao`.
  */
+import { anoDoValor, anoJaPassou } from '@/lib/datas/ano'
+
 export const STATUS_DISCENTE = ['em_andamento', 'titulado', 'desligado'] as const
 export type StatusDiscente = (typeof STATUS_DISCENTE)[number]
 
@@ -20,27 +23,20 @@ export function rotuloStatusDiscente(status: StatusDiscente): string {
   return ROTULOS[status] ?? String(status)
 }
 
-function parseDataIso(valor: unknown): Date | null {
-  const m = String(valor ?? '')
-    .trim()
-    .match(/^(\d{4})-(\d{2})-(\d{2})/)
-  if (!m) return null
-  const [ano, mes, dia] = [Number(m[1]), Number(m[2]), Number(m[3])]
-  const d = new Date(ano, mes - 1, dia, 12, 0, 0)
-  if (d.getFullYear() !== ano || d.getMonth() !== mes - 1 || d.getDate() !== dia) return null
-  return d
+type EntradaConclusao = {
+  status?: string | null
+  ano_conclusao?: string | number | null
+  /** Legado: coluna date que a D-28 deixou sem uso. */
+  data_conclusao?: string | null
 }
 
-function inicioDoDia(d: Date): number {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+/** Ano de conclusão do discente: o campo atual; se vazio, o ano da data antiga. */
+export function anoConclusaoDoDiscente(discente: EntradaConclusao): string | null {
+  return anoDoValor(discente.ano_conclusao) ?? anoDoValor(discente.data_conclusao)
 }
 
 export function statusEfetivoDiscente(
-  discente: {
-    status?: string | null
-    data_conclusao?: string | null
-    ano_conclusao?: string | number | null
-  },
+  discente: EntradaConclusao,
   hoje: Date = new Date(),
 ): StatusDiscente {
   const gravado = String(discente.status ?? '')
@@ -48,61 +44,42 @@ export function statusEfetivoDiscente(
     .toLowerCase()
   if (gravado === 'desligado') return 'desligado'
 
-  const data = parseDataIso(discente.data_conclusao)
-  if (data) return inicioDoDia(data) <= inicioDoDia(hoje) ? 'titulado' : 'em_andamento'
-
-  if (gravado === 'titulado' || gravado === 'concluido') {
-    const ano = Number(String(discente.ano_conclusao ?? '').trim())
-    if (Number.isInteger(ano) && ano > 0 && ano <= hoje.getFullYear()) return 'titulado'
-  }
-  return 'em_andamento'
+  const ano = anoConclusaoDoDiscente(discente)
+  return ano !== null && anoJaPassou(Number(ano), hoje) ? 'titulado' : 'em_andamento'
 }
 
 /**
- * Formulário: ao mudar a data de conclusão, o status acompanha (exceto Desligado, que é manual).
- * Sem data volta para em andamento.
+ * Formulário: ao mudar o ano de conclusão, o status acompanha (exceto Desligado, que é manual).
+ * Sem ano volta para em andamento. A data antiga é descartada para não competir com o ano novo.
  */
-export function aplicarDataConclusaoNoForm<F extends Record<string, any>>(
+export function aplicarAnoConclusaoNoForm<F extends Record<string, any>>(
   form: F,
-  novaData: string,
+  novoAno: string,
   hoje: Date = new Date(),
 ): F {
-  const status = statusEfetivoDiscente({ status: form.status, data_conclusao: novaData }, hoje)
-  return { ...form, data_conclusao: novaData, status }
+  const ano = anoDoValor(novoAno) ?? ''
+  const status = statusEfetivoDiscente({ status: form.status, ano_conclusao: ano }, hoje)
+  return { ...form, ano_conclusao: ano, data_conclusao: '', status }
 }
 
 /**
- * Antes de gravar: data vazia vira null (coluna `date`), o status gravado é o efetivo e o ano de
- * conclusão acompanha a data (para telas e relatórios que ainda leem `ano_conclusao`).
- * Sem data, o ano e o status titulado antigos são preservados (dados reais não são apagados).
+ * Antes de gravar: o ano de conclusão é a única fonte (a data antiga vira null), e o status
+ * gravado é o efetivo.
  */
 export function prepararDiscenteParaGravar<F extends Record<string, any>>(
   form: F,
   hoje: Date = new Date(),
-): F & { data_conclusao: string | null; status: StatusDiscente } {
-  const data = parseDataIso(form.data_conclusao) ? String(form.data_conclusao).slice(0, 10) : null
-  const status = statusEfetivoDiscente(
-    { status: form.status, data_conclusao: data, ano_conclusao: form.ano_conclusao },
-    hoje,
-  )
-  return {
-    ...form,
-    data_conclusao: data,
-    status,
-    ...(data ? { ano_conclusao: data.slice(0, 4) } : {}),
-  }
+): Omit<F, 'ano_conclusao' | 'data_conclusao' | 'status'> & {
+  ano_conclusao: string
+  data_conclusao: null
+  status: StatusDiscente
+} {
+  const ano = anoConclusaoDoDiscente(form) ?? ''
+  const status = statusEfetivoDiscente({ status: form.status, ano_conclusao: ano }, hoje)
+  return { ...form, ano_conclusao: ano, data_conclusao: null, status }
 }
 
-/** Conclusão para exibir: data em dd/mm/aaaa; sem data, o ano antigo; sem nada, vazio. */
-export function conclusaoParaExibicao(discente: {
-  data_conclusao?: string | null
-  ano_conclusao?: string | number | null
-}): string {
-  const data = parseDataIso(discente.data_conclusao)
-  if (data) {
-    const dd = String(data.getDate()).padStart(2, '0')
-    const mm = String(data.getMonth() + 1).padStart(2, '0')
-    return `${dd}/${mm}/${data.getFullYear()}`
-  }
-  return String(discente.ano_conclusao ?? '').trim()
+/** Conclusão para exibir: só o ano; sem ano, vazio (a tela mostra o traço). */
+export function conclusaoParaExibicao(discente: EntradaConclusao): string {
+  return anoConclusaoDoDiscente(discente) ?? ''
 }

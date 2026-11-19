@@ -1,3 +1,4 @@
+import { exibirAno } from '@/lib/datas/ano'
 import type {
   RelatorioReconducaoResposta,
   AvaliacaoDocenteReconducao,
@@ -119,7 +120,7 @@ function gerarSecaoDocenteHtml(doc: AvaliacaoDocenteReconducao): string {
   const itensI = (doc.criterio_i.itens || [])
     .map(
       (item: any) =>
-        `<li>${escaparHtml(item.tipo || 'Orientação')} — ${escaparHtml(item.discente || 'Discente')} (${escaparHtml(item.inicio || '?')}${item.fim ? `–${escaparHtml(item.fim)}` : ''})${item.data_defesa ? ` | Defesa: ${escaparHtml(item.data_defesa)}` : ''}${item.status ? ` [${escaparHtml(item.status)}]` : ''}</li>`,
+        `<li>${escaparHtml(item.tipo || 'Orientação')} — ${escaparHtml(item.discente || 'Discente')} (${escaparHtml(exibirAno(item.inicio) || '?')}${item.fim ? `–${escaparHtml(exibirAno(item.fim) || '')}` : ''})${item.data_defesa ? ` | Defesa: ${escaparHtml(item.data_defesa)}` : ''}${item.status ? ` [${escaparHtml(item.status)}]` : ''}</li>`,
     )
     .join('')
 
@@ -135,7 +136,7 @@ function gerarSecaoDocenteHtml(doc: AvaliacaoDocenteReconducao): string {
   const itensIII = (doc.criterio_iii.itens || [])
     .map(
       (item: any) =>
-        `<li>${escaparHtml(item.titulo)} — Órgão: ${escaparHtml(item.orgao_fomento || 'Financiamento registrado')} (${escaparHtml(item.inicio || '?')}${item.fim ? `–${escaparHtml(item.fim)}` : ''})</li>`,
+        `<li>${escaparHtml(item.titulo)} — Órgão: ${escaparHtml(item.orgao_fomento || 'Financiamento registrado')} (${escaparHtml(exibirAno(item.inicio) || '?')}${item.fim ? `–${escaparHtml(exibirAno(item.fim) || '')}` : ''})</li>`,
     )
     .join('')
 

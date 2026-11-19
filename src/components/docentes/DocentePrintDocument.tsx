@@ -1,3 +1,5 @@
+import { exibirLocalAno } from '@/lib/eventos/local-ano'
+import { exibirPeriodoAnos } from '@/lib/datas/ano'
 import type {
   Docente,
   Publicacao,
@@ -232,7 +234,7 @@ export function DocentePrintDocument({
                     <td className="py-1 px-2 font-semibold">{ori.tipo || '—'}</td>
                     <td className="py-1 px-2 font-medium">{ori.discente_nome || '—'}</td>
                     <td className="py-1 px-2 font-mono">
-                      {ori.inicio || '—'} {ori.fim ? `– ${ori.fim}` : ''}
+                      {exibirPeriodoAnos(ori.inicio, ori.fim) || '—'}
                     </td>
                     <td className="py-1 px-2 capitalize">{ori.status || '—'}</td>
                     <td className="py-1 px-2 text-slate-600">{ori.observacoes || '—'}</td>
@@ -267,7 +269,7 @@ export function DocentePrintDocument({
                   <tr key={proj.id}>
                     <td className="py-1 px-2 font-medium">{proj.titulo}</td>
                     <td className="py-1 px-2 font-mono">
-                      {proj.inicio || '—'} {proj.fim ? `– ${proj.fim}` : ''}
+                      {exibirPeriodoAnos(proj.inicio, proj.fim) || '—'}
                     </td>
                     <td className="py-1 px-2">
                       {proj.financiamento ? `Sim (${proj.orgao_fomento || 'Fomento'})` : 'Não'}
@@ -403,7 +405,7 @@ export function DocentePrintDocument({
                   <tr key={eve.id}>
                     <td className="py-1 px-2 font-medium">{eve.evento}</td>
                     <td className="py-1 px-2">{eve.papel || '—'}</td>
-                    <td className="py-1 px-2">{eve.local_data || '—'}</td>
+                    <td className="py-1 px-2">{exibirLocalAno(eve.local_data) || '—'}</td>
                     <td className="py-1 px-2 text-slate-600">{eve.observacoes || '—'}</td>
                   </tr>
                 ))}

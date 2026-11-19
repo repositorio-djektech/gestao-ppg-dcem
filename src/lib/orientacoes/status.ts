@@ -1,17 +1,19 @@
 /**
  * Funções seguras de parse e derivação de status efetivo para orientações (PPG-DCEM).
  *
- * REGRAS DE DERIVAÇÃO:
+ * REGRAS DE DERIVAÇÃO (D-28: o término vale pelo ANO):
  * - Se cancelado = true (ou status gravado 'cancelado') -> 'cancelado' (datas preservadas).
  * - Se fim ficar em branco -> 'em_andamento'.
- * - Se fim preenchido com data válida > data corrente -> 'em_andamento'.
- * - Se fim preenchido com data válida <= data corrente -> 'concluido'.
+ * - Se o ano do fim é o ano atual ou posterior -> 'em_andamento' (o ano só passa em 31/12).
+ * - Se o ano do fim é anterior ao ano atual -> 'concluido'.
  * - Data inválida/irreconhecível NÃO deve ser tratada como concluído -> 'em_andamento'.
  * - Registros antigos com status 'ativo' sem fim ou fim futuro -> 'em_andamento' na leitura.
  * - Registros antigos 'concluido' sem data de término mantêm 'concluido'.
  */
 
 export type StatusOrientacao = 'ativo' | 'em_andamento' | 'concluido' | 'cancelado'
+
+import { anoJaPassou } from '@/lib/datas/ano'
 
 /**
  * Converte de forma segura strings de data vindas do Lattes ou da UI em objeto Date válido.
@@ -116,24 +118,11 @@ export function calcularStatusEfetivoOrientacao(
     return 'cancelado'
   }
 
-  // 2. Data de término analisada de forma segura
+  // 2. Término analisado de forma segura (valor inválido não conta) e comparado pelo ANO (D-28)
   const dataFim = parseDataFimOrientacao(orientacao.fim)
 
   if (dataFim !== null) {
-    // Normaliza referência para o início do dia
-    const ref = new Date(
-      dataReferencia.getFullYear(),
-      dataReferencia.getMonth(),
-      dataReferencia.getDate(),
-      23,
-      59,
-      59,
-      999,
-    )
-    if (dataFim.getTime() <= ref.getTime()) {
-      return 'concluido'
-    }
-    return 'em_andamento'
+    return anoJaPassou(dataFim.getFullYear(), dataReferencia) ? 'concluido' : 'em_andamento'
   }
 
   // 3. Se não tem data de término válida:

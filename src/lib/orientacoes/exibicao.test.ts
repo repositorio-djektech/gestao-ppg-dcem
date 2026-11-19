@@ -30,10 +30,11 @@ describe('Tipos de orientação com cores diferentes', () => {
 })
 
 describe('Datas da tabela de orientações', () => {
-  it('data completa vira dd/mm/aaaa; ano ou texto ficam como estão; vazio vira null', () => {
-    expect(formatarDataOrientacao('2025-03-09')).toBe('09/03/2025')
+  it('mostra só o ano, de qualquer formato antigo; vazio vira null (traço)', () => {
+    expect(formatarDataOrientacao('2025-03-09')).toBe('2025')
     expect(formatarDataOrientacao('2025')).toBe('2025')
-    expect(formatarDataOrientacao('03/2025')).toBe('03/2025')
+    expect(formatarDataOrientacao('03/2025')).toBe('2025')
+    expect(formatarDataOrientacao('09/03/2025')).toBe('2025')
     expect(formatarDataOrientacao('')).toBeNull()
     expect(formatarDataOrientacao('   ')).toBeNull()
     expect(formatarDataOrientacao(null)).toBeNull()

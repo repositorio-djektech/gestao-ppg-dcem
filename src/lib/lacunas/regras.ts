@@ -10,6 +10,7 @@ import type {
   Premicao as Premiacao,
   ProducaoTecnica,
 } from '@/types/database'
+import { exibirAno } from '@/lib/datas/ano'
 import type {
   RegraLacuna,
   ResumoRegraLacuna,
@@ -240,7 +241,7 @@ export const REGRAS_DISCENTES: RegraLacuna<Discente>[] = [
     id: 'discente_sem_data_ingresso',
     tabela: 'discentes',
     campos: ['data_ingresso'],
-    descricao: 'Discente sem data de ingresso',
+    descricao: 'Discente sem ano de ingresso',
     severidade: 'atencao',
     grupo: 'Identificação Cadastral',
     avaliar: (discente) => {
@@ -689,7 +690,7 @@ export function extrairNomeRegistro(registro: any): string {
   if (registro.titulo) return String(registro.titulo)
   if (registro.titulo_trabalho) return String(registro.titulo_trabalho)
   if (registro.evento) return String(registro.evento)
-  if (registro.tipo && registro.inicio) return `${registro.tipo} (${registro.inicio})`
+  if (registro.tipo && registro.inicio) return `${registro.tipo} (${exibirAno(registro.inicio)})`
   return `ID ${registro.id}`
 }
 
