@@ -85,7 +85,7 @@ O painel de **Recondução** (rotulado "Credenciamento" na tela) implementa a **
    - **Coautoria válida:** orientando/discente, ou egresso titulado há até **5 anos** na data da publicação (registrada em `publicacoes_coautores_programa`).
    - **Meta:** $\text{PDQ} \ge$ nota de corte do ano.
    - O cálculo é feito por um módulo único, `supabase/functions/avaliacao-reconducao/pdq.ts`, usado pelo front e pela Edge Function (sem duplicar a regra).
-   - **Divergência registrada (P-37):** a IN escreve A4 = 0,625 e "A5"; o sistema usa A4 = 0,675 e B1, como a ficha CAPES 2025 (D-02).
+   - **Divergência confirmada pela coordenação (D-42):** a IN escreve A4 = 0,625 e "A5"; o sistema usa A4 = 0,675 e B1, como a ficha CAPES 2025 (D-02).
 
 ### 2.3 Vereditos do Sistema
 

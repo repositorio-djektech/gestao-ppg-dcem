@@ -13,7 +13,7 @@
 //
 // Coeficientes: A4 = 0,675 e saturação em B1, como na ficha CAPES 2025 (D-02), que é o que o
 // restante do sistema usa. A IN escreve 0,625 e "A5" (classificação antiga): divergência registrada
-// na P-37, para a coordenação confirmar.
+// na P-37 e confirmada pela coordenação (D-42).
 
 export const NOTA_CORTE_PADRAO = 1.0
 export const JANELA_EGRESSO_ANOS = 5
