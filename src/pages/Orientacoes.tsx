@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { CrudPage } from '@/components/crud/CrudPage'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { orientacoesService } from '@/services/orientacoes'
@@ -19,6 +19,16 @@ import {
 import { useAuth } from '@/hooks/use-auth'
 import { mapaIngressoPorDiscente, aplicarDiscenteNoForm } from '@/lib/orientacoes/inicio'
 import { OPCOES_TIPO_ORIENTACAO } from '@/lib/orientacoes/tipos'
+import { aplicarSugestaoTermino } from '@/lib/orientacoes/previsao'
+import { FiltroSegmentado } from '@/components/FiltroSegmentado'
+import {
+  orientacaoDoTipo,
+  orientacaoNaSituacao,
+  OPCOES_FILTRO_TIPO_ORIENTACAO,
+  OPCOES_FILTRO_SITUACAO,
+  type FiltroTipoOrientacao,
+  type FiltroSituacao,
+} from '@/lib/filtros/segmentos'
 
 const emptyForm = {
   docente_id: '',
@@ -49,6 +59,13 @@ const Traco = () => <span className="text-slate-400 text-xs">—</span>
 
 export default function Orientacoes() {
   const { role, profile } = useAuth()
+  const [filtroTipo, setFiltroTipo] = useState<FiltroTipoOrientacao>('todos')
+  const [filtroSituacao, setFiltroSituacao] = useState<FiltroSituacao>('todas')
+  const filtroExtra = useCallback(
+    (o: Orientacao) =>
+      orientacaoDoTipo(o.tipo, filtroTipo) && orientacaoNaSituacao(o, filtroSituacao),
+    [filtroTipo, filtroSituacao],
+  )
   const docenteIdLogado = profile?.docente_id
   // D-27: o docente só vê as próprias orientações e coorientações
   const service = useMemo(
@@ -168,6 +185,9 @@ export default function Orientacoes() {
       type: 'select',
       required: true,
       options: OPCOES_TIPO_ORIENTACAO,
+      // Mestrado e doutorado sugerem o término (24 e 48 meses), sem sobrescrever o que foi digitado
+      onValueChangeWithFormData: (valor, formAtual) =>
+        aplicarSugestaoTermino(formAtual, { ...formAtual, tipo: valor }),
     },
     {
       key: 'docente_id',
@@ -186,7 +206,10 @@ export default function Orientacoes() {
       helperText: 'Selecione o discente orientando',
       // O início da orientação vem do mês e ano de ingresso do discente (pode ser alterado depois)
       onValueChangeWithFormData: (valor, formAtual) =>
-        aplicarDiscenteNoForm(formAtual, valor, discenteIngressoMap),
+        aplicarSugestaoTermino(
+          formAtual,
+          aplicarDiscenteNoForm(formAtual, valor, discenteIngressoMap),
+        ),
     },
     {
       key: 'inicio',
@@ -195,13 +218,16 @@ export default function Orientacoes() {
       required: true,
       placeholder: 'Selecione mês e ano de início...',
       helperText: 'Vem do mês e ano de ingresso do discente escolhido; pode ser alterado',
+      onValueChangeWithFormData: (valor, formAtual) =>
+        aplicarSugestaoTermino(formAtual, { ...formAtual, inicio: valor }),
     },
     {
       key: 'fim',
       label: 'Término Previsto / Efetivo (mês/ano)',
       type: 'month',
       placeholder: 'Selecione mês e ano de término...',
-      helperText: 'Deixe em branco se em andamento. Concluída a partir do mês do término',
+      helperText:
+        'Mestrado: 24 meses; doutorado: 48 (sugerido a partir do início). A orientação conclui no mês do término: para prorrogar, altere antes da data. Em branco = em andamento',
     },
     {
       key: 'cancelado',
@@ -303,6 +329,23 @@ export default function Orientacoes() {
       entityName="Orientação"
       tableName="orientacoes"
       printModule="orientacoes"
+      filtroExtra={filtroExtra}
+      toolbarExtra={
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <FiltroSegmentado<FiltroTipoOrientacao>
+            rotulo="Tipo"
+            valor={filtroTipo}
+            opcoes={OPCOES_FILTRO_TIPO_ORIENTACAO}
+            onChange={setFiltroTipo}
+          />
+          <FiltroSegmentado<FiltroSituacao>
+            rotulo="Situação"
+            valor={filtroSituacao}
+            opcoes={OPCOES_FILTRO_SITUACAO}
+            onChange={setFiltroSituacao}
+          />
+        </div>
+      }
     />
   )
 }

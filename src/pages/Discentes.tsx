@@ -2,6 +2,16 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { exibirMesAno, normalizarMesAno } from '@/lib/datas/mes-ano'
 import { useAuth } from '@/hooks/use-auth'
 import { CrudPage } from '@/components/crud/CrudPage'
+import { aplicarSugestaoConclusao } from '@/lib/discentes/previsao'
+import { FiltroSegmentado } from '@/components/FiltroSegmentado'
+import {
+  itemDoCurso,
+  discenteNaSituacao,
+  OPCOES_FILTRO_CURSO,
+  OPCOES_FILTRO_SITUACAO_DISCENTE,
+  type FiltroCurso,
+  type FiltroSituacaoDiscente,
+} from '@/lib/filtros/segmentos'
 import {
   PeriodoFiltro,
   PERIODO_FILTRO_VAZIO,
@@ -82,7 +92,15 @@ const statusColors: Record<string, string> = {
 export default function Discentes() {
   const [periodoFiltro, setPeriodoFiltro] = useState<ValorPeriodoFiltro>(PERIODO_FILTRO_VAZIO)
   const filtroPeriodo = useMemo(() => filtroDoValor(periodoFiltro), [periodoFiltro])
-  const filtroExtra = useCallback((d: any) => discenteNoPeriodo(d, filtroPeriodo), [filtroPeriodo])
+  const [filtroCurso, setFiltroCurso] = useState<FiltroCurso>('todos')
+  const [filtroSituacao, setFiltroSituacao] = useState<FiltroSituacaoDiscente>('todas')
+  const filtroExtra = useCallback(
+    (d: any) =>
+      itemDoCurso(d.tipo_curso, filtroCurso) &&
+      discenteNaSituacao(d, filtroSituacao) &&
+      discenteNoPeriodo(d, filtroPeriodo),
+    [filtroPeriodo, filtroCurso, filtroSituacao],
+  )
   const { role, profile } = useAuth()
   const isCapes = role === 'capes'
   const podeExcluir = !isCapes && (role === 'suporte' || role === 'coordenador')
@@ -572,6 +590,8 @@ export default function Discentes() {
         required: true,
         placeholder: 'Selecione mês e ano de ingresso...',
         helperText: 'Mês e ano de matrícula inicial no programa',
+        onValueChangeWithFormData: (val, currentData) =>
+          aplicarSugestaoConclusao(currentData, { ...currentData, data_ingresso: val }),
       },
       {
         key: 'status',
@@ -591,7 +611,8 @@ export default function Discentes() {
         label: 'Conclusão (mês/ano)',
         type: 'month',
         placeholder: 'Selecione mês e ano de conclusão...',
-        helperText: 'Mês e ano da defesa ou previsto. Atualiza o status automaticamente.',
+        helperText:
+          'Mestrado: 24 meses; doutorado: 48 (sugerido a partir do ingresso). Conclui no mês informado: para prorrogar, altere antes da data. Atualiza o status automaticamente.',
         onValueChangeWithFormData: (val, currentData) => aplicarConclusaoNoForm(currentData, val),
       },
       {
@@ -604,6 +625,8 @@ export default function Discentes() {
           { value: 'Pós-Doutorado', label: 'Pós-Doutorado' },
         ],
         placeholder: 'Selecione o nível...',
+        onValueChangeWithFormData: (val, currentData) =>
+          aplicarSugestaoConclusao(currentData, { ...currentData, tipo_curso: val }),
       },
       {
         key: 'docente_orientador_id',
@@ -757,13 +780,27 @@ export default function Discentes() {
         printQuery={
           filtroPeriodo ? `de=${periodoFiltro.inicio}&ate=${periodoFiltro.fim}` : undefined
         }
-        filtroExtra={filtroPeriodo ? filtroExtra : undefined}
+        filtroExtra={filtroExtra}
         toolbarExtra={
-          <PeriodoFiltro
-            valor={periodoFiltro}
-            onChange={setPeriodoFiltro}
-            rotulo="Vínculo no período"
-          />
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <FiltroSegmentado<FiltroCurso>
+              rotulo="Curso"
+              valor={filtroCurso}
+              opcoes={OPCOES_FILTRO_CURSO}
+              onChange={setFiltroCurso}
+            />
+            <FiltroSegmentado<FiltroSituacaoDiscente>
+              rotulo="Situação"
+              valor={filtroSituacao}
+              opcoes={OPCOES_FILTRO_SITUACAO_DISCENTE}
+              onChange={setFiltroSituacao}
+            />
+            <PeriodoFiltro
+              valor={periodoFiltro}
+              onChange={setPeriodoFiltro}
+              rotulo="Vínculo no período"
+            />
+          </div>
         }
         tableHeaderClassName="bg-[#e9effc] sticky top-0 z-10"
         tableHeaderRowClassName="bg-[#e9effc] hover:bg-[#e9effc]"

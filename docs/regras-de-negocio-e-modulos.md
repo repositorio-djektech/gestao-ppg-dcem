@@ -38,6 +38,9 @@ Implementadas em `src/lib/lacunas/regras.ts` (16 críticas e 18 de atenção; o 
 | **`orientacoes`** | `orientacao_sem_docente` | Orientação sem docente vinculado | Crítica | Acadêmico |
 |  | `orientacao_sem_discente` | Orientação sem discente vinculado | Crítica | Acadêmico |
 |  | `orientacao_sem_periodo` | Orientação sem período de início | Atenção | Acadêmico |
+|  | `orientacao_sem_termino_previsto` | Orientação de mestrado/doutorado sem término previsto | Atenção | Acadêmico |
+|  | `orientacao_inicio_igual_termino` | Orientação de mestrado/doutorado com início igual ao término (valor provisório do Lattes) | Atenção | Acadêmico |
+|  | `orientacao_termino_proximo` | Orientação de mestrado/doutorado que conclui nos próximos 3 meses (avisa para prorrogar antes da data, D-34) | Atenção | Acadêmico |
 | **`projetos_pesquisa`** | `projeto_sem_coordenador` | Projeto sem coordenador vinculado | Crítica | Acadêmico |
 |  | `projeto_sem_periodo` | Projeto sem período de início | Atenção | Acadêmico |
 |  | `projeto_financiado_sem_orgao_fomento` | Projeto financiado sem órgão de fomento | Atenção | Acadêmico |

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   REGRAS_DOCENTES,
   REGRAS_DISCENTES,
@@ -179,8 +179,8 @@ describe('Regras de Lacunas - Etapa 1', () => {
   })
 
   describe('Regras das 8 tabelas restantes (Etapa 5) e R4', () => {
-    it('totaliza 34 regras no sistema (9 doc + 6 disc + 4 pub + 3 ori + 3 proj + 2 ev + 2 mob + 2 pat + 2 prem + 1 pt)', () => {
-      expect(TODAS_AS_REGRAS).toHaveLength(34)
+    it('totaliza 37 regras no sistema (9 doc + 6 disc + 4 pub + 6 ori + 3 proj + 2 ev + 2 mob + 2 pat + 2 prem + 1 pt)', () => {
+      expect(TODAS_AS_REGRAS).toHaveLength(37)
     })
 
     it('identifica docente JDP com prazo expirado', () => {
@@ -368,6 +368,53 @@ describe('Regras de Lacunas - Etapa 1', () => {
       expect(lacDoc.severidade).toBe('critica')
     })
 
+    describe('orientações de mestrado e doutorado: datas (D-34)', () => {
+      const base = {
+        id: 1,
+        docente_id: 1,
+        discente_id: 1,
+        tipo: 'Mestrado',
+        inicio: '2026-03',
+        fim: '',
+        status: 'em_andamento',
+        link_comprovacao: '',
+        observacoes: '',
+      } as unknown as Orientacao
+      const regra = (id: string) => REGRAS_ORIENTACOES.find((r) => r.id === id)!
+      const hoje = new Date(2026, 10, 20) // nov/2026
+
+      it('sem término previsto: avisa só para mestrado e doutorado', () => {
+        const r = regra('orientacao_sem_termino_previsto')
+        expect(r.avaliar(base).temLacuna).toBe(true)
+        expect(r.avaliar({ ...base, fim: '2028-02' }).temLacuna).toBe(false)
+        expect(r.avaliar({ ...base, tipo: 'Iniciação Científica' }).temLacuna).toBe(false)
+        expect(r.avaliar({ ...base, cancelado: true }).temLacuna).toBe(false)
+      })
+
+      it('início igual ao término (valor provisório do Lattes) é apontado', () => {
+        const r = regra('orientacao_inicio_igual_termino')
+        expect(r.avaliar({ ...base, inicio: '2025-02', fim: '2025-02' }).temLacuna).toBe(true)
+        expect(r.avaliar({ ...base, inicio: '2023-03', fim: '2025-02' }).temLacuna).toBe(false)
+        expect(r.avaliar({ ...base, inicio: '2025-02', fim: '' }).temLacuna).toBe(false)
+      })
+
+      it('término nos próximos 3 meses avisa para prorrogar; mês atual, passado e distante não', () => {
+        vi.useFakeTimers()
+        vi.setSystemTime(hoje)
+        try {
+          const r = regra('orientacao_termino_proximo')
+          expect(r.avaliar({ ...base, fim: '2026-12' }).temLacuna).toBe(true) // +1
+          expect(r.avaliar({ ...base, fim: '2027-02' }).temLacuna).toBe(true) // +3
+          expect(r.avaliar({ ...base, fim: '2027-03' }).temLacuna).toBe(false) // +4
+          expect(r.avaliar({ ...base, fim: '2026-11' }).temLacuna).toBe(false) // mês atual: já concluiu
+          expect(r.avaliar({ ...base, fim: '2026-05' }).temLacuna).toBe(false)
+          expect(r.avaliar({ ...base, fim: '' }).temLacuna).toBe(false)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+    })
+
     it('avalia regras de projetos de pesquisa (coordenador crítica, fomento atenção se financiado)', () => {
       const proj: ProjetoPesquisa = {
         id: 3,
@@ -549,8 +596,8 @@ describe('Regras de Lacunas - Etapa 1', () => {
       })
 
       expect(relatorio.gerado_em).toBe('2026-10-10T12:00:00.000Z')
-      expect(relatorio.resumo).toHaveLength(34) // Todas as 34 regras consolidadas
-      expect(relatorio.lacunas).toHaveLength(34)
+      expect(relatorio.resumo).toHaveLength(37) // Todas as 37 regras consolidadas
+      expect(relatorio.lacunas).toHaveLength(37)
 
       // Verificar que Ledjane NÃO aparece na lacuna de Scopus, mas Euler aparece
       const lacunaScopus = relatorio.lacunas.find((l) => l.regra_id === 'docente_sem_scopus_id')!

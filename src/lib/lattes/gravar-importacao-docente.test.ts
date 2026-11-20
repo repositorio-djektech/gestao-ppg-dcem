@@ -133,6 +133,77 @@ describe('Orientação concluída: Discente Titulado + Egresso (D-31)', () => {
   })
 })
 
+describe('Um aluno por curso: egresso do mestrado e aluno do doutorado (D-35)', () => {
+  const mestradoConcluido = ori({
+    tipo: 'Mestrado',
+    fim: '2025-02',
+    status: 'concluido',
+    data_defesa: '2025-12-31',
+  })
+  const doutoradoEmAndamento = ori({
+    tipo: 'Doutorado',
+    inicio: '2025-03',
+    fim: '',
+    status: 'em_andamento',
+  })
+
+  it('a mesma pessoa vira duas fichas: mestrado Titulado e doutorado em andamento', async () => {
+    const { client, tabelas } = criarClienteFake({ docentes: [DOCENTE] })
+    const res = await gravarOrientacoes([mestradoConcluido, doutoradoEmAndamento], client)
+
+    expect(res.erros).toEqual([])
+    expect(tabelas.discentes).toHaveLength(2)
+    const mestrado = tabelas.discentes.find((d) => d.tipo_curso === 'Mestrado')
+    const doutorado = tabelas.discentes.find((d) => d.tipo_curso === 'Doutorado')
+    expect(mestrado).toMatchObject({ status: 'titulado', ano_conclusao: '2025-02' })
+    expect(doutorado).toMatchObject({
+      status: 'em_andamento',
+      ano_conclusao: '',
+      data_ingresso: '2025-03',
+    })
+    // cada orientação aponta para a ficha do seu curso
+    const oriM = tabelas.orientacoes.find((o) => o.tipo === 'Mestrado')
+    const oriD = tabelas.orientacoes.find((o) => o.tipo === 'Doutorado')
+    expect(oriM.discente_id).toBe(mestrado.id)
+    expect(oriD.discente_id).toBe(doutorado.id)
+  })
+
+  it('só o mestrado concluído gera egresso; o doutorado em andamento não', async () => {
+    const { client, tabelas } = criarClienteFake({ docentes: [DOCENTE] })
+    await gravarOrientacoes([mestradoConcluido, doutoradoEmAndamento], client)
+    expect(tabelas.egressos).toHaveLength(1)
+    expect(tabelas.egressos[0]).toMatchObject({ tipo_curso: 'Mestrado', ano_titulacao: 2025 })
+  })
+
+  it('depois, ao concluir o doutorado, entra um segundo egresso (um por curso)', async () => {
+    const { client, tabelas } = criarClienteFake({ docentes: [DOCENTE] })
+    await gravarOrientacoes([mestradoConcluido], client)
+    await gravarOrientacoes(
+      [{ ...doutoradoEmAndamento, fim: '2029-02', status: 'concluido', data_defesa: '2029-12-31' }],
+      client,
+    )
+    expect(tabelas.egressos.map((e) => e.tipo_curso).sort()).toEqual(['Doutorado', 'Mestrado'])
+  })
+
+  it('ficha antiga sem tipo de curso é aproveitada (não duplica) e recebe o curso', async () => {
+    const { client, tabelas } = criarClienteFake({
+      docentes: [DOCENTE],
+      discentes: [
+        {
+          id: 1,
+          nome: 'Aluno Ficticio Um',
+          status: 'em_andamento',
+          tipo_curso: '',
+          ano_conclusao: '',
+        },
+      ],
+    })
+    await gravarOrientacoes([doutoradoEmAndamento], client)
+    expect(tabelas.discentes).toHaveLength(1)
+    expect(tabelas.discentes[0].tipo_curso).toBe('Doutorado')
+  })
+})
+
 describe('Orientação em andamento (caso "tese iniciada antes de 2025")', () => {
   it('entra como em andamento, sem término, com ingresso = ano de início e orientador', async () => {
     const { client, tabelas } = criarClienteFake({ docentes: [DOCENTE] })

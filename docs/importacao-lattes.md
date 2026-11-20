@@ -104,6 +104,7 @@ src/
 - **Período padrão:** `ANO_INICIO = 2025` e `ANO_FIM = 2028` ficam como valor de reserva; o período ativo vem da tabela `periodos_avaliacao` (D-32).
 - `janelaImportacaoPadrao()` e `intervaloCruzaJanela(inicio, fim, janela)` (intervalo sem fim = em aberto).
 - **Em andamento sempre entra:** orientação e projeto em andamento não são cortados por ano. Concluídos e demais itens fora da janela (ou sem ano) são descartados e contados em `ignorados` / `totalForaQuadrienio`.
+- **Um registro de discente por curso (D-35):** a mesma pessoa com mestrado concluído e doutorado em andamento fica com **duas fichas** (mestrado Titulado e doutorado em andamento), e o egresso também é um por curso. Cadastro antigo sem tipo de curso é aproveitado e recebe o curso; com curso diferente, nasce nova ficha.
 - **Alunos concluídos (mestrado e doutorado):** o nome do orientado vem de `NOME-DO-ORIENTADO` (em andamento: `NOME-DO-ORIENTANDO`). O aluno é gravado como **Discente Titulado** (conclusão em `AAAA-MM`) e como **Egresso** (ano de titulação), com o docente que importa como orientador, sem duplicar quem já existe.
 - **Projetos:** o docente importa os próprios projetos (coordenador vazio ou ele mesmo) e é gravado como participante em `projetos_participantes` (D-33). O resultado da gravação destaca o que **não** foi gravado e o motivo.
 

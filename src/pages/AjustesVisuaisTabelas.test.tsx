@@ -52,8 +52,8 @@ vi.mock('@/services/impactos-vinculos', () => ({
     sincronizarVinculosRegistro: vi.fn(),
   },
 }))
-vi.mock('@/services/egressos', () => ({
-  egressosService: {
+vi.mock('@/services/egressos', () => {
+  const egressosService = {
     list: () =>
       Promise.resolve([
         {
@@ -67,8 +67,13 @@ vi.mock('@/services/egressos', () => ({
     create: vi.fn(),
     update: vi.fn(),
     remove: vi.fn(),
-  },
-}))
+  }
+  return {
+    egressosService,
+    egressosComSincronizacao: egressosService,
+    sincronizarEgressosDeOrientacoes: vi.fn(),
+  }
+})
 vi.mock('@/services/docentes', () => ({
   docentesService: { list: () => Promise.resolve([]) },
 }))

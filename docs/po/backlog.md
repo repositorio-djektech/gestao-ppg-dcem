@@ -15,7 +15,7 @@ Fluxos de aceite (D-08):
 - **E-03 Import Lattes em duas etapas**: H-04.
 - **E-04 Cálculo confiável**: H-07, H-08.
 - **E-05 Conformidade CAPES no MVP**: H-09, H-10.
-- **E-06 Visão restrita do docente e status do discente**: H-11 a H-28.
+- **E-06 Visão restrita do docente e status do discente**: H-11 a H-32.
 
 ## Histórias
 
@@ -46,9 +46,13 @@ Fluxos de aceite (D-08):
 | H-23 | Como coordenação e docentes, quero que todos os campos de data mostrem e aceitem só o ano, e que o início da orientação venha do ingresso do discente. | E-06 | — | 1 | **Em validação** (código e testes prontos; sem migração) |
 | H-24 | Como coordenação e docentes, quero início/término e ingresso/conclusão em mês e ano, com o status mudando no próprio mês do término. | E-06 | — | 1 | **Em validação** (código no ar desde 19/11; migração `20261119120000` e conversão dos dados aplicadas em 19/11) |
 | H-25 | Como coordenação e docentes, quero cadastrar IC, IT e IE em Orientações ou em Iniciações e ver o mesmo registro nas duas telas. | E-06 | — | 1 | **Em validação** (código no ar e migração `20261119130000` aplicada em 19/11) |
-| H-26 | Como docente, quero importar meu Lattes e ver meus alunos em andamento (de qualquer ano), meus formados (como Titulados e Egressos) e meus projetos. | E-06 | — | 1 | **Implementada** (falta aplicar as migrações e conferir em produção) |
-| H-27 | Como coordenação, quero cadastrar o período de avaliação e a janela do Lattes, e trocar de quadriênio sem alterar o código. | E-06 | — | 1 | **Implementada** (migração `20261120130000` e Edge Function pendentes de aplicação) |
-| H-28 | Como coordenação, quero filtrar docentes, discentes e egressos por período (ex.: 2021–2023). | E-06 | — | 2 | **Implementada** (filtros em Docentes, Discentes e Egressos, com impressão) |
+| H-26 | Como docente, quero importar meu Lattes e ver meus alunos em andamento (de qualquer ano), meus formados (como Titulados e Egressos) e meus projetos. | E-06 | — | 1 | **Publicada** (migração aplicada; falta o docente reimportar e conferir) |
+| H-27 | Como coordenação, quero cadastrar o período de avaliação e a janela do Lattes, e trocar de quadriênio sem alterar o código. | E-06 | — | 1 | **Publicada** (migração aplicada e Edge Function reimplantada; falta a coordenação conferir a tela Configurações) |
+| H-28 | Como coordenação, quero filtrar docentes, discentes e egressos por período (ex.: 2021–2023). | E-06 | — | 2 | **Publicada** (filtros em Docentes, Discentes e Egressos, com impressão) |
+| H-29 | Como coordenação e docente, quero registrar início, término previsto e conclusão do mestrado e do doutorado de cada aluno, com o egresso criado na conclusão e separado por curso, e um aluno que é egresso do mestrado e segue em andamento no doutorado. | E-06 | — | 1 | **Em validação** (código pronto; migração `20261121120000` e correção das 2 fichas pendentes de aplicação) |
+| H-30 | Como coordenação, quero que a avaliação do docente siga a IN 02/2026 (janela dos 4 anos anteriores, PDQ = 2×ATD + DPIDE1 + DPTDE1, nota de corte anual nas Configurações, inicial 1,0). | E-06 | — | 1 | **Planejada** (D-36) |
+| H-31 | Como coordenação e docente, quero os campos e vínculos que faltam nas telas (ementa, descrição da linha, fator de impacto, classificações, financiadores, iniciação com datas, vínculo linha–projeto–discente–produção). | E-06 | — | 2 | **Planejada** (P-35) |
+| H-32 | Como coordenação, quero o perfil de coordenador adjunto, docentes em ordem alfabética e indicadores do programa separados dos do docente. | E-06 | — | 3 | **Planejada** (P-35) |
 
 ## Critérios de aceite das histórias de prioridade 1
 

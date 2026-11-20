@@ -1034,7 +1034,14 @@ export async function resolverOuCriarDiscente(
   if (!nomeLimpo) return null
 
   const chave = normalizarTitulo(nomeLimpo)
-  const existente = cacheDiscentes.porNomeNormalizado.get(chave)
+  // D-35: um registro de discente por CURSO. A mesma pessoa pode ter o mestrado concluído e o
+  // doutorado em andamento, cada um na sua ficha. Cadastro antigo sem tipo de curso serve a qualquer
+  // curso (e é completado); com tipo diferente, é outro curso e gera nova ficha.
+  const doMesmoNome = cacheDiscentes.lista.filter((d) => normalizarTitulo(d.nome || '') === chave)
+  const existente = extras.tipoCurso
+    ? (doMesmoNome.find((d) => (d.tipo_curso || '').trim() === extras.tipoCurso) ??
+      doMesmoNome.find((d) => !(d.tipo_curso || '').trim()))
+    : doMesmoNome[0]
   if (existente) {
     // Completa o que o Lattes sabe e o cadastro ainda não: conclusão e nível. Melhor esforço.
     const completar: Record<string, unknown> = {}
@@ -1097,7 +1104,8 @@ export async function resolverOuCriarDiscente(
     status: novoPayload.status,
   }
   cacheDiscentes.lista.push(rec)
-  cacheDiscentes.porNomeNormalizado.set(chave, rec)
+  if (!cacheDiscentes.porNomeNormalizado.has(chave))
+    cacheDiscentes.porNomeNormalizado.set(chave, rec)
   return { id: rec.id, criado: true }
 }
 
@@ -1181,10 +1189,11 @@ export async function gravarOrientacoes(
   }
 
   // 3. Egressos já cadastrados (para não duplicar)
+  // D-35: um egresso por curso. Cadastro antigo sem tipo de curso vale para qualquer curso.
   const egressosPorNome = new Set<string>()
   const { data: existentesEgr, error: errEgr } = await (client as any)
     .from('egressos')
-    .select('id, nome')
+    .select('id, nome, tipo_curso')
   const egressosDisponiveis = !errEgr
   if (errEgr) {
     erros.push({
@@ -1194,7 +1203,7 @@ export async function gravarOrientacoes(
     })
   }
   for (const e of existentesEgr || []) {
-    if (e.nome) egressosPorNome.add(normalizarTitulo(e.nome))
+    if (e.nome) egressosPorNome.add(`${normalizarTitulo(e.nome)}|${(e.tipo_curso || '').trim()}`)
   }
 
   // 4. Carrega docentes se não fornecido
@@ -1376,8 +1385,9 @@ export async function gravarOrientacoes(
       discenteId &&
       ['Mestrado', 'Doutorado'].includes(tipoFinal)
     ) {
-      const chaveEgr = normalizarTitulo(ori.discente_nome)
-      if (chaveEgr && !egressosPorNome.has(chaveEgr)) {
+      const nomeEgr = normalizarTitulo(ori.discente_nome)
+      const chaveEgr = `${nomeEgr}|${tipoFinal}`
+      if (nomeEgr && !egressosPorNome.has(chaveEgr) && !egressosPorNome.has(`${nomeEgr}|`)) {
         const { error: egrErr } = await (client as any)
           .from('egressos')
           .insert([

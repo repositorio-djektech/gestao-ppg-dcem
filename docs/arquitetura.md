@@ -92,8 +92,8 @@ src/
 │   │   └── types.ts            # Tipos de quesitos, insumos e decomposições
 │   ├── disciplinas/            # Helpers da N:N disciplinas_docentes (idsDocentesDaDisciplina, anexarDocentesNasDisciplinas)
 │   ├── docentes/               # Geração de dossiê completo de impressão do docente via iframe
-│   ├── lacunas/                # Motor de 34 regras de lacunas em 10 tabelas
-│   │   ├── regras.ts           # Definição funcional das 34 regras de auditoria
+│   ├── lacunas/                # Motor de 37 regras de lacunas em 10 tabelas
+│   │   ├── regras.ts           # Definição funcional das 37 regras de auditoria
 │   │   ├── imprimirLacunasIframe.ts # Relatório impresso de pendências
 │   │   └── types.ts            # Tipagens de severidade, grupos e relatórios
 │   ├── lattes/                 # Pipeline completo de leitura e parse de currículos Lattes
@@ -134,7 +134,7 @@ src/
 │   ├── Mobilidade.tsx          # Mobilidade docente e discente nacional/internacional
 │   ├── ImpactoSocial.tsx       # Mapeamento de ações de impacto social e seus vínculos
 │   ├── Premiacoes.tsx          # Prêmios e distinções acadêmicas recebidas
-│   ├── Lacunas.tsx             # Painel de auditoria cadastral com 34 regras em 10 tabelas
+│   ├── Lacunas.tsx             # Painel de auditoria cadastral com 37 regras em 10 tabelas
 │   ├── Reconducao.tsx          # Painel de avaliação de credenciamento/recondução docente
 │   ├── Indicadores.tsx         # Painel de indicadores CAPES da Área Engenharias II
 │   ├── Usuarios.tsx            # Administração de usuários, papéis e permissões
@@ -233,7 +233,7 @@ Determinadas páginas exigem fluxos mais ricos do que um CRUD genérico:
 
 ### 4.4 Lacunas Cadastrais (`src/pages/Lacunas.tsx`)
 
-- Painel de auditoria com 34 regras ativas distribuídas em 10 tabelas.
+- Painel de auditoria com 37 regras ativas distribuídas em 10 tabelas.
 - Agrupamento em cartões visuais temáticos (Identificadores e Métricas, Fomento e Bolsas, Produção, Situação Acadêmica, etc.).
 - Correção de pendências em um clique com abertura do diálogo de edição ou deep-link.
 

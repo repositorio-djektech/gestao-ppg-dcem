@@ -9,7 +9,9 @@ import {
 } from '@/components/PeriodoFiltro'
 import { egressoNoPeriodo } from '@/lib/periodos/filtro'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
-import { egressosService } from '@/services/egressos'
+import { egressosService, egressosComSincronizacao } from '@/services/egressos'
+import { FiltroSegmentado } from '@/components/FiltroSegmentado'
+import { itemDoCurso, OPCOES_FILTRO_CURSO, type FiltroCurso } from '@/lib/filtros/segmentos'
 import { docentesService } from '@/services/docentes'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -64,7 +66,11 @@ const emptyForm = {
 export default function Egressos() {
   const [periodoFiltro, setPeriodoFiltro] = useState<ValorPeriodoFiltro>(PERIODO_FILTRO_VAZIO)
   const filtroPeriodo = useMemo(() => filtroDoValor(periodoFiltro), [periodoFiltro])
-  const filtroExtra = useCallback((e: any) => egressoNoPeriodo(e, filtroPeriodo), [filtroPeriodo])
+  const [filtroCurso, setFiltroCurso] = useState<FiltroCurso>('todos')
+  const filtroExtra = useCallback(
+    (e: any) => itemDoCurso(e.tipo_curso, filtroCurso) && egressoNoPeriodo(e, filtroPeriodo),
+    [filtroPeriodo, filtroCurso],
+  )
   const { role, profile } = useAuth()
   const isCapes = role === 'capes'
   const podeExcluir = !isCapes && (role === 'suporte' || role === 'coordenador')
@@ -532,7 +538,7 @@ export default function Egressos() {
       <CrudPage
         title="Egressos"
         icon={<UserCheck className="h-6 w-6 text-primary shrink-0" />}
-        service={egressosService}
+        service={egressosComSincronizacao}
         columns={columns}
         fields={fields}
         emptyForm={initialEmptyForm}
@@ -542,13 +548,21 @@ export default function Egressos() {
         printQuery={
           filtroPeriodo ? `de=${periodoFiltro.inicio}&ate=${periodoFiltro.fim}` : undefined
         }
-        filtroExtra={filtroPeriodo ? filtroExtra : undefined}
+        filtroExtra={filtroExtra}
         toolbarExtra={
-          <PeriodoFiltro
-            valor={periodoFiltro}
-            onChange={setPeriodoFiltro}
-            rotulo="Titulação no período"
-          />
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <FiltroSegmentado<FiltroCurso>
+              rotulo="Curso"
+              valor={filtroCurso}
+              opcoes={OPCOES_FILTRO_CURSO}
+              onChange={setFiltroCurso}
+            />
+            <PeriodoFiltro
+              valor={periodoFiltro}
+              onChange={setPeriodoFiltro}
+              rotulo="Titulação no período"
+            />
+          </div>
         }
         tableHeaderClassName="bg-[#e9effc] sticky top-0 z-10"
         tableHeaderRowClassName="bg-[#e9effc] hover:bg-[#e9effc]"

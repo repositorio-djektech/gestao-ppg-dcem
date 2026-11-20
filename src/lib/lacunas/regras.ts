@@ -10,7 +10,8 @@ import type {
   Premicao as Premiacao,
   ProducaoTecnica,
 } from '@/types/database'
-import { exibirMesAno } from '@/lib/datas/mes-ano'
+import { exibirMesAno, mesAnoAtingido, parseMesAno } from '@/lib/datas/mes-ano'
+import { normalizarCurso } from '@/lib/filtros/segmentos'
 import type {
   RegraLacuna,
   ResumoRegraLacuna,
@@ -457,6 +458,79 @@ export const REGRAS_ORIENTACOES: RegraLacuna<Orientacao>[] = [
       return {
         temLacuna: tem,
         motivo: tem ? 'Data ou ano de início da orientação não informado' : undefined,
+      }
+    },
+  },
+  {
+    id: 'orientacao_sem_termino_previsto',
+    tabela: 'orientacoes',
+    campos: ['fim'],
+    descricao: 'Orientação de mestrado/doutorado sem término previsto',
+    severidade: 'atencao',
+    grupo: 'Acadêmico',
+    avaliar: (ori) => {
+      const aplica =
+        normalizarCurso(ori.tipo) !== null && !ori.cancelado && ori.status !== 'cancelado'
+      const tem = aplica && textoVazio(ori.fim)
+      return {
+        temLacuna: tem,
+        motivo: tem
+          ? 'Término previsto não informado (mestrado: 24 meses; doutorado: 48 a partir do início)'
+          : undefined,
+      }
+    },
+  },
+  {
+    id: 'orientacao_inicio_igual_termino',
+    tabela: 'orientacoes',
+    campos: ['inicio', 'fim'],
+    descricao: 'Orientação de mestrado/doutorado com início igual ao término',
+    severidade: 'atencao',
+    grupo: 'Acadêmico',
+    avaliar: (ori) => {
+      const ini = parseMesAno(ori.inicio)
+      const fim = parseMesAno(ori.fim)
+      const tem =
+        normalizarCurso(ori.tipo) !== null &&
+        !ori.cancelado &&
+        ini !== null &&
+        fim !== null &&
+        ini.ano === fim.ano &&
+        ini.mes === fim.mes
+      return {
+        temLacuna: tem,
+        motivo: tem
+          ? `Início e término em ${exibirMesAno(ori.inicio)}: provavelmente valor provisório do Lattes; informar as datas reais`
+          : undefined,
+      }
+    },
+  },
+  {
+    id: 'orientacao_termino_proximo',
+    tabela: 'orientacoes',
+    campos: ['fim'],
+    descricao: 'Orientação de mestrado/doutorado com término previsto nos próximos 3 meses',
+    severidade: 'atencao',
+    grupo: 'Acadêmico',
+    avaliar: (ori) => {
+      const fim = parseMesAno(ori.fim)
+      if (
+        normalizarCurso(ori.tipo) === null ||
+        ori.cancelado ||
+        ori.status === 'cancelado' ||
+        !fim
+      ) {
+        return { temLacuna: false }
+      }
+      const hoje = new Date()
+      const mesesAte = fim.ano * 12 + fim.mes - (hoje.getFullYear() * 12 + hoje.getMonth() + 1)
+      // Mês atual ou anterior já concluiu (D-29). Nos 3 meses seguintes ainda dá tempo de prorrogar.
+      const tem = !mesAnoAtingido(ori.fim, hoje) && mesesAte >= 1 && mesesAte <= 3
+      return {
+        temLacuna: tem,
+        motivo: tem
+          ? `Conclui em ${exibirMesAno(ori.fim)}. Se houver prorrogação, altere o término antes dessa data`
+          : undefined,
       }
     },
   },
