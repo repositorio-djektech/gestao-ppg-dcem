@@ -5,7 +5,8 @@
 -- orientação de Mestrado concluída E uma orientação de Doutorado em andamento.
 -- O que faz, em uma transação:
 --   1. cria a ficha do MESTRADO (Titulado, com a conclusão que estava na ficha); ingresso fica vazio
---      (a coordenação preenche);
+--      (a coordenação preenche); o orientador vem do nome do docente (a ficha antiga pode ter o ID Lattes
+--      no texto do orientador, erro antigo do import, que este script não corrige nas fichas existentes);
 --   2. aponta as orientações de Mestrado concluídas para a nova ficha;
 --   3. devolve a ficha original ao DOUTORADO: Em andamento, sem conclusão.
 -- O gatilho da orientação (D-35) cria o egresso do mestrado se ainda não existir.
@@ -29,7 +30,8 @@ WITH novas AS (
     (nome, cpf, data_ingresso, status, ano_conclusao, tipo_curso, link_lattes, link_comprovacao,
      orientador, docente_orientador_id, observacoes)
   SELECT d.nome, d.cpf, '', 'titulado', d.ano_conclusao, 'Mestrado', d.link_lattes, d.link_comprovacao,
-         d.orientador, d.docente_orientador_id,
+         coalesce((SELECT doc.nome FROM public.docentes doc WHERE doc.id = d.docente_orientador_id), d.orientador),
+         d.docente_orientador_id,
          'Ficha do mestrado separada da ficha do doutorado (D-35). Preencher o ingresso.'
   FROM public.discentes d JOIN _conflitados c ON c.antigo = d.id
   RETURNING id, nome
