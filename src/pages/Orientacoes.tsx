@@ -21,6 +21,7 @@ import { mapaIngressoPorDiscente, aplicarDiscenteNoForm } from '@/lib/orientacoe
 import { OPCOES_TIPO_ORIENTACAO } from '@/lib/orientacoes/tipos'
 import { campoLinhaVinculada, campoProjetoVinculado } from '@/components/crud/campos-extras'
 import { aplicarSugestaoTermino } from '@/lib/orientacoes/previsao'
+import { compararNomes } from '@/lib/ordenacao'
 import { FiltroSegmentado } from '@/components/FiltroSegmentado'
 import {
   orientacaoDoTipo,
@@ -77,7 +78,20 @@ export default function Orientacoes() {
       ...orientacoesService,
       list: async () => {
         const todas = await orientacoesService.list()
-        return role === 'docente' ? filtrarOrientacoesDoDocente(todas, docenteIdLogado) : todas
+        const visiveis =
+          role === 'docente' ? filtrarOrientacoesDoDocente(todas, docenteIdLogado) : todas
+        // Docentes em ordem alfabética (P-35); dentro de cada docente, as mais recentes primeiro
+        const docentes = await docentesService.list().catch(() => [])
+        const nomePorId = new Map<number, string>(
+          docentes.map((d: any): [number, string] => [Number(d.id), d.nome]),
+        )
+        return [...visiveis].sort(
+          (a, b) =>
+            compararNomes(
+              nomePorId.get(Number(a.docente_id)),
+              nomePorId.get(Number(b.docente_id)),
+            ) || String(b.inicio ?? '').localeCompare(String(a.inicio ?? '')),
+        )
       },
     }),
     [role, docenteIdLogado],

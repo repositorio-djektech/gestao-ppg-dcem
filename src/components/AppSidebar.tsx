@@ -18,12 +18,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
+import { rotuloDoPapel } from '@/lib/usuarios/cargo'
 import {
   Accessibility,
   LayoutDashboard,
   AlertTriangle,
   Award,
   BarChart3,
+  TrendingUp,
   Users,
   UserCog,
   Settings,
@@ -51,6 +53,7 @@ export const PAGE_ICONS: Record<string, React.ComponentType<{ className?: string
   '/lacunas': AlertTriangle,
   '/reconducao': Award,
   '/indicadores': BarChart3,
+  '/desempenho-docentes': TrendingUp,
   '/politicas-afirmativas': Accessibility,
   '/docentes': GraduationCap,
   '/discentes': Users,
@@ -132,6 +135,11 @@ const navSections: NavSection[] = [
         label: 'Indicadores',
         href: '/indicadores',
         icon: <BarChart3 className="h-5 w-5 shrink-0" />,
+      },
+      {
+        label: 'Desempenho dos Docentes',
+        href: '/desempenho-docentes',
+        icon: <TrendingUp className="h-5 w-5 shrink-0" />,
       },
       {
         label: 'Políticas afirmativas',
@@ -244,14 +252,6 @@ const navSections: NavSection[] = [
 
 interface SidebarContentProps {
   onNavigate?: () => void
-}
-
-const ROLE_LABELS: Record<string, string> = {
-  suporte: 'Suporte',
-  coordenador: 'Coordenador',
-  auxiliar: 'Auxiliar',
-  docente: 'Docente',
-  capes: 'CAPES',
 }
 
 function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
@@ -420,7 +420,7 @@ function SidebarContentWithSections({ onNavigate }: SidebarContentProps = {}) {
                 </span>
                 {role && (
                   <span className="inline-flex self-start items-center text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 leading-none">
-                    {ROLE_LABELS[role] || role}
+                    {rotuloDoPapel(role, profile?.cargo)}
                   </span>
                 )}
               </div>

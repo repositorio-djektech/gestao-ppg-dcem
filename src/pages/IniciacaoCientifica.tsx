@@ -11,12 +11,16 @@ import type { IniciacaoCientifica, Docente, Discente, ProjetoPesquisa } from '@/
 import { DocenteNome } from '@/components/docentes/DocenteNome'
 
 import { campoLinhaVinculada } from '@/components/crud/campos-extras'
+import { exibirPeriodoMesAno } from '@/lib/datas/mes-ano'
+import { aplicarInicioNoForm } from '@/lib/iniciacao/datas'
 const emptyForm = {
   discente_id: '',
   discente_nome: '',
   tipo: 'iniciacao_cientifica' as const,
   bolsa_cnpq: '',
   ano: new Date().getFullYear(),
+  inicio: '',
+  fim: '',
   docente_orientador_id: '',
   projeto_id: '',
   linha_pesquisa_id: '',
@@ -99,9 +103,11 @@ export default function IniciacaoCientificaPage() {
     },
     {
       key: 'ano',
-      label: 'Ano',
+      label: 'Período',
       render: (item) => (
-        <span className="font-mono text-xs font-semibold text-slate-700">{item.ano || '—'}</span>
+        <span className="font-mono text-xs font-semibold text-slate-700">
+          {exibirPeriodoMesAno(item.inicio, item.fim) || item.ano || '—'}
+        </span>
       ),
     },
     {
@@ -181,7 +187,24 @@ export default function IniciacaoCientificaPage() {
       type: 'year',
       required: true,
       placeholder: 'Selecione o ano...',
-      helperText: 'Ano de vigência ou realização do plano de trabalho',
+      helperText:
+        'Ano de vigência do plano de trabalho. Se o início for informado abaixo, o ano segue o início',
+    },
+    {
+      key: 'inicio',
+      label: 'Início (mês/ano)',
+      type: 'month',
+      placeholder: 'Selecione mês e ano de início...',
+      helperText: 'Vale também na orientação correspondente (Orientações)',
+      onValueChangeWithFormData: (valor, formAtual) => aplicarInicioNoForm(formAtual, valor),
+    },
+    {
+      key: 'fim',
+      label: 'Término (mês/ano)',
+      type: 'month',
+      placeholder: 'Selecione mês e ano de término...',
+      helperText:
+        'Em branco: dezembro do ano de início ao criar; ao editar, deixa a orientação em andamento',
     },
     {
       key: 'discente_id',
@@ -209,10 +232,12 @@ export default function IniciacaoCientificaPage() {
       label: 'Docente Orientador',
       type: 'select',
       required: true,
-      options: docentes.map((d) => ({
-        label: d.status === false ? `${d.nome} (inativo)` : d.nome,
-        value: String(d.id),
-      })),
+      options: [...docentes]
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+        .map((d) => ({
+          label: d.status === false ? `${d.nome} (inativo)` : d.nome,
+          value: String(d.id),
+        })),
       placeholder: 'Selecione o docente orientador...',
     },
     {

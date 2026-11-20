@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/client'
 import { createCrudService } from '@/services/crud'
 import type { Docente } from '@/types/database'
+import { ordenarPorNome } from '@/lib/ordenacao'
 
 const baseDocentesService = createCrudService<Docente>({
   table: 'docentes',
@@ -16,6 +17,10 @@ export interface ResultadoExclusaoDocenteCascade {
 
 export const docentesService = {
   ...baseDocentesService,
+  /** Docentes em ordem alfabética em português (ignora acento e maiúscula), P-35. */
+  async list(): Promise<Docente[]> {
+    return ordenarPorNome(await baseDocentesService.list())
+  },
   /**
    * Exclui um docente em cascata via Edge Function `admin-usuarios`:
    * - Exclui o docente de public.docentes

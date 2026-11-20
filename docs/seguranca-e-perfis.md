@@ -148,6 +148,10 @@ Toda operação relevante de criação, edição ou exclusão disparada pelos co
 | **Segredos Privados de API**  | Supabase Edge Functions Secrets Vault | `Deno.env.get('NOME')`                | `SCOPUS_API_KEY`                              |
 | **Credencial Administrativa** | Supabase Auth Service Role            | Automático em Edge Functions internas | `SUPABASE_SERVICE_ROLE_KEY`                   |
 
+### Coordenador adjunto e nomes dos papéis (D-39)
+
+O **coordenador adjunto** tem o papel `coordenador` (as mesmas permissões) e o cargo `coordenador_adjunto`, que só rotula. Suporte e coordenador marcam o cargo na tela Usuários (botão "Tornar adjunto"). Nomes usados na tela: `suporte` = Suporte técnico; `coordenador` = Coordenador (ou Coordenador adjunto); `auxiliar` = Apoio ao preenchimento (secretaria); `docente` = Docente; `capes` = Avaliador externo (CAPES).
+
 ### Autenticação das Edge Functions (D-38, P-38)
 
 `avaliacao-reconducao`, `relatorio-lacunas` e `scopus-buscar` **só respondem a usuário autenticado com perfil** (cabeçalho `Authorization: Bearer <token do usuário>`; o token é validado com `auth.getUser()` e o perfil é lido em `profiles`). Sem login: **401**; usuário sem perfil ou com papel desconhecido: **403**. A regra está em um módulo único, `supabase/functions/_shared/auth.ts`, com testes (`src/lib/reconducao/auth-edge.test.ts`).

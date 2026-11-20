@@ -50,6 +50,7 @@ export interface IndicadoresProps {
   ) => ReturnType<typeof obterIndicadoresCapes>
 }
 
+import { LinkInterno } from '@/components/LinkInterno'
 export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) {
   const [relatorio, setRelatorio] = useState<RelatorioIndicadoresCapes | null>(null)
   const [carregando, setCarregando] = useState(true)
@@ -170,6 +171,16 @@ export default function Indicadores({ carregarDadosFn }: IndicadoresProps = {}) 
               <span>Indicadores de Avaliação</span>
             </h1>
           </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Indicadores do programa. Os indicadores de cada docente (PDQ) estão em{' '}
+            <LinkInterno
+              para="/desempenho-docentes"
+              className="text-primary underline underline-offset-2"
+            >
+              Desempenho dos Docentes
+            </LinkInterno>
+            .
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">

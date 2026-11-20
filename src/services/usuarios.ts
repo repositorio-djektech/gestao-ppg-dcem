@@ -52,7 +52,7 @@ export const usuariosService = {
    */
   async listar(): Promise<UsuarioComDetalhes[]> {
     const { data: profiles, error: profError } = await (supabase.from('profiles') as any)
-      .select('id, user_id, email, name, role, docente_id, created_at')
+      .select('id, user_id, email, name, role, cargo, docente_id, created_at')
       .order('name', { ascending: true })
 
     if (profError) {
@@ -107,6 +107,25 @@ export const usuariosService = {
         operacao: 'alterar_papel',
         novo_papel: novoPapel,
       },
+    })
+  },
+
+  /**
+   * Define ou remove o cargo de coordenador adjunto (H-32) pela função `definir_cargo`.
+   * Só suporte e coordenador; o alvo precisa ter o papel coordenador. O cargo é só rótulo: as
+   * permissões do adjunto são as do coordenador.
+   */
+  async definirCargo(targetUserId: string, cargo: 'coordenador_adjunto' | null): Promise<void> {
+    const { error } = await (supabase.rpc as any)('definir_cargo', {
+      p_alvo: targetUserId,
+      p_cargo: cargo,
+    })
+    if (error) throw new Error(error.message || 'Não foi possível alterar o cargo.')
+    await registrarLog({
+      acao: 'editar',
+      entidade: 'usuarios',
+      entidade_id: targetUserId,
+      detalhes: { operacao: 'definir_cargo', cargo },
     })
   },
 

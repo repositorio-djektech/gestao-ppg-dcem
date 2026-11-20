@@ -10,6 +10,7 @@ import {
 import { docentesService } from '@/services/docentes'
 import type { Docente, Role } from '@/types/database'
 import { toTitleCase } from '@/lib/titleCase'
+import { ROTULOS_PAPEL, rotuloDoPapel, podeSerAdjunto } from '@/lib/usuarios/cargo'
 import {
   Table,
   TableBody,
@@ -71,7 +72,7 @@ const ROLE_INFO: Record<
   { label: string; bg: string; text: string; border: string; desc: string }
 > = {
   suporte: {
-    label: 'Suporte',
+    label: ROTULOS_PAPEL.suporte,
     bg: 'bg-red-50 text-red-700 border-red-200',
     text: 'text-red-700',
     border: 'border-red-200',
@@ -85,7 +86,7 @@ const ROLE_INFO: Record<
     desc: 'Gestão completa acadêmica, relatórios CAPES e promoção de docentes a auxiliares',
   },
   auxiliar: {
-    label: 'Auxiliar',
+    label: ROTULOS_PAPEL.auxiliar,
     bg: 'bg-blue-50 text-blue-700 border-blue-200',
     text: 'text-blue-700',
     border: 'border-blue-200',
@@ -99,7 +100,7 @@ const ROLE_INFO: Record<
     desc: 'Edição estrita limitada aos seus próprios registros e orientações vinculadas',
   },
   capes: {
-    label: 'CAPES',
+    label: ROTULOS_PAPEL.capes,
     bg: 'bg-amber-50 text-amber-700 border-amber-200',
     text: 'text-amber-700',
     border: 'border-amber-200',
@@ -319,6 +320,28 @@ export default function Usuarios() {
     return false
   }
 
+  // Cargo de coordenador adjunto (H-32): quem coordena marca o adjunto entre os coordenadores
+  const podeDefinirCargoDoUsuario = (alvo: UsuarioComDetalhes): boolean =>
+    (isSuporte || isCoordenador) && podeSerAdjunto(alvo.role)
+
+  const handleAlternarAdjunto = async (alvo: UsuarioComDetalhes) => {
+    const tornar = alvo.cargo !== 'coordenador_adjunto'
+    try {
+      await usuariosService.definirCargo(alvo.user_id, tornar ? 'coordenador_adjunto' : null)
+      toast({
+        title: tornar ? 'Coordenador adjunto definido' : 'Cargo de adjunto removido',
+        description: `${alvo.name || alvo.email} ${tornar ? 'agora é coordenador adjunto.' : 'voltou a ser apenas coordenador.'}`,
+      })
+      await carregarDados()
+    } catch (err: any) {
+      toast({
+        title: 'Não foi possível alterar o cargo',
+        description: err?.message || 'Tente novamente.',
+        variant: 'destructive',
+      })
+    }
+  }
+
   const podeGerenciarPapelDoUsuario = (alvo: UsuarioComDetalhes): boolean => {
     if (currentUser?.id === alvo.user_id) return false
     if (isSuporte) return true
@@ -492,7 +515,7 @@ export default function Usuarios() {
                           variant="outline"
                           className={`${roleCfg.bg} font-medium tracking-wide shadow-2xs`}
                         >
-                          {roleCfg.label}
+                          {rotuloDoPapel(u.role, u.cargo) || roleCfg.label}
                         </Badge>
                       </TableCell>
 
@@ -502,6 +525,24 @@ export default function Usuarios() {
 
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-2">
+                          {/* Coordenador adjunto (H-32) */}
+                          {podeDefinirCargoDoUsuario(u) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleAlternarAdjunto(u)}
+                              className="h-8 px-2 text-xs text-indigo-700 hover:text-indigo-800 hover:bg-indigo-50 shrink-0"
+                              title="Marcar ou desmarcar como coordenador adjunto"
+                            >
+                              <UserCog className="h-3.5 w-3.5 mr-1" />
+                              <span>
+                                {u.cargo === 'coordenador_adjunto'
+                                  ? 'Remover adjunto'
+                                  : 'Tornar adjunto'}
+                              </span>
+                            </Button>
+                          )}
+
                           {/* Botão Trocar Papel */}
                           {podeGerenciarPapelDoUsuario(u) && (
                             <Button

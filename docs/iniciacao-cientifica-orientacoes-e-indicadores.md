@@ -61,7 +61,8 @@ IC, IT e IE passam a existir **nas duas telas ao mesmo tempo**. O que se cria, a
 | Iniciação em Extensão | IE (Extensão) |
 
 - **O que se espelha:** o tipo, o discente, o orientador e o **ano** (que é o ano do início da orientação).
-- **O que é só de uma tela:** o título do plano e a agência de fomento só existem em Iniciações. O término e os meses só existem em Orientações. Editar um lado **não apaga** o que só existe no outro.
+- **O que é só de uma tela:** o título do plano e a agência de fomento só existem em Iniciações. Editar um lado **não apaga** o que só existe no outro.
+- **Início e término (D-40, 22/11):** Iniciações passou a ter início e término em mês e ano, espelhados com a orientação nos dois sentidos. Criar com início usa o início e o término informados (término em branco = dezembro do ano do início); alterar um lado atualiza o outro; o ano do plano segue o ano do início.
 - **IC criada em Iniciações:** gera uma orientação com início em fevereiro e término em dezembro do ano informado (o ano é a vigência do plano), **como orientador não principal**, para não dar crédito automático ao Critério I.
 - **IC criada em Orientações** (inclusive pelo import do Lattes): gera o registro em Iniciações com o ano do início.
 - **Mudar o tipo** de uma orientação para mestrado ou doutorado remove o espelho em Iniciações. Mudar de volta recria.

@@ -28,6 +28,7 @@ import Premiacoes from '@/pages/Premiacoes'
 import Lacunas from '@/pages/Lacunas'
 import Reconducao from '@/pages/Reconducao'
 import Indicadores from '@/pages/Indicadores'
+import DesempenhoDocentes from '@/pages/DesempenhoDocentes'
 import PoliticasAfirmativas from '@/pages/PoliticasAfirmativas'
 import Usuarios from '@/pages/Usuarios'
 import Configuracoes from '@/pages/Configuracoes'
@@ -95,6 +96,7 @@ const App = () => {
                 <Route path="/lacunas" element={<Lacunas />} />
                 <Route path="/reconducao" element={<Reconducao />} />
                 <Route path="/indicadores" element={<Indicadores />} />
+                <Route path="/desempenho-docentes" element={<DesempenhoDocentes />} />
                 <Route path="/politicas-afirmativas" element={<PoliticasAfirmativas />} />
                 <Route path="/docentes" element={<Docentes />} />
                 <Route path="/discentes" element={<Discentes />} />

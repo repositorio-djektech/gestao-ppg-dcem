@@ -9,6 +9,8 @@ export type Profile = {
   name: string
   role: Role
   docente_id?: number | null
+  /** Rótulo de coordenação (H-32): o adjunto tem o papel coordenador. */
+  cargo?: 'coordenador_adjunto' | null
 }
 
 export type Docente = {
@@ -269,6 +271,8 @@ export type IniciacaoCientifica = {
   created_at?: string
   updated_at?: string
   linha_pesquisa_id?: number | null
+  inicio?: string
+  fim?: string
 }
 
 export type ProjetoParticipante = {
