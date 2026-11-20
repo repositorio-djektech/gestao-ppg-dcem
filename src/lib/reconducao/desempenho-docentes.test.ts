@@ -99,4 +99,26 @@ describe('desempenho dos docentes (H-32)', () => {
     expect(partes[1]).toContain('Docente;Categoria;Mestrados concluídos')
     expect(partes[2].startsWith('"Silva; ""Jr""";Permanente;0;0;0;0;;0;0;0;1;Não')).toBe(true)
   })
+
+  it('ordena os permanentes pelo desempate da IN e deixa os demais sem posição', () => {
+    const comDesempate = (d: Docente, pdq: number, bolsa: string, ufs: string) => {
+      const a = avaliar(d)
+      a.pdq_detalhes = { ...a.pdq_detalhes, pdq }
+      a.desempate = {
+        bolsa_cnpq: bolsa,
+        nivel_bolsa: bolsa ? 4 : 0,
+        menor_tempo_conclusao_meses: null,
+        ingresso_ufs: ufs,
+      }
+      return a
+    }
+    const linhas = montarDesempenhoDocentes([
+      comDesempate(docente(1, 'Ana'), 2, '', '2015-03'),
+      comDesempate(docente(2, 'Bia'), 2, 'PQ-1B', '2018-03'),
+      comDesempate(docente(3, 'Caio'), 5, '', '2020-03'),
+      comDesempate(docente(4, 'Dani', 'colaborador'), 9, '', ''),
+    ])
+    const pos = Object.fromEntries(linhas.map((l) => [l.nome, l.posicao]))
+    expect(pos).toEqual({ Ana: 3, Bia: 2, Caio: 1, Dani: null })
+  })
 })

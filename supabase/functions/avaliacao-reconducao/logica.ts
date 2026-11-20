@@ -1,4 +1,13 @@
-import { avaliarCriterioIV, NOTA_CORTE_PADRAO, NOTA_METODOLOGICA_PDQ } from './pdq.ts'
+import {
+  aplicarAtribuicao,
+  avaliarCriterioIV,
+  dadosDesempate,
+  decidirVeredito,
+  montarOrientadores,
+  NOTA_CORTE_PADRAO,
+  NOTA_METODOLOGICA_PDQ,
+  observacaoDaCategoria,
+} from './pdq.ts'
 
 // Período padrão (2025-2028), só como reserva. A avaliação do docente usa a janela dos 4 anos civis
 // anteriores ao ano da avaliação (enviada na requisição ou calculada pelo ano corrente), D-36.
@@ -280,6 +289,7 @@ export function avaliarDocenteLogica(params: {
   publicacoesDocentes?: any[]
   coautoresPrograma?: any[]
   egressos?: any[]
+  discentes?: any[]
   notaCorte?: number
   anoInicio?: number
   anoFim?: number
@@ -294,6 +304,7 @@ export function avaliarDocenteLogica(params: {
     publicacoesDocentes = [],
     coautoresPrograma = [],
     egressos = [],
+    discentes = [],
     notaCorte = NOTA_CORTE_PADRAO,
     anoInicio = ANO_INICIO,
     anoFim = ANO_FIM,
@@ -382,8 +393,10 @@ export function avaliarDocenteLogica(params: {
         anoNoPeriodo(obterAnoOrientacaoDefesa(ori), anoInicio, anoFim)
       )
     })
-  const msc = tituladasNoPeriodo('mestrado').length
-  const dsc = tituladasNoPeriodo('doutorado').length
+  const mestradosConcluidos = tituladasNoPeriodo('mestrado')
+  const doutoradosConcluidos = tituladasNoPeriodo('doutorado')
+  const msc = mestradosConcluidos.length
+  const dsc = doutoradosConcluidos.length
 
   // R4: Identificação estruturada das publicações do docente via publicacoes_docentes
   // Usa vínculos estruturados se existirem; se não houver registros em publicacoes_docentes
@@ -402,8 +415,19 @@ export function avaliarDocenteLogica(params: {
       : textoContemDocente(pub.autores, termosNome)
   })
 
+  // §7º: a publicação com mais de um docente do programa só vale para um deles
+  const atribuicao = temVinculosEstruturadosDocente
+    ? aplicarAtribuicao({
+        docenteId: Number(docente.id),
+        publicacoes: publicacoesDocenteNoPeriodo,
+        vinculos: publicacoesDocentes,
+        coautores: coautoresPrograma,
+        orientadores: montarOrientadores(discentes, egressos),
+      })
+    : { contam: publicacoesDocenteNoPeriodo, cedidas: [] as any[], conflitos: [] as any[] }
+
   const critIV = avaliarCriterioIV({
-    publicacoesDoDocente: publicacoesDocenteNoPeriodo,
+    publicacoesDoDocente: atribuicao.contam,
     coautoresPrograma,
     egressos,
     msc,
@@ -446,29 +470,23 @@ export function avaliarDocenteLogica(params: {
     motivos.push(critIV.motivo)
   }
 
-  let veredito = 'NAO_APLICAVEL'
-  if (categoria !== 'permanente') {
-    veredito = 'NAO_APLICAVEL'
-    if (motivos.length === 0) {
-      motivos.push(
-        `Docente da categoria '${categoria || 'não definida'}' atende aos índices, mas a recondução automática do § 4º é restrita a docentes da categoria permanente.`,
-      )
-    } else {
-      motivos.unshift(
-        `A recondução do § 4º aplica-se exclusivamente a docentes da categoria permanente (categoria atual: '${categoria || 'não definida'}').`,
-      )
-    }
-  } else {
-    const todosAtendidos = critI_atendido && critII_atendido && critIII_atendido && critIV_atendido
-    if (todosAtendidos) {
-      veredito = 'RECONDUZIDO'
-    } else if (critI_atendido && critII_atendido && critIII_atendido && !critIV_atendido) {
-      // I a III atendidos; só o PDQ ficou abaixo da nota de corte
-      veredito = 'PDQ_INSUFICIENTE'
-    } else {
-      veredito = 'NAO_ATENDE'
-    }
-  }
+  // Veredito por categoria (IN 02/2026): vale para permanentes, colaboradores e visitantes
+  const veredito: string = decidirVeredito(
+    categoria,
+    critI_atendido,
+    critII_atendido,
+    critIII_atendido,
+    critIV_atendido,
+  )
+  const observacao = observacaoDaCategoria(categoria, veredito as any)
+  if (observacao) motivos.push(observacao)
+
+  // Desempate (arts. 10 e 11): bolsa, menor tempo de conclusão e tempo de UFS
+  const desempate = dadosDesempate({
+    bolsaCnpq: docente.bolsa_cnpq,
+    ingressoUfs: docente.ingresso_ufs,
+    concluidas: [...mestradosConcluidos, ...doutoradosConcluidos],
+  })
 
   return {
     docente_id: docente.id,
@@ -486,6 +504,8 @@ export function avaliarDocenteLogica(params: {
     publicacoes_confirmadas: confirmadasList,
     publicacoes_pendentes: pendentesList,
     publicacoes_sem_coautoria: semCoautoriaList,
+    atribuicao: { cedidas: atribuicao.cedidas, conflitos: atribuicao.conflitos },
+    desempate,
     veredito,
     motivos,
   }

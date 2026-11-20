@@ -450,25 +450,193 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
       expect(resultado.motivos).toHaveLength(3)
     })
 
-    it('atribui veredito NAO_APLICAVEL para colaboradores e categoria nula, mas computa métricas', () => {
-      const docenteColaborador: Docente = {
-        ...docentePermanente,
-        id: 200,
-        categoria: 'colaborador',
+    describe('colaboradores e visitantes (IN 02/2026, art. 11)', () => {
+      const completo = {
+        orientacoes: [
+          {
+            id: 1,
+            docente_id: 200,
+            discente_id: 1,
+            tipo: 'Mestrado',
+            inicio: '2025',
+            fim: '2026',
+            status: 'concluido',
+            data_defesa: '2026-03-15',
+            flag_orientador_principal: true,
+          },
+        ] as unknown as Orientacao[],
+        disciplinas: [
+          {
+            id: 1,
+            docente_id: 200,
+            nome: 'Disc',
+            codigo: 'D1',
+            creditos: 4,
+            ano_semestre: '2025/1',
+          },
+        ] as unknown as Disciplina[],
+        projetos: [
+          {
+            id: 1,
+            coordenador_id: 200,
+            titulo: 'Proj',
+            inicio: '2025',
+            fim: '2027',
+            financiamento: true,
+            orgao_fomento: 'CNPq',
+          },
+        ] as unknown as ProjetoPesquisa[],
+        participantesProjetos: [],
+        publicacoes: [
+          { id: 9, titulo: 'T', autores: 'Docente Exemplar', periodico: 'R', ano: 2026 },
+        ] as unknown as Publicacao[],
+        publicacoesDocentes: [{ publicacao_id: 9, docente_id: 200 }],
+        coautoresPrograma: [{ publicacao_id: 9, tipo: 'orientando', nome_citado: 'Aluno' }],
       }
 
-      const resultado = avaliarDocente({
-        docente: docenteColaborador,
-        orientacoes: [],
+      it.each(['colaborador', 'visitante'] as const)(
+        '%s que atende aos 4 critérios fica APTO_PERMANENTE (pode ser conduzido a permanente)',
+        (categoria) => {
+          const r = avaliarDocente({
+            docente: { ...docentePermanente, id: 200, categoria },
+            ...completo,
+          })
+          expect(r.veredito).toBe('APTO_PERMANENTE')
+          expect(r.motivos.some((m) => m.includes('art. 11, §2º'))).toBe(true)
+        },
+      )
+
+      it('colaborador que não atende é avaliado (NAO_ATENDE), com as métricas e os motivos', () => {
+        const r = avaliarDocente({
+          docente: { ...docentePermanente, id: 200, categoria: 'colaborador' },
+          orientacoes: [],
+          disciplinas: [],
+          projetos: [],
+          participantesProjetos: [],
+          publicacoes: [],
+        })
+        expect(r.veredito).toBe('NAO_ATENDE')
+        expect(r.categoria).toBe('colaborador')
+        expect(r.motivos.some((m) => m.includes('Critério I não atendido'))).toBe(true)
+      })
+
+      it('só o critério IV falhando dá PDQ_INSUFICIENTE também para o colaborador', () => {
+        const r = avaliarDocente({
+          docente: { ...docentePermanente, id: 200, categoria: 'colaborador' },
+          ...completo,
+          notaCorte: 50,
+        })
+        expect(r.veredito).toBe('PDQ_INSUFICIENTE')
+      })
+
+      it('docente sem categoria não é avaliado: NAO_APLICAVEL, com o aviso para definir a categoria', () => {
+        const r = avaliarDocente({
+          docente: { ...docentePermanente, id: 200, categoria: null },
+          orientacoes: [],
+          disciplinas: [],
+          projetos: [],
+          participantesProjetos: [],
+          publicacoes: [],
+        })
+        expect(r.veredito).toBe('NAO_APLICAVEL')
+        expect(r.motivos.some((m) => m.includes('sem categoria definida'))).toBe(true)
+      })
+    })
+
+    describe('publicação com dois docentes do programa (§7º): conta para um só', () => {
+      const pubs = [
+        { id: 50, titulo: 'T', autores: 'A; B', periodico: 'R', ano: 2026, estrato_qualis: 'A1' },
+      ] as unknown as Publicacao[]
+      const vinc = [
+        { publicacao_id: 50, docente_id: 100 },
+        { publicacao_id: 50, docente_id: 101 },
+      ]
+      const coaut = [
+        { publicacao_id: 50, tipo: 'orientando', nome_citado: 'Aluno', discente_id: 7 },
+      ]
+      const avaliar = (id: number, extra: Record<string, unknown> = {}) =>
+        avaliarDocente({
+          docente: { ...docentePermanente, id },
+          orientacoes: [],
+          disciplinas: [],
+          projetos: [],
+          participantesProjetos: [],
+          publicacoes: pubs,
+          publicacoesDocentes: vinc,
+          coautoresPrograma: coaut,
+          ...extra,
+        })
+
+      it('vale para o orientador do discente coautor; o outro docente a recebe como cedida', () => {
+        const extra = { discentes: [{ id: 7, docente_orientador_id: 101 }] }
+        const a100 = avaliar(100, extra)
+        const a101 = avaliar(101, extra)
+        expect(a101.pdq_detalhes.np).toBe(1)
+        expect(a100.pdq_detalhes.np).toBe(0)
+        expect(a100.atribuicao?.cedidas.map((p) => p.id)).toEqual([50])
+        expect(a100.atribuicao?.cedidas[0].creditados).toEqual([101])
+      })
+
+      it('a indicação do docente (docente_atribuido_id) vale mais que o orientador', () => {
+        const comIndicacao = [{ ...pubs[0], docente_atribuido_id: 100 }] as unknown as Publicacao[]
+        const extra = {
+          publicacoes: comIndicacao,
+          discentes: [{ id: 7, docente_orientador_id: 101 }],
+        }
+        expect(avaliar(100, extra).pdq_detalhes.np).toBe(1)
+        expect(avaliar(101, extra).pdq_detalhes.np).toBe(0)
+      })
+
+      it('sem indicação e sem orientador que resolva: conta para os dois e fica em conflito', () => {
+        const a100 = avaliar(100)
+        const a101 = avaliar(101)
+        expect(a100.pdq_detalhes.np).toBe(1)
+        expect(a101.pdq_detalhes.np).toBe(1)
+        expect(a100.atribuicao?.conflitos.map((p) => p.id)).toEqual([50])
+      })
+
+      it('publicação de um só docente do programa não é afetada', () => {
+        const a = avaliarDocente({
+          docente: { ...docentePermanente, id: 100 },
+          orientacoes: [],
+          disciplinas: [],
+          projetos: [],
+          participantesProjetos: [],
+          publicacoes: pubs,
+          publicacoesDocentes: [{ publicacao_id: 50, docente_id: 100 }],
+          coautoresPrograma: coaut,
+        })
+        expect(a.pdq_detalhes.np).toBe(1)
+        expect(a.atribuicao?.cedidas).toEqual([])
+      })
+    })
+
+    it('traz os dados de desempate: bolsa, menor tempo de conclusão e ingresso na UFS', () => {
+      const r = avaliarDocente({
+        docente: { ...docentePermanente, bolsa_cnpq: 'PQ-1B', ingresso_ufs: '2008-03' } as Docente,
+        orientacoes: [
+          {
+            id: 1,
+            docente_id: 100,
+            discente_id: 1,
+            tipo: 'Mestrado',
+            inicio: '2023-03',
+            fim: '2025-02',
+            status: 'concluido',
+            flag_orientador_principal: true,
+          },
+        ] as unknown as Orientacao[],
         disciplinas: [],
         projetos: [],
         participantesProjetos: [],
         publicacoes: [],
       })
-
-      expect(resultado.veredito).toBe('NAO_APLICAVEL')
-      expect(resultado.categoria).toBe('colaborador')
-      expect(resultado.motivos[0]).toContain('exclusivamente a docentes da categoria permanente')
+      expect(r.desempate).toEqual({
+        bolsa_cnpq: 'PQ-1B',
+        nivel_bolsa: 4,
+        menor_tempo_conclusao_meses: 23,
+        ingresso_ufs: '2008-03',
+      })
     })
 
     it('filtra publicações só pela janela da avaliação (sem corte por JCR, a IN usa o Qualis), separando confirmadas e pendentes', () => {
@@ -727,6 +895,117 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
     })
   })
 
+  describe('Ciclo de 4 avaliações de colaboradores e visitantes (art. 11, §4º)', () => {
+    const doc = (id: number, categoria: any): Docente =>
+      ({
+        id,
+        nome: `Docente ${id}`,
+        categoria,
+        scopus_id: '',
+        indice_h: 0,
+        bolsa_cnpq: '',
+        jdp: false,
+        licenca: '',
+      }) as Docente
+
+    it('colaborador sem atender em 3 das 4 avaliações é apontado para descredenciamento', () => {
+      const relatorio = consolidarAvaliacaoReconducao({
+        docentes: [doc(1, 'colaborador'), doc(2, 'permanente')],
+        orientacoes: [],
+        disciplinas: [],
+        projetos: [],
+        participantesProjetos: [],
+        publicacoes: [],
+        anoAvaliacao: 2026,
+        anoInicio: 2022,
+        anoFim: 2025,
+      })
+      const colab = relatorio.avaliacoes.find((a) => a.docente_id === 1)!
+      expect(colab.ciclo).toMatchObject({
+        anos: [2023, 2024, 2025, 2026],
+        reprovacoes: 4,
+        descredenciar: true,
+      })
+      expect(colab.motivos.some((m) => m.includes('art. 11, §4º'))).toBe(true)
+      // o ciclo só se aplica a colaborador e visitante
+      expect(relatorio.avaliacoes.find((a) => a.docente_id === 2)!.ciclo).toBeUndefined()
+    })
+
+    it('colaborador que atende nos anos do ciclo não é apontado', () => {
+      // orientação vigente, disciplina, projeto financiado e publicação com coautoria em todos os anos
+      const relatorio = consolidarAvaliacaoReconducao({
+        docentes: [doc(1, 'visitante')],
+        orientacoes: [
+          {
+            id: 1,
+            docente_id: 1,
+            discente_id: 1,
+            tipo: 'Mestrado',
+            inicio: '2018',
+            fim: '',
+            status: 'em_andamento',
+            flag_orientador_principal: true,
+          },
+        ] as unknown as Orientacao[],
+        disciplinas: [
+          { id: 1, docente_id: 1, nome: 'D', codigo: 'D', creditos: 4, ano_semestre: '' },
+        ] as unknown as Disciplina[],
+        projetos: [
+          {
+            id: 1,
+            coordenador_id: 1,
+            titulo: 'P',
+            inicio: '2018',
+            fim: '',
+            financiamento: true,
+            orgao_fomento: 'CNPq',
+          },
+        ] as unknown as ProjetoPesquisa[],
+        participantesProjetos: [],
+        publicacoes: [2019, 2020, 2021, 2022, 2023, 2024, 2025].map((ano) => ({
+          id: ano,
+          titulo: `T${ano}`,
+          autores: 'Docente 1',
+          periodico: 'R',
+          ano,
+        })) as unknown as Publicacao[],
+        publicacoesDocentes: [2019, 2020, 2021, 2022, 2023, 2024, 2025].map((ano) => ({
+          publicacao_id: ano,
+          docente_id: 1,
+        })),
+        coautoresPrograma: [2019, 2020, 2021, 2022, 2023, 2024, 2025].map((ano) => ({
+          publicacao_id: ano,
+          tipo: 'orientando',
+          nome_citado: 'Aluno',
+        })),
+        anoAvaliacao: 2026,
+        anoInicio: 2022,
+        anoFim: 2025,
+      })
+      const v = relatorio.avaliacoes[0]
+      expect(v.veredito).toBe('APTO_PERMANENTE')
+      expect(v.ciclo).toMatchObject({ reprovacoes: 0, descredenciar: false })
+      expect(relatorio.resumo.aptos_permanente).toBe(1)
+    })
+
+    it('a nota de corte de cada ano entra no ciclo (ano com nota alta reprova)', () => {
+      const relatorio = consolidarAvaliacaoReconducao({
+        docentes: [doc(1, 'colaborador')],
+        orientacoes: [],
+        disciplinas: [],
+        projetos: [],
+        participantesProjetos: [],
+        publicacoes: [],
+        notasCortePorAno: { 2023: 0, 2024: 0 },
+        anoAvaliacao: 2026,
+        anoInicio: 2022,
+        anoFim: 2025,
+      })
+      // sem orientação/disciplina/projeto os critérios I a III falham de qualquer forma: 4 reprovações
+      expect(relatorio.avaliacoes[0].ciclo?.reprovacoes).toBe(4)
+    })
+  })
+
   describe('Consolidação geral do relatório', () => {
     it('gera resumo completo com totais por categoria e por veredito', () => {
       const docentes: Docente[] = [
@@ -778,10 +1057,17 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
       expect(relatorio.resumo.total_permanentes).toBe(1)
       expect(relatorio.resumo.total_colaboradores).toBe(1)
       expect(relatorio.resumo.total_sem_categoria).toBe(1)
-      // Permanente sem orientação, disciplina nem projeto: critérios I a III não atendidos
-      expect(relatorio.resumo.nao_atendem).toBe(1)
+      // Sem orientação, disciplina nem projeto, os critérios I a III não são atendidos: o permanente e
+      // o colaborador (avaliado também, art. 7º) não atendem; sem categoria não se aplica
+      expect(relatorio.resumo.nao_atendem).toBe(2)
       expect(relatorio.resumo.pdq_insuficiente).toBe(0)
-      expect(relatorio.resumo.nao_aplicavel).toBe(2)
+      expect(relatorio.resumo.nao_aplicavel).toBe(1)
+      expect(relatorio.limite_colaboradores).toMatchObject({
+        permanentes: 1,
+        colaboradores: 1,
+        limite: 0,
+        excede: true,
+      })
       expect(relatorio.avaliacoes).toHaveLength(3)
       // Avaliação do docente (D-36): janela dos 4 anos anteriores e nota de corte padrão
       expect(relatorio.avaliacao).toEqual({

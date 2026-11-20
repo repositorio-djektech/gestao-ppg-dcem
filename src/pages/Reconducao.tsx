@@ -86,9 +86,10 @@ export interface ReconducaoProps {
 // reconduzidos primeiro, depois não atendem, depois insuficientes, depois não aplicáveis
 const ORDEM_VEREDITO: Record<VereditoReconducao, number> = {
   RECONDUZIDO: 1,
-  NAO_ATENDE: 2,
-  PDQ_INSUFICIENTE: 3,
-  NAO_APLICAVEL: 4,
+  APTO_PERMANENTE: 2,
+  NAO_ATENDE: 3,
+  PDQ_INSUFICIENTE: 4,
+  NAO_APLICAVEL: 5,
 }
 
 export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
@@ -253,6 +254,16 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
           >
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
             RECONDUZIDO
+          </Badge>
+        )
+      case 'APTO_PERMANENTE':
+        return (
+          <Badge
+            variant="outline"
+            className={`bg-blue-50 text-blue-800 border-blue-300 gap-1 inline-flex items-center ${classesBase}`}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+            APTO A PERMANENTE
           </Badge>
         )
       case 'NAO_ATENDE':
@@ -585,6 +596,54 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
           )}
         </div>
 
+        {/* Atribuição (§7º), desempate (arts. 10 e 11) e ciclo (art. 11, §4º) */}
+        {(doc.atribuicao || doc.desempate || doc.ciclo) && (
+          <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-2 text-xs text-slate-700">
+            {doc.atribuicao && doc.atribuicao.conflitos.length > 0 && (
+              <p
+                data-testid="aviso-conflito-atribuicao"
+                className="rounded bg-amber-50 border border-amber-200 p-2 text-amber-900"
+              >
+                <strong>{doc.atribuicao.conflitos.length}</strong> publicação(ões) com mais de um
+                docente do programa e sem regra de atribuição (§7º): contam para todos os autores
+                até alguém indicar a quem pertencem, em Publicações (&quot;Docente a quem a
+                publicação é atribuída&quot;).
+              </p>
+            )}
+            {doc.atribuicao && doc.atribuicao.cedidas.length > 0 && (
+              <p>
+                <strong>{doc.atribuicao.cedidas.length}</strong> publicação(ões) atribuída(s) a
+                outro docente autor (§7º) e por isso fora do PDQ deste docente.
+              </p>
+            )}
+            {doc.desempate && (
+              <p data-testid="dados-desempate">
+                <strong>Desempate:</strong> bolsa CNPq {doc.desempate.bolsa_cnpq || 'não informada'}
+                {doc.desempate.nivel_bolsa === 0 && doc.desempate.bolsa_cnpq
+                  ? ' (fora de PQ/DT)'
+                  : ''}
+                ; menor tempo de conclusão{' '}
+                {doc.desempate.menor_tempo_conclusao_meses !== null
+                  ? `${doc.desempate.menor_tempo_conclusao_meses} meses`
+                  : 'sem dado'}
+                ; ingresso na UFS {doc.desempate.ingresso_ufs || 'não informado'}.
+              </p>
+            )}
+            {doc.ciclo && (
+              <p data-testid="dados-ciclo">
+                <strong>
+                  Ciclo de 4 avaliações ({doc.ciclo.anos[0]}–{doc.ciclo.anos[3]}):
+                </strong>{' '}
+                {doc.ciclo.reprovacoes} sem atender
+                {doc.ciclo.anos_reprovados.length > 0
+                  ? ` (${doc.ciclo.anos_reprovados.join(', ')})`
+                  : ''}
+                {doc.ciclo.descredenciar ? '. Descredenciamento previsto (art. 11, §4º).' : '.'}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Publicações do docente no período */}
         <div className="space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -783,7 +842,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
             )}
             <p className="text-[11px] text-slate-500 mt-1">
               {resumo
-                ? `${resumo.total_permanentes} perm. / ${resumo.total_colaboradores} colab.`
+                ? `${resumo.total_permanentes} perm. / ${resumo.total_colaboradores} colab.${resumo.total_visitantes ? ` / ${resumo.total_visitantes} visit.` : ''}`
                 : 'Avaliados no ano da avaliação'}
             </p>
           </CardContent>
@@ -875,6 +934,39 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
         </Card>
       </div>
 
+      {/* Colaboradores e visitantes (IN 02/2026, art. 11) */}
+      {resumo && (
+        <div
+          data-testid="faixa-colaboradores"
+          className={`rounded-lg border px-4 py-3 text-xs flex flex-wrap items-center gap-x-6 gap-y-1 ${
+            resumo.aptos_permanente || relatorio?.limite_colaboradores?.excede
+              ? 'border-blue-200 bg-blue-50/50 text-blue-900'
+              : 'border-slate-200 bg-slate-50/60 text-slate-700'
+          }`}
+        >
+          <span>
+            <strong>{resumo.aptos_permanente ?? 0}</strong> colaborador(es)/visitante(s) apto(s) a
+            permanente (art. 11, §2º)
+          </span>
+          {relatorio?.limite_colaboradores && (
+            <span
+              className={relatorio.limite_colaboradores.excede ? 'font-semibold text-red-700' : ''}
+              data-testid="limite-colaboradores"
+            >
+              Colaboradores: {relatorio.limite_colaboradores.colaboradores} de{' '}
+              {relatorio.limite_colaboradores.permanentes} permanentes
+              {relatorio.limite_colaboradores.percentual !== null
+                ? ` (${relatorio.limite_colaboradores.percentual.toFixed(1)}%)`
+                : ''}
+              ; limite de 20% = {relatorio.limite_colaboradores.limite}
+              {relatorio.limite_colaboradores.excede
+                ? '. Limite excedido: aplicam-se os critérios de classificação do art. 11, §1º.'
+                : '.'}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Barra de Filtros e Busca */}
       <div className="shrink-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="relative flex-1">
@@ -937,6 +1029,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
             <SelectContent>
               <SelectItem value="TODOS">Todos os Vereditos</SelectItem>
               <SelectItem value="RECONDUZIDO">Reconduzidos</SelectItem>
+              <SelectItem value="APTO_PERMANENTE">Aptos a permanente</SelectItem>
               <SelectItem value="NAO_ATENDE">Não Atendem</SelectItem>
               <SelectItem value="PDQ_INSUFICIENTE">PDQ Insuficiente</SelectItem>
               <SelectItem value="NAO_APLICAVEL">Não Aplicáveis</SelectItem>

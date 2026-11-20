@@ -190,20 +190,26 @@ export default function DesempenhoDocentes() {
               <TableHead className="text-center font-semibold text-slate-700">
                 Nota de corte
               </TableHead>
+              <TableHead
+                className="text-center font-semibold text-slate-700"
+                title="Posição entre os permanentes pelo desempate da IN (art. 10): PDQ, bolsa PQ/DT, menor tempo de conclusão, tempo de UFS"
+              >
+                Posição
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {carregando ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={9}>
+                  <TableCell colSpan={10}>
                     <Skeleton className="h-6 w-full" />
                   </TableCell>
                 </TableRow>
               ))
             ) : linhas.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-slate-500 py-8">
+                <TableCell colSpan={10} className="text-center text-slate-500 py-8">
                   Nenhum docente para exibir.
                 </TableCell>
               </TableRow>
@@ -250,6 +256,7 @@ export default function DesempenhoDocentes() {
                   <TableCell className="text-center text-slate-600">
                     {fmt(l.notaCorte, 1)}
                   </TableCell>
+                  <TableCell className="text-center text-slate-600">{l.posicao ?? '—'}</TableCell>
                 </TableRow>
               ))
             )}
@@ -259,7 +266,8 @@ export default function DesempenhoDocentes() {
       <p className="text-xs text-slate-500">
         Conta a publicação com coautoria confirmada de discente ou de egresso titulado há até 5
         anos; sem Qualis cadastrado só o DPTDE1 pontua. Mestrados e doutorados contam como
-        orientador principal.
+        orientador principal. A posição ordena os permanentes pelo desempate da IN (art. 10): maior
+        PDQ, bolsa PQ/DT por nível, menor tempo de conclusão do aluno e maior tempo de UFS.
       </p>
     </div>
   )

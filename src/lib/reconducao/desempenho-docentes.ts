@@ -4,6 +4,7 @@
  * a mesma da tela de Credenciamento, sem o veredito.
  */
 import { ordenarPorNome } from '@/lib/ordenacao'
+import { compararDesempate } from '../../../supabase/functions/avaliacao-reconducao/pdq'
 import type { AvaliacaoDocenteReconducao } from './types'
 
 export interface LinhaDesempenhoDocente {
@@ -20,6 +21,11 @@ export interface LinhaDesempenhoDocente {
   pdq: number | null
   notaCorte: number | null
   metaAtingida: boolean | null
+  bolsaCnpq: string
+  menorTempoConclusaoMeses: number | null
+  ingressoUfs: string
+  /** Posição entre os docentes permanentes pelos critérios de desempate (IN, art. 10); null se não é permanente. */
+  posicao: number | null
 }
 
 const ROTULO_CATEGORIA: Record<string, string> = {
@@ -50,9 +56,29 @@ export function montarDesempenhoDocentes(
       pdq: temPdq ? (p.pdq as number) : null,
       notaCorte: p.nota_corte ?? null,
       metaAtingida: temPdq ? Boolean(p.meta_atingida) : null,
+      bolsaCnpq: a.desempate?.bolsa_cnpq ?? '',
+      menorTempoConclusaoMeses: a.desempate?.menor_tempo_conclusao_meses ?? null,
+      ingressoUfs: a.desempate?.ingresso_ufs ?? '',
+      posicao: null as number | null,
+      _desempate: a.desempate,
+      _permanente: a.categoria === 'permanente',
     }
   })
-  return ordenarPorNome(linhas)
+
+  // Posição entre os permanentes: maior PDQ, bolsa PQ/DT, menor tempo de conclusão, mais tempo de UFS
+  const permanentes = linhas
+    .filter((l) => l._permanente && l._desempate)
+    .sort((x, y) =>
+      compararDesempate(
+        { pdq: x.pdq, desempate: x._desempate! },
+        { pdq: y.pdq, desempate: y._desempate! },
+      ),
+    )
+  permanentes.forEach((l, i) => {
+    l.posicao = i + 1
+  })
+  const limpas: LinhaDesempenhoDocente[] = linhas.map(({ _desempate, _permanente, ...l }) => l)
+  return ordenarPorNome(limpas)
 }
 
 function celula(v: unknown): string {
@@ -83,6 +109,10 @@ export function gerarCsvDesempenhoDocentes(
     'PDQ',
     'Nota de corte',
     'Atinge a nota de corte',
+    'Posição (desempate)',
+    'Bolsa CNPq',
+    'Menor tempo de conclusão (meses)',
+    'Ingresso na UFS',
   ]
   const corpo = linhas.map((l) =>
     [
@@ -98,6 +128,10 @@ export function gerarCsvDesempenhoDocentes(
       numero(l.pdq),
       numero(l.notaCorte),
       l.metaAtingida === null ? '' : l.metaAtingida ? 'Sim' : 'Não',
+      l.posicao ?? '',
+      l.bolsaCnpq,
+      l.menorTempoConclusaoMeses ?? '',
+      l.ingressoUfs,
     ]
       .map(celula)
       .join(';'),

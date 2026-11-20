@@ -18,10 +18,17 @@ import type {
   VereditoReconducao,
 } from './types'
 import {
+  aplicarAtribuicao,
   avaliarCriterioIV,
+  aplicarCiclo,
+  dadosDesempate,
+  decidirVeredito,
   janelaAvaliacaoDocente,
+  montarOrientadores,
   NOTA_CORTE_PADRAO,
   NOTA_METODOLOGICA_PDQ,
+  observacaoDaCategoria,
+  resumirAvaliacoes,
 } from '../../../supabase/functions/avaliacao-reconducao/pdq'
 
 export { janelaAvaliacaoDocente, NOTA_CORTE_PADRAO }
@@ -267,8 +274,14 @@ export interface DadosParaAvaliacao {
     nome_citado?: string
     egresso_id?: number | null
   }>
-  /** Egressos (id e ano de titulação), para a janela de 5 anos da coautoria de egresso. */
-  egressos?: Array<{ id: number; ano_titulacao?: number | null }>
+  /** Egressos (id, ano de titulação e orientador): janela de 5 anos e atribuição da publicação (§7º). */
+  egressos?: Array<{
+    id: number
+    ano_titulacao?: number | null
+    docente_orientador_id?: number | null
+  }>
+  /** Discentes (id e orientador), para atribuir a publicação ao orientador do coautor (§7º). */
+  discentes?: Array<{ id: number; docente_orientador_id?: number | null }>
   /** Nota de corte do PDQ para o ano da avaliação (padrão 1,0). */
   notaCorte?: number
   anoInicio?: number
@@ -389,12 +402,14 @@ export function avaliarDocente(params: DadosParaAvaliacao): AvaliacaoDocenteReco
   const principaisDoDocente = orientacoesDoDocente.filter(
     (ori) => ori.flag_orientador_principal === true,
   )
-  const msc = principaisDoDocente.filter(
+  const mestradosConcluidos = principaisDoDocente.filter(
     (ori) => isMestradoConcluido(ori) && orientacaoNoPeriodo(ori, anoInicio, anoFim),
-  ).length
-  const dsc = principaisDoDocente.filter(
+  )
+  const doutoradosConcluidos = principaisDoDocente.filter(
     (ori) => isDoutoradoConcluido(ori) && orientacaoNoPeriodo(ori, anoInicio, anoFim),
-  ).length
+  )
+  const msc = mestradosConcluidos.length
+  const dsc = doutoradosConcluidos.length
 
   // R4: Identificação estruturada das publicações do docente via publicacoes_docentes
   // Se existirem vínculos estruturados para o docente, usa-os preferencialmente;
@@ -414,8 +429,19 @@ export function avaliarDocente(params: DadosParaAvaliacao): AvaliacaoDocenteReco
       : textoContemDocente(pub.autores, termosNome)
   })
 
+  // §7º: a publicação com mais de um docente do programa só vale para um deles
+  const atribuicao = temVinculosEstruturadosDocente
+    ? aplicarAtribuicao({
+        docenteId: Number(docente.id),
+        publicacoes: publicacoesDocenteNoPeriodo as any[],
+        vinculos: (params.publicacoesDocentes || []) as any[],
+        coautores: (params.coautoresPrograma || []) as any[],
+        orientadores: montarOrientadores(params.discentes || [], params.egressos || []),
+      })
+    : { contam: publicacoesDocenteNoPeriodo as any[], cedidas: [], conflitos: [] }
+
   const critIV = avaliarCriterioIV({
-    publicacoesDoDocente: publicacoesDocenteNoPeriodo as any[],
+    publicacoesDoDocente: atribuicao.contam as any[],
     coautoresPrograma: (params.coautoresPrograma || []) as any[],
     egressos: params.egressos || [],
     msc,
@@ -461,31 +487,23 @@ export function avaliarDocente(params: DadosParaAvaliacao): AvaliacaoDocenteReco
     motivos.push(critIV.motivo)
   }
 
-  let veredito: VereditoReconducao
+  // Veredito por categoria (IN 02/2026): vale para permanentes, colaboradores e visitantes
+  const veredito = decidirVeredito(
+    categoria,
+    critI_atendido,
+    critII_atendido,
+    critIII_atendido,
+    critIV_atendido,
+  ) as VereditoReconducao
+  const observacao = observacaoDaCategoria(categoria, veredito)
+  if (observacao) motivos.push(observacao)
 
-  if (categoria !== 'permanente') {
-    veredito = 'NAO_APLICAVEL'
-    if (motivos.length === 0) {
-      motivos.push(
-        `Docente da categoria '${categoria || 'não definida'}' atende aos índices, mas a recondução automática do § 4º é restrita a docentes da categoria permanente.`,
-      )
-    } else {
-      motivos.unshift(
-        `A recondução do § 4º aplica-se exclusivamente a docentes da categoria permanente (categoria atual: '${categoria || 'não definida'}').`,
-      )
-    }
-  } else {
-    const todosAtendidos = critI_atendido && critII_atendido && critIII_atendido && critIV_atendido
-
-    if (todosAtendidos) {
-      veredito = 'RECONDUZIDO'
-    } else if (critI_atendido && critII_atendido && critIII_atendido && !critIV_atendido) {
-      // I a III atendidos; só o PDQ ficou abaixo da nota de corte
-      veredito = 'PDQ_INSUFICIENTE'
-    } else {
-      veredito = 'NAO_ATENDE'
-    }
-  }
+  // Desempate (arts. 10 e 11): bolsa, menor tempo de conclusão e tempo de UFS
+  const desempate = dadosDesempate({
+    bolsaCnpq: docente.bolsa_cnpq,
+    ingressoUfs: (docente as any).ingresso_ufs,
+    concluidas: [...mestradosConcluidos, ...doutoradosConcluidos] as any[],
+  })
 
   return {
     docente_id: docente.id,
@@ -504,6 +522,11 @@ export function avaliarDocente(params: DadosParaAvaliacao): AvaliacaoDocenteReco
     publicacoes_confirmadas: confirmadasList as any,
     publicacoes_pendentes: pendentesList as any,
     publicacoes_sem_coautoria: semCoautoriaList as any,
+    atribuicao: {
+      cedidas: atribuicao.cedidas as any,
+      conflitos: atribuicao.conflitos as any,
+    },
+    desempate,
     veredito,
     motivos,
   }
@@ -529,9 +552,16 @@ export function consolidarAvaliacaoReconducao(params: {
     nome_citado?: string
     egresso_id?: number | null
   }>
-  egressos?: Array<{ id: number; ano_titulacao?: number | null }>
+  egressos?: Array<{
+    id: number
+    ano_titulacao?: number | null
+    docente_orientador_id?: number | null
+  }>
+  discentes?: Array<{ id: number; docente_orientador_id?: number | null }>
   /** Nota de corte do PDQ para o ano da avaliação (padrão 1,0). */
   notaCorte?: number
+  /** Nota de corte de cada ano de avaliação, para refazer as avaliações do ciclo de 4 anos (art. 11, §4º). */
+  notasCortePorAno?: Record<number, number>
   /** Ano da avaliação do docente (janela = 4 anos anteriores); só informativo no relatório. */
   anoAvaliacao?: number
   anoInicio?: number
@@ -547,68 +577,57 @@ export function consolidarAvaliacaoReconducao(params: {
     publicacoesDocentes = [],
     coautoresPrograma = [],
     egressos = [],
+    discentes = [],
+    notasCortePorAno = {},
     notaCorte = NOTA_CORTE_PADRAO,
     anoInicio = ANO_INICIO,
     anoFim = ANO_FIM,
   } = params
+  const anoAvaliacao = params.anoAvaliacao ?? anoFim + 1
 
+  const base = {
+    orientacoes,
+    disciplinas,
+    projetos,
+    participantesProjetos,
+    publicacoes,
+    publicacoesDocentes,
+    coautoresPrograma,
+    egressos,
+    discentes,
+  }
   const avaliacoes: AvaliacaoDocenteReconducao[] = docentes.map((docente) =>
-    avaliarDocente({
-      docente,
-      orientacoes,
-      disciplinas,
-      projetos,
-      participantesProjetos,
-      publicacoes,
-      publicacoesDocentes,
-      coautoresPrograma,
-      egressos,
-      notaCorte,
-      anoInicio,
-      anoFim,
-    }),
+    avaliarDocente({ docente, ...base, notaCorte, anoInicio, anoFim }),
   )
 
-  let reconduzidos = 0
-  let nao_atendem = 0
-  let pdq_insuficiente = 0
-  let nao_aplicavel = 0
+  // Art. 11, §4º: colaborador ou visitante que não atende aos critérios em 3 avaliações de um ciclo
+  // de 4 anos é descredenciado. As avaliações dos anos anteriores são refeitas com os dados de hoje
+  // (janela e nota de corte de cada ano; sem nota cadastrada vale a do ano atual).
+  aplicarCiclo(avaliacoes as any[], anoAvaliacao, (docenteId, ano) => {
+    const docente = docentes.find((d) => Number(d.id) === docenteId)
+    if (!docente) return true
+    const j = janelaAvaliacaoDocente(ano)
+    const r = avaliarDocente({
+      docente,
+      ...base,
+      notaCorte: notasCortePorAno[ano] ?? notaCorte,
+      anoInicio: j.anoInicio,
+      anoFim: j.anoFim,
+    })
+    return (
+      r.criterio_i.atendido &&
+      r.criterio_ii.atendido &&
+      r.criterio_iii.atendido &&
+      r.criterio_iv.atendido
+    )
+  })
 
-  let total_permanentes = 0
-  let total_colaboradores = 0
-  let total_sem_categoria = 0
-
-  for (const a of avaliacoes) {
-    if (a.categoria === 'permanente') {
-      total_permanentes += 1
-    } else if (a.categoria === 'colaborador') {
-      total_colaboradores += 1
-    } else {
-      total_sem_categoria += 1
-    }
-
-    if (a.veredito === 'RECONDUZIDO') {
-      reconduzidos += 1
-    } else if (a.veredito === 'PDQ_INSUFICIENTE') {
-      pdq_insuficiente += 1
-    } else if (a.veredito === 'NAO_ATENDE') {
-      nao_atendem += 1
-    } else {
-      nao_aplicavel += 1
-    }
-  }
+  const { totais, limite } = resumirAvaliacoes(avaliacoes)
 
   const resumo: ResumoReconducao = {
     ano_inicio: anoInicio,
     ano_fim: anoFim,
-    total_docentes: docentes.length,
-    total_permanentes,
-    total_colaboradores,
-    total_sem_categoria,
-    reconduzidos,
-    nao_atendem,
-    pdq_insuficiente,
-    nao_aplicavel,
+    ...totais,
   }
 
   return {
@@ -624,6 +643,7 @@ export function consolidarAvaliacaoReconducao(params: {
       ano_fim: anoFim,
       nota_corte: notaCorte,
     },
+    limite_colaboradores: limite,
     nota_metodologica: {
       criterio_iv_np_coautoria: NOTA_SIMPLIFICACAO_NP,
       criterio_ii_disciplinas_temporais: NOTA_DISCIPLINAS_TEMPORAIS,

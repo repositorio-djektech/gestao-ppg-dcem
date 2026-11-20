@@ -1,6 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
+import { aplicarCiclo, resumirAvaliacoes, janelaAvaliacaoDocente } from './pdq.ts'
 import {
   autenticarChamador,
   respostaNegada,
@@ -117,11 +118,13 @@ Deno.serve(async (req: Request) => {
       coautoresRes,
       disciplinasDocentesRes,
       egressosRes,
+      discentesRes,
+      notasRes,
     ] = await Promise.all([
       supabase
         .from('docentes')
         .select(
-          'id, nome, categoria, status, scopus_id, id_lattes, openalex_id, indice_h, bolsa_cnpq',
+          'id, nome, categoria, status, scopus_id, id_lattes, openalex_id, indice_h, bolsa_cnpq, ingresso_ufs',
         )
         .order('nome', { ascending: true }),
       supabase
@@ -137,7 +140,7 @@ Deno.serve(async (req: Request) => {
       supabase
         .from('publicacoes')
         .select(
-          'id, titulo, autores, periodico, ano, fator_impacto_jcr, estrato_qualis, tipo_producao',
+          'id, titulo, autores, periodico, ano, fator_impacto_jcr, estrato_qualis, tipo_producao, docente_atribuido_id',
         )
         .order('ano', { ascending: false }),
       supabase.from('publicacoes_docentes').select('id, publicacao_id, docente_id'),
@@ -145,7 +148,9 @@ Deno.serve(async (req: Request) => {
         .from('publicacoes_coautores_programa')
         .select('id, publicacao_id, discente_id, egresso_id, tipo, nome_citado, grau_confianca'),
       supabase.from('disciplinas_docentes').select('disciplina_id, docente_id'),
-      supabase.from('egressos').select('id, ano_titulacao'),
+      supabase.from('egressos').select('id, ano_titulacao, docente_orientador_id'),
+      supabase.from('discentes').select('id, docente_orientador_id'),
+      supabase.from('avaliacao_notas_corte').select('ano_avaliacao, nota_corte'),
     ])
 
     const erros = [
@@ -159,6 +164,7 @@ Deno.serve(async (req: Request) => {
       coautoresRes.error,
       disciplinasDocentesRes.error,
       egressosRes.error,
+      discentesRes.error,
     ].filter(Boolean)
 
     if (erros.length > 0) {
@@ -190,43 +196,56 @@ Deno.serve(async (req: Request) => {
     const publicacoesDocentes = publicacoesDocentesRes.data || []
     const coautoresPrograma = coautoresRes.data || []
     const egressos = egressosRes.data || []
+    const discentes = discentesRes.data || []
+    // Nota de corte de cada ano (para refazer as avaliações do ciclo); falha de leitura = usa a do ano atual
+    const notasCortePorAno: Record<number, number> = {}
+    for (const n of notasRes.data || []) {
+      const v = Number(n.nota_corte)
+      if (Number.isFinite(v)) notasCortePorAno[Number(n.ano_avaliacao)] = v
+    }
 
+    const base = {
+      orientacoes,
+      disciplinas,
+      projetos,
+      participantesProjetos,
+      publicacoes,
+      publicacoesDocentes,
+      coautoresPrograma,
+      egressos,
+      discentes,
+    }
     const avaliacoes = docentes.map((docente: any) =>
       avaliarDocenteLogica({
         docente,
-        orientacoes,
-        disciplinas,
-        projetos,
-        participantesProjetos,
-        publicacoes,
-        publicacoesDocentes,
-        coautoresPrograma,
-        egressos,
+        ...base,
         notaCorte,
         anoInicio: ANO_INICIO,
         anoFim: ANO_FIM,
       }),
     )
 
-    let reconduzidos = 0
-    let nao_atendem = 0
-    let pdq_insuficiente = 0
-    let nao_aplicavel = 0
+    // Art. 11, §4º: refaz as avaliações do ciclo de 4 anos de colaboradores e visitantes
+    aplicarCiclo(avaliacoes as any[], anoAvaliacao, (docenteId, ano) => {
+      const docente = docentes.find((d: any) => Number(d.id) === docenteId)
+      if (!docente) return true
+      const j = janelaAvaliacaoDocente(ano)
+      const r = avaliarDocenteLogica({
+        docente,
+        ...base,
+        notaCorte: notasCortePorAno[ano] ?? notaCorte,
+        anoInicio: j.anoInicio,
+        anoFim: j.anoFim,
+      })
+      return (
+        r.criterio_i.atendido &&
+        r.criterio_ii.atendido &&
+        r.criterio_iii.atendido &&
+        r.criterio_iv.atendido
+      )
+    })
 
-    let total_permanentes = 0
-    let total_colaboradores = 0
-    let total_sem_categoria = 0
-
-    for (const a of avaliacoes) {
-      if (a.categoria === 'permanente') total_permanentes += 1
-      else if (a.categoria === 'colaborador') total_colaboradores += 1
-      else total_sem_categoria += 1
-
-      if (a.veredito === 'RECONDUZIDO') reconduzidos += 1
-      else if (a.veredito === 'PDQ_INSUFICIENTE') pdq_insuficiente += 1
-      else if (a.veredito === 'NAO_ATENDE') nao_atendem += 1
-      else nao_aplicavel += 1
-    }
+    const { totais, limite } = resumirAvaliacoes(avaliacoes)
 
     const resposta = {
       sucesso: true,
@@ -245,17 +264,11 @@ Deno.serve(async (req: Request) => {
         criterio_iv_np_coautoria: NOTA_SIMPLIFICACAO_NP,
         criterio_ii_disciplinas_temporais: NOTA_DISCIPLINAS_TEMPORAIS,
       },
+      limite_colaboradores: limite,
       resumo: {
         ano_inicio: ANO_INICIO,
         ano_fim: ANO_FIM,
-        total_docentes: docentes.length,
-        total_permanentes,
-        total_colaboradores,
-        total_sem_categoria,
-        reconduzidos,
-        nao_atendem,
-        pdq_insuficiente,
-        nao_aplicavel,
+        ...totais,
       },
       // D-25: o docente vê os cards gerais, mas só a própria avaliação na lista
       avaliacoes: restringirAvaliacoesAoDocente(avaliacoes, acesso.perfil),

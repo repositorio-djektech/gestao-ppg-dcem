@@ -19,6 +19,8 @@ import {
   campoLinhaVinculada,
 } from '@/components/crud/campos-extras'
 
+import { useDiscentesVinculados } from '@/components/crud/discentes-vinculados'
+import { patentesDiscentesService } from '@/services/vinculos-discentes-registro'
 const emptyForm = {
   titulo: '',
   tipo: '',
@@ -88,6 +90,7 @@ export default function PatentesPage() {
     carregarDadosVinculos()
   }, [carregarDadosVinculos])
 
+  const discentesVinc = useDiscentesVinculados(patentesDiscentesService)
   const customService = useMemo(() => {
     return {
       ...patentesService,
@@ -146,6 +149,10 @@ export default function PatentesPage() {
       },
     }
   }, [carregarDadosVinculos, autoria.filtrarLista, autoria.salvarVinculos])
+  const servicoFinal = useMemo(
+    () => discentesVinc.envolverServico(customService),
+    [customService, discentesVinc.envolverServico],
+  )
 
   const columns: ColumnDef<Patente>[] = [
     { key: 'titulo', label: 'Título', className: 'font-medium text-slate-900' },
@@ -285,6 +292,7 @@ export default function PatentesPage() {
       },
     },
     ...(autoria.campoDocentesAutores ? [autoria.campoDocentesAutores] : []),
+    discentesVinc.campo,
     { key: 'observacoes', label: 'Observações', type: 'textarea' },
   ]
 
@@ -293,7 +301,7 @@ export default function PatentesPage() {
       title="Patentes"
       icon={<Lightbulb className="h-6 w-6 text-primary shrink-0" />}
       description="Gerencie as patentes do programa."
-      service={customService}
+      service={servicoFinal}
       columns={columns}
       fields={fields}
       emptyForm={emptyForm}

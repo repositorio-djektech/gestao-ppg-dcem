@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { CrudPage } from '@/components/crud/CrudPage'
 import type { ColumnDef, FieldDef } from '@/components/crud/types'
 import { eventosService } from '@/services/eventos'
@@ -14,6 +15,8 @@ import {
 } from '@/components/crud/campos-extras'
 import { OPCOES_CLASSIFICACAO_EVENTO } from '@/lib/vinculos/opcoes'
 
+import { useDiscentesVinculados } from '@/components/crud/discentes-vinculados'
+import { eventosDiscentesService } from '@/services/vinculos-discentes-registro'
 const emptyForm = {
   docente: '',
   evento: '',
@@ -193,14 +196,23 @@ function separarEvento(localData: unknown) {
 }
 
 export default function Eventos() {
+  const discentesVinc = useDiscentesVinculados(eventosDiscentesService)
+  const servicoFinal = useMemo(
+    () => discentesVinc.envolverServico(eventosService),
+    [discentesVinc.envolverServico],
+  )
+  const camposComDiscentes = useMemo(
+    () => [...fields.slice(0, -1), discentesVinc.campo, fields[fields.length - 1]],
+    [discentesVinc.campo],
+  )
   return (
     <CrudPage
       title="Eventos"
       icon={<Calendar className="h-6 w-6 text-primary shrink-0" />}
       description="Gerencie a participação em eventos dos docentes."
-      service={eventosService}
+      service={servicoFinal}
       columns={columns}
-      fields={fields}
+      fields={camposComDiscentes}
       emptyForm={emptyForm}
       searchKey="evento"
       entityName="Evento"

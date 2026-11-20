@@ -33,15 +33,18 @@ function escaparHtml(val: unknown): string {
 
 const ORDEM_VEREDITO: Record<VereditoReconducao, number> = {
   RECONDUZIDO: 1,
-  NAO_ATENDE: 2,
-  PDQ_INSUFICIENTE: 3,
-  NAO_APLICAVEL: 4,
+  APTO_PERMANENTE: 2,
+  NAO_ATENDE: 3,
+  PDQ_INSUFICIENTE: 4,
+  NAO_APLICAVEL: 5,
 }
 
 function labelVeredito(v: VereditoReconducao): string {
   switch (v) {
     case 'RECONDUZIDO':
       return 'RECONDUZIDO'
+    case 'APTO_PERMANENTE':
+      return 'APTO A PERMANENTE'
     case 'NAO_ATENDE':
       return 'NÃO ATENDE'
     case 'PDQ_INSUFICIENTE':
@@ -57,6 +60,8 @@ function classeBadgeVeredito(v: VereditoReconducao): string {
   switch (v) {
     case 'RECONDUZIDO':
       return 'badge-reconduzido'
+    case 'APTO_PERMANENTE':
+      return 'badge-apto-permanente'
     case 'NAO_ATENDE':
       return 'badge-nao-atende'
     case 'PDQ_INSUFICIENTE':
@@ -70,6 +75,7 @@ function classeBadgeVeredito(v: VereditoReconducao): string {
 function labelCategoria(cat: AvaliacaoDocenteReconducao['categoria']): string {
   if (cat === 'permanente') return 'Docente Permanente'
   if (cat === 'colaborador') return 'Docente Colaborador'
+  if (cat === 'visitante') return 'Docente Visitante'
   return 'Sem Categoria Cadastrada'
 }
 
@@ -672,6 +678,12 @@ export function gerarHtmlRelatorioReconducao(
       background-color: #ecfdf5;
       color: #065f46;
       border-color: #6ee7b7;
+    }
+
+    .badge-apto-permanente {
+      background-color: #eff6ff;
+      color: #1e40af;
+      border-color: #93c5fd;
     }
 
     .badge-nao-atende {

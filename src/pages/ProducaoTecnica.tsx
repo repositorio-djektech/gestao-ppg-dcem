@@ -19,6 +19,8 @@ import {
   campoLinhaVinculada,
 } from '@/components/crud/campos-extras'
 
+import { useDiscentesVinculados } from '@/components/crud/discentes-vinculados'
+import { producaoTecnicaDiscentesService } from '@/services/vinculos-discentes-registro'
 const emptyForm = {
   titulo: '',
   comprovante_url: '',
@@ -75,6 +77,7 @@ export default function ProducaoTecnicaPage() {
     carregarDadosVinculos()
   }, [carregarDadosVinculos])
 
+  const discentesVinc = useDiscentesVinculados(producaoTecnicaDiscentesService)
   const customService = useMemo(() => {
     return {
       ...producaoTecnicaService,
@@ -131,6 +134,10 @@ export default function ProducaoTecnicaPage() {
       },
     }
   }, [carregarDadosVinculos, autoria.filtrarLista, autoria.salvarVinculos])
+  const servicoFinal = useMemo(
+    () => discentesVinc.envolverServico(customService),
+    [customService, discentesVinc.envolverServico],
+  )
 
   const columns: ColumnDef<ProducaoTecnica>[] = [
     { key: 'titulo', label: 'Título', className: 'font-medium text-slate-900' },
@@ -235,6 +242,7 @@ export default function ProducaoTecnicaPage() {
       },
     },
     ...(autoria.campoDocentesAutores ? [autoria.campoDocentesAutores] : []),
+    discentesVinc.campo,
     { key: 'observacoes', label: 'Observações', type: 'textarea', rows: 2 },
   ]
 
@@ -243,7 +251,7 @@ export default function ProducaoTecnicaPage() {
       title="Produção Técnica"
       icon={<Wrench className="h-6 w-6 text-primary shrink-0" />}
       description="Gerencie a produção técnica do programa."
-      service={customService}
+      service={servicoFinal}
       columns={columns}
       fields={fields}
       emptyForm={emptyForm}

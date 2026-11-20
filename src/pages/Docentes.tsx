@@ -22,6 +22,7 @@ import {
 } from '@/components/PeriodoFiltro'
 import { docentesComAtividadeNoPeriodo, type DadosAtividadeDocente } from '@/lib/periodos/filtro'
 import { carregarDadosAtividadeDocentes } from '@/services/atividade-docentes'
+import { MesAnoPicker } from '@/components/crud/MesAnoPicker'
 import { obterAvaliacaoReconducao } from '@/services/reconducao'
 import { restringirRelatorioReconducaoAoDocente } from '@/lib/reconducao/escopo-docente'
 import type { AvaliacaoDocenteReconducao } from '@/lib/reconducao/types'
@@ -91,6 +92,7 @@ const emptyForm: Omit<Docente, 'id'> = {
   scopus_id: '',
   indice_h: 0,
   bolsa_cnpq: '',
+  ingresso_ufs: '',
   jdp: false,
   licenca: '',
   categoria: null,
@@ -1177,6 +1179,19 @@ export default function Docentes() {
                       <SelectItem value="DT-2">DT 2</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ingressoUfs">Ingresso na UFS (mês/ano)</Label>
+                  <MesAnoPicker
+                    id="ingressoUfs"
+                    value={formData.ingresso_ufs}
+                    placeholder="Selecione mês e ano de ingresso..."
+                    onChange={(valor) => setFormData({ ...formData, ingresso_ufs: valor })}
+                  />
+                  <p className="text-[11px] text-slate-500">
+                    Tempo de serviço na UFS: último critério de desempate da avaliação (IN 02/2026,
+                    art. 10).
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="categoria">Categoria no PPG-DCEM</Label>

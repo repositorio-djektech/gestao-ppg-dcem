@@ -99,11 +99,13 @@ export async function obterAvaliacaoReconducao(
       coautoresRes,
       disciplinasDocentesRes,
       egressosRes,
+      discentesRes,
+      notasRes,
     ] = await Promise.all([
       supabase
         .from('docentes')
         .select(
-          'id, nome, categoria, status, scopus_id, id_lattes, openalex_id, indice_h, bolsa_cnpq',
+          'id, nome, categoria, status, scopus_id, id_lattes, openalex_id, indice_h, bolsa_cnpq, ingresso_ufs',
         )
         .order('nome', { ascending: true }),
       supabase
@@ -119,7 +121,7 @@ export async function obterAvaliacaoReconducao(
       supabase
         .from('publicacoes')
         .select(
-          'id, titulo, autores, periodico, ano, fator_impacto_jcr, estrato_qualis, tipo_producao',
+          'id, titulo, autores, periodico, ano, fator_impacto_jcr, estrato_qualis, tipo_producao, docente_atribuido_id',
         )
         .order('ano', { ascending: false }),
       (supabase.from as any)('publicacoes_docentes').select('id, publicacao_id, docente_id'),
@@ -127,7 +129,9 @@ export async function obterAvaliacaoReconducao(
         'id, publicacao_id, discente_id, egresso_id, tipo, nome_citado, grau_confianca',
       ),
       (supabase.from as any)('disciplinas_docentes').select('disciplina_id, docente_id'),
-      (supabase.from as any)('egressos').select('id, ano_titulacao'),
+      (supabase.from as any)('egressos').select('id, ano_titulacao, docente_orientador_id'),
+      (supabase.from as any)('discentes').select('id, docente_orientador_id'),
+      (supabase.from as any)('avaliacao_notas_corte').select('ano_avaliacao, nota_corte'),
     ])
 
     const erroEncontrado = [
@@ -141,6 +145,7 @@ export async function obterAvaliacaoReconducao(
       coautoresRes.error,
       disciplinasDocentesRes.error,
       egressosRes.error,
+      discentesRes.error,
     ].find(Boolean)
 
     if (erroEncontrado) {
@@ -163,6 +168,13 @@ export async function obterAvaliacaoReconducao(
       publicacoesDocentes: (publicacoesDocentesRes.data || []) as any[],
       coautoresPrograma: (coautoresRes.data || []) as any[],
       egressos: (egressosRes.data || []) as any[],
+      discentes: (discentesRes.data || []) as any[],
+      notasCortePorAno: Object.fromEntries(
+        ((notasRes.data || []) as any[]).map((n) => [
+          Number(n.ano_avaliacao),
+          Number(n.nota_corte),
+        ]),
+      ),
       notaCorte: opcoes.notaCorte ?? (await obterNotaCorte(anoAvaliacao)),
       anoAvaliacao,
       anoInicio,

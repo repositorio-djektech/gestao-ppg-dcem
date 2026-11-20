@@ -32,6 +32,7 @@ import { qualisService } from '@/services/qualis'
 import { usePeriodo } from '@/hooks/use-periodo'
 import { carregarOpcoesProjetos, carregarOpcoesLinhas } from '@/components/crud/campos-extras'
 import { OPCOES_TIPO_FATOR_IMPACTO, textoFatorImpacto } from '@/lib/vinculos/opcoes'
+import { docenteAtribuidoValido, precisaAtribuicao } from '@/lib/publicacoes/atribuicao'
 import {
   atualizarFatorImpacto,
   fatorImpactoParaFormulario,
@@ -98,6 +99,7 @@ const emptyForm: Omit<Publicacao, 'id'> = {
   observacoes: '',
   fator_impacto_jcr: null,
   fator_impacto_tipo: null,
+  docente_atribuido_id: null,
   fator_impacto_valor: null,
   fator_impacto_outro: '',
   projeto_id: null,
@@ -496,6 +498,10 @@ export default function Publicacoes() {
     const payload = {
       ...formData,
       titulo: normalizarTituloAcademico(formData.titulo),
+      docente_atribuido_id: docenteAtribuidoValido(
+        formData.docente_atribuido_id,
+        docentesAutoresSelecionados,
+      ),
       estrato_qualis: formData.estrato_qualis || null,
       tipo_producao: formData.tipo_producao || null,
       indicacao_nivel: formData.indicacao_nivel || null,
@@ -1010,6 +1016,52 @@ export default function Publicacoes() {
                         canEdit={canEditCurrent}
                       />
                     </div>
+
+                    {/* §7º da IN 02/2026: com mais de um docente do programa, a publicação conta para um só */}
+                    {precisaAtribuicao(docentesAutoresSelecionados) && (
+                      <div
+                        className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/50 p-3"
+                        data-testid="atribuicao-publicacao"
+                      >
+                        <Label htmlFor="pub-atribuido">
+                          Docente a quem a publicação é atribuída (PDQ)
+                        </Label>
+                        <Select
+                          value={
+                            docenteAtribuidoValido(
+                              formData.docente_atribuido_id,
+                              docentesAutoresSelecionados,
+                            )?.toString() ?? 'sem_indicacao'
+                          }
+                          onValueChange={(val) =>
+                            setFormData({
+                              ...formData,
+                              docente_atribuido_id: val === 'sem_indicacao' ? null : Number(val),
+                            })
+                          }
+                        >
+                          <SelectTrigger id="pub-atribuido" className="bg-white">
+                            <SelectValue placeholder="Selecione o docente..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="sem_indicacao">
+                              Sem indicação (vale o orientador do discente coautor)
+                            </SelectItem>
+                            {docentesLista
+                              .filter((d) => docentesAutoresSelecionados.includes(d.id))
+                              .map((d) => (
+                                <SelectItem key={d.id} value={String(d.id)}>
+                                  {d.nome}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[11px] text-slate-600">
+                          Quando dois ou mais docentes do programa assinam a mesma publicação, só um
+                          deles pode usá-la na avaliação de desempenho (IN 02/2026, art. 8º, §7º).
+                        </p>
+                      </div>
+                    )}
 
                     {/* Seção de Coautoria com Orientandos/Egressos do P²CEM */}
                     <div className="pt-2">

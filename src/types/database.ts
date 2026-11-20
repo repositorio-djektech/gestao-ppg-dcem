@@ -33,6 +33,8 @@ export type Docente = {
   ano_doutorado?: number | null
   /** Nº de programas em que é docente permanente, incluindo o PPG-DCEM (mínimo 1) */
   programas_permanente?: number | null
+  /** Mês e ano de ingresso na UFS (AAAA-MM): tempo de serviço, último critério de desempate. */
+  ingresso_ufs?: string
 }
 
 export type EstratoQualis = 'A1' | 'A2' | 'A3' | 'A4' | 'B1' | 'B2' | 'B3' | 'B4' | 'C'
@@ -70,6 +72,8 @@ export type Publicacao = {
   fator_impacto_outro?: string
   projeto_id?: number | null
   linha_pesquisa_id?: number | null
+  /** §7º da IN: docente a quem a publicação é atribuída no PDQ quando há mais de um autor docente. */
+  docente_atribuido_id?: number | null
 }
 
 export type Mobilidade = {

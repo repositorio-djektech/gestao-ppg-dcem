@@ -7,7 +7,11 @@ import { discentesService } from '@/services/discentes'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { BookUser } from 'lucide-react'
+import { BookUser, Eye, Edit, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { DetalhesOrientacaoDialog } from '@/components/orientacoes/DetalhesOrientacaoDialog'
+import { projetosPesquisaService } from '@/services/projetos-pesquisa'
+import { linhasPesquisaService } from '@/services/linhas-pesquisa'
 import type { Orientacao } from '@/types/database'
 import { calcularStatusEfetivoOrientacao } from '@/lib/orientacoes/status'
 import {
@@ -97,11 +101,25 @@ export default function Orientacoes() {
     [role, docenteIdLogado],
   )
   const [docenteMap, setDocenteMap] = useState<Record<string, string>>({})
+  const [projetoMap, setProjetoMap] = useState<Record<string, string>>({})
+  const [linhaMap, setLinhaMap] = useState<Record<string, string>>({})
+  // Orientação aberta no diálogo de detalhes (TCC e produção do discente, P-35)
+  const [detalhe, setDetalhe] = useState<Orientacao | null>(null)
   const [discenteMap, setDiscenteMap] = useState<Record<string, string>>({})
   // Mês e ano de ingresso de cada discente: vira o início da orientação ao escolher o discente (D-28)
   const [discenteIngressoMap, setDiscenteIngressoMap] = useState<Record<string, string>>({})
 
   useEffect(() => {
+    projetosPesquisaService
+      .list()
+      .then((items) =>
+        setProjetoMap(Object.fromEntries(items.map((p) => [String(p.id), p.titulo]))),
+      )
+      .catch(() => {})
+    linhasPesquisaService
+      .list()
+      .then((items) => setLinhaMap(Object.fromEntries(items.map((l) => [String(l.id), l.nome]))))
+      .catch(() => {})
     docentesService.list().then((items: any[]) => {
       const m: Record<string, string> = {}
       items.forEach((d) => {
@@ -316,65 +334,113 @@ export default function Orientacoes() {
   ]
 
   return (
-    <CrudPage
-      title="Orientações"
-      icon={<BookUser className="h-6 w-6 text-primary shrink-0" />}
-      description="Gerencie as orientações de discentes pelos docentes."
-      service={service}
-      columns={columns}
-      fields={fields}
-      emptyForm={emptyForm}
-      searchKey="tipo"
-      transformSubmitData={(data) => {
-        // Envia cancelado (boolean) + datas, nunca um status escolhido pelo usuário.
-        // O trigger no backend (ou aplicação do backend) deriva o status definitivo.
-        const canceladoBool = Boolean(data.cancelado)
-        const { status: _ignorado, ...rest } = data
-        return {
-          ...rest,
-          cancelado: canceladoBool,
+    <>
+      <CrudPage
+        title="Orientações"
+        icon={<BookUser className="h-6 w-6 text-primary shrink-0" />}
+        description="Gerencie as orientações de discentes pelos docentes."
+        service={service}
+        columns={columns}
+        fields={fields}
+        emptyForm={emptyForm}
+        searchKey="tipo"
+        transformSubmitData={(data) => {
+          // Envia cancelado (boolean) + datas, nunca um status escolhido pelo usuário.
+          // O trigger no backend (ou aplicação do backend) deriva o status definitivo.
+          const canceladoBool = Boolean(data.cancelado)
+          const { status: _ignorado, ...rest } = data
+          return {
+            ...rest,
+            cancelado: canceladoBool,
+          }
+        }}
+        customFilterItem={(o, termo, normalizar) => {
+          const docNome = o.docente_id ? docenteMap[String(o.docente_id)] : ''
+          const discNome = o.discente_id ? discenteMap[String(o.discente_id)] : ''
+          const stEfetivo =
+            o.status_efetivo ||
+            calcularStatusEfetivoOrientacao({
+              status: o.status,
+              fim: o.fim,
+              cancelado: o.cancelado,
+            })
+          const labelSt = statusLabels[stEfetivo] ?? ''
+          return (
+            normalizar(docNome).includes(termo) ||
+            normalizar(discNome).includes(termo) ||
+            normalizar(o.tipo).includes(termo) ||
+            normalizar(o.status).includes(termo) ||
+            normalizar(stEfetivo).includes(termo) ||
+            normalizar(labelSt).includes(termo)
+          )
+        }}
+        entityName="Orientação"
+        tableName="orientacoes"
+        printModule="orientacoes"
+        renderCustomActions={(item, { openEdit, openDelete, canEditItem, canDeleteItem }) => (
+          <div className="flex items-center justify-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setDetalhe(item)}
+              className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-50 shrink-0"
+              title="Ver TCC e produção do discente"
+              aria-label="Ver TCC e produção do discente"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            {canEditItem && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={openEdit}
+                className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10 shrink-0"
+                title="Editar Orientação"
+              >
+                <Edit className="h-4 w-4 text-primary" />
+              </Button>
+            )}
+            {canDeleteItem && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
+                onClick={openDelete}
+                title="Excluir Orientação"
+              >
+                <Trash2 className="h-4 w-4 text-red-600" />
+              </Button>
+            )}
+          </div>
+        )}
+        filtroExtra={filtroExtra}
+        toolbarExtra={
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <FiltroSegmentado<FiltroTipoOrientacao>
+              rotulo="Tipo"
+              valor={filtroTipo}
+              opcoes={OPCOES_FILTRO_TIPO_ORIENTACAO}
+              onChange={setFiltroTipo}
+            />
+            <FiltroSegmentado<FiltroSituacao>
+              rotulo="Situação"
+              valor={filtroSituacao}
+              opcoes={OPCOES_FILTRO_SITUACAO}
+              onChange={setFiltroSituacao}
+            />
+          </div>
         }
-      }}
-      customFilterItem={(o, termo, normalizar) => {
-        const docNome = o.docente_id ? docenteMap[String(o.docente_id)] : ''
-        const discNome = o.discente_id ? discenteMap[String(o.discente_id)] : ''
-        const stEfetivo =
-          o.status_efetivo ||
-          calcularStatusEfetivoOrientacao({
-            status: o.status,
-            fim: o.fim,
-            cancelado: o.cancelado,
-          })
-        const labelSt = statusLabels[stEfetivo] ?? ''
-        return (
-          normalizar(docNome).includes(termo) ||
-          normalizar(discNome).includes(termo) ||
-          normalizar(o.tipo).includes(termo) ||
-          normalizar(o.status).includes(termo) ||
-          normalizar(stEfetivo).includes(termo) ||
-          normalizar(labelSt).includes(termo)
-        )
-      }}
-      entityName="Orientação"
-      tableName="orientacoes"
-      printModule="orientacoes"
-      filtroExtra={filtroExtra}
-      toolbarExtra={
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <FiltroSegmentado<FiltroTipoOrientacao>
-            rotulo="Tipo"
-            valor={filtroTipo}
-            opcoes={OPCOES_FILTRO_TIPO_ORIENTACAO}
-            onChange={setFiltroTipo}
-          />
-          <FiltroSegmentado<FiltroSituacao>
-            rotulo="Situação"
-            valor={filtroSituacao}
-            opcoes={OPCOES_FILTRO_SITUACAO}
-            onChange={setFiltroSituacao}
-          />
-        </div>
-      }
-    />
+      />
+      <DetalhesOrientacaoDialog
+        orientacao={detalhe}
+        docenteNome={detalhe ? docenteMap[String(detalhe.docente_id ?? '')] : undefined}
+        discenteNome={detalhe ? discenteMap[String(detalhe.discente_id ?? '')] : undefined}
+        projetoTitulo={detalhe?.projeto_id ? projetoMap[String(detalhe.projeto_id)] : undefined}
+        linhaNome={
+          detalhe?.linha_pesquisa_id ? linhaMap[String(detalhe.linha_pesquisa_id)] : undefined
+        }
+        onClose={() => setDetalhe(null)}
+      />
+    </>
   )
 }
