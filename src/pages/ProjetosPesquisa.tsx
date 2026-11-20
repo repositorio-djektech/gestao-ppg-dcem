@@ -199,6 +199,7 @@ function CampoUploadComprovanteProjeto({
   )
 }
 
+import { campoLinhaVinculada, campoProjetoVinculado } from '@/components/crud/campos-extras'
 const emptyForm = {
   titulo: '',
   descricao: '',
@@ -213,6 +214,7 @@ const emptyForm = {
   link_comprovacao: '',
   observacoes: '',
   classificacao: '',
+  linha_pesquisa_id: '',
   participantes_docentes: [] as ParticipanteDocenteItem[],
   discentes_vinculados: [] as DiscenteProjetoItem[],
   iniciacoes_vinculadas_ids: [] as number[],
@@ -808,6 +810,7 @@ export default function ProjetosPesquisa() {
       placeholder: 'Selecione a classificação...',
       helperText: 'Projeto institucional (vinculado a edital/programa) ou individual',
     },
+    campoLinhaVinculada(),
     {
       key: 'descricao',
       label: 'Descrição do Projeto',

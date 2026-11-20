@@ -10,6 +10,7 @@ import { FlaskConical } from 'lucide-react'
 import type { IniciacaoCientifica, Docente, Discente, ProjetoPesquisa } from '@/types/database'
 import { DocenteNome } from '@/components/docentes/DocenteNome'
 
+import { campoLinhaVinculada } from '@/components/crud/campos-extras'
 const emptyForm = {
   discente_id: '',
   discente_nome: '',
@@ -18,6 +19,7 @@ const emptyForm = {
   ano: new Date().getFullYear(),
   docente_orientador_id: '',
   projeto_id: '',
+  linha_pesquisa_id: '',
   titulo: '',
   observacoes: '',
 }
@@ -229,6 +231,7 @@ export default function IniciacaoCientificaPage() {
       ],
       placeholder: 'Selecione o projeto...',
     },
+    campoLinhaVinculada(),
     {
       key: 'titulo',
       label: 'Título do Plano de Trabalho / Pesquisa',

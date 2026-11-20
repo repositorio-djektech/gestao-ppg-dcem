@@ -19,6 +19,7 @@ import {
 import { useAuth } from '@/hooks/use-auth'
 import { mapaIngressoPorDiscente, aplicarDiscenteNoForm } from '@/lib/orientacoes/inicio'
 import { OPCOES_TIPO_ORIENTACAO } from '@/lib/orientacoes/tipos'
+import { campoLinhaVinculada, campoProjetoVinculado } from '@/components/crud/campos-extras'
 import { aplicarSugestaoTermino } from '@/lib/orientacoes/previsao'
 import { FiltroSegmentado } from '@/components/FiltroSegmentado'
 import {
@@ -36,6 +37,9 @@ const emptyForm = {
   tipo: '',
   inicio: '',
   fim: '',
+  titulo_trabalho: '',
+  linha_pesquisa_id: '',
+  projeto_id: '',
   cancelado: false,
   link_comprovacao: '',
   observacoes: '',
@@ -229,6 +233,17 @@ export default function Orientacoes() {
       helperText:
         'Mestrado: 24 meses; doutorado: 48 (sugerido a partir do início). A orientação conclui no mês do término: para prorrogar, altere antes da data. Em branco = em andamento',
     },
+    {
+      key: 'titulo_trabalho',
+      label: 'Título da Dissertação ou Tese (TCC)',
+      type: 'textarea',
+      rows: 2,
+      placeholder: 'Título do trabalho de conclusão do discente...',
+      helperText:
+        'Dissertação (mestrado) ou tese (doutorado); a produção do discente fica ligada a ele',
+    },
+    campoLinhaVinculada(),
+    campoProjetoVinculado(),
     {
       key: 'cancelado',
       label: 'Cancelado',

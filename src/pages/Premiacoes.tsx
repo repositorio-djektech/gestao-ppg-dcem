@@ -13,12 +13,22 @@ import {
   SeletorImpactos,
   BadgesImpactosListagem,
 } from '@/components/impacto-social/SeletorImpactos'
+import {
+  campoComprovantePdf,
+  campoProjetoVinculado,
+  campoLinhaVinculada,
+} from '@/components/crud/campos-extras'
+import { OPCOES_ABRANGENCIA, OPCOES_TIPO_PREMIO } from '@/lib/vinculos/opcoes'
 
 const emptyForm = {
   titulo: '',
   ano: null,
   nome_premiado: '',
   instituicao: '',
+  abrangencia: '',
+  tipo_premio: '',
+  comprovante_url: '',
+  projeto_id: '',
   link_comprovacao: '',
   observacoes: '',
   impactos_vinculados_ids: [] as number[],
@@ -170,6 +180,24 @@ export default function PremiacoesPage() {
       placeholder: 'Ex: 2025',
     },
     {
+      key: 'abrangencia',
+      label: 'Abrangência da Premiação',
+      type: 'select',
+      placeholder: 'Internacional, nacional, regional ou local...',
+      options: OPCOES_ABRANGENCIA,
+      helperText: 'Alcance da premiação',
+    },
+    {
+      key: 'tipo_premio',
+      label: 'O que o Prêmio Concede',
+      type: 'select',
+      placeholder: 'Recursos, bolsa ou menção honrosa...',
+      options: OPCOES_TIPO_PREMIO,
+      helperText: 'Recursos para pesquisa, bolsa ou somente menção honrosa',
+    },
+    campoProjetoVinculado(),
+    campoComprovantePdf('premiacoes', 'Comprovante da Premiação (PDF)'),
+    {
       key: 'link_comprovacao',
       label: 'Link de Comprovação',
       type: 'url',
@@ -215,6 +243,7 @@ export default function PremiacoesPage() {
       fields={fields}
       emptyForm={emptyForm}
       searchKey="titulo"
+      camposVaziosComoNulo={['abrangencia', 'tipo_premio', 'comprovante_url']}
       entityName="Premiação"
       tableName="premiacoes"
       printModule="premiacoes"

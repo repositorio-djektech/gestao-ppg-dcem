@@ -13,6 +13,11 @@ import {
   SeletorImpactos,
   BadgesImpactosListagem,
 } from '@/components/impacto-social/SeletorImpactos'
+import {
+  campoComprovantePdf,
+  campoProjetoVinculado,
+  campoLinhaVinculada,
+} from '@/components/crud/campos-extras'
 
 const emptyForm = {
   titulo: '',
@@ -22,6 +27,9 @@ const emptyForm = {
   inpi: '',
   com_discente_egresso: false,
   discentes_egressos: '',
+  comprovante_url: '',
+  projeto_id: '',
+  linha_pesquisa_id: '',
   link_comprovacao: '',
   observacoes: '',
   impactos_vinculados_ids: [] as number[],
@@ -240,6 +248,9 @@ export default function PatentesPage() {
       placeholder: 'Ex: Maria Souza (egressa 2023); João Lima (discente)',
       helperText: 'Nomes e vínculo, como evidência para a avaliação.',
     },
+    campoProjetoVinculado(),
+    campoLinhaVinculada(),
+    campoComprovantePdf('patentes', 'Comprovante da Patente (PDF)'),
     {
       key: 'link_comprovacao',
       label: 'Link de Comprovação (INPI / Carta Patente)',
@@ -287,6 +298,7 @@ export default function PatentesPage() {
       fields={fields}
       emptyForm={emptyForm}
       searchKey="titulo"
+      camposVaziosComoNulo={['comprovante_url']}
       entityName="Patente"
       tableName="patentes"
       printModule="patentes"

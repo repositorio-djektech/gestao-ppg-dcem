@@ -7,6 +7,12 @@ import type { Evento, EventoTipo, EventoNacionalidade } from '@/types/database'
 import { normalizarTituloAcademico } from '@/lib/normalizacao'
 import { toTitleCase } from '@/lib/titleCase'
 import { comporLocalAno, separarLocalAno, exibirLocalAno } from '@/lib/eventos/local-ano'
+import {
+  campoComprovantePdf,
+  campoProjetoVinculado,
+  campoLinhaVinculada,
+} from '@/components/crud/campos-extras'
+import { OPCOES_CLASSIFICACAO_EVENTO } from '@/lib/vinculos/opcoes'
 
 const emptyForm = {
   docente: '',
@@ -17,6 +23,11 @@ const emptyForm = {
   evento_local: '',
   evento_ano: '',
   papel: '',
+  financiadores: '',
+  valor_total: '',
+  comprovante_url: '',
+  projeto_id: '',
+  linha_pesquisa_id: '',
   link_comprovacao: '',
   observacoes: '',
 }
@@ -26,10 +37,7 @@ const OPCOES_TIPO = [
   { value: 'Resumo', label: 'Resumo' },
 ]
 
-const OPCOES_NACIONALIDADE = [
-  { value: 'Nacional', label: 'Nacional' },
-  { value: 'Internacional', label: 'Internacional' },
-]
+const OPCOES_NACIONALIDADE = OPCOES_CLASSIFICACAO_EVENTO
 
 const columns: ColumnDef<Evento>[] = [
   {
@@ -114,12 +122,12 @@ const fields: FieldDef[] = [
   },
   {
     key: 'nacionalidade',
-    label: 'Nacionalidade do Evento',
+    label: 'Classificação do Evento',
     type: 'select',
     required: false,
-    placeholder: 'Selecione a nacionalidade (Nacional ou Internacional)...',
+    placeholder: 'Selecione a classificação...',
     options: OPCOES_NACIONALIDADE,
-    helperText: 'Âmbito do evento (Nacional ou Internacional)',
+    helperText: 'Âmbito do evento: nacional, internacional, regional ou local',
   },
   {
     key: 'evento_local',
@@ -150,6 +158,24 @@ const fields: FieldDef[] = [
       { value: 'Participante', label: 'Participante' },
     ],
   },
+  {
+    key: 'financiadores',
+    label: 'Financiadores do Evento',
+    type: 'text',
+    placeholder: 'Ex: CNPq, CAPES, FAPITEC/SE',
+    helperText: 'Quem custeou a participação (inscrição, diárias, passagens)',
+  },
+  {
+    key: 'valor_total',
+    label: 'Valor Envolvido (R$)',
+    type: 'number',
+    min: 0,
+    placeholder: '0,00',
+    helperText: 'Valor total envolvido na participação, em reais',
+  },
+  campoProjetoVinculado(),
+  campoLinhaVinculada(),
+  campoComprovantePdf('eventos', 'Comprovante do Evento (PDF)'),
   {
     key: 'link_comprovacao',
     label: 'Link de Comprovação',
@@ -186,6 +212,11 @@ export default function Eventos() {
         payload.local_data = comporLocalAno(evento_local, evento_ano)
         if (!payload.tipo) payload.tipo = null
         if (!payload.nacionalidade) payload.nacionalidade = null
+        payload.valor_total =
+          payload.valor_total === '' || payload.valor_total == null
+            ? null
+            : Number(payload.valor_total)
+        if (!payload.comprovante_url) payload.comprovante_url = null
         return payload
       }}
     />

@@ -13,9 +13,17 @@ import {
   SeletorImpactos,
   BadgesImpactosListagem,
 } from '@/components/impacto-social/SeletorImpactos'
+import {
+  campoComprovantePdf,
+  campoProjetoVinculado,
+  campoLinhaVinculada,
+} from '@/components/crud/campos-extras'
 
 const emptyForm = {
   titulo: '',
+  comprovante_url: '',
+  projeto_id: '',
+  linha_pesquisa_id: '',
   ano: null,
   autores: '',
   tipo: 'Software',
@@ -189,6 +197,9 @@ export default function ProducaoTecnicaPage() {
       max: 2035,
       placeholder: 'Ex: 2025',
     },
+    campoProjetoVinculado(),
+    campoLinhaVinculada(),
+    campoComprovantePdf('producao-tecnica', 'Comprovante (PDF)'),
     {
       key: 'link_comprovacao',
       label: 'Link de Comprovação (Repositório / Documento)',
@@ -237,6 +248,7 @@ export default function ProducaoTecnicaPage() {
       fields={fields}
       emptyForm={emptyForm}
       searchKey="titulo"
+      camposVaziosComoNulo={['comprovante_url']}
       entityName="Produção Técnica"
       tableName="producao_tecnica"
       printModule="producao-tecnica"

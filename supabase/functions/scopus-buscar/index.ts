@@ -1,5 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
+import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
+import { autenticarChamador, respostaNegada } from '../_shared/auth.ts'
 import {
   montarScopusQuery,
   extrairDocumentIdsDeBusca,
@@ -17,6 +19,43 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // P-38: a busca gasta a cota da chave Scopus; só responde a usuário autenticado com perfil
+    const urlSupabase = Deno.env.get('SUPABASE_URL')
+    const chaveAnon = Deno.env.get('SUPABASE_ANON_KEY')
+    const chaveServico = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (!urlSupabase || !chaveAnon || !chaveServico) {
+      return new Response(
+        JSON.stringify({
+          sucesso: false,
+          mensagemErro: 'Variáveis de ambiente do Supabase não configuradas na Edge Function.',
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+      )
+    }
+    const adminClient = createClient(urlSupabase, chaveServico, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+    const acesso = await autenticarChamador({
+      authHeader: req.headers.get('Authorization'),
+      buscarUsuario: async (header) => {
+        const userClient = createClient(urlSupabase, chaveAnon, {
+          global: { headers: { Authorization: header } },
+          auth: { persistSession: false, autoRefreshToken: false },
+        })
+        const { data, error } = await userClient.auth.getUser()
+        return error || !data?.user ? null : { id: data.user.id }
+      },
+      buscarPerfil: async (userId) => {
+        const { data } = await adminClient
+          .from('profiles')
+          .select('role, docente_id')
+          .eq('user_id', userId)
+          .maybeSingle()
+        return data
+      },
+    })
+    if (!acesso.ok) return respostaNegada(acesso, corsHeaders)
+
     let body: any = {}
     if (req.method === 'POST') {
       try {

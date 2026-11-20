@@ -17,11 +17,22 @@ import type {
   Premicao,
 } from '@/types/database'
 import { DetalhesImpactoModal } from '@/components/impacto-social/DetalhesImpactoModal'
+import {
+  campoComprovantePdf,
+  campoProjetoVinculado,
+  campoLinhaVinculada,
+} from '@/components/crud/campos-extras'
+import { OPCOES_ABRANGENCIA, OPCOES_ITEM_FICHA_IMPACTO } from '@/lib/vinculos/opcoes'
 
 const emptyForm = {
   titulo: '',
   descricao: '',
   ano: null,
+  item_ficha: '',
+  abrangencia: '',
+  comprovante_url: '',
+  projeto_id: '',
+  linha_pesquisa_id: '',
   link_comprovacao: '',
   observacoes: '',
 }
@@ -53,6 +64,25 @@ const fields: FieldDef[] = [
     max: 2035,
     placeholder: 'Ex: 2025',
   },
+  {
+    key: 'item_ficha',
+    label: 'Item do Quesito 3 da Ficha (Impacto na Sociedade)',
+    type: 'select',
+    placeholder: 'Classifique pelo item da ficha de avaliação...',
+    options: OPCOES_ITEM_FICHA_IMPACTO,
+    helperText: 'Item e subitem do quesito 3 da ficha Engenharias II a que a ação se refere',
+  },
+  {
+    key: 'abrangencia',
+    label: 'Abrangência',
+    type: 'select',
+    placeholder: 'Local, regional, nacional ou internacional...',
+    options: OPCOES_ABRANGENCIA,
+    helperText: 'Alcance do impacto',
+  },
+  campoProjetoVinculado(),
+  campoLinhaVinculada(),
+  campoComprovantePdf('impacto-social', 'Comprovante do Impacto (PDF)'),
   {
     key: 'link_comprovacao',
     label: 'Link de Comprovação',
@@ -230,6 +260,7 @@ export default function ImpactoSocialPage() {
         fields={fields}
         emptyForm={emptyForm}
         searchKey="titulo"
+        camposVaziosComoNulo={['item_ficha', 'abrangencia', 'comprovante_url']}
         entityName="Impacto Social"
         tableName="impacto_social"
         printModule="impacto-social"

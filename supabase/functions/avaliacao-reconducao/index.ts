@@ -2,6 +2,11 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import {
+  autenticarChamador,
+  respostaNegada,
+  restringirAvaliacoesAoDocente,
+} from '../_shared/auth.ts'
+import {
   NOTA_CORTE_PADRAO,
   NOTA_SIMPLIFICACAO_NP,
   NOTA_DISCIPLINAS_TEMPORAIS,
@@ -18,7 +23,7 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
 
-    if (!supabaseUrl || (!supabaseServiceKey && !supabaseAnonKey)) {
+    if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
       return new Response(
         JSON.stringify({
           sucesso: false,
@@ -31,13 +36,37 @@ Deno.serve(async (req: Request) => {
       )
     }
 
+    // P-38: só responde a usuário autenticado com perfil. Antes, sem o cabeçalho Authorization a
+    // consulta caía na chave de serviço e devolvia tudo a qualquer chamada anônima.
     const authHeader = req.headers.get('Authorization')
-    const clientKey = supabaseServiceKey || supabaseAnonKey!
-
-    const supabase = createClient(supabaseUrl, clientKey, {
-      global: {
-        headers: authHeader ? { Authorization: authHeader } : undefined,
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+    const acesso = await autenticarChamador({
+      authHeader,
+      buscarUsuario: async (header) => {
+        const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+          global: { headers: { Authorization: header } },
+          auth: { persistSession: false, autoRefreshToken: false },
+        })
+        const { data, error } = await userClient.auth.getUser()
+        return error || !data?.user ? null : { id: data.user.id }
       },
+      buscarPerfil: async (userId) => {
+        const { data } = await adminClient
+          .from('profiles')
+          .select('role, docente_id')
+          .eq('user_id', userId)
+          .maybeSingle()
+        return data
+      },
+    })
+    if (!acesso.ok) return respostaNegada(acesso, corsHeaders)
+
+    // Os dados são lidos como o próprio usuário (a RLS vale), nunca com a chave de serviço
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader as string } },
+      auth: { persistSession: false, autoRefreshToken: false },
     })
 
     // Avaliação do docente (D-36): janela dos 4 anos civis anteriores ao ano da avaliação.
@@ -228,7 +257,8 @@ Deno.serve(async (req: Request) => {
         pdq_insuficiente,
         nao_aplicavel,
       },
-      avaliacoes,
+      // D-25: o docente vê os cards gerais, mas só a própria avaliação na lista
+      avaliacoes: restringirAvaliacoesAoDocente(avaliacoes, acesso.perfil),
     }
 
     return new Response(JSON.stringify(resposta), {

@@ -7,6 +7,7 @@ import type { LinhaPesquisa } from '@/types/database'
 const emptyForm = {
   nome: '',
   area: '',
+  descricao: '',
 }
 
 const columns: ColumnDef<LinhaPesquisa>[] = [
@@ -42,6 +43,14 @@ const fields: FieldDef[] = [
     type: 'text',
     placeholder: 'Ex: Ciência dos Materiais / Engenharia de Materiais',
     helperText: 'Área de concentração ou temática principal vinculada',
+  },
+  {
+    key: 'descricao',
+    label: 'Descrição da Linha de Pesquisa',
+    type: 'textarea',
+    rows: 5,
+    placeholder: 'Descreva o escopo, os objetivos e os temas da linha...',
+    helperText: 'Texto descritivo da linha (aparece nos relatórios do programa)',
   },
 ]
 

@@ -63,6 +63,11 @@ export type Publicacao = {
   justificativa_indicacao?: string | null
   qualis_origem?: QualisOrigem | null
   qualis_sugestao_justificativa?: string | null
+  fator_impacto_tipo?: 'JCR' | 'FWCI' | 'OUTRO' | null
+  fator_impacto_valor?: number | null
+  fator_impacto_outro?: string
+  projeto_id?: number | null
+  linha_pesquisa_id?: number | null
 }
 
 export type Mobilidade = {
@@ -72,7 +77,7 @@ export type Mobilidade = {
   instituicao: string
   periodo: string
   link: string
-  modalidade: 'nacional' | 'internacional'
+  modalidade: 'nacional' | 'internacional' | 'regional'
   link_comprovacao: string
   observacoes: string
 }
@@ -90,6 +95,11 @@ export type Evento = {
   observacoes: string
   tipo?: EventoTipo | null
   nacionalidade?: EventoNacionalidade | null
+  financiadores?: string
+  valor_total?: number | null
+  comprovante_url?: string | null
+  projeto_id?: number | null
+  linha_pesquisa_id?: number | null
 }
 
 export type PatenteTipoInpi =
@@ -117,6 +127,9 @@ export type Patente = {
   /** Patente com autoria de discente ou egresso (DPPDE, item 2.2.3) */
   com_discente_egresso?: boolean | null
   discentes_egressos?: string | null
+  comprovante_url?: string | null
+  projeto_id?: number | null
+  linha_pesquisa_id?: number | null
 }
 
 export type Discente = {
@@ -179,6 +192,9 @@ export type Orientacao = {
   observacoes: string
   data_defesa?: string | null
   flag_orientador_principal?: boolean
+  titulo_trabalho?: string
+  projeto_id?: number | null
+  linha_pesquisa_id?: number | null
 }
 
 export type ProjetoPesquisaClassificacao = 'institucional' | 'individual'
@@ -198,6 +214,7 @@ export type ProjetoPesquisa = {
   link_comprovacao: string
   observacoes: string
   classificacao?: ProjetoPesquisaClassificacao | null
+  linha_pesquisa_id?: number | null
 }
 
 export type ProjetoDiscente = {
@@ -227,6 +244,8 @@ export type Disciplina = {
   docente_id?: number | null
   nivel?: NivelDisciplina | null
   docentes_ids?: number[]
+  ementa?: string
+  referencias?: string
 }
 
 export type TipoIniciacaoCientifica =
@@ -249,6 +268,7 @@ export type IniciacaoCientifica = {
   orientacao_id?: number | null
   created_at?: string
   updated_at?: string
+  linha_pesquisa_id?: number | null
 }
 
 export type ProjetoParticipante = {
@@ -266,6 +286,9 @@ export type ProducaoTecnica = {
   tipo: 'Software' | 'Patente' | 'Relatório'
   link_comprovacao: string
   observacoes: string
+  comprovante_url?: string | null
+  projeto_id?: number | null
+  linha_pesquisa_id?: number | null
 }
 
 export type ImpactoSocial = {
@@ -275,6 +298,11 @@ export type ImpactoSocial = {
   ano: number | null
   link_comprovacao: string
   observacoes: string
+  item_ficha?: string | null
+  abrangencia?: string | null
+  comprovante_url?: string | null
+  projeto_id?: number | null
+  linha_pesquisa_id?: number | null
 }
 
 export type ImpactoVinculoEntidade =
@@ -311,6 +339,10 @@ export type Premicao = {
   instituicao: string
   link_comprovacao: string
   observacoes: string
+  abrangencia?: string | null
+  tipo_premio?: string | null
+  comprovante_url?: string | null
+  projeto_id?: number | null
 }
 
 export type Premiacao = Premicao
@@ -319,6 +351,7 @@ export type LinhaPesquisa = {
   id: number
   nome: string
   area?: string | null
+  descricao?: string
   created_at?: string
 }
 

@@ -148,4 +148,13 @@ Toda operação relevante de criação, edição ou exclusão disparada pelos co
 | **Segredos Privados de API**  | Supabase Edge Functions Secrets Vault | `Deno.env.get('NOME')`                | `SCOPUS_API_KEY`                              |
 | **Credencial Administrativa** | Supabase Auth Service Role            | Automático em Edge Functions internas | `SUPABASE_SERVICE_ROLE_KEY`                   |
 
+### Autenticação das Edge Functions (D-38, P-38)
+
+`avaliacao-reconducao`, `relatorio-lacunas` e `scopus-buscar` **só respondem a usuário autenticado com perfil** (cabeçalho `Authorization: Bearer <token do usuário>`; o token é validado com `auth.getUser()` e o perfil é lido em `profiles`). Sem login: **401**; usuário sem perfil ou com papel desconhecido: **403**. A regra está em um módulo único, `supabase/functions/_shared/auth.ts`, com testes (`src/lib/reconducao/auth-edge.test.ts`).
+
+- Os dados são lidos **como o próprio usuário** (a RLS vale); a chave de serviço serve só para ler o perfil de quem chama.
+- `avaliacao-reconducao`: o **docente** recebe os cards gerais e só a **própria** avaliação na lista (D-25), agora também no servidor.
+- `relatorio-lacunas`: o **docente** recebe 403 (ele vê só as lacunas dos próprios registros, calculadas no navegador).
+- Antes (até 21/11/2026), as duas primeiras caíam na chave de serviço quando não vinha o cabeçalho e devolviam todos os dados a qualquer chamada anônima.
+
 > **Regra Obrigatória:** Segredos de serviços externos de backend (como a chave da Elsevier) nunca devem ser injetados em variáveis de ambiente do cliente e nunca devem ser trafegados para o navegador.

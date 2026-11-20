@@ -90,6 +90,8 @@ interface CrudPageProps<T extends { id: number | string }> {
     formData: Record<string, any>,
     editingId: number | string | null,
   ) => Record<string, any>
+  /** Campos de texto que viram null quando vazios (ex.: colunas com CHECK que não aceitam ''). */
+  camposVaziosComoNulo?: string[]
   /** Prepara o formulário ao editar (ex.: separar um campo composto em dois campos de tela). */
   prepararFormularioEdicao?: (item: T) => Record<string, any>
 }
@@ -119,6 +121,7 @@ export function CrudPage<T extends { id: number | string }>({
   toolbarExtra,
   transformSubmitData,
   prepararFormularioEdicao,
+  camposVaziosComoNulo,
 }: CrudPageProps<T>) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -393,6 +396,9 @@ export function CrudPage<T extends { id: number | string }>({
         const parsed = Number(submitData[key])
         if (!isNaN(parsed)) submitData[key] = parsed
       }
+    }
+    for (const chave of camposVaziosComoNulo ?? []) {
+      if (submitData[chave] === '' || submitData[chave] === undefined) submitData[chave] = null
     }
     if (typeof submitData.cpf === 'string') {
       submitData.cpf = submitData.cpf.replace(/\D/g, '')

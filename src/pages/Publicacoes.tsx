@@ -30,6 +30,13 @@ import type {
 } from '@/types/database'
 import { qualisService } from '@/services/qualis'
 import { usePeriodo } from '@/hooks/use-periodo'
+import { carregarOpcoesProjetos, carregarOpcoesLinhas } from '@/components/crud/campos-extras'
+import { OPCOES_TIPO_FATOR_IMPACTO, textoFatorImpacto } from '@/lib/vinculos/opcoes'
+import {
+  atualizarFatorImpacto,
+  fatorImpactoParaFormulario,
+  type TipoFatorImpacto,
+} from '@/lib/vinculos/fator-impacto'
 import { anoReferenciaDoPeriodo, rotuloPeriodo } from '@/lib/periodos/periodo'
 import { useAuth } from '@/hooks/use-auth'
 import { podeCriarNaTabela, podeEditarRegistro, podeExcluirRegistro } from '@/services/permissoes'
@@ -90,6 +97,11 @@ const emptyForm: Omit<Publicacao, 'id'> = {
   link_comprovacao: '',
   observacoes: '',
   fator_impacto_jcr: null,
+  fator_impacto_tipo: null,
+  fator_impacto_valor: null,
+  fator_impacto_outro: '',
+  projeto_id: null,
+  linha_pesquisa_id: null,
   estrato_qualis: null,
   tipo_producao: null,
   indicacao_nivel: null,
@@ -177,6 +189,16 @@ export default function Publicacoes() {
 
   const { profile } = useAuth()
   const { periodo, janelaLattes } = usePeriodo()
+  const [opcoesProjetos, setOpcoesProjetos] = useState<{ value: string; label: string }[]>([])
+  const [opcoesLinhas, setOpcoesLinhas] = useState<{ value: string; label: string }[]>([])
+  useEffect(() => {
+    carregarOpcoesProjetos()
+      .then(setOpcoesProjetos)
+      .catch(() => setOpcoesProjetos([]))
+    carregarOpcoesLinhas()
+      .then(setOpcoesLinhas)
+      .catch(() => setOpcoesLinhas([]))
+  }, [])
   const ANO_INICIO = periodo.anoInicio
   const ANO_FIM = periodo.anoFim
   const rotuloQuadrienio = rotuloPeriodo(periodo)
@@ -392,7 +414,11 @@ export default function Publicacoes() {
 
   const handleOpen = async (pub?: Publicacao) => {
     setEditingId(pub?.id ?? null)
-    setFormData(pub ?? { ...emptyForm, ano: anoReferenciaDoPeriodo(periodo) })
+    setFormData(
+      pub
+        ? fatorImpactoParaFormulario(pub)
+        : { ...emptyForm, ano: anoReferenciaDoPeriodo(periodo) },
+    )
     if (pub?.id) {
       const vinculados = todasPubsDocentes
         .filter((pd) => pd.publicacao_id === pub.id)
@@ -672,29 +698,128 @@ export default function Publicacoes() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="pub-jcr">Fator de Impacto (JCR)</Label>
-                        <Input
-                          id="pub-jcr"
-                          type="number"
-                          step="0.001"
-                          min="0"
-                          max="999.999"
-                          placeholder="Ex: 3.850"
-                          value={
-                            formData.fator_impacto_jcr !== null &&
-                            formData.fator_impacto_jcr !== undefined
-                              ? formData.fator_impacto_jcr
-                              : ''
-                          }
-                          onChange={(e) => {
-                            const val = e.target.value === '' ? null : parseFloat(e.target.value)
+                        <Label htmlFor="pub-fi-tipo">Fator de Impacto</Label>
+                        <div className="flex gap-2">
+                          <Select
+                            value={formData.fator_impacto_tipo || 'nenhum'}
+                            onValueChange={(val) =>
+                              setFormData(
+                                atualizarFatorImpacto(formData, {
+                                  tipo: val === 'nenhum' ? null : (val as TipoFatorImpacto),
+                                }),
+                              )
+                            }
+                          >
+                            <SelectTrigger id="pub-fi-tipo" className="bg-white w-[120px] shrink-0">
+                              <SelectValue placeholder="Tipo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="nenhum">Nenhum</SelectItem>
+                              {OPCOES_TIPO_FATOR_IMPACTO.map((o) => (
+                                <SelectItem key={o.value} value={o.value}>
+                                  {o.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            id="pub-fi-valor"
+                            aria-label="Valor do fator de impacto"
+                            type="number"
+                            step="0.001"
+                            min="0"
+                            max="999.999"
+                            placeholder="Ex: 3.850"
+                            disabled={!formData.fator_impacto_tipo}
+                            value={
+                              formData.fator_impacto_valor !== null &&
+                              formData.fator_impacto_valor !== undefined
+                                ? formData.fator_impacto_valor
+                                : ''
+                            }
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? null : parseFloat(e.target.value)
+                              setFormData(
+                                atualizarFatorImpacto(formData, {
+                                  valor: val !== null && !isNaN(val) ? val : null,
+                                }),
+                              )
+                            }}
+                            className="bg-white"
+                          />
+                        </div>
+                        {formData.fator_impacto_tipo === 'OUTRO' && (
+                          <Input
+                            aria-label="Nome do indicador de impacto"
+                            placeholder="Nome do indicador (ex.: CiteScore, SJR)"
+                            value={formData.fator_impacto_outro || ''}
+                            onChange={(e) =>
+                              setFormData(
+                                atualizarFatorImpacto(formData, { outro: e.target.value }),
+                              )
+                            }
+                            className="bg-white"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="pub-projeto">Projeto de pesquisa vinculado</Label>
+                        <Select
+                          value={formData.projeto_id ? String(formData.projeto_id) : 'sem_vinculo'}
+                          onValueChange={(val) =>
                             setFormData({
                               ...formData,
-                              fator_impacto_jcr: val !== null && !isNaN(val) ? val : null,
+                              projeto_id: val === 'sem_vinculo' ? null : Number(val),
                             })
-                          }}
-                          className="bg-white"
-                        />
+                          }
+                        >
+                          <SelectTrigger id="pub-projeto" className="bg-white">
+                            <SelectValue placeholder="Selecione o projeto..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="sem_vinculo">— Sem vínculo —</SelectItem>
+                            {opcoesProjetos
+                              .filter((o) => o.value !== '')
+                              .map((o) => (
+                                <SelectItem key={o.value} value={o.value}>
+                                  {o.label}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="pub-linha">Linha de pesquisa vinculada</Label>
+                        <Select
+                          value={
+                            formData.linha_pesquisa_id
+                              ? String(formData.linha_pesquisa_id)
+                              : 'sem_vinculo'
+                          }
+                          onValueChange={(val) =>
+                            setFormData({
+                              ...formData,
+                              linha_pesquisa_id: val === 'sem_vinculo' ? null : Number(val),
+                            })
+                          }
+                        >
+                          <SelectTrigger id="pub-linha" className="bg-white">
+                            <SelectValue placeholder="Selecione a linha..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="sem_vinculo">— Sem vínculo —</SelectItem>
+                            {opcoesLinhas
+                              .filter((o) => o.value !== '')
+                              .map((o) => (
+                                <SelectItem key={o.value} value={o.value}>
+                                  {o.label}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
 
@@ -1045,7 +1170,7 @@ export default function Publicacoes() {
                   Ano
                 </TableHead>
                 <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
-                  Fator de Impacto (JCR)
+                  Fator de Impacto
                 </TableHead>
                 <TableHead className="font-semibold text-left text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   Coautoria P²CEM
@@ -1166,9 +1291,7 @@ export default function Publicacoes() {
                       <TableCell className="text-slate-700">{toTitleCase(p.periodico)}</TableCell>
                       <TableCell className="font-medium">{p.ano}</TableCell>
                       <TableCell className="font-mono text-xs font-semibold text-slate-800">
-                        {p.fator_impacto_jcr !== null && p.fator_impacto_jcr !== undefined
-                          ? Number(p.fator_impacto_jcr).toFixed(3)
-                          : '—'}
+                        {textoFatorImpacto(p) || '—'}
                       </TableCell>
                       <TableCell>
                         {(() => {

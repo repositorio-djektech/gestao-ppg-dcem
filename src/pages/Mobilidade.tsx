@@ -4,6 +4,7 @@ import { mobilidadeService } from '@/services/mobilidade'
 import { Badge } from '@/components/ui/badge'
 import { Plane } from 'lucide-react'
 import type { Mobilidade } from '@/types/database'
+import { OPCOES_MODALIDADE_MOBILIDADE } from '@/lib/vinculos/opcoes'
 
 const emptyForm = {
   tipo: 'docente',
@@ -38,7 +39,9 @@ const columns: ColumnDef<Mobilidade>[] = [
         className={`border-0 capitalize ${
           m.modalidade === 'internacional'
             ? 'bg-purple-50 text-purple-700'
-            : 'bg-emerald-50 text-emerald-700'
+            : m.modalidade === 'regional'
+              ? 'bg-amber-50 text-amber-700'
+              : 'bg-emerald-50 text-emerald-700'
         }`}
       >
         {m.modalidade}
@@ -76,13 +79,10 @@ const fields: FieldDef[] = [
   },
   {
     key: 'modalidade',
-    label: 'Modalidade',
+    label: 'Classificação',
     type: 'select',
     required: true,
-    options: [
-      { value: 'nacional', label: 'Nacional' },
-      { value: 'internacional', label: 'Internacional' },
-    ],
+    options: OPCOES_MODALIDADE_MOBILIDADE,
   },
   {
     key: 'periodo',

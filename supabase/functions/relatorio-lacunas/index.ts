@@ -1,6 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
+import { autenticarChamador, respostaNegada } from '../_shared/auth.ts'
 
 export type SeveridadeLacuna = 'critica' | 'atencao'
 export type TabelaAlvoLacuna =
@@ -688,7 +689,7 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
 
-    if (!supabaseUrl || (!supabaseServiceKey && !supabaseAnonKey)) {
+    if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
       return new Response(
         JSON.stringify({
           sucesso: false,
@@ -701,14 +702,48 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // Usamos o cabeçalho Authorization da requisição se fornecido, ou a service key
+    // P-38: só responde a usuário autenticado com perfil. Antes, sem o cabeçalho Authorization a
+    // consulta caía na chave de serviço e devolvia tudo a qualquer chamada anônima.
     const authHeader = req.headers.get('Authorization')
-    const clientKey = supabaseServiceKey || supabaseAnonKey!
-
-    const supabase = createClient(supabaseUrl, clientKey, {
-      global: {
-        headers: authHeader ? { Authorization: authHeader } : undefined,
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+    const acesso = await autenticarChamador({
+      authHeader,
+      buscarUsuario: async (header) => {
+        const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+          global: { headers: { Authorization: header } },
+          auth: { persistSession: false, autoRefreshToken: false },
+        })
+        const { data, error } = await userClient.auth.getUser()
+        return error || !data?.user ? null : { id: data.user.id }
       },
+      buscarPerfil: async (userId) => {
+        const { data } = await adminClient
+          .from('profiles')
+          .select('role, docente_id')
+          .eq('user_id', userId)
+          .maybeSingle()
+        return data
+      },
+    })
+    if (!acesso.ok) return respostaNegada(acesso, corsHeaders)
+    // O relatório completo não é do docente: ele vê só as lacunas dos próprios registros (D-25),
+    // que a tela calcula no próprio navegador
+    if (acesso.perfil.role === 'docente') {
+      return respostaNegada(
+        {
+          status: 403,
+          mensagem: 'O relatório completo de lacunas não está disponível ao docente.',
+        },
+        corsHeaders,
+      )
+    }
+
+    // Os dados são lidos como o próprio usuário (a RLS vale), nunca com a chave de serviço
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader as string } },
+      auth: { persistSession: false, autoRefreshToken: false },
     })
 
     // Consultas eficientes em paralelo sobre as tabelas base + tabelas de vínculos estruturados (R4)

@@ -60,6 +60,8 @@ export async function uploadComprovanteProjeto(
   projetoId: number | string,
   arquivo: File,
   onProgresso?: (progresso: number) => void,
+  /** Pasta dentro do bucket (H-31): `projetos`, `eventos`, `premiacoes`... Padrão: `projetos`. */
+  pasta: string = 'projetos',
 ): Promise<UploadPdfResultado> {
   if (!arquivo.type.includes('pdf') && !arquivo.name.toLowerCase().endsWith('.pdf')) {
     throw new Error('O comprovante deve ser obrigatoriamente um arquivo PDF.')
@@ -75,7 +77,8 @@ export async function uploadComprovanteProjeto(
   // Nome padronizado: projeto-{id}-{timestamp}.pdf
   const timestamp = Date.now()
   const nomeLimpo = arquivo.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-  const storagePath = `projetos/${projetoId || 'novo'}/${timestamp}-${nomeLimpo}`
+  const pastaLimpa = pasta.replace(/[^a-zA-Z0-9_-]/g, '') || 'projetos'
+  const storagePath = `${pastaLimpa}/${projetoId || 'novo'}/${timestamp}-${nomeLimpo}`
 
   const { data: uploadData, error: uploadError } = await supabase.storage
     .from('comprovantes-projetos')

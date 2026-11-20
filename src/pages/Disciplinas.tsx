@@ -23,6 +23,8 @@ const emptyForm = {
   nivel: 'pos_graduacao',
   creditos: 0,
   ano_semestre: '',
+  ementa: '',
+  referencias: '',
   link_comprovacao: '',
   observacoes: '',
   docentes_ids: [] as number[],
@@ -272,6 +274,20 @@ export default function Disciplinas() {
       placeholder: 'Ex: 2024.1',
     },
     {
+      key: 'ementa',
+      label: 'Ementa',
+      type: 'textarea',
+      rows: 5,
+      placeholder: 'Ementa da disciplina...',
+    },
+    {
+      key: 'referencias',
+      label: 'Referências Bibliográficas',
+      type: 'textarea',
+      rows: 5,
+      placeholder: 'Uma referência por linha...',
+    },
+    {
       key: 'link_comprovacao',
       label: 'Link de Comprovação',
       type: 'url',
@@ -281,7 +297,7 @@ export default function Disciplinas() {
       key: 'observacoes',
       label: 'Observações',
       type: 'textarea',
-      placeholder: 'Ementa resumida ou informações adicionais...',
+      placeholder: 'Informações adicionais...',
     },
   ]
 
