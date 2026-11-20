@@ -74,8 +74,17 @@ describe('Service obterAvaliacaoReconducao (Etapa C)', () => {
     expect(resultado.dados?.avaliacoes).toHaveLength(1)
     expect(resultado.dados?.avaliacoes[0].nome).toBe('Ledjane Silva Barreto')
     expect(resultado.dados?.avaliacoes[0].veredito).toBe('RECONDUZIDO')
-    expect(mockInvoke).toHaveBeenCalledWith('avaliacao-reconducao', {
-      body: { anoInicio: 2025, anoFim: 2028 },
+    // Avaliação em 2029 usa os 4 anos anteriores: 2025 a 2028 (D-36)
+    const resultado2 = await obterAvaliacaoReconducao({ invokeFn: mockInvoke, anoAvaliacao: 2029 })
+    expect(resultado2.sucesso).toBe(true)
+    expect(mockInvoke).toHaveBeenLastCalledWith('avaliacao-reconducao', {
+      body: { anoInicio: 2025, anoFim: 2028, anoAvaliacao: 2029 },
+    })
+    // Sem ano informado, vale o ano corrente (janela dos 4 anos anteriores)
+    const ano = new Date().getFullYear()
+    await obterAvaliacaoReconducao({ invokeFn: mockInvoke })
+    expect(mockInvoke).toHaveBeenLastCalledWith('avaliacao-reconducao', {
+      body: { anoInicio: ano - 4, anoFim: ano - 1, anoAvaliacao: ano },
     })
   })
 
@@ -198,21 +207,20 @@ describe('Service obterAvaliacaoReconducao (Etapa C)', () => {
       expect(resultado.criterio_i.atendido).toBe(true)
       expect(resultado.criterio_i.quantidade).toBe(2)
 
-      // NP estrito só conta publicações com coautoria confirmada (nenhuma aqui);
-      // as 2 publicações com JCR 7.4 e 11.1 >= 1.0 entram no NP teto como pendentes
+      // Só conta a publicação com coautoria confirmada (nenhuma aqui): as 2 ficam pendentes
       expect(resultado.pdq_detalhes.np).toBe(0)
       expect(resultado.pdq_detalhes.np_teto).toBe(2)
+      expect(resultado.pdq_detalhes.np_pendente).toBe(2)
 
-      // Orientações ainda ativas (não concluídas): titulações MSc + DSc = 0 < 2
+      // Orientações ainda ativas (não concluídas): M + D = 0, ATD não calculável (entra como 0)
       expect(resultado.pdq_detalhes.titulacoes_total).toBe(0)
-      expect(resultado.pdq_detalhes.precondicao_atendida).toBe(false)
-      expect(resultado.pdq_detalhes.pdq).toBeNull()
+      expect(resultado.pdq_detalhes.atd_calculavel).toBe(false)
+      expect(resultado.pdq_detalhes.pdq).toBe(0)
 
-      // Veredito PDQ_INSUFICIENTE (pois categoria é permanente e faltam titulações concluídas)
-      expect(resultado.veredito).toBe('PDQ_INSUFICIENTE')
-      expect(resultado.motivos.some((m) => m.includes('mínimo de 2 titulações concluídas'))).toBe(
-        true,
-      )
+      // Sem projeto financiado, o critério III falha: não atende
+      expect(resultado.criterio_iii.atendido).toBe(false)
+      expect(resultado.veredito).toBe('NAO_ATENDE')
+      expect(resultado.motivos.some((m) => m.includes('nota de corte'))).toBe(true)
     })
 
     it('avalia Ledjane integrando vínculos estruturados sem erro e mantendo consistência', () => {
@@ -324,7 +332,8 @@ describe('Service obterAvaliacaoReconducao (Etapa C)', () => {
       expect(resultado.pdq_detalhes.np).toBe(2)
       expect(resultado.pdq_detalhes.msc).toBe(1)
       expect(resultado.pdq_detalhes.dsc).toBe(1)
-      expect(resultado.pdq_detalhes.pdq).toBe(1.0) // 2 / (1 + 1) = 1.0
+      // Sem Qualis cadastrado: ATD e DPIDE1 = 0; DPTDE1 = 2 artigos com coautoria (>= nota de corte 1,0)
+      expect(resultado.pdq_detalhes.pdq).toBe(2)
       expect(resultado.veredito).toBe('RECONDUZIDO')
       expect(resultado.motivos).toHaveLength(0)
     })

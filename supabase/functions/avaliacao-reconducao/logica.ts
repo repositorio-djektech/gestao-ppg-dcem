@@ -1,10 +1,14 @@
-// Período padrão (2025-2028). A Edge Function usa o período ativo do banco ou o enviado na requisição;
-// estas constantes só valem como reserva (D-32).
+import { avaliarCriterioIV, NOTA_CORTE_PADRAO, NOTA_METODOLOGICA_PDQ } from './pdq.ts'
+
+// Período padrão (2025-2028), só como reserva. A avaliação do docente usa a janela dos 4 anos civis
+// anteriores ao ano da avaliação (enviada na requisição ou calculada pelo ano corrente), D-36.
 export const ANO_INICIO = 2025
 export const ANO_FIM = 2028
 
-export const NOTA_SIMPLIFICACAO_NP =
-  'O NP estrito considera apenas publicações com fator de impacto JCR >= 1.0 com coautoria confirmada com orientandos ou egressos do P²CEM. Publicações ainda não confirmadas são apresentadas como potenciais no NP TETO para revisão pelo colegiado.'
+export { NOTA_CORTE_PADRAO }
+
+/** Nota metodológica do critério IV (PDQ da IN 02/2026). */
+export const NOTA_SIMPLIFICACAO_NP = NOTA_METODOLOGICA_PDQ
 
 export const NOTA_DISCIPLINAS_TEMPORAIS =
   'Quando a disciplina vinculada ao docente possui campo de ano/período (ano_semestre), valida-se a pertinência ao período de avaliação em curso. Caso o campo não contenha ano identificável, a disciplina vinculada é aceita como evidência de docência no programa e informada no detalhe.'
@@ -266,48 +270,6 @@ export function projetoNoPeriodo(proj: any, inicio = ANO_INICIO, fim = ANO_FIM):
   return true
 }
 
-export function calcularPDQ(
-  np: number,
-  msc: number,
-  dsc: number,
-  np_teto?: number,
-  np_pendente?: number,
-) {
-  const titulacoes_total = msc + dsc
-  const precondicao_atendida = titulacoes_total >= 2
-
-  if (!precondicao_atendida) {
-    return {
-      np,
-      np_teto: np_teto ?? np,
-      np_pendente: np_pendente ?? 0,
-      msc,
-      dsc,
-      titulacoes_total,
-      precondicao_atendida: false,
-      pdq: null,
-      meta_atingida: false,
-      observacao_simplificacao_coautoria: NOTA_SIMPLIFICACAO_NP,
-    }
-  }
-
-  const pdqCalculado = Number((np / titulacoes_total).toFixed(3))
-  const meta_atingida = pdqCalculado >= 1.0
-
-  return {
-    np,
-    np_teto: np_teto ?? np,
-    np_pendente: np_pendente ?? 0,
-    msc,
-    dsc,
-    titulacoes_total,
-    precondicao_atendida: true,
-    pdq: pdqCalculado,
-    meta_atingida,
-    observacao_simplificacao_coautoria: NOTA_SIMPLIFICACAO_NP,
-  }
-}
-
 export function avaliarDocenteLogica(params: {
   docente: any
   orientacoes: any[]
@@ -317,6 +279,8 @@ export function avaliarDocenteLogica(params: {
   publicacoes: any[]
   publicacoesDocentes?: any[]
   coautoresPrograma?: any[]
+  egressos?: any[]
+  notaCorte?: number
   anoInicio?: number
   anoFim?: number
 }) {
@@ -329,6 +293,8 @@ export function avaliarDocenteLogica(params: {
     publicacoes,
     publicacoesDocentes = [],
     coautoresPrograma = [],
+    egressos = [],
+    notaCorte = NOTA_CORTE_PADRAO,
     anoInicio = ANO_INICIO,
     anoFim = ANO_FIM,
   } = params
@@ -404,11 +370,13 @@ export function avaliarDocenteLogica(params: {
       : `Nenhum projeto com financiamento identificado no quadriênio (${anoInicio}–${anoFim}).`,
   }
 
-  // 4. Critério IV: PDQ = NP / (MSc + DSc) >= 1.0 com (MSc + DSc) >= 2
+  // 4. Critério IV: PDQ = (2 × ATD) + DPIDE1 + DPTDE1 >= nota de corte (IN 02/2026, D-36)
+  // M e D: concluídos no período, como orientador principal (coorientação não conta, D-19)
   const tituladasNoPeriodo = (nivel: string) =>
     orientacoesDoDocente.filter((ori) => {
       const tipo = (ori.tipo || '').toLowerCase().trim()
       return (
+        ori.flag_orientador_principal === true &&
         orientacaoConcluida(ori) &&
         tipo.includes(nivel) &&
         anoNoPeriodo(obterAnoOrientacaoDefesa(ori), anoInicio, anoFim)
@@ -416,25 +384,6 @@ export function avaliarDocenteLogica(params: {
     })
   const msc = tituladasNoPeriodo('mestrado').length
   const dsc = tituladasNoPeriodo('doutorado').length
-
-  const mapaCoautoria = new Map<
-    number,
-    { temCoautoria: boolean; semCoautoria: boolean; nomes: string[] }
-  >()
-  for (const c of coautoresPrograma) {
-    const entry = mapaCoautoria.get(c.publicacao_id) || {
-      temCoautoria: false,
-      semCoautoria: false,
-      nomes: [],
-    }
-    if (c.tipo === 'orientando' || c.tipo === 'egresso') {
-      entry.temCoautoria = true
-      if (c.nome_citado) entry.nomes.push(c.nome_citado)
-    } else if (c.tipo === 'sem_coautoria') {
-      entry.semCoautoria = true
-    }
-    mapaCoautoria.set(c.publicacao_id, entry)
-  }
 
   // R4: Identificação estruturada das publicações do docente via publicacoes_docentes
   // Usa vínculos estruturados se existirem; se não houver registros em publicacoes_docentes
@@ -445,66 +394,34 @@ export function avaliarDocenteLogica(params: {
   const temVinculosEstruturadosDocente = pubsDocentesVinc.length > 0
   const idsPubsEstruturadas = new Set(pubsDocentesVinc.map((pd: any) => pd.publicacao_id))
 
+  // Publicações do docente na janela da avaliação (sem corte por JCR: a IN usa o Qualis)
   const publicacoesDocenteNoPeriodo = publicacoes.filter((pub) => {
     if (!anoNoPeriodo(pub.ano, anoInicio, anoFim)) return false
-
-    const pertenceAoDocente = temVinculosEstruturadosDocente
+    return temVinculosEstruturadosDocente
       ? idsPubsEstruturadas.has(pub.id)
       : textoContemDocente(pub.autores, termosNome)
-    if (!pertenceAoDocente) return false
-
-    const jcr =
-      pub.fator_impacto_jcr !== null && pub.fator_impacto_jcr !== undefined
-        ? Number(pub.fator_impacto_jcr)
-        : null
-    return jcr !== null && !isNaN(jcr) && jcr >= 1.0
   })
 
-  const confirmadasList: any[] = []
-  const pendentesList: any[] = []
-  const semCoautoriaList: any[] = []
-
-  for (const pub of publicacoesDocenteNoPeriodo) {
-    const st = mapaCoautoria.get(pub.id)
-    if (st?.temCoautoria) {
-      confirmadasList.push({
-        ...pub,
-        status_coautoria: 'confirmado',
-        coautores_programa_nomes: st.nomes,
-      })
-    } else if (st?.semCoautoria) {
-      semCoautoriaList.push({
-        ...pub,
-        status_coautoria: 'sem_coautoria',
-      })
-    } else {
-      pendentesList.push({
-        ...pub,
-        status_coautoria: 'pendente',
-      })
-    }
-  }
-
-  const np = confirmadasList.length
-  const np_teto = publicacoesDocenteNoPeriodo.length
-  const np_pendente = pendentesList.length
-
-  const pdq_detalhes = calcularPDQ(np, msc, dsc, np_teto, np_pendente)
-  const critIV_atendido = pdq_detalhes.meta_atingida
-
-  let detalheCritIV = ''
-  if (!pdq_detalhes.precondicao_atendida) {
-    detalheCritIV = `Não atingiu o mínimo de 2 titulações concluídas no período (MSc + DSc = ${pdq_detalhes.titulacoes_total}). PDQ indefinido/insuficiente.`
-  } else if (pdq_detalhes.meta_atingida) {
-    detalheCritIV = `PDQ ${pdq_detalhes.pdq} atinge a meta mínima (>= 1.0). NP=${np} confirmada(s) (teto: ${np_teto}, pendentes: ${np_pendente}), MSc=${msc}, DSc=${dsc}.`
-  } else {
-    detalheCritIV = `PDQ ${pdq_detalhes.pdq} abaixo da meta mínima (>= 1.0). NP=${np} confirmada(s) (teto: ${np_teto}, pendentes: ${np_pendente}), MSc=${msc}, DSc=${dsc}.`
-  }
+  const critIV = avaliarCriterioIV({
+    publicacoesDoDocente: publicacoesDocenteNoPeriodo,
+    coautoresPrograma,
+    egressos,
+    msc,
+    dsc,
+    notaCorte,
+  })
+  const pdq_detalhes = critIV.detalhes
+  const confirmadasList = critIV.confirmadas
+  const pendentesList = critIV.pendentes
+  const semCoautoriaList = critIV.semCoautoria
+  const np = pdq_detalhes.np
+  const np_teto = pdq_detalhes.np_teto
+  const critIV_atendido = critIV.atendido
 
   const criterio_iv = {
     atendido: critIV_atendido,
     quantidade: np,
-    detalhe: detalheCritIV,
+    detalhe: critIV.detalhe,
     itens: confirmadasList,
   }
 
@@ -525,12 +442,8 @@ export function avaliarDocenteLogica(params: {
       `Critério III não atendido: nenhuma participação em projeto de pesquisa financiado no período.`,
     )
   }
-  if (!pdq_detalhes.precondicao_atendida) {
-    motivos.push(
-      `Critério IV não atendido: não atingiu o mínimo de 2 titulações concluídas no período (MSc + DSc = ${pdq_detalhes.titulacoes_total} < 2).`,
-    )
-  } else if (!pdq_detalhes.meta_atingida) {
-    motivos.push(`Critério IV não atendido: índice PDQ (${pdq_detalhes.pdq}) inferior a 1,0.`)
+  if (critIV.motivo) {
+    motivos.push(critIV.motivo)
   }
 
   let veredito = 'NAO_APLICAVEL'
@@ -549,7 +462,8 @@ export function avaliarDocenteLogica(params: {
     const todosAtendidos = critI_atendido && critII_atendido && critIII_atendido && critIV_atendido
     if (todosAtendidos) {
       veredito = 'RECONDUZIDO'
-    } else if (!pdq_detalhes.precondicao_atendida) {
+    } else if (critI_atendido && critII_atendido && critIII_atendido && !critIV_atendido) {
+      // I a III atendidos; só o PDQ ficou abaixo da nota de corte
       veredito = 'PDQ_INSUFICIENTE'
     } else {
       veredito = 'NAO_ATENDE'

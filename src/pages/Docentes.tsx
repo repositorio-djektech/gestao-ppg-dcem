@@ -22,6 +22,9 @@ import {
 } from '@/components/PeriodoFiltro'
 import { docentesComAtividadeNoPeriodo, type DadosAtividadeDocente } from '@/lib/periodos/filtro'
 import { carregarDadosAtividadeDocentes } from '@/services/atividade-docentes'
+import { obterAvaliacaoReconducao } from '@/services/reconducao'
+import { restringirRelatorioReconducaoAoDocente } from '@/lib/reconducao/escopo-docente'
+import type { AvaliacaoDocenteReconducao } from '@/lib/reconducao/types'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -157,6 +160,39 @@ export default function Docentes() {
   }, [docentes, role, docenteIdLogado])
   const canDeleteGlobal = !isCapes && (role === 'suporte' || role === 'coordenador')
   const PER_PAGE = 20
+
+  // PDQ da avaliação do ano (IN 02/2026, D-36): janela dos 4 anos anteriores e nota de corte do ano.
+  // O docente só vê o próprio (mesma regra da tela de Recondução, D-25). Melhor esforço.
+  const [pdqPorDocente, setPdqPorDocente] = useState<Map<number, AvaliacaoDocenteReconducao>>(
+    new Map(),
+  )
+  const [infoAvaliacao, setInfoAvaliacao] = useState<{
+    ano: number
+    inicio: number
+    fim: number
+    corte: number
+  } | null>(null)
+  useEffect(() => {
+    let ativo = true
+    obterAvaliacaoReconducao()
+      .then((res) => {
+        if (!ativo || !res.sucesso || !res.dados) return
+        const rel = restringirRelatorioReconducaoAoDocente(res.dados, role, docenteIdLogado)
+        setPdqPorDocente(new Map(rel.avaliacoes.map((a) => [Number(a.docente_id), a])))
+        if (rel.avaliacao) {
+          setInfoAvaliacao({
+            ano: rel.avaliacao.ano_avaliacao,
+            inicio: rel.avaliacao.ano_inicio,
+            fim: rel.avaliacao.ano_fim,
+            corte: rel.avaliacao.nota_corte,
+          })
+        }
+      })
+      .catch((err) => console.warn('Não foi possível calcular o PDQ dos docentes:', err))
+    return () => {
+      ativo = false
+    }
+  }, [role, docenteIdLogado])
 
   // Filtro por período (H-28): docentes com atividade (publicação, orientação ou projeto) no intervalo
   const [periodoFiltro, setPeriodoFiltro] = useState<ValorPeriodoFiltro>(PERIODO_FILTRO_VAZIO)
@@ -706,7 +742,14 @@ export default function Docentes() {
                 <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
                   OpenAlex
                 </TableHead>
-                <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
+                <TableHead
+                  className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap"
+                  title={
+                    infoAvaliacao
+                      ? `PDQ da avaliação de ${infoAvaliacao.ano} (produção ${infoAvaliacao.inicio}–${infoAvaliacao.fim}); nota de corte ${infoAvaliacao.corte}`
+                      : 'PDQ da avaliação do ano (IN 02/2026)'
+                  }
+                >
                   PDQ DCEM
                 </TableHead>
                 <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap w-[110px]">
@@ -938,7 +981,25 @@ export default function Docentes() {
                         </div>
                       </TableCell>
                       <TableCell className="text-left font-medium text-slate-500">
-                        {/* Coluna PDQ DCEM - reservada no frontend, células vazias */}
+                        {(() => {
+                          const av = pdqPorDocente.get(Number(d.id))
+                          const pdq = av?.pdq_detalhes?.pdq
+                          if (pdq === null || pdq === undefined) {
+                            return <span className="text-slate-400">—</span>
+                          }
+                          return (
+                            <span
+                              className={`font-mono font-semibold ${
+                                av?.pdq_detalhes.meta_atingida
+                                  ? 'text-emerald-700'
+                                  : 'text-amber-700'
+                              }`}
+                              title={`PDQ ${pdq.toFixed(2)} (nota de corte ${av?.pdq_detalhes.nota_corte ?? 1})`}
+                            >
+                              {pdq.toFixed(2)}
+                            </span>
+                          )
+                        })()}
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-2">

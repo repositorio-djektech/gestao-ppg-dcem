@@ -108,7 +108,7 @@ src/
 │   ├── openalex/               # Normalização e busca de autores no OpenAlex
 │   ├── orientacoes/            # Regras de status efetivo de orientações
 │   ├── publicacoes/            # Estimativa de Qualis e matching de autores docentes
-│   ├── reconducao/             # Motor de cálculo da Norma de Recondução (§ 4º) e PDQ
+│   ├── reconducao/             # Motor de cálculo da avaliação do docente (IN 02/2026) e PDQ
 │   ├── scopus/                 # Lógica cliente para busca e tratamento de dados Scopus
 │   ├── storage/                # Upload e compressão de comprovantes em PDF
 │   ├── supabase/               # Instância do cliente Supabase e tipagens do schema
@@ -228,7 +228,7 @@ Determinadas páginas exigem fluxos mais ricos do que um CRUD genérico:
 
 - Tela de acompanhamento do cumprimento dos 4 critérios da Norma PPG-DCEM (§ 4º).
 - Tabela analítica com cards de veredito (**Reconduzido**, **Não atende**, **PDQ insuficiente**, **Não aplicável**).
-- Exibição transparente do cálculo do índice PDQ (`NP / (MSc + DSc)`).
+- Exibição transparente do cálculo do índice PDQ (`2×ATD + DPIDE1 + DPTDE1`, nota de corte por ano).
 - Relatório de recondução com exportação em PDF via iframe e CSV.
 
 ### 4.4 Lacunas Cadastrais (`src/pages/Lacunas.tsx`)

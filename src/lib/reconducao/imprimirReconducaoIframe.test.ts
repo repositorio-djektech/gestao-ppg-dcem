@@ -254,19 +254,21 @@ describe('Gerador do Relatório de Recondução Impresso (Etapa E)', () => {
     ],
   }
 
-  it('contém a transcrição EXATA e literal do § 4º da norma no cabeçalho', () => {
+  it('contém a transcrição literal do art. 8º, § 5º da IN 02/2026 no cabeçalho', () => {
     const html = gerarHtmlRelatorioReconducao(relatorioExemplo)
     expect(html).toContain(TEXTO_PARAGRAFO_4)
     expect(html).toContain(
-      '§ 4º - Serão reconduzidos automaticamente à categoria de docente permanente',
+      'IN 02/2026/P²CEM, art. 8º, § 5º - Serão considerados docentes permanentes',
     )
     expect(html).toContain('I. Orientaram alunos no P²CEM como orientador principal;')
     expect(html).toContain('II. Ministraram disciplinas no P²CEM;')
-    expect(html).toContain('III. Participaram de projetos com financiamento;')
     expect(html).toContain(
-      'IV. Alcançam índice de produção docente qualificada (PDQ) igual ou superior a 1,0',
+      'III. Participaram de projetos do programa, individuais ou institucionais com financiamento;',
     )
-    expect(html).toContain('(MSc + DSc) ≥ 2.')
+    expect(html).toContain(
+      'IV. Alcancem índice de Produção Docente Qualificada (PDQ) igual ou superior à nota de corte',
+    )
+    expect(html).toContain('PDQ = (2 x ATD) + DPIDE1 + DPTDE1')
   })
 
   it('estrutura o documento na ordem requerida (Cabeçalho -> Resumo -> Quadro Geral -> Seções por Docente -> Nota Metodológica)', () => {
@@ -303,22 +305,17 @@ describe('Gerador do Relatório de Recondução Impresso (Etapa E)', () => {
     expect(html).toContain('break-before: page;')
   })
 
-  it('exibe a fórmula do PDQ e suas variáveis de forma explícita', () => {
+  it('exibe a fórmula do PDQ da IN 02/2026 e suas variáveis de forma explícita', () => {
     const html = gerarHtmlRelatorioReconducao(relatorioExemplo)
-    expect(html).toContain('PDQ = NP / (MSc + DSc)')
-    expect(html).toContain('(MSc + DSc) &ge; 2')
-    expect(html).toContain('NP Estrito (Confirmadas)')
-    expect(html).toContain('NP Teto (Potenciais)')
-    expect(html).toContain('Mestres (MSc)')
-    expect(html).toContain('Doutores (DSc)')
-  })
-
-  it('exibe motivo legível para PDQ indefinido e não assume zero', () => {
-    const html = gerarHtmlRelatorioReconducao(relatorioExemplo)
-    expect(html).toContain('Pré-condição (MSc + DSc) &ge; 2 não atendida')
-    expect(html).toContain(
-      'o índice PDQ permanece <span class="destaque-indefinido">indefinido</span>',
-    )
+    expect(html).toContain('PDQ = 2 &times; ATD + DPIDE1 + DPTDE1')
+    expect(html).toContain('nota de corte')
+    expect(html).toContain('<th>ATD</th>')
+    expect(html).toContain('<th>DPIDE1</th>')
+    expect(html).toContain('<th>DPTDE1</th>')
+    expect(html).toContain('M / D concluídos')
+    // A regra antiga (NP / (MSc + DSc), mínimo de 2 titulações) não aparece mais
+    expect(html).not.toContain('PDQ = NP / (MSc + DSc)')
+    expect(html).not.toContain('(MSc + DSc) &ge; 2')
   })
 
   it('exibe nota de aplicabilidade para docentes colaboradores ou sem categoria', () => {

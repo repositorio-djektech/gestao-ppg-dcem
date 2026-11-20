@@ -2,8 +2,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import {
-  ANO_INICIO as ANO_INICIO_PADRAO,
-  ANO_FIM as ANO_FIM_PADRAO,
+  NOTA_CORTE_PADRAO,
   NOTA_SIMPLIFICACAO_NP,
   NOTA_DISCIPLINAS_TEMPORAIS,
   avaliarDocenteLogica,
@@ -41,7 +40,8 @@ Deno.serve(async (req: Request) => {
       },
     })
 
-    // Período de avaliação (D-32): o enviado na requisição; senão o ativo no banco; senão o padrão
+    // Avaliação do docente (D-36): janela dos 4 anos civis anteriores ao ano da avaliação.
+    // Vale, nesta ordem: anoInicio/anoFim da requisição; anoAvaliacao da requisição; ano corrente.
     const anoValido = (v: unknown): number | null =>
       typeof v === 'number' && Number.isInteger(v) && v >= 1990 && v <= 2100 ? v : null
     let corpo: any = null
@@ -52,20 +52,28 @@ Deno.serve(async (req: Request) => {
     }
     let ANO_INICIO = anoValido(corpo?.anoInicio)
     let ANO_FIM = anoValido(corpo?.anoFim)
+    let anoAvaliacao = anoValido(corpo?.anoAvaliacao)
     if (ANO_INICIO === null || ANO_FIM === null || ANO_INICIO > ANO_FIM) {
-      ANO_INICIO = null
-      ANO_FIM = null
-      const { data: ativo } = await supabase
-        .from('periodos_avaliacao')
-        .select('ano_inicio, ano_fim')
-        .eq('ativo', true)
-        .maybeSingle()
-      ANO_INICIO = anoValido(ativo?.ano_inicio)
-      ANO_FIM = anoValido(ativo?.ano_fim)
+      const ano = anoAvaliacao ?? new Date().getFullYear()
+      anoAvaliacao = ano
+      ANO_INICIO = ano - 4
+      ANO_FIM = ano - 1
     }
-    if (ANO_INICIO === null || ANO_FIM === null || ANO_INICIO > ANO_FIM) {
-      ANO_INICIO = ANO_INICIO_PADRAO
-      ANO_FIM = ANO_FIM_PADRAO
+    if (anoAvaliacao === null) anoAvaliacao = ANO_FIM + 1
+
+    // Nota de corte do ano da avaliação: da requisição, senão da tabela, senão 1,0
+    let notaCorte: number = NOTA_CORTE_PADRAO
+    const notaReq = Number(corpo?.notaCorte)
+    if (corpo?.notaCorte !== undefined && Number.isFinite(notaReq) && notaReq >= 0) {
+      notaCorte = notaReq
+    } else {
+      const { data: linhaNota } = await supabase
+        .from('avaliacao_notas_corte')
+        .select('nota_corte')
+        .eq('ano_avaliacao', anoAvaliacao)
+        .maybeSingle()
+      const notaBanco = Number(linhaNota?.nota_corte)
+      if (linhaNota && Number.isFinite(notaBanco)) notaCorte = notaBanco
     }
 
     // Leitura das tabelas relevantes (read-only)
@@ -79,6 +87,7 @@ Deno.serve(async (req: Request) => {
       publicacoesDocentesRes,
       coautoresRes,
       disciplinasDocentesRes,
+      egressosRes,
     ] = await Promise.all([
       supabase
         .from('docentes')
@@ -98,13 +107,16 @@ Deno.serve(async (req: Request) => {
       supabase.from('projetos_participantes').select('projeto_id, docente_id, papel'),
       supabase
         .from('publicacoes')
-        .select('id, titulo, autores, periodico, ano, fator_impacto_jcr')
+        .select(
+          'id, titulo, autores, periodico, ano, fator_impacto_jcr, estrato_qualis, tipo_producao',
+        )
         .order('ano', { ascending: false }),
       supabase.from('publicacoes_docentes').select('id, publicacao_id, docente_id'),
       supabase
         .from('publicacoes_coautores_programa')
         .select('id, publicacao_id, discente_id, egresso_id, tipo, nome_citado, grau_confianca'),
       supabase.from('disciplinas_docentes').select('disciplina_id, docente_id'),
+      supabase.from('egressos').select('id, ano_titulacao'),
     ])
 
     const erros = [
@@ -117,6 +129,7 @@ Deno.serve(async (req: Request) => {
       publicacoesDocentesRes.error,
       coautoresRes.error,
       disciplinasDocentesRes.error,
+      egressosRes.error,
     ].filter(Boolean)
 
     if (erros.length > 0) {
@@ -147,6 +160,7 @@ Deno.serve(async (req: Request) => {
     const publicacoes = publicacoesRes.data || []
     const publicacoesDocentes = publicacoesDocentesRes.data || []
     const coautoresPrograma = coautoresRes.data || []
+    const egressos = egressosRes.data || []
 
     const avaliacoes = docentes.map((docente: any) =>
       avaliarDocenteLogica({
@@ -158,6 +172,8 @@ Deno.serve(async (req: Request) => {
         publicacoes,
         publicacoesDocentes,
         coautoresPrograma,
+        egressos,
+        notaCorte,
         anoInicio: ANO_INICIO,
         anoFim: ANO_FIM,
       }),
@@ -189,6 +205,12 @@ Deno.serve(async (req: Request) => {
       quadrienio: {
         ano_inicio: ANO_INICIO,
         ano_fim: ANO_FIM,
+      },
+      avaliacao: {
+        ano_avaliacao: anoAvaliacao,
+        ano_inicio: ANO_INICIO,
+        ano_fim: ANO_FIM,
+        nota_corte: notaCorte,
       },
       nota_metodologica: {
         criterio_iv_np_coautoria: NOTA_SIMPLIFICACAO_NP,

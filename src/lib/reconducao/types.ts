@@ -13,18 +13,24 @@ export interface CriterioEvidencia<T = any> {
   itens?: T[]
 }
 
-export interface DetalhesPDQ {
-  np: number // Número de publicações JCR >= 1.0 com coautoria confirmada no quadriênio
-  np_teto?: number // Todas as publicações JCR >= 1.0 do docente no quadriênio
-  np_pendente?: number // Publicações JCR >= 1.0 pendentes de confirmação de coautoria
-  msc: number // Mestres formados no período (orientações mestrado concluídas)
-  dsc: number // Doutores formados no período (orientações doutorado concluídas)
-  titulacoes_total: number // msc + dsc
-  precondicao_atendida: boolean // titulacoes_total >= 2
-  pdq: number | null // np / (msc + dsc), null se precondição não atendida
-  meta_atingida: boolean // pdq !== null && pdq >= 1.0
-  observacao_simplificacao_coautoria: string
-}
+import type { DetalhesPDQ as DetalhesPDQIN } from '../../../supabase/functions/avaliacao-reconducao/pdq'
+
+type CamposPDQNovos =
+  | 'atd'
+  | 'atd_calculavel'
+  | 'atd_artigos'
+  | 'dpide1'
+  | 'dpide1_decomposicao'
+  | 'dptde1'
+  | 'dptde1_bruto'
+  | 'nota_corte'
+
+/**
+ * Detalhes do PDQ (D-36: 2×ATD + DPIDE1 + DPTDE1 contra a nota de corte). Os campos da IN são
+ * opcionais aqui só para aceitar relatórios gravados antes dessa regra; o cálculo sempre os preenche.
+ */
+export type DetalhesPDQ = Omit<DetalhesPDQIN, CamposPDQNovos | 'pdq'> &
+  Partial<Pick<DetalhesPDQIN, CamposPDQNovos>> & { pdq: number | null }
 
 export interface PublicacaoComStatusCoautoria {
   id: number
@@ -49,7 +55,7 @@ export interface AvaliacaoDocenteReconducao {
   criterio_i: CriterioEvidencia // Orientaram alunos no P²CEM como orientador principal
   criterio_ii: CriterioEvidencia // Ministraram disciplinas no P²CEM
   criterio_iii: CriterioEvidencia // Participaram de projetos com financiamento
-  criterio_iv: CriterioEvidencia // PDQ >= 1.0 com (MSc + DSc) >= 2
+  criterio_iv: CriterioEvidencia // PDQ (2×ATD + DPIDE1 + DPTDE1) >= nota de corte (IN 02/2026)
 
   // Detalhamento do cálculo PDQ
   pdq_detalhes: DetalhesPDQ
@@ -85,6 +91,13 @@ export interface RelatorioReconducaoResposta {
   quadrienio: {
     ano_inicio: number
     ano_fim: number
+  }
+  /** Avaliação do docente (D-36): ano, janela dos 4 anos anteriores e nota de corte usada. */
+  avaliacao?: {
+    ano_avaliacao: number
+    ano_inicio: number
+    ano_fim: number
+    nota_corte: number
   }
   nota_metodologica: {
     criterio_iv_np_coautoria: string

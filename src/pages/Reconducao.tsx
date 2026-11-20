@@ -63,8 +63,7 @@ import {
 import { obterAvaliacaoReconducao } from '@/services/reconducao'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAuth } from '@/hooks/use-auth'
-import { usePeriodo } from '@/hooks/use-periodo'
-import { rotuloPeriodo } from '@/lib/periodos/periodo'
+import { janelaAvaliacaoDocente } from '@/lib/reconducao/calculo'
 import { restringirRelatorioReconducaoAoDocente } from '@/lib/reconducao/escopo-docente'
 import { imprimirRelatorioReconducaoViaIframe } from '@/lib/reconducao/imprimirReconducaoIframe'
 import type {
@@ -95,12 +94,17 @@ const ORDEM_VEREDITO: Record<VereditoReconducao, number> = {
 export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
   const isMobile = useIsMobile()
   const { role, profile } = useAuth()
-  // Período de avaliação (D-32): o ativo, ou outro escolhido para consulta
-  const { periodo: periodoAtivo, periodos } = usePeriodo()
-  const [periodoEscolhidoId, setPeriodoEscolhidoId] = useState<number | null>(null)
-  const periodoSel = periodos.find((p) => p.id === periodoEscolhidoId) ?? periodoAtivo
-  const anoInicioSel = periodoSel.anoInicio
-  const anoFimSel = periodoSel.anoFim
+  // Avaliação do docente (D-36, IN 02/2026): anual, sobre os 4 anos civis anteriores ao ano da avaliação
+  const anoCorrente = new Date().getFullYear()
+  const [anoAvaliacao, setAnoAvaliacao] = useState<number>(anoCorrente)
+  const janelaSel = janelaAvaliacaoDocente(anoAvaliacao)
+  const anoInicioSel = janelaSel.anoInicio
+  const anoFimSel = janelaSel.anoFim
+  const opcoesAnoAvaliacao = useMemo(() => {
+    const anos: number[] = []
+    for (let a = anoCorrente + 1; a >= anoCorrente - 6; a--) anos.push(a)
+    return anos
+  }, [anoCorrente])
   const [relatorioBruto, setRelatorio] = useState<RelatorioReconducaoResposta | null>(null)
   // D-25: o docente vê os cards gerais, mas só o próprio nome na lista, na tela e na impressão
   const relatorio = useMemo(
@@ -134,7 +138,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
     setErro(null)
     try {
       const loader = carregarDadosFn ?? obterAvaliacaoReconducao
-      const res = await loader({ anoInicio: anoInicioSel, anoFim: anoFimSel })
+      const res = await loader({ anoAvaliacao, anoInicio: anoInicioSel, anoFim: anoFimSel })
       if (res.sucesso && res.dados) {
         setRelatorio(res.dados)
         setOrigem(res.origem ?? null)
@@ -146,7 +150,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
     } finally {
       setCarregando(false)
     }
-  }, [carregarDadosFn, anoInicioSel, anoFimSel])
+  }, [carregarDadosFn, anoAvaliacao, anoInicioSel, anoFimSel])
 
   useEffect(() => {
     carregarRelatorio()
@@ -378,10 +382,11 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
               )}
             </div>
             <div>
-              <span className="font-semibold text-slate-700">Quadriênio: </span>
+              <span className="font-semibold text-slate-700">Avaliação: </span>
               <span>
+                {relatorio?.avaliacao?.ano_avaliacao ?? anoAvaliacao} (produção{' '}
                 {relatorio?.quadrienio.ano_inicio ?? anoInicioSel}–
-                {relatorio?.quadrienio.ano_fim ?? anoFimSel}
+                {relatorio?.quadrienio.ano_fim ?? anoFimSel})
               </span>
             </div>
           </div>
@@ -492,7 +497,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
                 <div className="flex items-center gap-1.5">
                   <Award className="h-4 w-4 text-primary" />
                   <span className="font-semibold text-slate-900 text-xs">
-                    Critério IV: Índice PDQ ≥ 1.0
+                    Critério IV: PDQ ≥ nota de corte ({pdq_detalhes.nota_corte ?? 1})
                   </span>
                 </div>
                 {renderStatusCriterioIcon(doc.criterio_iv.atendido)}
@@ -501,7 +506,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
               <div className="text-xs font-medium text-slate-700 bg-slate-50 p-2 rounded border border-slate-100 flex items-center justify-between">
                 <span>Resultado PDQ:</span>
                 <span className="font-mono text-sm font-bold text-slate-900">
-                  {pdq_detalhes.pdq !== null ? pdq_detalhes.pdq.toFixed(2) : '— (Indefinido)'}
+                  {pdq_detalhes.pdq !== null ? pdq_detalhes.pdq.toFixed(2) : '—'}
                 </span>
               </div>
             </div>
@@ -516,32 +521,45 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
               Detalhamento da Fórmula do PDQ
             </h4>
             <div className="bg-slate-100 px-2 py-1 rounded font-mono text-xs text-slate-800 font-semibold">
-              PDQ = NP / (MSc + DSc)
+              PDQ = 2 × ATD + DPIDE1 + DPTDE1
             </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
             <div className="bg-slate-50 p-2.5 rounded border border-slate-100">
-              <div className="text-[11px] text-slate-500 font-medium">NP Estrito (Confirmadas)</div>
-              <div className="text-xl font-bold text-primary mt-0.5">{pdq_detalhes.np}</div>
-              <div className="text-[10px] text-slate-400">JCR ≥ 1,0 c/ orientando</div>
-            </div>
-
-            <div className="bg-slate-50 p-2.5 rounded border border-slate-100">
-              <div className="text-[11px] text-slate-500 font-medium">NP Teto (Potenciais)</div>
-              <div className="text-xl font-bold text-slate-700 mt-0.5">
-                {pdq_detalhes.np_teto ?? doc.np_teto ?? 0}
-              </div>
-              <div className="text-[10px] text-slate-400">Todas JCR ≥ 1,0</div>
-            </div>
-
-            <div className="bg-slate-50 p-2.5 rounded border border-slate-100">
-              <div className="text-[11px] text-slate-500 font-medium">Titulações Concluídas</div>
-              <div className="text-xl font-bold text-slate-700 mt-0.5">
-                {pdq_detalhes.titulacoes_total}
+              <div className="text-[11px] text-slate-500 font-medium">ATD</div>
+              <div className="text-xl font-bold text-primary mt-0.5">
+                {pdq_detalhes.atd_calculavel === false
+                  ? '0 (n/c)'
+                  : (pdq_detalhes.atd ?? 0).toFixed(2)}
               </div>
               <div className="text-[10px] text-slate-400">
-                MSc ({pdq_detalhes.msc}) + DSc ({pdq_detalhes.dsc})
+                {pdq_detalhes.atd_artigos ?? 0} artigo(s) A1–A4 c/ coautoria / (M + 2D ={' '}
+                {pdq_detalhes.msc + 2 * pdq_detalhes.dsc})
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-2.5 rounded border border-slate-100">
+              <div className="text-[11px] text-slate-500 font-medium">DPIDE1</div>
+              <div className="text-xl font-bold text-slate-700 mt-0.5">
+                {(pdq_detalhes.dpide1 ?? 0).toFixed(2)}
+              </div>
+              <div className="text-[10px] text-slate-400">
+                A1 {pdq_detalhes.dpide1_decomposicao?.a1 ?? 0} · A2{' '}
+                {pdq_detalhes.dpide1_decomposicao?.a2 ?? 0} · A3{' '}
+                {pdq_detalhes.dpide1_decomposicao?.a3 ?? 0} · A4{' '}
+                {pdq_detalhes.dpide1_decomposicao?.a4 ?? 0} · B1{' '}
+                {pdq_detalhes.dpide1_decomposicao?.b1_saturado ?? 0}
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-2.5 rounded border border-slate-100">
+              <div className="text-[11px] text-slate-500 font-medium">DPTDE1</div>
+              <div className="text-xl font-bold text-slate-700 mt-0.5">
+                {pdq_detalhes.dptde1 ?? 0}
+              </div>
+              <div className="text-[10px] text-slate-400">
+                {pdq_detalhes.dptde1_bruto ?? 0} artigo(s) c/ coautoria (máx. 4)
               </div>
             </div>
 
@@ -551,40 +569,37 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
                 {pdq_detalhes.pdq !== null ? pdq_detalhes.pdq.toFixed(2) : '—'}
               </div>
               <div className="text-[10px] text-slate-400">
-                {pdq_detalhes.pdq !== null
-                  ? pdq_detalhes.pdq >= 1.0
-                    ? 'Meta atingida (≥ 1,0)'
-                    : 'Abaixo da meta (< 1,0)'
-                  : 'Pré-condição não atingida'}
+                {pdq_detalhes.meta_atingida
+                  ? `Atinge a nota de corte (${pdq_detalhes.nota_corte ?? 1})`
+                  : `Abaixo da nota de corte (${pdq_detalhes.nota_corte ?? 1})`}
               </div>
             </div>
           </div>
 
-          {/* Justificativa para caso de pré-condição não atendida */}
-          {!pdq_detalhes.precondicao_atendida && (
+          {pdq_detalhes.atd_calculavel === false && (
             <div className="rounded bg-amber-50/70 border border-amber-200 p-2.5 text-xs text-amber-900">
-              <span className="font-semibold">Pré-condição da Norma (§ 4º): </span>
-              O cálculo de PDQ requer no mínimo 2 titulações concluídas no período ((MSc + DSc) ≥
-              2). Com menos de 2 defesas concluídas ({pdq_detalhes.titulacoes_total}), o PDQ é{' '}
-              <strong className="underline">indefinido</strong> (e não zero), pois a fração não
-              atinge a base mínima estipulada pelo regulamento.
+              <span className="font-semibold">ATD não calculável: </span>
+              sem mestrados nem doutorados concluídos no período (M + 2D = 0) o ATD entra como 0 no
+              PDQ.
             </div>
           )}
         </div>
 
-        {/* Publicações que compuseram o NP */}
+        {/* Publicações do docente no período */}
         <div className="space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <h4 className="text-sm font-semibold uppercase tracking-wider text-slate-700 flex items-center gap-2">
               <FileText className="h-4 w-4 text-primary" />
-              Publicações Consideradas para o NP ({todasPublicacoes.length})
+              Publicações do docente no período ({todasPublicacoes.length})
             </h4>
-            <span className="text-xs text-slate-500">Fator de Impacto JCR ≥ 1,0 no quadriênio</span>
+            <span className="text-xs text-slate-500">
+              Contam para o PDQ as que têm coautoria confirmada de discente ou egresso
+            </span>
           </div>
 
           {todasPublicacoes.length === 0 ? (
             <div className="rounded-lg border border-dashed border-slate-200 p-4 text-center text-xs text-slate-500">
-              Nenhuma publicação JCR ≥ 1.0 localizada no quadriênio para este docente.
+              Nenhuma publicação do docente localizada no período da avaliação.
             </div>
           ) : (
             <div className="rounded-lg border border-slate-200 overflow-hidden bg-white">
@@ -604,7 +619,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
                         variant="outline"
                         className="bg-emerald-50 text-emerald-800 border-emerald-300 text-[10px] font-semibold"
                       >
-                        Confirmada (NP Estrito)
+                        Confirmada (conta no PDQ)
                       </Badge>
                     )
                   } else if (pub.status_coautoria === 'pendente') {
@@ -613,7 +628,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
                         variant="outline"
                         className="bg-amber-50 text-amber-800 border-amber-300 text-[10px] font-semibold"
                       >
-                        Pendente (NP Teto)
+                        Pendente de confirmação
                       </Badge>
                     )
                   }
@@ -769,7 +784,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
             <p className="text-[11px] text-slate-500 mt-1">
               {resumo
                 ? `${resumo.total_permanentes} perm. / ${resumo.total_colaboradores} colab.`
-                : 'Avaliados no quadriênio'}
+                : 'Avaliados no ano da avaliação'}
             </p>
           </CardContent>
         </Card>
@@ -833,7 +848,9 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
                 {resumo?.pdq_insuficiente ?? 0}
               </div>
             )}
-            <p className="text-[11px] text-amber-700 mt-1">Menos de 2 titulações concluídas</p>
+            <p className="text-[11px] text-amber-700 mt-1">
+              Critérios I a III ok, PDQ abaixo da nota
+            </p>
           </CardContent>
         </Card>
 
@@ -874,33 +891,33 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
           />
         </div>
 
-        {periodos.length > 1 && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-slate-600 shrink-0">Período:</span>
-            <Select
-              value={String(periodoSel.id ?? 'padrao')}
-              onValueChange={(val) => {
-                setPeriodoEscolhidoId(Number(val))
-                setPage(1)
-              }}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-slate-600 shrink-0">Ano da avaliação:</span>
+          <Select
+            value={String(anoAvaliacao)}
+            onValueChange={(val) => {
+              setAnoAvaliacao(Number(val))
+              setPage(1)
+            }}
+          >
+            <SelectTrigger
+              className="w-[210px] bg-slate-50/50 border-slate-200 text-xs"
+              data-testid="select-ano-avaliacao"
             >
-              <SelectTrigger
-                className="w-[190px] bg-slate-50/50 border-slate-200 text-xs"
-                data-testid="select-periodo-reconducao"
-              >
-                <SelectValue placeholder="Período de avaliação" />
-              </SelectTrigger>
-              <SelectContent>
-                {periodos.map((p) => (
-                  <SelectItem key={p.id ?? 'padrao'} value={String(p.id ?? 'padrao')}>
-                    {rotuloPeriodo(p)}
-                    {p.ativo ? ' (ativo)' : ''}
+              <SelectValue placeholder="Ano da avaliação" />
+            </SelectTrigger>
+            <SelectContent>
+              {opcoesAnoAvaliacao.map((a) => {
+                const j = janelaAvaliacaoDocente(a)
+                return (
+                  <SelectItem key={a} value={String(a)}>
+                    {a} (produção {j.anoInicio}–{j.anoFim})
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+                )
+              })}
+            </SelectContent>
+          </Select>
+        </div>
 
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-slate-600 shrink-0">Filtrar por Veredito:</span>
@@ -951,7 +968,7 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
                   Critério III (Projeto)
                 </TableHead>
                 <TableHead className="text-left font-semibold text-slate-700 bg-[#e9effc] whitespace-nowrap">
-                  Índice PDQ [NP / (MSc+DSc)]
+                  PDQ (2×ATD + DPIDE1 + DPTDE1)
                 </TableHead>
                 <TableHead className="text-left font-semibold text-slate-700 min-w-[150px] bg-[#e9effc] whitespace-nowrap">
                   Veredito
@@ -975,7 +992,6 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
               ) : paginatedDocentes.length > 0 ? (
                 paginatedDocentes.map((doc) => {
                   const pdq = doc.pdq_detalhes.pdq
-                  const precondicaoAtendida = doc.pdq_detalhes.precondicao_atendida
 
                   return (
                     <TableRow
@@ -1028,29 +1044,23 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
 
                       {/* PDQ */}
                       <TableCell className="text-center">
-                        {precondicaoAtendida && pdq !== null ? (
+                        {pdq !== null ? (
                           <div className="inline-flex flex-col items-center">
                             <span
                               className={`font-mono font-bold text-sm ${
-                                pdq >= 1.0 ? 'text-emerald-700' : 'text-amber-700'
+                                doc.pdq_detalhes.meta_atingida
+                                  ? 'text-emerald-700'
+                                  : 'text-amber-700'
                               }`}
                             >
                               {pdq.toFixed(2)}
                             </span>
                             <span className="text-[10px] text-slate-400">
-                              NP {doc.pdq_detalhes.np} / {doc.pdq_detalhes.titulacoes_total}
+                              corte {doc.pdq_detalhes.nota_corte ?? 1}
                             </span>
                           </div>
                         ) : (
-                          <div
-                            className="inline-flex flex-col items-center"
-                            title="Menos de 2 titulações concluídas no período"
-                          >
-                            <span className="font-mono text-slate-400 font-semibold">—</span>
-                            <span className="text-[10px] text-slate-400 max-w-[120px] truncate">
-                              &lt;2 titulações ({doc.pdq_detalhes.titulacoes_total})
-                            </span>
-                          </div>
+                          <span className="font-mono text-slate-400 font-semibold">—</span>
                         )}
                       </TableCell>
 
@@ -1109,8 +1119,8 @@ export default function Reconducao({ carregarDadosFn }: ReconducaoProps = {}) {
                   Dossiê e Evidências de Recondução Docente
                 </DialogTitle>
                 <DialogDescription>
-                  Detalhamento dos 4 critérios normativos, cálculo do PDQ e composições do NP
-                  estrito vs. teto.
+                  Detalhamento dos 4 critérios da IN 02/2026, cálculo do PDQ (2×ATD + DPIDE1 +
+                  DPTDE1) e publicações com coautoria confirmada ou pendente.
                 </DialogDescription>
               </div>
               {docenteSelecionado && (

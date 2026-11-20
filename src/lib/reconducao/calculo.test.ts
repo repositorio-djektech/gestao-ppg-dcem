@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import {
-  calcularPDQ,
   avaliarDocente,
   consolidarAvaliacaoReconducao,
   extrairAnoDeData,
   anoNoPeriodo,
   NOTA_SIMPLIFICACAO_NP,
 } from './calculo'
+import { avaliarCriterioIV } from '../../../supabase/functions/avaliacao-reconducao/pdq'
 import type {
   Docente,
   Orientacao,
@@ -17,43 +17,130 @@ import type {
 } from '@/types/database'
 
 describe('Cálculo de Recondução Docente (Etapa C)', () => {
-  describe('Fórmula do PDQ e Pré-condição (MSc + DSc >= 2)', () => {
-    it('calcula PDQ corretamente quando pré-condição é atendida e PDQ >= 1.0', () => {
-      // Ex: 3 publicações JCR>=1.0, 1 mestrado concluído, 1 doutorado concluído -> PDQ = 3 / 2 = 1.5
-      const res = calcularPDQ(3, 1, 1)
-      expect(res.precondicao_atendida).toBe(true)
-      expect(res.titulacoes_total).toBe(2)
-      expect(res.pdq).toBe(1.5)
-      expect(res.meta_atingida).toBe(true)
+  describe('Fórmula do PDQ da IN 02/2026: (2 × ATD) + DPIDE1 + DPTDE1 >= nota de corte', () => {
+    const pub = (id: number, estrato: string, extra: Record<string, unknown> = {}) => ({
+      id,
+      ano: 2025,
+      estrato_qualis: estrato,
+      periodico: 'Revista Ficticia',
+      ...extra,
+    })
+    const coaut = (ids: number[]) =>
+      ids.map((id) => ({ publicacao_id: id, tipo: 'orientando', nome_citado: 'Aluno Ficticio' }))
+
+    it('calcula o PDQ com ATD, DPIDE1 e DPTDE1 (1 mestrado, 1 doutorado)', () => {
+      // A1 e A2 com discente: ATD = 2 / (1 + 2×1) = 0,667; DPIDE1 = 1 + 0,875 = 1,875; DPTDE1 = 2
+      const r = avaliarCriterioIV({
+        publicacoesDoDocente: [pub(1, 'A1'), pub(2, 'A2')],
+        coautoresPrograma: coaut([1, 2]),
+        egressos: [],
+        msc: 1,
+        dsc: 1,
+      })
+      expect(r.detalhes.atd).toBe(0.667)
+      expect(r.detalhes.dpide1).toBe(1.875)
+      expect(r.detalhes.dptde1).toBe(2)
+      expect(r.detalhes.pdq).toBe(5.209) // 2×0,667 + 1,875 + 2
+      expect(r.detalhes.meta_atingida).toBe(true)
+      expect(r.atendido).toBe(true)
     })
 
-    it('rejeita PDQ quando valor fica < 1.0', () => {
-      // Ex: 1 publicação JCR>=1.0, 2 mestrados concluídos -> PDQ = 1 / 2 = 0.5
-      const res = calcularPDQ(1, 2, 0)
-      expect(res.precondicao_atendida).toBe(true)
-      expect(res.titulacoes_total).toBe(2)
-      expect(res.pdq).toBe(0.5)
-      expect(res.meta_atingida).toBe(false)
+    it('usa os coeficientes da ficha 2025: A4 = 0,675 e B1 satura em 1 por docente', () => {
+      const r = avaliarCriterioIV({
+        publicacoesDoDocente: [pub(1, 'A4'), pub(2, 'B1'), pub(3, 'B1'), pub(4, 'B1')],
+        coautoresPrograma: coaut([1, 2, 3, 4]),
+        egressos: [],
+        msc: 0,
+        dsc: 0,
+      })
+      expect(r.detalhes.dpide1_decomposicao.b1_bruto).toBe(3)
+      expect(r.detalhes.dpide1_decomposicao.b1_saturado).toBe(1)
+      expect(r.detalhes.dpide1).toBe(1.175) // 0,675 + 0,5
     })
 
-    it('mantém PDQ como null (indefinido/insuficiente) quando MSc + DSc < 2, NUNCA 0', () => {
-      // Ex: 5 publicações, mas apenas 1 mestrado concluído
-      const res1 = calcularPDQ(5, 1, 0)
-      expect(res1.precondicao_atendida).toBe(false)
-      expect(res1.titulacoes_total).toBe(1)
-      expect(res1.pdq).toBeNull()
-      expect(res1.meta_atingida).toBe(false)
-
-      // Ex: 10 publicações, nenhuma titulação concluída
-      const res0 = calcularPDQ(10, 0, 0)
-      expect(res0.precondicao_atendida).toBe(false)
-      expect(res0.titulacoes_total).toBe(0)
-      expect(res0.pdq).toBeNull()
+    it('DPTDE1 tem teto de 4 e não conta capítulo; só publicação com coautoria entra', () => {
+      const pubs = [1, 2, 3, 4, 5, 6].map((i) => pub(i, ''))
+      pubs.push(pub(7, '', { tipo_producao: 'Capítulo' }) as any)
+      const r = avaliarCriterioIV({
+        publicacoesDoDocente: pubs,
+        coautoresPrograma: coaut([1, 2, 3, 4, 5, 6, 7]),
+        egressos: [],
+        msc: 0,
+        dsc: 0,
+      })
+      expect(r.detalhes.dptde1_bruto).toBe(6)
+      expect(r.detalhes.dptde1).toBe(4)
+      const semCoautoria = avaliarCriterioIV({
+        publicacoesDoDocente: pubs,
+        coautoresPrograma: [],
+        egressos: [],
+        msc: 0,
+        dsc: 0,
+      })
+      expect(semCoautoria.detalhes.dptde1).toBe(0)
+      expect(semCoautoria.detalhes.np_pendente).toBe(7)
     })
 
-    it('expõe nota explicativa de simplificação de coautoria orientando/egresso', () => {
-      const res = calcularPDQ(2, 1, 1)
-      expect(res.observacao_simplificacao_coautoria).toBe(NOTA_SIMPLIFICACAO_NP)
+    it('sem titulações (M + 2D = 0) o ATD não é calculável e entra como 0 (nunca divide por zero)', () => {
+      const r = avaliarCriterioIV({
+        publicacoesDoDocente: [pub(1, 'A1')],
+        coautoresPrograma: coaut([1]),
+        egressos: [],
+        msc: 0,
+        dsc: 0,
+      })
+      expect(r.detalhes.atd_calculavel).toBe(false)
+      expect(r.detalhes.atd).toBe(0)
+      expect(r.detalhes.pdq).toBe(2) // DPIDE1 1 + DPTDE1 1
+      expect(r.detalhe).toContain('sem titulações')
+    })
+
+    it('egresso só vale até 5 anos depois da titulação', () => {
+      const egressos = [{ id: 9, ano_titulacao: 2018 }]
+      const coautores = [{ publicacao_id: 1, tipo: 'egresso', egresso_id: 9 }]
+      const dentro = avaliarCriterioIV({
+        publicacoesDoDocente: [pub(1, 'A1', { ano: 2023 })],
+        coautoresPrograma: coautores,
+        egressos,
+        msc: 1,
+        dsc: 0,
+      })
+      expect(dentro.detalhes.np).toBe(1)
+      const fora = avaliarCriterioIV({
+        publicacoesDoDocente: [pub(1, 'A1', { ano: 2024 })],
+        coautoresPrograma: coautores,
+        egressos,
+        msc: 1,
+        dsc: 0,
+      })
+      expect(fora.detalhes.np).toBe(0)
+    })
+
+    it('a nota de corte decide o critério IV (padrão 1,0, ajustável)', () => {
+      const base = {
+        publicacoesDoDocente: [pub(1, 'A2')],
+        coautoresPrograma: coaut([1]),
+        egressos: [],
+        msc: 1,
+        dsc: 0,
+      }
+      // ATD 1/1 = 1 → 2 + DPIDE1 0,875 + DPTDE1 1 = 3,875
+      expect(avaliarCriterioIV(base).atendido).toBe(true)
+      expect(avaliarCriterioIV({ ...base, notaCorte: 4 }).atendido).toBe(false)
+      expect(avaliarCriterioIV({ ...base, notaCorte: 4 }).motivo).toContain('nota de corte (4)')
+      expect(avaliarCriterioIV(base).detalhes.nota_corte).toBe(1)
+    })
+
+    it('expõe a nota metodológica do PDQ da IN', () => {
+      const r = avaliarCriterioIV({
+        publicacoesDoDocente: [],
+        coautoresPrograma: [],
+        egressos: [],
+        msc: 0,
+        dsc: 0,
+      })
+      expect(r.detalhes.observacao_simplificacao_coautoria).toBe(NOTA_SIMPLIFICACAO_NP)
+      expect(NOTA_SIMPLIFICACAO_NP).toContain('IN 02/2026')
     })
   })
 
@@ -197,12 +284,13 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
       expect(resultado.pdq_detalhes.np).toBe(2)
       expect(resultado.pdq_detalhes.msc).toBe(1)
       expect(resultado.pdq_detalhes.dsc).toBe(1)
-      expect(resultado.pdq_detalhes.pdq).toBe(1.0)
+      // Sem Qualis cadastrado: ATD e DPIDE1 = 0; DPTDE1 = 2 artigos com coautoria
+      expect(resultado.pdq_detalhes.pdq).toBe(2)
       expect(resultado.veredito).toBe('RECONDUZIDO')
       expect(resultado.motivos).toHaveLength(0)
     })
 
-    it('atribui veredito PDQ_INSUFICIENTE quando docente permanente não tem 2 titulações concluídas', () => {
+    it('atribui veredito PDQ_INSUFICIENTE quando I a III são atendidos e o PDQ fica abaixo da nota de corte', () => {
       const orientacoes: Orientacao[] = [
         {
           id: 1,
@@ -274,9 +362,9 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
       expect(resultado.criterio_ii.atendido).toBe(true)
       expect(resultado.criterio_iii.atendido).toBe(true)
       expect(resultado.criterio_iv.atendido).toBe(false)
-      expect(resultado.pdq_detalhes.pdq).toBeNull()
+      expect(resultado.pdq_detalhes.pdq).toBe(0)
       expect(resultado.veredito).toBe('PDQ_INSUFICIENTE')
-      expect(resultado.motivos.some((m) => m.includes('mínimo de 2 titulações'))).toBe(true)
+      expect(resultado.motivos.some((m) => m.includes('nota de corte'))).toBe(true)
     })
 
     it('atribui veredito NAO_ATENDE quando falham outros critérios como orientador principal ou projeto', () => {
@@ -383,7 +471,7 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
       expect(resultado.motivos[0]).toContain('exclusivamente a docentes da categoria permanente')
     })
 
-    it('filtra publicações pelo limiar de JCR >= 1.0 e pelo quadriênio 2025-2028, expondo NP estrito e Teto', () => {
+    it('filtra publicações só pela janela da avaliação (sem corte por JCR, a IN usa o Qualis), separando confirmadas e pendentes', () => {
       const publicacoes: Publicacao[] = [
         {
           id: 1,
@@ -392,7 +480,7 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
           periodico: 'Journal',
           ano: 2025,
           doi: '',
-          fator_impacto_jcr: 0.85, // < 1.0 -> não conta nem no teto
+          fator_impacto_jcr: 0.85, // sem corte por JCR: entra como pendente
           justificativa: '',
           link_comprovacao: '',
           observacoes: '',
@@ -457,14 +545,14 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
       expect(resultado.pdq_detalhes.np).toBe(1)
       expect(resultado.np_estrito).toBe(1)
       // NP Teto = publicações 3 e 4 (2)
-      expect(resultado.np_teto).toBe(2)
-      expect(resultado.pdq_detalhes.np_teto).toBe(2)
-      expect(resultado.pdq_detalhes.np_pendente).toBe(1)
+      expect(resultado.np_teto).toBe(3)
+      expect(resultado.pdq_detalhes.np_teto).toBe(3)
+      expect(resultado.pdq_detalhes.np_pendente).toBe(2)
 
       expect(resultado.publicacoes_confirmadas).toHaveLength(1)
       expect(resultado.publicacoes_confirmadas?.[0]?.id).toBe(3)
-      expect(resultado.publicacoes_pendentes).toHaveLength(1)
-      expect(resultado.publicacoes_pendentes?.[0]?.id).toBe(4)
+      expect(resultado.publicacoes_pendentes).toHaveLength(2)
+      expect(resultado.publicacoes_pendentes?.map((p) => p.id).sort()).toEqual([1, 4])
     })
 
     it('aceita participante via projetos_participantes para o Critério III', () => {
@@ -591,7 +679,7 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
       expect(resultado.pdq_detalhes.np_teto).toBe(1)
       expect(resultado.np_estrito).toBe(1)
       expect(resultado.np_teto).toBe(1)
-      expect(resultado.criterio_iv.atendido).toBe(false) // MSc + DSc é 1, precisa de >= 2 para criterio_iv atendido
+      expect(resultado.criterio_iv.atendido).toBe(true) // PDQ = DPTDE1 (1 artigo com coautoria) = 1,0 atinge a nota de corte padrão
     })
 
     it('quando não há registros estruturados em publicacoes_docentes para o docente, mantém fallback de texto de autores', () => {
@@ -690,9 +778,18 @@ describe('Cálculo de Recondução Docente (Etapa C)', () => {
       expect(relatorio.resumo.total_permanentes).toBe(1)
       expect(relatorio.resumo.total_colaboradores).toBe(1)
       expect(relatorio.resumo.total_sem_categoria).toBe(1)
-      expect(relatorio.resumo.pdq_insuficiente).toBe(1)
+      // Permanente sem orientação, disciplina nem projeto: critérios I a III não atendidos
+      expect(relatorio.resumo.nao_atendem).toBe(1)
+      expect(relatorio.resumo.pdq_insuficiente).toBe(0)
       expect(relatorio.resumo.nao_aplicavel).toBe(2)
       expect(relatorio.avaliacoes).toHaveLength(3)
+      // Avaliação do docente (D-36): janela dos 4 anos anteriores e nota de corte padrão
+      expect(relatorio.avaliacao).toEqual({
+        ano_avaliacao: 2029,
+        ano_inicio: 2025,
+        ano_fim: 2028,
+        nota_corte: 1,
+      })
     })
   })
 })

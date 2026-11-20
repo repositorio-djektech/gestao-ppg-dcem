@@ -6,7 +6,7 @@ import type {
 } from './types'
 
 export const TEXTO_PARAGRAFO_4 =
-  '§ 4º - Serão reconduzidos automaticamente à categoria de docente permanente aqueles docentes que, nos últimos 04 (quatro) anos atendem a todos os 04 (quatro) critérios a seguir: I. Orientaram alunos no P²CEM como orientador principal; II. Ministraram disciplinas no P²CEM; III. Participaram de projetos com financiamento; IV. Alcançam índice de produção docente qualificada (PDQ) igual ou superior a 1,0 calculado conforme equação: PDQ = NP / (MSc + DSc). Sendo: NP = Número de publicações em revistas com fator de impacto JCR maior ou igual a 1,0 com seus orientandos ou egressos do P²CEM nos últimos 4 (quatro) anos civis; MSc = Número de mestres formados no Programa nos últimos 4 (quatro) anos civis; DSc = Número de doutores formados no Programa nos últimos 4 (quatro) anos civis; (MSc + DSc) ≥ 2.'
+  'IN 02/2026/P²CEM, art. 8º, § 5º - Serão considerados docentes permanentes aqueles que, nos quatro anos civis anteriores ao ano da avaliação, atendam a todos os seguintes critérios: I. Orientaram alunos no P²CEM como orientador principal; II. Ministraram disciplinas no P²CEM; III. Participaram de projetos do programa, individuais ou institucionais com financiamento; IV. Alcancem índice de Produção Docente Qualificada (PDQ) igual ou superior à nota de corte definida na forma do § 6º, calculado pela fórmula PDQ = (2 x ATD) + DPIDE1 + DPTDE1.'
 
 export interface OpcoesImpressaoReconducao {
   filtroVeredito?: 'TODOS' | VereditoReconducao
@@ -140,7 +140,7 @@ function gerarSecaoDocenteHtml(doc: AvaliacaoDocenteReconducao): string {
     )
     .join('')
 
-  // Publicações JCR >= 1.0 (NP)
+  // Publicações do docente no período da avaliação (IN 02/2026)
   const todasPubs = [
     ...(doc.publicacoes_confirmadas || []),
     ...(doc.publicacoes_pendentes || []),
@@ -154,10 +154,10 @@ function gerarSecaoDocenteHtml(doc: AvaliacaoDocenteReconducao): string {
             let statusLabel = 'Sem coautoria registrada'
             let statusClass = 'pub-sem-coautoria'
             if (pub.status_coautoria === 'confirmado') {
-              statusLabel = 'Coautoria confirmada (NP Estrito)'
+              statusLabel = 'Coautoria confirmada (conta no PDQ)'
               statusClass = 'pub-confirmada'
             } else if (pub.status_coautoria === 'pendente') {
-              statusLabel = 'Coautoria pendente de confirmação (NP Teto)'
+              statusLabel = 'Coautoria pendente de confirmação'
               statusClass = 'pub-pendente'
             }
 
@@ -181,16 +181,16 @@ function gerarSecaoDocenteHtml(doc: AvaliacaoDocenteReconducao): string {
             `
           })
           .join('')
-      : '<p class="sem-itens">Nenhuma publicação com Fator de Impacto JCR &ge; 1,0 registrada no quadriênio.</p>'
+      : '<p class="sem-itens">Nenhuma publicação do docente registrada no período da avaliação.</p>'
 
   const pdq = doc.pdq_detalhes
   const pdqFormatado = pdq.pdq !== null && pdq.pdq !== undefined ? pdq.pdq.toFixed(2) : '—'
 
   let motivoIndefinidoHtml = ''
-  if (!pdq.precondicao_atendida) {
+  if (pdq.atd_calculavel === false) {
     motivoIndefinidoHtml = `
       <div class="aviso-precondicao">
-        <strong>Pré-condição (MSc + DSc) &ge; 2 não atendida:</strong> O docente registra um total de ${pdq.titulacoes_total} titulação(ões) concluída(s) no quadriênio (MSc: ${pdq.msc}, DSc: ${pdq.dsc}). Por exigência do § 4º da norma, o índice PDQ permanece <span class="destaque-indefinido">indefinido</span> (não assume valor zero), impossibilitando a recondução automática pelo Critério IV.
+        <strong>ATD não calculável:</strong> sem mestrados nem doutorados concluídos no período (M + 2D = 0), o ATD entra como 0 no PDQ.
       </div>
     `
   }
@@ -275,7 +275,7 @@ function gerarSecaoDocenteHtml(doc: AvaliacaoDocenteReconducao): string {
               </td>
             </tr>
             <tr>
-              <td><strong>IV. Índice PDQ &ge; 1,0</strong><br /><span class="subtexto">PDQ = NP / (MSc + DSc)</span></td>
+              <td><strong>IV. PDQ &ge; nota de corte (${pdq.nota_corte ?? 1})</strong><br /><span class="subtexto">PDQ = 2 &times; ATD + DPIDE1 + DPTDE1</span></td>
               <td class="text-center font-bold ${doc.criterio_iv.atendido ? 'criterio-sim' : 'criterio-nao'}">${doc.criterio_iv.atendido ? 'SIM' : 'NÃO'}</td>
               <td class="text-center font-bold">${pdqFormatado}</td>
               <td>
@@ -289,29 +289,29 @@ function gerarSecaoDocenteHtml(doc: AvaliacaoDocenteReconducao): string {
       <div class="bloco-pdq">
         <h3 class="subtitulo-bloco">2. Detalhamento do Índice de Produção Docente Qualificada (PDQ)</h3>
         <div class="formula-box">
-          <span class="formula-texto">Equação Regulamentar: <strong>PDQ = NP / (MSc + DSc)</strong>, com a pré-condição obrigatória <strong>(MSc + DSc) &ge; 2</strong></span>
+          <span class="formula-texto">Equação Regulamentar (IN 02/2026, art. 8º, §5º, IV): <strong>PDQ = 2 &times; ATD + DPIDE1 + DPTDE1</strong>, a ser igual ou superior à nota de corte definida pelo Colegiado</span>
         </div>
 
         <table class="tabela-metricas-pdq">
           <thead>
             <tr>
-              <th>NP Estrito (Confirmadas)</th>
-              <th>NP Teto (Potenciais)</th>
-              <th>Coautorias Pendentes</th>
-              <th>Mestres (MSc)</th>
-              <th>Doutores (DSc)</th>
-              <th>Total Titulações</th>
+              <th>ATD</th>
+              <th>DPIDE1</th>
+              <th>DPTDE1</th>
+              <th>Pub. c/ coautoria</th>
+              <th>Pub. pendentes</th>
+              <th>M / D concluídos</th>
               <th>PDQ Calculado</th>
             </tr>
           </thead>
           <tbody>
             <tr>
+              <td class="text-center font-bold">${pdq.atd_calculavel === false ? '0 (n/c)' : (pdq.atd ?? 0).toFixed(2)}</td>
+              <td class="text-center font-bold">${(pdq.dpide1 ?? 0).toFixed(2)}</td>
+              <td class="text-center font-bold">${pdq.dptde1 ?? 0}</td>
               <td class="text-center font-bold valor-destaque">${pdq.np}</td>
-              <td class="text-center font-bold">${pdq.np_teto ?? doc.np_teto ?? 0}</td>
               <td class="text-center font-bold">${pdq.np_pendente ?? (doc.publicacoes_pendentes ? doc.publicacoes_pendentes.length : 0)}</td>
-              <td class="text-center font-bold">${pdq.msc}</td>
-              <td class="text-center font-bold">${pdq.dsc}</td>
-              <td class="text-center font-bold">${pdq.titulacoes_total}</td>
+              <td class="text-center font-bold">${pdq.msc} / ${pdq.dsc}</td>
               <td class="text-center font-bold valor-pdq-final">${pdqFormatado}</td>
             </tr>
           </tbody>
@@ -321,7 +321,7 @@ function gerarSecaoDocenteHtml(doc: AvaliacaoDocenteReconducao): string {
       </div>
 
       <div class="bloco-publicacoes">
-        <h3 class="subtitulo-bloco">3. Publicações Consideradas para o NP (JCR &ge; 1,0 no Quadriênio)</h3>
+        <h3 class="subtitulo-bloco">3. Publicações do docente no período da avaliação</h3>
         <ul class="lista-publicacoes">
           ${itensPubsHtml}
         </ul>
@@ -393,7 +393,7 @@ export function gerarHtmlRelatorioReconducao(
           </td>
           <td class="text-center font-bold">
             ${pdqVal}
-            <div class="subtexto">NP ${doc.pdq_detalhes.np} / Tit. ${doc.pdq_detalhes.titulacoes_total}</div>
+            <div class="subtexto">corte ${doc.pdq_detalhes.nota_corte ?? 1}</div>
           </td>
           <td class="text-center">
             <span class="badge ${classeBadgeVeredito(doc.veredito)}">${labelVeredito(doc.veredito)}</span>
@@ -941,7 +941,7 @@ export function gerarHtmlRelatorioReconducao(
           Relatório de Avaliação de Recondução de Docentes — PPG-DCEM
         </h1>
         <p class="print-header-sub">
-          Avaliação de Recondução Automática à Categoria Permanente — Quadriênio ${relatorio.quadrienio.ano_inicio}–${relatorio.quadrienio.ano_fim}
+          Avaliação continuada de desempenho docente (IN 02/2026) — avaliação de ${relatorio.avaliacao?.ano_avaliacao ?? relatorio.quadrienio.ano_fim + 1}, produção ${relatorio.quadrienio.ano_inicio}–${relatorio.quadrienio.ano_fim}, nota de corte do PDQ ${relatorio.avaliacao?.nota_corte ?? 1}
         </p>
       </div>
       <div class="print-header-meta">
@@ -983,7 +983,7 @@ export function gerarHtmlRelatorioReconducao(
       <div class="metrica-card pdq-insuficiente">
         <div class="metrica-titulo">PDQ Insuficiente</div>
         <div class="metrica-valor">${resumo.pdq_insuficiente}</div>
-        <div class="metrica-sub">&lt; 2 titulações (MSc+DSc)</div>
+        <div class="metrica-sub">I a III atendidos, PDQ abaixo da nota</div>
       </div>
       <div class="metrica-card">
         <div class="metrica-titulo">Não Aplicáveis</div>
@@ -1008,7 +1008,7 @@ export function gerarHtmlRelatorioReconducao(
           <th style="width: 14%; text-align: center;">Critério I<br /><span style="font-size: 8pt; font-weight: normal;">Orientação</span></th>
           <th style="width: 14%; text-align: center;">Critério II<br /><span style="font-size: 8pt; font-weight: normal;">Disciplina</span></th>
           <th style="width: 14%; text-align: center;">Critério III<br /><span style="font-size: 8pt; font-weight: normal;">Projeto</span></th>
-          <th style="width: 14%; text-align: center;">Índice PDQ<br /><span style="font-size: 8pt; font-weight: normal;">NP/(MSc+DSc)</span></th>
+          <th style="width: 14%; text-align: center;">PDQ<br /><span style="font-size: 8pt; font-weight: normal;">2&times;ATD + DPIDE1 + DPTDE1</span></th>
           <th style="width: 16%; text-align: center;">Veredito</th>
         </tr>
       </thead>
@@ -1034,9 +1034,9 @@ export function gerarHtmlRelatorioReconducao(
   <footer class="nota-metodologica-section">
     <div class="nota-metodologica-titulo">Nota Metodológica e Ressalvas Técnicas</div>
     <p class="nota-metodologica-texto">
-      <strong>Critério IV (Produção Docente Qualificada - NP Estrito vs. Teto):</strong> ${escaparHtml(
+      <strong>Critério IV (Produção Docente Qualificada, PDQ):</strong> ${escaparHtml(
         relatorio.nota_metodologica.criterio_iv_np_coautoria ||
-          'O NP estrito considera somente publicações com fator de impacto JCR >= 1,0 cuja coautoria com orientandos ou egressos do P²CEM esteja formalmente confirmada na base de dados (tabela publicacoes_coautores_programa). Publicações em periódicos de impacto que aguardam comprovação compõem o NP Teto e demandam deliberação do Colegiado.',
+          'PDQ = (2 × ATD) + DPIDE1 + DPTDE1, com coautoria confirmada de discente ou egresso na base de dados (IN 02/2026, art. 8º, §5º, IV).',
       )}
     </p>
     <p class="nota-metodologica-texto">

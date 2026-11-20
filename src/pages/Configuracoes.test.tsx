@@ -7,6 +7,9 @@ const salvarConfiguracao = vi.fn()
 const ativarPeriodo = vi.fn()
 const excluirPeriodo = vi.fn()
 const recarregar = vi.fn()
+const salvarNotaCorte = vi.fn()
+const excluirNotaCorte = vi.fn()
+const listarNotasCorte = vi.fn()
 let papel = 'coordenador'
 
 vi.mock('@/hooks/use-auth', () => ({ useAuth: () => ({ role: papel }) }))
@@ -48,6 +51,12 @@ vi.mock('@/services/periodos', () => ({
   ativarPeriodo: (...a: any[]) => ativarPeriodo(...a),
   excluirPeriodo: (...a: any[]) => excluirPeriodo(...a),
 }))
+vi.mock('@/services/notas-corte', () => ({
+  NOTA_CORTE_PADRAO: 1,
+  salvarNotaCorte: (...a: any[]) => salvarNotaCorte(...a),
+  excluirNotaCorte: (...a: any[]) => excluirNotaCorte(...a),
+  listarNotasCorte: (...a: any[]) => listarNotasCorte(...a),
+}))
 vi.mock('@/services/logs', () => ({ registrarLog: vi.fn() }))
 
 import Configuracoes from './Configuracoes'
@@ -59,6 +68,11 @@ beforeEach(() => {
   ativarPeriodo.mockReset().mockResolvedValue({ ok: true })
   excluirPeriodo.mockReset().mockResolvedValue({ ok: true })
   recarregar.mockReset().mockResolvedValue(undefined)
+  salvarNotaCorte.mockReset().mockResolvedValue({ ok: true })
+  excluirNotaCorte.mockReset().mockResolvedValue({ ok: true })
+  listarNotasCorte
+    .mockReset()
+    .mockResolvedValue([{ anoAvaliacao: 2026, notaCorte: 1, observacao: 'Valor inicial' }])
 })
 afterEach(cleanup)
 
@@ -103,5 +117,32 @@ describe('Configurações', () => {
     expect(screen.queryByRole('button', { name: /novo período/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /ativar/i })).toBeNull()
     expect(screen.getByText(/apenas leitura/i)).toBeTruthy()
+  })
+
+  it('lista a nota de corte do ano com a produção considerada (2026 → 2022–2025)', async () => {
+    render(<Configuracoes />)
+    expect(await screen.findByText('2022–2025')).toBeTruthy()
+    expect(screen.getByText('Valor inicial')).toBeTruthy()
+  })
+
+  it('nova nota de corte sugere o ano seguinte e salva a nota digitada', async () => {
+    render(<Configuracoes />)
+    await screen.findByText('2022–2025')
+    fireEvent.click(screen.getByRole('button', { name: /nova nota de corte/i }))
+    expect((screen.getByLabelText(/ano da avaliação/i) as HTMLInputElement).value).toBe('2027')
+    fireEvent.change(screen.getByLabelText(/^nota de corte$/i), { target: { value: '1.5' } })
+    fireEvent.click(screen.getByRole('button', { name: /salvar nota de corte/i }))
+    await waitFor(() => expect(salvarNotaCorte).toHaveBeenCalled())
+    expect(salvarNotaCorte.mock.calls[0][0].nota).toMatchObject({
+      anoAvaliacao: 2027,
+      notaCorte: 1.5,
+    })
+  })
+
+  it('perfil sem permissão não vê os botões da nota de corte', async () => {
+    papel = 'docente'
+    render(<Configuracoes />)
+    await screen.findByText('2022–2025')
+    expect(screen.queryByRole('button', { name: /nova nota de corte/i })).toBeNull()
   })
 })

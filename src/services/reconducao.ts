@@ -1,7 +1,8 @@
 import { supabase } from '@/lib/supabase/client'
 import type { RelatorioReconducaoResposta } from '@/lib/reconducao/types'
 import { consolidarAvaliacaoReconducao } from '@/lib/reconducao/calculo'
-import { ANO_INICIO, ANO_FIM } from '@/lib/reconducao/types'
+import { janelaAvaliacaoDocente } from '@/lib/reconducao/calculo'
+import { obterNotaCorte } from '@/services/notas-corte'
 import { anexarDocentesNasDisciplinas } from '@/lib/disciplinas/docentes'
 import type {
   Docente,
@@ -17,8 +18,13 @@ export interface ObterAvaliacaoReconducaoOpcoes {
   invokeFn?: (functionName: string, options?: { body?: any }) => Promise<{ data: any; error: any }>
   /** Força execução local direta contra o Supabase (fallback/offline) */
   executarLocal?: boolean
+  /** Ano da avaliação (D-36): a janela é os 4 anos civis anteriores. Padrão: ano corrente. */
+  anoAvaliacao?: number
+  /** Janela explícita (sobrepõe a do ano da avaliação). */
   anoInicio?: number
   anoFim?: number
+  /** Nota de corte do PDQ; sem ela, vale a cadastrada para o ano da avaliação (padrão 1,0). */
+  notaCorte?: number
 }
 
 export interface ResultadoAvaliacaoReconducao {
@@ -39,14 +45,23 @@ export interface ResultadoAvaliacaoReconducao {
 export async function obterAvaliacaoReconducao(
   opcoes: ObterAvaliacaoReconducaoOpcoes = {},
 ): Promise<ResultadoAvaliacaoReconducao> {
-  const { invokeFn, executarLocal, anoInicio = ANO_INICIO, anoFim = ANO_FIM } = opcoes
+  const { invokeFn, executarLocal } = opcoes
+  const anoAvaliacao = opcoes.anoAvaliacao ?? new Date().getFullYear()
+  const janela = janelaAvaliacaoDocente(anoAvaliacao)
+  const anoInicio = opcoes.anoInicio ?? janela.anoInicio
+  const anoFim = opcoes.anoFim ?? janela.anoFim
 
   // 1. Tentar Edge Function primeiro, a menos que local seja explicitamente exigido
   if (!executarLocal) {
     try {
       const invoker = invokeFn ?? supabase.functions.invoke.bind(supabase.functions)
       const { data, error } = await invoker('avaliacao-reconducao', {
-        body: { anoInicio, anoFim },
+        body: {
+          anoInicio,
+          anoFim,
+          anoAvaliacao,
+          ...(opcoes.notaCorte !== undefined ? { notaCorte: opcoes.notaCorte } : {}),
+        },
       })
 
       if (!error && data && data.sucesso && Array.isArray(data.avaliacoes) && data.resumo) {
@@ -83,6 +98,7 @@ export async function obterAvaliacaoReconducao(
       publicacoesDocentesRes,
       coautoresRes,
       disciplinasDocentesRes,
+      egressosRes,
     ] = await Promise.all([
       supabase
         .from('docentes')
@@ -102,13 +118,16 @@ export async function obterAvaliacaoReconducao(
       supabase.from('projetos_participantes').select('projeto_id, docente_id, papel'),
       supabase
         .from('publicacoes')
-        .select('id, titulo, autores, periodico, ano, fator_impacto_jcr')
+        .select(
+          'id, titulo, autores, periodico, ano, fator_impacto_jcr, estrato_qualis, tipo_producao',
+        )
         .order('ano', { ascending: false }),
       (supabase.from as any)('publicacoes_docentes').select('id, publicacao_id, docente_id'),
       (supabase.from as any)('publicacoes_coautores_programa').select(
         'id, publicacao_id, discente_id, egresso_id, tipo, nome_citado, grau_confianca',
       ),
       (supabase.from as any)('disciplinas_docentes').select('disciplina_id, docente_id'),
+      (supabase.from as any)('egressos').select('id, ano_titulacao'),
     ])
 
     const erroEncontrado = [
@@ -121,6 +140,7 @@ export async function obterAvaliacaoReconducao(
       publicacoesDocentesRes.error,
       coautoresRes.error,
       disciplinasDocentesRes.error,
+      egressosRes.error,
     ].find(Boolean)
 
     if (erroEncontrado) {
@@ -142,6 +162,9 @@ export async function obterAvaliacaoReconducao(
       publicacoes: (publicacoesRes.data || []) as unknown as Publicacao[],
       publicacoesDocentes: (publicacoesDocentesRes.data || []) as any[],
       coautoresPrograma: (coautoresRes.data || []) as any[],
+      egressos: (egressosRes.data || []) as any[],
+      notaCorte: opcoes.notaCorte ?? (await obterNotaCorte(anoAvaliacao)),
+      anoAvaliacao,
       anoInicio,
       anoFim,
     })

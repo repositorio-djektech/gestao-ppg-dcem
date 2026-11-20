@@ -50,7 +50,7 @@ Este diretório reúne o mapeamento técnico completo, arquitetural, de engenhar
 
 7. **[Módulos Especializados e Regras de Negócio](regras-de-negocio-e-modulos.md)**
    - **Módulo de Lacunas (`/lacunas`):** 37 regras de auditoria em 10 tabelas, severidades (crítica e atenção), agrupamento visual, correção inline ou direcionada, exportação e impressão de relatório via iframe.
-   - **Módulo de Recondução e Credenciamento (`/reconducao`):** cálculo dos 4 critérios da Norma PPG-DCEM (§ 4º), índice PDQ (`NP / (MSc + DSc) >= 1.0`), vereditos automáticos (Reconduzido, Não atende, PDQ insuficiente, Não aplicável), relatório com justificativas.
+   - **Módulo de Recondução e Credenciamento (`/reconducao`):** cálculo dos 4 critérios da IN 02/2026 (avaliação anual sobre os 4 anos anteriores), índice PDQ (`2×ATD + DPIDE1 + DPTDE1` contra a nota de corte do ano), vereditos automáticos (Reconduzido, Não atende, PDQ insuficiente, Não aplicável), relatório com justificativas.
    - **Módulo de Indicadores CAPES (`/indicadores`):** Ficha de Avaliação da Área Engenharias II (2025), recorte 2025–2028, MMA (Média das Médias Anuais), cálculo com DP, JDP, pesos de Qualis com saturação em B1.
    - **Módulo de Egressos e Discentes:** acompanhamento de titulação, vínculos e inserção profissional.
    - **Módulo de Impacto Social:** vinculação transversal de impactos a produções, patentes e projetos.

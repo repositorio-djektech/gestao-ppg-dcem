@@ -363,7 +363,7 @@ describe('Página Recondução (Etapa D)', () => {
     expect(html).toContain('bg-amber-50')
   })
 
-  it('exibe o estado indefinido do PDQ com traço e motivo legível quando precondição < 2', async () => {
+  it('mostra traço para o PDQ ausente (relatório antigo) e o seletor do ano da avaliação, sem a regra antiga de 2 titulações', async () => {
     const html = await renderPagina(
       <Reconducao
         carregarDadosFn={() =>
@@ -376,9 +376,11 @@ describe('Página Recondução (Etapa D)', () => {
       />,
     )
 
-    // Para Ledjane ou Marcos, PDQ é indefinido (nunca 0)
+    // Relatório sem PDQ calculado: traço (nunca 0). A regra de "mínimo de 2 titulações" não existe mais.
     expect(html).toContain('—')
-    expect(html).toContain('&lt;2 titulações (0)')
+    expect(html).not.toContain('titulações (0)')
+    expect(html).toContain('PDQ (2×ATD + DPIDE1 + DPTDE1)')
+    expect(html).toContain('Ano da avaliação')
   })
 
   it('ordena os docentes seguindo a regra: Reconduzidos -> Não Atendem -> Insuficientes -> Não Aplicáveis', async () => {

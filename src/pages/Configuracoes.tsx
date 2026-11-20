@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Pencil, Plus, Trash2, CheckCircle2, Settings } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { usePeriodo } from '@/hooks/use-periodo'
@@ -43,6 +43,14 @@ import {
   type ResultadoPeriodos,
 } from '@/services/periodos'
 import { registrarLog } from '@/services/logs'
+import {
+  excluirNotaCorte,
+  listarNotasCorte,
+  NOTA_CORTE_PADRAO,
+  salvarNotaCorte,
+  type NotaCorte,
+} from '@/services/notas-corte'
+import { janelaAvaliacaoDocente } from '@/lib/reconducao/calculo'
 import { anosDoPeriodo, rotuloPeriodo, type PeriodoAvaliacao } from '@/lib/periodos/periodo'
 
 interface FormPeriodo {
@@ -81,6 +89,83 @@ export default function Configuracoes() {
     configuracao.lattesAnoFim !== null ? String(configuracao.lattesAnoFim) : '',
   )
   const [salvandoLattes, setSalvandoLattes] = useState(false)
+
+  // Nota de corte do PDQ por ano da avaliação do docente (IN 02/2026, D-36)
+  const [notas, setNotas] = useState<NotaCorte[]>([])
+  const [notasIndisponiveis, setNotasIndisponiveis] = useState(false)
+  const [formNota, setFormNota] = useState<{
+    ano: string
+    nota: string
+    observacao: string
+    novo: boolean
+  } | null>(null)
+  const [salvandoNota, setSalvandoNota] = useState(false)
+  const [notaParaExcluir, setNotaParaExcluir] = useState<NotaCorte | null>(null)
+
+  const carregarNotas = useCallback(async () => {
+    try {
+      setNotas(await listarNotasCorte())
+      setNotasIndisponiveis(false)
+    } catch {
+      setNotas([])
+      setNotasIndisponiveis(true)
+    }
+  }, [])
+  useEffect(() => {
+    void carregarNotas()
+  }, [carregarNotas])
+
+  const abrirNovaNota = () => {
+    const proximo = (notas[0]?.anoAvaliacao ?? new Date().getFullYear() - 1) + 1
+    setFormNota({
+      ano: String(proximo),
+      nota: String(NOTA_CORTE_PADRAO),
+      observacao: '',
+      novo: true,
+    })
+  }
+
+  const salvarNota = async () => {
+    if (!formNota) return
+    setSalvandoNota(true)
+    const nota = {
+      anoAvaliacao: Number(formNota.ano),
+      notaCorte: Number(formNota.nota.replace(',', '.')),
+      observacao: formNota.observacao.trim(),
+    }
+    const ok = await executar(
+      () => salvarNotaCorte({ role, nota }) as Promise<ResultadoPeriodos>,
+      'Nota de corte salva.',
+      {
+        acao: formNota.novo ? 'criar' : 'editar',
+        entidade: 'avaliacao_notas_corte',
+        entidade_id: nota.anoAvaliacao,
+        detalhes: { ano_avaliacao: nota.anoAvaliacao, nota_corte: nota.notaCorte },
+      },
+    )
+    setSalvandoNota(false)
+    if (ok) {
+      setFormNota(null)
+      await carregarNotas()
+    }
+  }
+
+  const confirmarExclusaoNota = async () => {
+    const n = notaParaExcluir
+    setNotaParaExcluir(null)
+    if (!n) return
+    const ok = await executar(
+      () => excluirNotaCorte({ role, anoAvaliacao: n.anoAvaliacao }) as Promise<ResultadoPeriodos>,
+      'Nota de corte apagada. O ano volta a usar o padrão.',
+      {
+        acao: 'excluir',
+        entidade: 'avaliacao_notas_corte',
+        entidade_id: n.anoAvaliacao,
+        detalhes: { ano_avaliacao: n.anoAvaliacao, nota_corte: n.notaCorte },
+      },
+    )
+    if (ok) await carregarNotas()
+  }
 
   const executar = async (
     acao: () => Promise<ResultadoPeriodos>,
@@ -339,6 +424,170 @@ export default function Configuracoes() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle>Avaliação do docente: nota de corte do PDQ</CardTitle>
+            <CardDescription>
+              A avaliação do docente é anual (IN 02/2026) e usa os 4 anos civis anteriores ao ano da
+              avaliação. O PDQ (2 × ATD + DPIDE1 + DPTDE1) precisa alcançar a nota de corte que o
+              Colegiado define a cada ano. Ano sem nota cadastrada usa {NOTA_CORTE_PADRAO}.
+            </CardDescription>
+          </div>
+          {podeEditar && (
+            <Button onClick={abrirNovaNota} size="sm" className="shrink-0">
+              <Plus className="h-4 w-4 mr-1" aria-hidden /> Nova nota de corte
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {notasIndisponiveis && (
+            <p className="mb-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              Não foi possível ler as notas de corte; o sistema está usando {NOTA_CORTE_PADRAO}.
+            </p>
+          )}
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ano da avaliação</TableHead>
+                  <TableHead>Produção considerada</TableHead>
+                  <TableHead>Nota de corte</TableHead>
+                  <TableHead>Observação</TableHead>
+                  {podeEditar && <TableHead className="text-right">Ações</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {notas.map((n) => {
+                  const j = janelaAvaliacaoDocente(n.anoAvaliacao)
+                  return (
+                    <TableRow key={n.anoAvaliacao}>
+                      <TableCell className="font-medium">{n.anoAvaliacao}</TableCell>
+                      <TableCell>
+                        {j.anoInicio}–{j.anoFim}
+                      </TableCell>
+                      <TableCell>{n.notaCorte}</TableCell>
+                      <TableCell className="text-slate-600">{n.observacao || '—'}</TableCell>
+                      {podeEditar && (
+                        <TableCell className="text-right whitespace-nowrap">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Editar a nota de corte de ${n.anoAvaliacao}`}
+                            onClick={() =>
+                              setFormNota({
+                                ano: String(n.anoAvaliacao),
+                                nota: String(n.notaCorte),
+                                observacao: n.observacao,
+                                novo: false,
+                              })
+                            }
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Apagar a nota de corte de ${n.anoAvaliacao}`}
+                            onClick={() => setNotaParaExcluir(n)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </Button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  )
+                })}
+                {notas.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={podeEditar ? 5 : 4} className="text-slate-500">
+                      Nenhuma nota de corte cadastrada: todos os anos usam {NOTA_CORTE_PADRAO}.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={formNota !== null} onOpenChange={(aberto) => !aberto && setFormNota(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {formNota?.novo ? 'Nova nota de corte' : 'Editar nota de corte'}
+            </DialogTitle>
+            <DialogDescription>
+              Vale para a avaliação do ano informado. Mudar a nota de um ano não altera os outros.
+            </DialogDescription>
+          </DialogHeader>
+          {formNota && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="nota-ano">Ano da avaliação</Label>
+                  <Input
+                    id="nota-ano"
+                    type="number"
+                    inputMode="numeric"
+                    value={formNota.ano}
+                    disabled={!formNota.novo}
+                    onChange={(e) => setFormNota({ ...formNota, ano: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="nota-valor">Nota de corte</Label>
+                  <Input
+                    id="nota-valor"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.001"
+                    value={formNota.nota}
+                    onChange={(e) => setFormNota({ ...formNota, nota: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="nota-obs">Observação (opcional)</Label>
+                <Input
+                  id="nota-obs"
+                  value={formNota.observacao}
+                  placeholder="Ex.: definida pelo Colegiado na reunião de dezembro"
+                  onChange={(e) => setFormNota({ ...formNota, observacao: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFormNota(null)} disabled={salvandoNota}>
+              Cancelar
+            </Button>
+            <Button onClick={salvarNota} disabled={salvandoNota}>
+              {salvandoNota ? 'Salvando…' : 'Salvar nota de corte'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={notaParaExcluir !== null}
+        onOpenChange={(a) => !a && setNotaParaExcluir(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar nota de corte?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A avaliação de {notaParaExcluir?.anoAvaliacao} volta a usar a nota padrão (
+              {NOTA_CORTE_PADRAO}).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarExclusaoNota}>Apagar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={form !== null} onOpenChange={(aberto) => !aberto && setForm(null)}>
         <DialogContent>

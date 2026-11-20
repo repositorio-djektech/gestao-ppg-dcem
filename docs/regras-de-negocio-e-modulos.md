@@ -66,28 +66,37 @@ Implementadas em `src/lib/lacunas/regras.ts` (16 críticas e 18 de atenção; o 
 
 ### 2.1 Propósito e Fundamento Normativo
 
-O painel de **Recondução** implementa o cálculo e a verificação automática dos critérios exigidos pela **Norma Interna do PPG-DCEM (§ 4º)** para a recondução de docentes permanentes no quadriênio **2025–2028**.
+O painel de **Recondução** (rotulado "Credenciamento" na tela) implementa a **Avaliação Continuada de Desempenho Docente** da **Instrução Normativa 02/2026/P²CEM** (29/10/2026, art. 8º, §5º), que substitui a Norma anterior (§ 4º) (D-36).
+
+- **Avaliação anual, por ano da avaliação.** A produção considerada é a dos **4 anos civis anteriores ao ano da avaliação** (avaliação em 2026 usa 2022 a 2025). É independente do período de avaliação do programa (D-32). Na tela, o seletor "Ano da avaliação" escolhe o ano (padrão: o corrente).
+- **Nota de corte do PDQ por ano:** definida todo ano pelo Colegiado (art. 8º, §6º), cadastrada em **Configurações** (tabela `avaliacao_notas_corte`). Ano sem nota usa **1,0**. Mudar a nota de um ano não altera os outros.
 
 ### 2.2 Os 4 Critérios Avaliados
 
-1. **Critério I — Orientação de Alunos:** O docente orientou alunos no P²CEM como **orientador principal** no quadriênio (`flag_orientador_principal = true`). Orientação concluída conta pelo ano da defesa/término; orientação em andamento conta se esteve vigente em algum ano de 2025–2028, mesmo iniciada antes; orientação cancelada nunca conta.
-2. **Critério II — Docência em Disciplinas:** O docente ministrou disciplinas ofertadas no programa no quadriênio. Consideram-se os docentes de `disciplinas.docente_id` e da tabela N:N `disciplinas_docentes`; disciplina sem ano identificável é aceita como evidência.
-3. **Critério III — Projetos Financiados:** O docente participou de projeto de pesquisa com fomento aprovado no quadriênio, como coordenador ou integrante.
-4. **Critério IV — Produção Qualificada e Índice PDQ:**
-   - **Fórmula:**
-     $$\text{PDQ} = \frac{\text{NP}}{\text{MSc} + \text{DSc}}$$
-   - **Pré-condição:** O docente deve ter concluído no mínimo 2 titulações no quadriênio ($\text{MSc} + \text{DSc} \ge 2$).
-   - **Meta:** $\text{PDQ} \ge 1{,}000$.
-   - **NP (Número de Publicações Qualificadas):** Artigos com Fator de Impacto $\text{JCR} \ge 1{,}0$ com **coautoria confirmada** com orientando ou egresso do programa (registrada na tabela `publicacoes_coautores_programa`).
+1. **Critério I — Orientação de Alunos:** O docente orientou alunos no P²CEM como **orientador principal** (`flag_orientador_principal = true`) na janela da avaliação. Orientação concluída conta pelo ano da defesa/término; orientação em andamento conta se esteve vigente em algum ano da janela; orientação cancelada nunca conta.
+2. **Critério II — Docência em Disciplinas:** O docente ministrou disciplinas ofertadas no programa na janela. Consideram-se os docentes de `disciplinas.docente_id` e da tabela N:N `disciplinas_docentes`; disciplina sem ano identificável é aceita como evidência.
+3. **Critério III — Projetos Financiados:** O docente participou de projeto de pesquisa com fomento aprovado na janela, como coordenador ou integrante.
+4. **Critério IV — Produção Docente Qualificada (PDQ):**
+   - **Fórmula (só do docente avaliado):**
+     $$\text{PDQ} = 2 \times \text{ATD} + \text{DPIDE1} + \text{DPTDE1}$$
+   - **ATD** = artigos A1–A4 com coautoria de discente e/ou egresso / (M + 2D), com M e D = mestrados e doutorados **defendidos** no período, como orientador principal (coorientação não conta, D-19). Sem titulações (M + 2D = 0) o ATD não é calculável e **entra como 0**.
+   - **DPIDE1** = A1 + 0,875·A2 + 0,75·A3 + 0,675·A4 + 0,5·min(B1, 1) sobre as publicações com coautoria (B1 satura em 1 por docente).
+   - **DPTDE1** = artigos completos (periódicos + anais) com coautoria de discente ou egresso, **máximo 4**; capítulos ficam de fora.
+   - **Coautoria válida:** orientando/discente, ou egresso titulado há até **5 anos** na data da publicação (registrada em `publicacoes_coautores_programa`).
+   - **Meta:** $\text{PDQ} \ge$ nota de corte do ano.
+   - O cálculo é feito por um módulo único, `supabase/functions/avaliacao-reconducao/pdq.ts`, usado pelo front e pela Edge Function (sem duplicar a regra).
+   - **Divergência registrada (P-37):** a IN escreve A4 = 0,625 e "A5"; o sistema usa A4 = 0,675 e B1, como a ficha CAPES 2025 (D-02).
 
 ### 2.3 Vereditos do Sistema
 
-Docentes que não são da categoria permanente recebem sempre `NAO_APLICAVEL`. Para permanentes:
+Docentes que não são da categoria permanente recebem `NAO_APLICAVEL` (a IN também avalia colaboradores e visitantes; ver P-34). Para permanentes:
 
-- **Reconduzido (`RECONDUZIDO`):** Cumpre os Critérios I, II, III e a meta do Critério IV ($\text{PDQ} \ge 1{,}0$).
-- **PDQ insuficiente (`PDQ_INSUFICIENTE`):** Não atinge o mínimo de 2 titulações concluídas no quadriênio, então o PDQ fica indefinido (nunca zero).
-- **Não atende (`NAO_ATENDE`):** Tem ao menos 2 titulações, mas descumpre algum critério (I, II, III) ou o PDQ calculado fica abaixo de 1,0.
+- **Reconduzido (`RECONDUZIDO`):** Cumpre os Critérios I, II, III e o PDQ alcança a nota de corte.
+- **PDQ insuficiente (`PDQ_INSUFICIENTE`):** Cumpre I, II e III, mas o PDQ fica abaixo da nota de corte.
+- **Não atende (`NAO_ATENDE`):** Descumpre algum dos critérios I, II ou III.
 - **Não aplicável (`NAO_APLICAVEL`):** Docente colaborador, visitante ou sem categoria definida.
+
+A coluna **PDQ DCEM** da tela Docentes mostra o PDQ do docente na avaliação do ano corrente (o docente vê só o próprio).
 
 Nos cálculos, o casamento textual de autores (usado só quando o docente não tem vínculo em `publicacoes_docentes`) exige ao menos 2 termos do nome, para que um sobrenome comum isolado não atribua a publicação a outro docente.
 
