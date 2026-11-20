@@ -145,6 +145,15 @@ Vínculo registro ↔ docente (autoria), no molde de `publicacoes_docentes`. Mig
 - `UNIQUE (patente_id, docente_id)` / `UNIQUE (producao_tecnica_id, docente_id)`.
 - RLS: leitura para autenticados; INSERT/DELETE da coordenação ou do docente sobre a própria linha.
 
+#### `patentes_discentes`, `producao_tecnica_discentes` e `eventos_discentes`
+
+Discentes ligados a patentes, produção técnica e eventos (P-35, D-41). Migração `20261123120000`.
+
+- `id`, `patente_id` | `producao_tecnica_id` | `evento_id` (FK `ON DELETE CASCADE`), `discente_id` (FK `ON DELETE CASCADE`), `created_at`; `UNIQUE` por par registro/discente.
+- RLS: leitura para autenticados; escrita da coordenação (`is_admin_staff()`) e, em patentes e produção técnica, do docente vinculado ao registro por `patentes_docentes`/`producao_tecnica_docentes`. Eventos: só a coordenação.
+
+Na mesma migração: `publicacoes.docente_atribuido_id` (FK para `docentes`, `ON DELETE SET NULL`; docente que recebe a publicação quando há mais de um autor, art. 8º §7º) e `docentes.ingresso_ufs` (texto AAAA-MM, critério de desempate).
+
 #### `ppg_textos`
 
 Textos curtos do programa por chave (H-10). Hoje só o item 1.3 da ficha (políticas afirmativas). Migração `20261104130000` aplicada em 04/11.

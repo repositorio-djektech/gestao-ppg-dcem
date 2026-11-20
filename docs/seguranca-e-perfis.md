@@ -88,7 +88,7 @@ Suporte, coordenador e auxiliar não mudam. O papel **docente** vê:
 | Linhas de Pesquisa | Sem a coluna Ações. |
 | Projetos de Pesquisa | Os que coordena e aqueles em que participa; edita e apaga só como coordenador (`lib/projetos/visibilidade.ts`). |
 | Publicações | Só as vinculadas a ele (`lib/publicacoes/visibilidade.ts`); ao salvar fica sempre vinculado. |
-| Patentes e Produção Técnica | Só as vinculadas a ele, por `patentes_docentes` e `producao_tecnica_docentes` (`lib/registros/visibilidade.ts`, `hooks/use-autoria-docente.tsx`). |
+| Patentes e Produção Técnica | Só as vinculadas a ele, por `patentes_docentes` e `producao_tecnica_docentes` (`lib/registros/visibilidade.ts`, `hooks/use-autoria-docente.tsx`). Discentes vinculados seguem a mesma regra; em Eventos, só a coordenação vincula. |
 | Impressão `/imprimir/*` | Mesma visão restrita (`lib/impressao/escopo-docente.ts`). |
 
 **RLS de escrita (migração `20261105130000`, aplicada em 04/11):** em patentes e produção técnica o docente insere, e edita/apaga só o que está vinculado a ele; o docente vincula só a si mesmo (a coordenação vincula os demais); `projetos_pesquisa_update` aceita coordenação ou o coordenador do projeto (participante não edita).

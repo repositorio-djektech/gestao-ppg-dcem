@@ -89,12 +89,19 @@ O painel de **Recondução** (rotulado "Credenciamento" na tela) implementa a **
 
 ### 2.3 Vereditos do Sistema
 
-Docentes que não são da categoria permanente recebem `NAO_APLICAVEL` (a IN também avalia colaboradores e visitantes; ver P-34). Para permanentes:
+Permanentes, colaboradores e visitantes são avaliados pelos mesmos critérios I, II e III e pela nota de corte (IN 02/2026, arts. 9º a 11º; D-41):
 
 - **Reconduzido (`RECONDUZIDO`):** Cumpre os Critérios I, II, III e o PDQ alcança a nota de corte.
+- **Apto a permanente (`APTO_PERMANENTE`):** Docente colaborador que cumpre os critérios e a nota de corte.
 - **PDQ insuficiente (`PDQ_INSUFICIENTE`):** Cumpre I, II e III, mas o PDQ fica abaixo da nota de corte.
 - **Não atende (`NAO_ATENDE`):** Descumpre algum dos critérios I, II ou III.
-- **Não aplicável (`NAO_APLICAVEL`):** Docente colaborador, visitante ou sem categoria definida.
+- **Não aplicável (`NAO_APLICAVEL`):** Docente sem categoria definida.
+
+**Atribuição da publicação (art. 8º, §7º):** a publicação com 2 ou mais docentes conta para um só: o indicado em `publicacoes.docente_atribuido_id`; senão o orientador do discente/egresso coautor; sem regra aplicável, conta para todos e a tela sinaliza o conflito.
+
+**Desempate (arts. 10 e 11):** maior PDQ; bolsa PQ/DT (SR > 1A > 1B > 1C > 1D > 2); menor tempo de conclusão do aluno; maior tempo de UFS (`docentes.ingresso_ufs`). A posição aparece em Desempenho dos Docentes.
+
+**Limite de colaboradores:** no máximo 20% do número de permanentes; o sistema só sinaliza. **Art. 11 §4º:** colaborador ou visitante que não atende em 3 das últimas 4 avaliações é sinalizado para descredenciamento; o destino é decisão da coordenação.
 
 A coluna **PDQ DCEM** da tela Docentes mostra o PDQ do docente na avaliação do ano corrente (o docente vê só o próprio).
 
